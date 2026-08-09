@@ -1,1 +1,25 @@
-# teaql-python
+# TeaQL Python SDK
+
+TeaQL Python SDK is a runtime engine and toolkit for building data-driven business applications. It provides seamless integration with the TeaQL ecosystem, offering robust support for automated CRUD, DDD modeling, SQL compilation, facet aggregation, and execution trace logging.
+
+## Features
+
+- **Entity & Value Mapping**: Type-safe mapping between native Python types and TeaQL core primitives (I64, Text, F64, etc.).
+- **SQL Compilation & AST Building**: A flexible SQL query builder that dynamically generates standard `INSERT`, `UPDATE`, `DELETE`, and `SELECT` queries across supported providers.
+- **Facet Aggregation**: Built-in support for complex runtime aggregations, group-bys, and hierarchical data processing out of the box.
+- **Provider Support**: Extensible database connectivity via transport layers (currently supports `aiosqlite` for SQLite).
+
+## Modules
+
+The SDK is organized into the following core modules:
+- `teaql.core`: Provides core structures (`Value`, `SmartList`, `SelectQuery`, `MutationCommand`, and base `Entity` definition).
+- `teaql.data_service`: Defines the common `DataService` abstractions, handling structured input/output (`QueryRequest`, `MutationRequest`, `QueryResult`, etc.).
+- `teaql.sql`: Manages query compilation via AST dialects and routes execution logic through `SqlDataServiceExecutor`.
+- `teaql.runtime`: Pipeline module and application context utilities (`UserContext`, `ServiceRuntimeFromEnv`).
+- `teaql.provider`: Includes the database drivers implementations (`sqlite`, etc.).
+
+## Development
+
+The project is built on standard Python tooling (3.10+ recommended).
+
+To run test validations and business logic simulations, you can check the `robot-task-board` repository.
