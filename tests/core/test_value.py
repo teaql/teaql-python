@@ -47,6 +47,33 @@ def test_value_try_decimal_rejects_invalid_text_and_unrelated_variants():
     assert Value.F64(1.5).try_decimal() is None
     assert Value.Null().try_decimal() is None
 
+def test_value_null():
+    val = Value.Null()
+    assert val.is_null() == True
+    assert val.teaql_is_empty() == True
+
+def test_value_extensions():
+    val1 = Value(123)
+    assert val1.entity_id_value() == "123"
+    assert val1.teaql_is_empty() == False
+    
+    val2 = Value({"a": 1})
+    assert val2.object() == {"a": 1}
+    assert val2.teaql_is_empty() == False
+    
+    val3 = Value({})
+    assert val3.teaql_is_empty() == True
+    
+    val4 = Value([])
+    assert val4.teaql_is_empty() == True
+    
+    val5 = Value("hello")
+    assert val5.entity_id_value() == "hello"
+    assert val5.teaql_is_empty() == False
+    
+    val6 = Value("")
+    assert val6.teaql_is_empty() == True
+
 def test_value_try_f64_accepts_supported_numeric_variants():
     assert Value.F64(1.25).try_f64() == 1.25
     assert Value.I64(-2).try_f64() == -2.0
