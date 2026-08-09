@@ -2,6 +2,7 @@ from teaql.sql.dialect import SqlDialect, quote_identifier_if_needed
 from teaql.sql.types import DatabaseKind, UnsupportedSchemaTypeError
 from teaql.core.value import DataType
 from teaql.core.meta import PropertyDescriptor
+from typing import Any
 
 class SqliteDialect(SqlDialect):
     def kind(self) -> DatabaseKind:
@@ -13,7 +14,17 @@ class SqliteDialect(SqlDialect):
     def placeholder(self, index: int) -> str:
         return "?"
 
-    def schema_type_sql(self, data_type: DataType, property_desc: PropertyDescriptor) -> str:
+    def schema_type_sql(self, data_type: Any, property_desc: PropertyDescriptor) -> str:
+        if isinstance(data_type, str):
+            dt_str = data_type.lower()
+            if dt_str in ("bool", "boolean"): return "INTEGER"
+            if dt_str in ("i64", "u64", "i32", "u32", "int", "integer"): return "INTEGER"
+            if dt_str in ("f64", "f32", "float", "double"): return "REAL"
+            if dt_str in ("decimal", "numeric"): return "NUMERIC"
+            if dt_str in ("text", "string", "varchar"): return "VARCHAR(255)"
+            if dt_str in ("largetext", "json", "date", "timestamp"): return "TEXT"
+            raise UnsupportedSchemaTypeError(data_type)
+
         if data_type == DataType.Bool: 
             return "INTEGER"
         if data_type in (DataType.I64, DataType.U64): 

@@ -205,6 +205,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     pass
             except Exception as e:
                 # If creating table fails, it might be due to dialect unsupported features, just pass for now
+                print(f"Error creating table for entity {getattr(entity, '_name', entity)}: {e}")
                 pass
 
     async def ensure_initial_graphs(self, ctx: 'UserContext') -> None:

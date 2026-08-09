@@ -77,14 +77,14 @@ class SqlDialect(ABC):
 
     def column_definition_sql(self, property_desc: PropertyDescriptor) -> str:
         parts = [
-            self.quote_ident(property_desc.column_name_val),
+            self.quote_ident(getattr(property_desc, 'column_name_val', property_desc.name)),
             self.schema_type_sql(property_desc.property_type, property_desc)
         ]
-        if getattr(property_desc, 'is_id_val', False) or getattr(property_desc, 'is_id', lambda: False)():
+        is_id = getattr(property_desc, '_is_id', False)
+        if is_id:
             parts.append("PRIMARY KEY")
         
         nullable = getattr(property_desc, 'nullable', True)
-        is_id = getattr(property_desc, 'is_id_val', False) or getattr(property_desc, 'is_id', lambda: False)()
         if is_id or not nullable:
             parts.append("NOT NULL")
             
@@ -93,7 +93,7 @@ class SqlDialect(ABC):
     def compile_create_table(self, entity: EntityDescriptor) -> str:
         columns = [self.column_definition_sql(p) for p in getattr(entity, 'properties', [])]
         columns_str = ", ".join(columns)
-        table_name = getattr(entity, 'table_name', entity._name) if not callable(getattr(entity, 'table_name', None)) else getattr(entity, 'table_name')()
+        table_name = getattr(entity, 'table_name_val', entity._name)
         return f"CREATE TABLE IF NOT EXISTS {self.quote_ident(table_name)} ({columns_str})"
 
     def compile_select(self, entity: EntityDescriptor, query: SelectQuery) -> CompiledQuery:
