@@ -1,0 +1,43 @@
+from typing import Any, Dict, List
+from .context import UserContext
+
+class RuntimeModule:
+    def __init__(self):
+        self._entities: List[Any] = []
+        self._behaviors: Dict[str, Any] = {}
+        self._dependencies: Dict[str, Any] = {}
+
+    @classmethod
+    def new(cls) -> 'RuntimeModule':
+        return cls()
+
+    def entity(self, entity_class: Any) -> 'RuntimeModule':
+        self._entities.append(entity_class)
+        return self
+
+    def entity_with_behavior(self, entity_class: Any, behavior: Any) -> 'RuntimeModule':
+        self._entities.append(entity_class)
+        name = getattr(entity_class, '_name', getattr(entity_class, '__name__', str(entity_class)))
+        self._behaviors[name] = behavior
+        return self
+
+    def provide_custom_dependency(self, name: str, dependency: Any) -> 'RuntimeModule':
+        self._dependencies[name] = dependency
+        return self
+
+    def apply_to(self, ctx: UserContext):
+        for name, dep in self._dependencies.items():
+            ctx.insert_resource(name, dep)
+        ctx.insert_resource("entities", self._entities)
+        ctx.insert_resource("behaviors", self._behaviors)
+
+    def into_context(self) -> UserContext:
+        ctx = UserContext.new()
+        self.apply_to(ctx)
+        return ctx
+
+    async def configure(self, *args, **kwargs) -> UserContext:
+        return self.into_context()
+
+class DefaultEntityDataServiceBehavior:
+    pass
