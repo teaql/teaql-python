@@ -16,11 +16,11 @@ def test_user_context():
     assert ctx.user_identifier() == "test_user"
     
 def test_user_context_extensions():
-    from teaql.core.query import SqlLogOptions
+    from teaql.runtime.context import SqlLogOptions, SqlLogOperation
     ctx = UserContext.new()
     
     # Logs
-    ctx.set_sql_log_options(SqlLogOptions.enabled())
+    ctx.set_sql_log_options(SqlLogOptions(select=True, mutation=True))
     assert ctx.sql_log_options() is not None
     ctx.disable_sql_log()
     assert len(ctx.sql_logs()) == 0
@@ -41,8 +41,8 @@ def test_user_context_extensions():
         params = []
     
     # Needs re-enable since disable_sql_log disabled it
-    ctx.set_sql_log_options(SqlLogOptions.enabled())
-    ctx.record_sql_log("insert", MockQuery(), None, None, None, affected_rows=1)
+    ctx.set_sql_log_options(SqlLogOptions(select=True, mutation=True))
+    ctx.record_sql_log(SqlLogOperation.Insert, MockQuery(), None, None, None, affected_rows=1)
     assert len(ctx.sql_logs()) == 2
     assert ctx.sql_logs()[1].result_summary == "1 rows affected"
     

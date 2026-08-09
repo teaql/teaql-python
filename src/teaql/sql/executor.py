@@ -8,7 +8,7 @@ from teaql.data_service import (
     DataServiceOperation
 )
 from teaql.core.mutation import (
-    InsertMutation, UpdateMutation, DeleteMutation, RecoverMutation
+    InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand
 )
 from .types import CompiledQuery, SqlCompileError
 from .dialect import SqlDialect
@@ -148,13 +148,13 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             raise CompileError(SqlCompileError(f"unknown entity: {req_data.entity}"))
             
         try:
-            if isinstance(req_data, InsertMutation):
+            if isinstance(req_data, InsertCommand):
                 op = "insert"
                 compiled = self.dialect.compile_insert(entity_desc, req_data)
-            elif isinstance(req_data, UpdateMutation):
+            elif isinstance(req_data, UpdateCommand):
                 op = "update"
                 compiled = self.dialect.compile_update(entity_desc, req_data)
-            elif isinstance(req_data, DeleteMutation):
+            elif isinstance(req_data, DeleteCommand):
                 op = "delete"
                 compiled = self.dialect.compile_delete(entity_desc, req_data)
             else:
@@ -226,7 +226,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 pass
 
     async def ensure_initial_graphs(self, ctx: 'UserContext') -> None:
-        from teaql.core.mutation import InsertMutation
+        from teaql.core.mutation import InsertCommand
         graphs = ctx.initial_graphs()
         for graph in graphs:
             entity_name = getattr(graph, 'entity', None)
@@ -244,7 +244,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 continue
                 
             values = getattr(graph, 'values', {})
-            mutation = InsertMutation(entity_name)
+            mutation = InsertCommand(entity_name)
             for k, v in values.items():
                 mutation.value(k, v)
                 

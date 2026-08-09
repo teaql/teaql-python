@@ -6,10 +6,10 @@ from typing import List, Dict, Any, Optional, Protocol, Union
 from teaql.core.query import SelectQuery
 from teaql.core.mutation import (
     MutationRequest,
-    InsertMutation as CoreInsertMutation,
-    UpdateMutation as CoreUpdateMutation,
-    DeleteMutation as CoreDeleteMutation,
-    RecoverMutation as CoreRecoverMutation,
+    InsertCommand as CoreInsertCommand,
+    UpdateCommand as CoreUpdateCommand,
+    DeleteCommand as CoreDeleteCommand,
+    RecoverCommand as CoreRecoverCommand,
     TraceNode
 )
 
@@ -75,16 +75,16 @@ class QueryResult:
     metadata: ExecutionMetadata
     facets: Dict[str, Any] = field(default_factory=dict)
 
-def InsertMutation(cmd):
+def InsertCommand(cmd):
     return MutationRequest(cmd)
 
-def UpdateMutation(cmd):
+def UpdateCommand(cmd):
     return MutationRequest(cmd)
 
-def DeleteMutation(cmd):
+def DeleteCommand(cmd):
     return MutationRequest(cmd)
 
-def RecoverMutation(cmd):
+def RecoverCommand(cmd):
     return MutationRequest(cmd)
 
 
@@ -167,10 +167,10 @@ __all__ = [
     "ExecutionMetadata",
     "QueryResult",
     "MutationRequest",
-    "InsertMutation",
-    "UpdateMutation",
-    "DeleteMutation",
-    "RecoverMutation",
+    "InsertCommand",
+    "UpdateCommand",
+    "DeleteCommand",
+    "RecoverCommand",
     "MutationResult",
     "StreamChunk",
     "DataServiceExecutor",

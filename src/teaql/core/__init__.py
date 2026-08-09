@@ -12,8 +12,8 @@ from .query import (
     AggregationCacheOptions, StreamConfig, NamedExpr
 )
 from .mutation import (
-    InsertMutation, UpdateMutation, DeleteMutation, RecoverMutation,
-    BatchInsertMutation, BatchUpdateMutation, TraceNode,
+    InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand,
+    BatchInsertCommand, BatchUpdateCommand, TraceNode,
     InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand,
     BatchInsertCommand, BatchUpdateCommand, MutationRequest
 )
@@ -32,8 +32,8 @@ __all__ = [
     "SelectQuery", "SortDirection", "OrderBy", "Aggregate", "AggregateFunction",
     "Slice", "RelationLoad", "RawSqlProjection", "ObjectGroupBy",
     "AggregationCacheOptions", "StreamConfig", "NamedExpr",
-    "InsertMutation", "UpdateMutation", "DeleteMutation", "RecoverMutation",
-    "BatchInsertMutation", "BatchUpdateMutation", "TraceNode",
+    "InsertCommand", "UpdateCommand", "DeleteCommand", "RecoverCommand",
+    "BatchInsertCommand", "BatchUpdateCommand", "TraceNode",
     "InsertCommand", "UpdateCommand", "DeleteCommand", "RecoverCommand",
     "BatchInsertCommand", "BatchUpdateCommand", "MutationRequest",
     "GraphNode",
@@ -57,7 +57,7 @@ TypeJson = "Json"
 TypeBool = "Bool"
 TypeDate = "Date"
 def NewInsertCommand(entity: str):
-    return InsertMutation(entity=entity)
+    return InsertCommand(entity=entity)
 
 def NewUpdateCommand(entity: str, id_val):
-    return UpdateMutation(entity=entity, id=Value.from_any(id_val))
+    return UpdateCommand(entity=entity, id=Value.from_any(id_val))

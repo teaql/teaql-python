@@ -4,8 +4,8 @@ from teaql.core.query import (
     SelectQuery, OrderBy, SortDirection, Aggregate, AggregateFunction
 )
 from teaql.core.mutation import (
-    InsertMutation, UpdateMutation, DeleteMutation, RecoverMutation,
-    BatchInsertMutation, BatchUpdateMutation, MutationRequest
+    InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand,
+    BatchInsertCommand, BatchUpdateCommand, MutationRequest
 )
 from teaql.core.expr import (
     Expr, ColumnExpr, ValueExpr, FunctionExpr, BinaryExpr, SubQueryExpr,
@@ -149,7 +149,7 @@ class SqlDialect(ABC):
                 
         return sql
 
-    def compile_insert(self, entity: EntityDescriptor, command: InsertMutation) -> CompiledQuery:
+    def compile_insert(self, entity: EntityDescriptor, command: InsertCommand) -> CompiledQuery:
         columns = []
         placeholders = []
         params = []
@@ -171,7 +171,7 @@ class SqlDialect(ABC):
         sql = f"INSERT INTO {self.quote_ident(table_name)} ({', '.join(columns)}) VALUES ({', '.join(placeholders)})"
         return CompiledQuery(sql=sql, params=params)
 
-    def compile_update(self, entity: EntityDescriptor, command: UpdateMutation) -> CompiledQuery:
+    def compile_update(self, entity: EntityDescriptor, command: UpdateCommand) -> CompiledQuery:
         id_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, '_is_id', False)), None)
         if not id_property:
             raise MissingIdPropertyError(entity._name)
@@ -213,7 +213,7 @@ class SqlDialect(ABC):
         sql = f"UPDATE {self.quote_ident(table_name)} SET {', '.join(assignments)} WHERE {' AND '.join(predicates)}"
         return CompiledQuery(sql=sql, params=params)
         
-    def compile_delete(self, entity: EntityDescriptor, command: DeleteMutation) -> CompiledQuery:
+    def compile_delete(self, entity: EntityDescriptor, command: DeleteCommand) -> CompiledQuery:
         id_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_id_val', False) or (callable(getattr(p, 'is_id', None)) and p.is_id())), None)
         if not id_property:
             raise MissingIdPropertyError(entity._name)
@@ -252,7 +252,7 @@ class SqlDialect(ABC):
         sql = f"DELETE FROM {self.quote_ident(table_name)} WHERE {' AND '.join(predicates)}"
         return CompiledQuery(sql=sql, params=params)
         
-    def compile_recover(self, entity: EntityDescriptor, command: RecoverMutation) -> CompiledQuery:
+    def compile_recover(self, entity: EntityDescriptor, command: RecoverCommand) -> CompiledQuery:
         if command.expected_version >= 0:
             raise InvalidRecoverVersionError(command.expected_version)
             
