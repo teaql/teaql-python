@@ -27,7 +27,7 @@ class XlsBlock:
         self.bottom = self.top + max(0, height - 1)
         return self
 
-    def with_value(self, value: Any) -> 'XlsBlock':
+    def value(self, value: Any) -> 'XlsBlock':
         self.value = value
         return self
 

@@ -20,6 +20,20 @@ class CompiledQuery:
             return f"/* {escaped} */ {self.sql}"
         return self.sql
 
+    def debug_sql(self, dialect: DatabaseKind) -> str:
+        # A simple replacement for debug string
+        # This mirrors the logic to inline params into SQL for debugging
+        res = self.sql_with_comment()
+        for i, param in enumerate(self.params):
+            val_str = str(param.to_json_value())
+            if isinstance(param.to_json_value(), str):
+                val_str = f"'{val_str}'"
+            if dialect == DatabaseKind.PostgreSql:
+                res = res.replace(f"${i+1}", val_str, 1)
+            else:
+                res = res.replace("?", val_str, 1)
+        return res
+
 class SqlCompileError(Exception):
     pass
 

@@ -32,6 +32,30 @@ class Value:
         self._data = data
         self._type_hint = type_hint
 
+    @property
+    def val(self) -> Any:
+        return self._data
+
+    def is_null(self) -> bool:
+        return self.val is None
+
+    def entity_id_value(self) -> Optional[str]:
+        if isinstance(self.val, (int, str)):
+            return str(self.val)
+        return None
+
+    def object(self) -> Optional[Dict[str, Any]]:
+        if isinstance(self.val, dict):
+            return self.val
+        return None
+
+    def teaql_is_empty(self) -> bool:
+        if self.val is None:
+            return True
+        if isinstance(self.val, (str, list, dict)):
+            return len(self.val) == 0
+        return False
+
     @staticmethod
     def Null() -> 'Value':
         return Value(None)

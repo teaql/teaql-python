@@ -10,52 +10,52 @@ class TraceNode:
     comment: str = ""
 
 @dataclass
-class InsertMutation:
+class InsertCommand:
     entity: str
     values: Dict[str, Value] = field(default_factory=dict)
     trace_chain: List[TraceNode] = field(default_factory=list)
 
     @classmethod
-    def new(cls, entity: str) -> 'InsertMutation':
+    def new(cls, entity: str) -> 'InsertCommand':
         return cls(entity=entity)
 
-    def value(self, field_name: str, value: Any) -> 'InsertMutation':
+    def value(self, field_name: str, value: Any) -> 'InsertCommand':
         self.values[field_name] = Value.from_any(value)
         return self
 
 @dataclass
-class UpdateMutation:
+class UpdateCommand:
     entity: str
     id: Value
-    expected_version: Optional[int] = None
+    expected_version_val: Optional[int] = None
     values: Dict[str, Value] = field(default_factory=dict)
     trace_chain: List[TraceNode] = field(default_factory=list)
     old_values: Optional[Dict[str, Value]] = None
 
     @classmethod
-    def new(cls, entity: str, id_val: Any) -> 'UpdateMutation':
+    def new(cls, entity: str, id_val: Any) -> 'UpdateCommand':
         return cls(entity=entity, id=Value.from_any(id_val))
 
-    def with_expected_version(self, version: int) -> 'UpdateMutation':
-        self.expected_version = version
+    def expected_version(self, version: int) -> 'UpdateCommand':
+        self.expected_version_val = version
         return self
 
-    def value(self, field_name: str, value: Any) -> 'UpdateMutation':
+    def value(self, field_name: str, value: Any) -> 'UpdateCommand':
         self.values[field_name] = Value.from_any(value)
         return self
 
 @dataclass
-class BatchInsertMutation:
+class BatchInsertCommand:
     entity: str
     batch_values: List[Dict[str, Value]] = field(default_factory=list)
     trace_chains: List[List[TraceNode]] = field(default_factory=list)
 
     @classmethod
-    def new(cls, entity: str) -> 'BatchInsertMutation':
+    def new(cls, entity: str) -> 'BatchInsertCommand':
         return cls(entity=entity)
 
 @dataclass
-class BatchUpdateMutation:
+class BatchUpdateCommand:
     entity: str
     update_fields: List[str]
     batch_ids: List[Value] = field(default_factory=list)
@@ -65,47 +65,50 @@ class BatchUpdateMutation:
     batch_old_values: List[Optional[Dict[str, Value]]] = field(default_factory=list)
 
     @classmethod
-    def new(cls, entity: str, update_fields: List[str]) -> 'BatchUpdateMutation':
+    def new(cls, entity: str, update_fields: List[str]) -> 'BatchUpdateCommand':
         return cls(entity=entity, update_fields=update_fields)
 
 @dataclass
-class DeleteMutation:
+class DeleteCommand:
     entity: str
     id: Value
-    expected_version: Optional[int] = None
+    expected_version_val: Optional[int] = None
     soft_delete: bool = True
     trace_chain: List[TraceNode] = field(default_factory=list)
 
     @classmethod
-    def new(cls, entity: str, id_val: Any) -> 'DeleteMutation':
+    def new(cls, entity: str, id_val: Any) -> 'DeleteCommand':
         return cls(entity=entity, id=Value.from_any(id_val))
 
-    def with_expected_version(self, version: int) -> 'DeleteMutation':
-        self.expected_version = version
+    def expected_version(self, version: int) -> 'DeleteCommand':
+        self.expected_version_val = version
         return self
 
-    def hard_delete(self) -> 'DeleteMutation':
+    def hard_delete(self) -> 'DeleteCommand':
         self.soft_delete = False
         return self
 
 @dataclass
-class RecoverMutation:
+class RecoverCommand:
     entity: str
     id: Value
-    expected_version: int
+    expected_version_val: int
     trace_chain: List[TraceNode] = field(default_factory=list)
 
     @classmethod
-    def new(cls, entity: str, id_val: Any, expected_version: int) -> 'RecoverMutation':
-        return cls(entity=entity, id=Value.from_any(id_val), expected_version=expected_version)
+    def new(cls, entity: str, id_val: Any, expected_version: int) -> 'RecoverCommand':
+        return cls(entity=entity, id=Value.from_any(id_val), expected_version_val=expected_version)
 
-# Alias to match Rust code if needed
-InsertCommand = InsertMutation
-UpdateCommand = UpdateMutation
-BatchInsertCommand = BatchInsertMutation
-BatchUpdateCommand = BatchUpdateMutation
-DeleteCommand = DeleteMutation
-RecoverCommand = RecoverMutation
+    def expected_version(self, version: int) -> 'RecoverCommand':
+        self.expected_version_val = version
+        return self
+
+class MutationKind(Enum):
+    INSERT = auto()
+    UPDATE = auto()
+    DELETE = auto()
+    RECOVER = auto()
+    BATCH = auto()
 
 class MutationRequest:
     def __init__(self, data: Any):
@@ -125,19 +128,19 @@ class MutationRequest:
         return None
 
     @classmethod
-    def Insert(cls, cmd: InsertMutation) -> 'MutationRequest':
+    def Insert(cls, cmd: InsertCommand) -> 'MutationRequest':
         return cls(cmd)
 
     @classmethod
-    def Update(cls, cmd: UpdateMutation) -> 'MutationRequest':
+    def Update(cls, cmd: UpdateCommand) -> 'MutationRequest':
         return cls(cmd)
 
     @classmethod
-    def Delete(cls, cmd: DeleteMutation) -> 'MutationRequest':
+    def Delete(cls, cmd: DeleteCommand) -> 'MutationRequest':
         return cls(cmd)
 
     @classmethod
-    def Recover(cls, cmd: RecoverMutation) -> 'MutationRequest':
+    def Recover(cls, cmd: RecoverCommand) -> 'MutationRequest':
         return cls(cmd)
         
     @classmethod

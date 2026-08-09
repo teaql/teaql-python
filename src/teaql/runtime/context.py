@@ -11,6 +11,25 @@ class UserContext:
     @classmethod
     def new(cls) -> 'UserContext':
         return cls()
+
+    def entity_root(self) -> Any:
+        return self.get_resource("entity_root")
+
+    async def get_in_store(self, key: str) -> Optional[Any]:
+        store = self.get_resource("data_store")
+        if store and hasattr(store, "get"):
+            return await store.get(key)
+        return None
+
+    async def put_in_store(self, key: str, value: Any, timeout_seconds: Optional[int] = None):
+        store = self.get_resource("data_store")
+        if store and hasattr(store, "put"):
+            await store.put(key, value, timeout_seconds)
+
+    async def clear_in_store(self, key: str):
+        store = self.get_resource("data_store")
+        if store and hasattr(store, "remove"):
+            await store.remove(key)
         
     def register_entity(self, entity_desc: Any):
         self._entities.append(entity_desc)
@@ -46,6 +65,385 @@ class UserContext:
     def user_identifier(self) -> str:
         return self._user_identifier
 
+    def with_user_identifier(self, identifier: str) -> 'UserContext':
+        self._user_identifier = identifier
+        return self
+
+    def set_user_identifier_option(self, identifier: Optional[str]):
+        if identifier is not None:
+            self._user_identifier = identifier
+        else:
+            self._user_identifier = ""
+
+    def with_user_identifier_option(self, identifier: Optional[str]) -> 'UserContext':
+        self.set_user_identifier_option(identifier)
+        return self
+
+    def timezone(self) -> Optional[str]:
+        return self.get_resource("timezone")
+
+    def set_timezone(self, tz: str):
+        self.insert_resource("timezone", tz)
+
+    def with_timezone(self, tz: str) -> 'UserContext':
+        self.set_timezone(tz)
+        return self
+
+    def trace_id(self) -> Optional[str]:
+        return self.get_resource("trace_id")
+
+    def set_trace_id(self, trace_id: str):
+        self.insert_resource("trace_id", trace_id)
+
+    def with_trace_id(self, trace_id: str) -> 'UserContext':
+        self.set_trace_id(trace_id)
+        return self
+
+    def with_module(self, module: Any) -> 'UserContext':
+        if hasattr(module, 'apply_to'):
+            module.apply_to(self)
+        return self
+
+    def set_initial_graphs(self, graphs: List[Any]):
+        self._initial_graphs = graphs
+
+    def set_metadata(self, metadata: Any):
+        self._metadata = metadata
+
+    def with_entity_registry(self, registry: Any) -> 'UserContext':
+        self.insert_resource("entity_registry", registry)
+        return self
+
+    def set_entity_registry(self, registry: Any):
+        self.insert_resource("entity_registry", registry)
+
+    def with_entity_data_service_behavior_registry(self, registry: Any) -> 'UserContext':
+        self.insert_resource("entity_data_service_behavior_registry", registry)
+        return self
+
+    def set_entity_data_service_behavior_registry(self, registry: Any):
+        self.insert_resource("entity_data_service_behavior_registry", registry)
+
+    def with_request_policy(self, policy: Any) -> 'UserContext':
+        self.insert_resource("request_policy", policy)
+        return self
+
+    def set_request_policy(self, policy: Any):
+        self.insert_resource("request_policy", policy)
+
+    def clear_request_policy(self):
+        self._resources.pop("request_policy", None)
+
+    def with_checker_registry(self, registry: Any) -> 'UserContext':
+        self.insert_resource("checker_registry", registry)
+        return self
+
+    def set_checker_registry(self, registry: Any):
+        self.insert_resource("checker_registry", registry)
+
+    def with_custom_event_sink(self, sink: Any) -> 'UserContext':
+        self.insert_resource("custom_event_sink", sink)
+        return self
+
+    def set_custom_event_sink(self, sink: Any):
+        self.insert_resource("custom_event_sink", sink)
+
+    def with_internal_id_generator(self, gen: Any) -> 'UserContext':
+        self.insert_resource("internal_id_generator", gen)
+        return self
+
+    def set_internal_id_generator(self, gen: Any):
+        self.insert_resource("internal_id_generator", gen)
+
+    def with_schema_provider(self, provider: Any) -> 'UserContext':
+        self.insert_resource("schema_provider", provider)
+        return self
+
+    def set_schema_provider(self, provider: Any):
+        self.insert_resource("schema_provider", provider)
+
+    async def ensure_schema(self):
+        provider = self.get_resource("schema_provider")
+        if provider:
+            await provider.ensure_schema(self)
+        else:
+            raise Exception("missing schema provider")
+
+    def with_language(self, language: Any) -> 'UserContext':
+        self.insert_resource("language", language)
+        return self
+
+    def set_language(self, language: Any):
+        self.insert_resource("language", language)
+
+    def set_language_code(self, code: str):
+        self.insert_resource("language_code", code)
+
+    def generate_id(self, entity: str) -> Optional[int]:
+        gen = self.get_resource("internal_id_generator")
+        if gen and hasattr(gen, "generate_id"):
+            return gen.generate_id(entity)
+        return None
+
+    def next_id(self, entity: str) -> int:
+        gen_id = self.generate_id(entity)
+        if gen_id is not None:
+            return gen_id
+        # Simple fallback
+        return int(datetime.now().timestamp() * 1000)
+
+    def entity(self, name: str) -> Optional[Any]:
+        if self._metadata and hasattr(self._metadata, "entity"):
+            return self._metadata.entity(name)
+        for e in self._entities:
+            if getattr(e, "_name", None) == name:
+                return e
+        return None
+
+    def require_entity(self, name: str) -> Any:
+        e = self.entity(name)
+        if e is None:
+            raise Exception(f"MissingEntity: {name}")
+        return e
+
+    def insert_named_resource(self, name: str, resource: Any):
+        if "named_resources" not in self._resources:
+            self._resources["named_resources"] = {}
+        self._resources["named_resources"][name] = resource
+
+    def get_named_resource(self, name: str) -> Optional[Any]:
+        return self._resources.get("named_resources", {}).get(name)
+
+    def require_named_resource(self, name: str) -> Any:
+        res = self.get_named_resource(name)
+        if res is None:
+            raise Exception(f"MissingResource: {name}")
+        return res
+
+    def put_local(self, key: str, value: Any):
+        if "locals" not in self._resources:
+            self._resources["locals"] = {}
+        self._resources["locals"][key] = value
+
+    def local(self, key: str) -> Optional[Any]:
+        return self._resources.get("locals", {}).get(key)
+
+    def remove_local(self, key: str) -> Optional[Any]:
+        return self._resources.get("locals", {}).pop(key, None)
+
+    def has_entity_data_service(self, entity: str) -> bool:
+        registry = self.get_resource("entity_registry")
+        in_registry = registry and hasattr(registry, "contains") and registry.contains(entity)
+        return bool(in_registry or self.entity(entity))
+
+    def entity_data_service_behavior(self, entity: str) -> Optional[Any]:
+        registry = self.get_resource("entity_data_service_behavior_registry")
+        if registry and hasattr(registry, "behavior"):
+            return registry.behavior(entity)
+        return None
+
+    def has_checker(self, entity: str) -> bool:
+        registry = self.get_resource("checker_registry")
+        return bool(registry and hasattr(registry, "checker") and registry.checker(entity))
+
+    def check_and_fix_record(self, entity: str, record: Any):
+        self.check_and_fix_record_at(entity, record, None)
+
+    def check_and_fix_record_at(self, entity: str, record: Any, location: Any):
+        registry = self.get_resource("checker_registry")
+        if not registry or not hasattr(registry, "checker"):
+            return
+            
+        checker = registry.checker(entity)
+        if not checker:
+            return
+            
+        results = []
+        if hasattr(checker, "check_and_fix"):
+            checker.check_and_fix(self, record, location, results)
+            
+        if results:
+            self.translate_check_results(results)
+            raise Exception(f"Check failed: {results}")
+
+    def translate_check_results(self, results: Any):
+        # Python naive translation stub based on rust translate_check_results
+        lang = self.language()
+        for r in results:
+            if hasattr(r, 'message'):
+                r.message = getattr(r, 'message', str(r))
+
+    def send_event(self, event: Any):
+        sink = self.get_resource("event_sink")
+        if sink and hasattr(sink, "on_event"):
+            sink.on_event(self, event)
+        custom_sink = self.get_resource("custom_event_sink")
+        if custom_sink and hasattr(custom_sink, "on_safe_event"):
+            custom_sink.on_safe_event(self, event)
+
+    def with_sql_log_options(self, options: 'SqlLogOptions') -> 'UserContext':
+        self.insert_resource("sql_log_options", options)
+        return self
+
+    def set_sql_log_options(self, options: 'SqlLogOptions'):
+        self.insert_resource("sql_log_options", options)
+
+    def sql_log_options(self) -> 'SqlLogOptions':
+        opts = self.get_resource("sql_log_options")
+        if not opts:
+            opts = SqlLogOptions.all()
+            self.insert_resource("sql_log_options", opts)
+        return opts
+
+    def enable_select_sql_log(self):
+        self.sql_log_options().select = True
+
+    def enable_mutation_sql_log(self):
+        self.sql_log_options().mutation = True
+
+    def enable_all_sql_log(self):
+        self.set_sql_log_options(SqlLogOptions.all())
+
+    def disable_sql_log(self):
+        self.set_sql_log_options(SqlLogOptions.disabled())
+        self.clear_sql_logs()
+
+    def sql_logs(self) -> List['SqlLogEntry']:
+        return self._resources.get("sql_logs", [])
+
+    def clear_sql_logs(self):
+        self._resources["sql_logs"] = []
+
+    async def commit_changes_internal(self):
+        root = self.entity_root()
+        if not root or not hasattr(root, 'current_change_set'):
+            return
+            
+        change_set = root.current_change_set()
+        if not change_set or not hasattr(change_set, 'changes'):
+            return
+            
+        executor = self.get_resource("executor")
+        if not executor:
+            raise Exception("cannot commit changes without executor")
+            
+        from teaql.core.mutation import UpdateCommand, MutationRequest
+        
+        for key, changes in change_set.changes():
+            if not changes:
+                continue
+            
+            command = UpdateCommand(getattr(key, 'entity', ''), getattr(key, 'id', None))
+            for field, val in changes.items():
+                command.value(field, val)
+                
+            request = MutationRequest(command)
+            await executor.mutate(request)
+
+    def data_service_internal(self, entity: str) -> Any:
+        # Returns internal data service for entity
+        registry = self.get_resource("entity_registry")
+        if registry and hasattr(registry, "get_internal_service"):
+            return registry.get_internal_service(entity)
+        return None
+
+    def entity_data_service(self, entity: str) -> Any:
+        return self.data_service_internal(entity)
+
+    def language(self) -> Any:
+        return self.get_resource("language")
+
+    def record_metadata_log(self, metadata: Any):
+        if hasattr(metadata, 'debug_query') and metadata.debug_query:
+            op = SqlLogOperation.Select # simplified
+            if hasattr(metadata, 'operation'):
+                op_str = str(metadata.operation).lower()
+                if 'insert' in op_str: op = SqlLogOperation.Insert
+                elif 'update' in op_str: op = SqlLogOperation.Update
+                elif 'delete' in op_str: op = SqlLogOperation.Delete
+                
+            entry = SqlLogEntry(
+                operation=op,
+                sql="",
+                params=[],
+                debug_sql=metadata.debug_query,
+                pretty_sql=metadata.debug_query,
+                started_at=getattr(metadata, 'started_at', datetime.now()),
+                ended_at=getattr(metadata, 'ended_at', datetime.now()),
+                elapsed=timedelta(0),
+                result_count=getattr(metadata, 'result_count', None),
+                result_type=None,
+                affected_rows=getattr(metadata, 'affected_rows', None),
+                result_summary=""
+            )
+            
+            if entry.result_count is not None:
+                entry.result_summary = f"{entry.result_count} rows returned"
+            elif entry.affected_rows is not None:
+                entry.result_summary = f"{entry.affected_rows} rows affected"
+                
+            logs = self.sql_logs()
+            logs.append(entry)
+            self._resources["sql_logs"] = logs
+            
+            buf = self.get_resource("UnifiedLogBuffer")
+            if buf:
+                buf.entries.append(UnifiedLogEntry(
+                    timestamp=entry.started_at,
+                    user_identifier=self.user_identifier(),
+                    trace_chain=getattr(metadata, 'trace_chain', []),
+                    payload=LogPayload.Sql(entry)
+                ))
+
+    def record_sql_log(self, operation: Any, query: Any, started_at: Any, ended_at: Any, elapsed: Any, result_count: Any = None, affected_rows: Any = None):
+        if not self.sql_log_options().enabled_for(operation):
+            return
+            
+        debug_sql = getattr(query, 'debug_sql', lambda *args: "")() if hasattr(query, 'debug_sql') else getattr(query, 'sql', "")
+        
+        entry = SqlLogEntry(
+            operation=operation,
+            sql=getattr(query, 'sql', ""),
+            params=getattr(query, 'params', []),
+            debug_sql=debug_sql,
+            pretty_sql=debug_sql,
+            started_at=started_at,
+            ended_at=ended_at,
+            elapsed=elapsed,
+            result_count=result_count,
+            result_type=None,
+            affected_rows=affected_rows,
+            result_summary=""
+        )
+        
+        if result_count is not None:
+            entry.result_summary = f"{result_count} rows returned"
+        elif affected_rows is not None:
+            entry.result_summary = f"{affected_rows} rows affected"
+
+        logs = self.sql_logs()
+        logs.append(entry)
+        self._resources["sql_logs"] = logs
+        
+        buf = self.get_resource("UnifiedLogBuffer")
+        if buf:
+            buf.entries.append(UnifiedLogEntry(
+                timestamp=started_at,
+                user_identifier=self.user_identifier(),
+                trace_chain=[],
+                payload=LogPayload.Sql(entry)
+            ))
+
+    def register_executor(self, executor: Any):
+        self.insert_resource("executor", executor)
+
+    def set_event_sink(self, sink: Any):
+        self.insert_resource("event_sink", sink)
+
+    def with_event_sink(self, sink: Any) -> 'UserContext':
+        self.set_event_sink(sink)
+        return self
+
 
 class TeaqlRuntime:
     def __init__(self, ctx: UserContext):
@@ -60,3 +458,127 @@ class TeaqlRuntime:
 
     def require_service(self, name: str) -> Any:
         return self._ctx.require_resource(name)
+
+from enum import Enum, auto
+from dataclasses import dataclass, field
+from datetime import datetime, timedelta
+
+class SqlLogOperation(Enum):
+    Select = auto()
+    Insert = auto()
+    Update = auto()
+    Delete = auto()
+    Recover = auto()
+
+    def is_select(self) -> bool:
+        return self == SqlLogOperation.Select
+
+    def is_mutation(self) -> bool:
+        return not self.is_select()
+
+@dataclass
+class SqlLogOptions:
+    select: bool = False
+    mutation: bool = False
+
+    @classmethod
+    def disabled(cls) -> 'SqlLogOptions':
+        return cls(False, False)
+
+    @classmethod
+    def select_only(cls) -> 'SqlLogOptions':
+        return cls(True, False)
+
+    @classmethod
+    def mutation_only(cls) -> 'SqlLogOptions':
+        return cls(False, True)
+
+    @classmethod
+    def all(cls) -> 'SqlLogOptions':
+        return cls(True, True)
+
+    def enabled_for(self, operation: SqlLogOperation) -> bool:
+        return self.select if operation.is_select() else self.mutation
+
+@dataclass
+class SqlLogEntry:
+    operation: SqlLogOperation
+    sql: str
+    params: List[Any]
+    debug_sql: str
+    pretty_sql: str
+    started_at: datetime
+    ended_at: datetime
+    elapsed: timedelta
+    result_count: Optional[int]
+    result_type: Optional[str]
+    affected_rows: Optional[int]
+    result_summary: str
+
+@dataclass
+class InfoLogEntry:
+    message: str
+
+class LogPayload:
+    def __init__(self, data: Any):
+        self._data = data
+
+    @classmethod
+    def Sql(cls, entry: SqlLogEntry) -> 'LogPayload':
+        return cls(entry)
+
+    @classmethod
+    def Info(cls, entry: InfoLogEntry) -> 'LogPayload':
+        return cls(entry)
+
+@dataclass
+class UnifiedLogEntry:
+    timestamp: datetime
+    user_identifier: Optional[str]
+    trace_chain: List[Any]
+    payload: LogPayload
+
+class UnifiedLogBuffer:
+    def __init__(self):
+        self.entries: List[UnifiedLogEntry] = []
+
+from abc import ABC, abstractmethod
+
+class SchemaProvider(ABC):
+    @abstractmethod
+    async def ensure_schema(self, ctx: 'UserContext') -> None:
+        pass
+
+class DataStore(ABC):
+    @abstractmethod
+    async def get(self, key: str) -> Optional[Any]:
+        pass
+    
+    @abstractmethod
+    async def put(self, key: str, value: Any, timeout_seconds: Optional[int]) -> None:
+        pass
+        
+    @abstractmethod
+    async def remove(self, key: str) -> None:
+        pass
+
+class InMemoryDataStore(DataStore):
+    def __init__(self):
+        self.cache: Dict[str, Any] = {}
+
+    async def get(self, key: str) -> Optional[Any]:
+        if key in self.cache:
+            val, expires_at = self.cache[key]
+            if expires_at and datetime.now() > expires_at:
+                del self.cache[key]
+                return None
+            return val
+        return None
+
+    async def put(self, key: str, value: Any, timeout_seconds: Optional[int]) -> None:
+        expires_at = datetime.now() + timedelta(seconds=timeout_seconds) if timeout_seconds else None
+        self.cache[key] = (value, expires_at)
+
+    async def remove(self, key: str) -> None:
+        self.cache.pop(key, None)
+

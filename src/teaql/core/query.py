@@ -82,6 +82,12 @@ class RelationLoad:
     query: Optional['SelectQuery'] = None
 
 @dataclass
+class RelationAggregate:
+    name: str
+    query: 'SelectQuery'
+
+
+@dataclass
 class RawSqlProjection:
     property_name: str
     raw_sql_segment: str
@@ -155,4 +161,211 @@ class SelectQuery:
 
     def order_desc(self, field: str) -> 'SelectQuery':
         self.order_by.append(OrderBy.desc(field))
+        return self
+
+    def comment(self, text: str) -> 'SelectQuery':
+        self.comment = text
+        return self
+
+    def project(self, *fields: str) -> 'SelectQuery':
+        self.projection.extend(fields)
+        return self
+
+    def projects(self, fields: List[str]) -> 'SelectQuery':
+        self.projection.extend(fields)
+        return self
+
+    def project_expr(self, alias: str, expr: Expr) -> 'SelectQuery':
+        self.expr_projection.append(NamedExpr(alias, expr))
+        return self
+
+    def project_raw(self, property_name: str, raw_sql_segment: str) -> 'SelectQuery':
+        self.raw_projections.append(RawSqlProjection(property_name, raw_sql_segment))
+        return self
+
+    def filter(self, expr: Expr) -> 'SelectQuery':
+        self.filter = expr
+        return self
+
+    def or_filter(self, expr: Expr) -> 'SelectQuery':
+        if self.filter:
+            self.filter = Expr.new_or(self.filter, expr)
+        else:
+            self.filter = expr
+        return self
+
+    def having(self, expr: Expr) -> 'SelectQuery':
+        self.having = expr
+        return self
+
+    def and_having(self, expr: Expr) -> 'SelectQuery':
+        if self.having:
+            self.having = Expr.new_and(self.having, expr)
+        else:
+            self.having = expr
+        return self
+
+    def or_having(self, expr: Expr) -> 'SelectQuery':
+        if self.having:
+            self.having = Expr.new_or(self.having, expr)
+        else:
+            self.having = expr
+        return self
+
+    def order_by(self, order: OrderBy) -> 'SelectQuery':
+        self.order_by.append(order)
+        return self
+
+    def asc(self, field: str) -> 'SelectQuery':
+        self.order_by.append(OrderBy.asc(field))
+        return self
+
+    def desc(self, field: str) -> 'SelectQuery':
+        self.order_by.append(OrderBy.desc(field))
+        return self
+
+    def asc_expr(self, expr: Expr) -> 'SelectQuery':
+        self.order_by.append(OrderBy.asc_expr(expr))
+        return self
+
+    def desc_expr(self, expr: Expr) -> 'SelectQuery':
+        self.order_by.append(OrderBy.desc_expr(expr))
+        return self
+
+    def asc_gbk(self, field: str) -> 'SelectQuery':
+        self.order_by.append(OrderBy.asc_gbk(field))
+        return self
+
+    def desc_gbk(self, field: str) -> 'SelectQuery':
+        self.order_by.append(OrderBy.desc_gbk(field))
+        return self
+
+    def order_expr_asc(self, expr: Expr) -> 'SelectQuery':
+        return self.asc_expr(expr)
+
+    def order_expr_desc(self, expr: Expr) -> 'SelectQuery':
+        return self.desc_expr(expr)
+
+    def order_gbk_asc(self, field: str) -> 'SelectQuery':
+        return self.asc_gbk(field)
+
+    def order_gbk_desc(self, field: str) -> 'SelectQuery':
+        return self.desc_gbk(field)
+
+    def limit(self, l: int) -> 'SelectQuery':
+        if not self.slice:
+            self.slice = Slice(0, l)
+        else:
+            self.slice.limit = l
+        return self
+
+    def offset(self, o: int) -> 'SelectQuery':
+        if not self.slice:
+            self.slice = Slice(o, None)
+        else:
+            self.slice.offset = o
+        return self
+
+    def page(self, page_no: int, page_size: int) -> 'SelectQuery':
+        self.slice = Slice((page_no - 1) * page_size, page_size)
+        return self
+
+    def aggregate(self, agg: Aggregate) -> 'SelectQuery':
+        self.aggregates.append(agg)
+        return self
+
+    def count_field(self, field: str, alias: str) -> 'SelectQuery':
+        self.aggregates.append(Aggregate(AggregateFunction.Count, field, alias))
+        return self
+
+    def sum(self, field: str, alias: str) -> 'SelectQuery':
+        self.aggregates.append(Aggregate(AggregateFunction.Sum, field, alias))
+        return self
+
+    def avg(self, field: str, alias: str) -> 'SelectQuery':
+        self.aggregates.append(Aggregate(AggregateFunction.Avg, field, alias))
+        return self
+
+    def min(self, field: str, alias: str) -> 'SelectQuery':
+        self.aggregates.append(Aggregate(AggregateFunction.Min, field, alias))
+        return self
+
+    def max(self, field: str, alias: str) -> 'SelectQuery':
+        self.aggregates.append(Aggregate(AggregateFunction.Max, field, alias))
+        return self
+
+    def stddev(self, field: str, alias: str) -> 'SelectQuery':
+        self.aggregates.append(Aggregate(AggregateFunction.Stddev, field, alias))
+        return self
+
+    def stddev_pop(self, field: str, alias: str) -> 'SelectQuery':
+        self.aggregates.append(Aggregate(AggregateFunction.StddevPop, field, alias))
+        return self
+
+    def var_samp(self, field: str, alias: str) -> 'SelectQuery':
+        self.aggregates.append(Aggregate(AggregateFunction.VarSamp, field, alias))
+        return self
+
+    def var_pop(self, field: str, alias: str) -> 'SelectQuery':
+        self.aggregates.append(Aggregate(AggregateFunction.VarPop, field, alias))
+        return self
+
+    def bit_and(self, field: str, alias: str) -> 'SelectQuery':
+        self.aggregates.append(Aggregate(AggregateFunction.BitAnd, field, alias))
+        return self
+
+    def bit_or(self, field: str, alias: str) -> 'SelectQuery':
+        self.aggregates.append(Aggregate(AggregateFunction.BitOr, field, alias))
+        return self
+
+    def bit_xor(self, field: str, alias: str) -> 'SelectQuery':
+        self.aggregates.append(Aggregate(AggregateFunction.BitXor, field, alias))
+        return self
+
+    def group_by(self, *fields: str) -> 'SelectQuery':
+        self.group_by.extend(fields)
+        return self
+
+    def object_group_by(self, property_name: str, storage_field: str, query: 'SelectQuery') -> 'SelectQuery':
+        self.object_group_bys.append(ObjectGroupBy(property_name, storage_field, query))
+        return self
+
+    def relation(self, name: str) -> 'SelectQuery':
+        self.relations.append(RelationLoad(name, None))
+        return self
+
+    def relation_query(self, name: str, query: 'SelectQuery') -> 'SelectQuery':
+        self.relations.append(RelationLoad(name, query))
+        return self
+
+    def enable_aggregation_cache(self, expire_millis: int) -> 'SelectQuery':
+        self.aggregation_cache = AggregationCacheOptions(True, expire_millis, False, 0)
+        return self
+
+    def enable_aggregation_cache_for(self, expire_millis: int, propagate: bool, propagate_expire_millis: int) -> 'SelectQuery':
+        self.aggregation_cache = AggregationCacheOptions(True, expire_millis, propagate, propagate_expire_millis)
+        return self
+
+    def child_enhancement(self, query: 'SelectQuery') -> 'SelectQuery':
+        self.child_enhancements.append(query)
+        return self
+
+    def raw_sql_query(self, sql: str) -> 'SelectQuery':
+        self.raw_sql = sql
+        return self
+
+    def raw_sql_search_criteria_add(self, criteria: str) -> 'SelectQuery':
+        self.raw_sql_search_criteria.append(criteria)
+        return self
+
+    def dynamic_property_raw(self, property_name: str, raw_sql_segment: str) -> 'SelectQuery':
+        self.dynamic_properties.append(RawSqlProjection(property_name, raw_sql_segment))
+        return self
+
+    def stream(self, chunk_size: int) -> 'SelectQuery':
+        self.stream_config = StreamConfig(chunk_size)
+        return self
+
+    def stream_default(self) -> 'SelectQuery':
+        self.stream_config = StreamConfig(1000)
         return self

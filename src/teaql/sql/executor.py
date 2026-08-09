@@ -22,6 +22,23 @@ class SqlTransport(ABC):
     async def execute_sql(self, query: CompiledQuery) -> int:
         pass
 
+class SqlTransaction(ABC):
+    @abstractmethod
+    async def commit_sql(self) -> None:
+        pass
+        
+    @abstractmethod
+    async def rollback_sql(self) -> None:
+        pass
+
+class SqlTransactionTransport(SqlTransport):
+    @abstractmethod
+    async def begin_sql(self) -> 'SqlTransactionTransportTx':
+        pass
+
+class SqlTransactionTransportTx(SqlTransport, SqlTransaction):
+    pass
+
 class SqlExecutorError(Exception):
     pass
 
@@ -237,3 +254,40 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 await self.transport.execute_sql(compiled)
             except Exception:
                 pass
+
+    async def begin(self, ctx: 'UserContext') -> 'teaql.data_service.Transaction':
+        if not isinstance(self.transport, SqlTransactionTransport):
+            raise Exception("Transport does not support transactions")
+        tx = await self.transport.begin_sql()
+        return SqlDataServiceTransaction(self.dialect, tx, self.schema_provider)
+
+class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
+    def __init__(self, dialect: SqlDialect, transport: SqlTransactionTransportTx, schema_provider: SchemaProvider):
+        self.dialect = dialect
+        self.transport = transport
+        self.schema_provider = schema_provider
+
+    def capabilities(self) -> DataServiceCapabilities:
+        return DataServiceCapabilities(
+            query=True,
+            mutation=True,
+            transaction=False,
+            schema=True,
+            id_generation=False,
+            batch_mutation=True,
+            returning=False
+        )
+
+    async def query(self, ctx: 'UserContext', request: QueryRequest) -> QueryResult:
+        executor = SqlDataServiceExecutor(self.dialect, self.transport, self.schema_provider)
+        return await executor.query(ctx, request)
+
+    async def mutate(self, ctx: 'UserContext', request: MutationRequest) -> MutationResult:
+        executor = SqlDataServiceExecutor(self.dialect, self.transport, self.schema_provider)
+        return await executor.mutate(ctx, request)
+
+    async def commit(self, ctx: 'UserContext') -> None:
+        await self.transport.commit_sql()
+
+    async def rollback(self, ctx: 'UserContext') -> None:
+        await self.transport.rollback_sql()
