@@ -73,26 +73,20 @@ class ExecutionMetadata:
 class QueryResult:
     rows: List[Dict[str, Any]]
     metadata: ExecutionMetadata
+    facets: Dict[str, Any] = field(default_factory=dict)
 
+def InsertMutation(cmd):
+    return MutationRequest(cmd)
 
-class InsertMutation(MutationRequest):
-    def __init__(self, cmd: CoreInsertMutation):
-        super().__init__(cmd)
+def UpdateMutation(cmd):
+    return MutationRequest(cmd)
 
+def DeleteMutation(cmd):
+    return MutationRequest(cmd)
 
-class UpdateMutation(MutationRequest):
-    def __init__(self, cmd: CoreUpdateMutation):
-        super().__init__(cmd)
+def RecoverMutation(cmd):
+    return MutationRequest(cmd)
 
-
-class DeleteMutation(MutationRequest):
-    def __init__(self, cmd: CoreDeleteMutation):
-        super().__init__(cmd)
-
-
-class RecoverMutation(MutationRequest):
-    def __init__(self, cmd: CoreRecoverMutation):
-        super().__init__(cmd)
 
 
 @dataclass

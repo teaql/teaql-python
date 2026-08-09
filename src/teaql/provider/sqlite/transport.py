@@ -66,7 +66,7 @@ class SqliteTransport(SqlTransport):
                     results.append(record)
                 return results
 
-    async def execute_sql(self, query: CompiledQuery) -> int:
+    async def execute_sql(self, query: CompiledQuery) -> tuple[int, int]:
         sql = query.sql_with_comment()
         params = self._bind_values(query.params)
         
@@ -74,4 +74,4 @@ class SqliteTransport(SqlTransport):
         async with aiosqlite.connect(self.db_path, uri=is_uri) as db:
             async with db.execute(sql, params) as cursor:
                 await db.commit()
-                return cursor.rowcount
+                return cursor.rowcount, cursor.lastrowid

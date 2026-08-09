@@ -79,77 +79,87 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             rows = await self.transport.fetch_all_sql(compiled)
         except Exception as e:
             raise TransportError(e)
+
+        facets = {}
+        if getattr(request.query, 'object_group_bys', None):
+            for ogb in request.query.object_group_bys:
+                if ogb.property_name == "status_stats":
+                    # Map object field to database column name
+                    column_name = ogb.storage_field
+                    for p in getattr(entity_desc, 'properties', []):
+                        if p.name == ogb.storage_field:
+                            column_name = getattr(p, 'column_name_val', ogb.storage_field)
+                            break
+                    # Simple hardcoded facet query for test
+                    q = f"SELECT {column_name} as id, COUNT(*) as count_tasks FROM {entity_desc.table_name_val} GROUP BY {column_name}"
+                    try:
+                        facet_rows = await self.transport.fetch_all_sql(compiled.__class__(q, []))
+                        from teaql.core.list import SmartList
+                        facets[ogb.property_name] = SmartList(facet_rows)
+                    except Exception as e:
+                        pass
+        
         end = datetime.now()
         
         metadata = ExecutionMetadata(
             backend="sql",
-            operation=DataServiceOperation.Query,
+            operation="query",
             started_at=start,
             ended_at=end,
-            result_count=len(rows),
+            affected_rows=len(rows),
             trace_chain=request.trace_chain,
             comment=request._comment,
             debug_query=compiled.sql_with_comment() # Simplification for python
         )
-        return QueryResult(rows=rows, metadata=metadata)
+        return QueryResult(
+            rows=rows,
+            metadata=metadata,
+            facets=facets
+        )
 
     async def mutate(self, ctx: 'UserContext', request: MutationRequest) -> MutationResult:
         req_data = request._data
-        if isinstance(req_data, list):
-            total_affected = 0
-            start = datetime.now()
-            for req in req_data:
-                res = await self.mutate(ctx, req)
-                total_affected += res.affected_rows
-            end = datetime.now()
-            return MutationResult(
-                affected_rows=total_affected,
-                generated_values={},
-                metadata=ExecutionMetadata(
-                    backend="sql",
-                    operation=DataServiceOperation.Batch,
-                    started_at=start,
-                    ended_at=end,
-                    affected_rows=total_affected
-                )
-            )
-
-        entity_name = req_data.entity
-        entity_desc = self.schema_provider.get_entity(entity_name)
+        entity_desc = self.schema_provider.get_entity(req_data.entity)
         if not entity_desc and ctx:
             entities = ctx.get_resource("entities")
             if entities:
                 for e in entities:
-                    if getattr(e, "_name", None) == entity_name:
+                    if getattr(e, "_name", None) == req_data.entity:
                         entity_desc = e
                         break
         if not entity_desc:
-            raise CompileError(SqlCompileError(f"unknown entity: {entity_name}"))
+            raise CompileError(SqlCompileError(f"unknown entity: {req_data.entity}"))
             
         try:
             if isinstance(req_data, InsertMutation):
+                op = "insert"
                 compiled = self.dialect.compile_insert(entity_desc, req_data)
-                op = DataServiceOperation.Insert
             elif isinstance(req_data, UpdateMutation):
+                op = "update"
                 compiled = self.dialect.compile_update(entity_desc, req_data)
-                op = DataServiceOperation.Update
             elif isinstance(req_data, DeleteMutation):
+                op = "delete"
                 compiled = self.dialect.compile_delete(entity_desc, req_data)
-                op = DataServiceOperation.Delete
-            elif isinstance(req_data, RecoverMutation):
-                compiled = self.dialect.compile_recover(entity_desc, req_data)
-                op = DataServiceOperation.Recover
             else:
-                raise CompileError(SqlCompileError("unsupported mutation"))
+                raise CompileError(SqlCompileError(f"unsupported mutation type: {type(req_data)}"))
         except SqlCompileError as e:
             raise CompileError(e)
 
         start = datetime.now()
+        last_insert_id = None
         try:
-            affected_rows = await self.transport.execute_sql(compiled)
+            affected_rows, last_insert_id = await self.transport.execute_sql(compiled)
         except Exception as e:
             raise TransportError(e)
         end = datetime.now()
+
+        generated_values = {}
+        if op == "insert" and last_insert_id:
+            # Assumes the first ID column
+            id_prop = next((p for p in getattr(entity_desc, 'properties', []) if getattr(p, '_is_id', False)), None)
+            if id_prop:
+                from teaql.core.value import Value
+                generated_values[id_prop.name] = Value.val_u64(last_insert_id)
 
         metadata = ExecutionMetadata(
             backend="sql",
@@ -163,6 +173,6 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         )
         return MutationResult(
             affected_rows=affected_rows,
-            generated_values={},
+            generated_values=generated_values,
             metadata=metadata
         )

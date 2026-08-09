@@ -5,7 +5,7 @@ from .value import Value
 
 @dataclass
 class TraceNode:
-    entity_type: str
+    entity_type: str = ""
     entity_id: Optional[int] = None
     comment: str = ""
 

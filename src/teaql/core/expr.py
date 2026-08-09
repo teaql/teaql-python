@@ -34,7 +34,35 @@ class ExprFunction(Enum):
     BitXor = auto()
 
 class Expr:
-    pass
+    @staticmethod
+    def eq(field: str, value: Any) -> 'Expr':
+        return BinaryExpr(ExprBuilder.column(field), BinaryOp.Eq, ExprBuilder.value(value) if not isinstance(value, Expr) else value)
+    @staticmethod
+    def ne(field: str, value: Any) -> 'Expr':
+        return BinaryExpr(ExprBuilder.column(field), BinaryOp.Ne, ExprBuilder.value(value) if not isinstance(value, Expr) else value)
+    @staticmethod
+    def gt(field: str, value: Any) -> 'Expr':
+        return BinaryExpr(ExprBuilder.column(field), BinaryOp.Gt, ExprBuilder.value(value) if not isinstance(value, Expr) else value)
+    @staticmethod
+    def gte(field: str, value: Any) -> 'Expr':
+        return BinaryExpr(ExprBuilder.column(field), BinaryOp.Gte, ExprBuilder.value(value) if not isinstance(value, Expr) else value)
+    @staticmethod
+    def lt(field: str, value: Any) -> 'Expr':
+        return BinaryExpr(ExprBuilder.column(field), BinaryOp.Lt, ExprBuilder.value(value) if not isinstance(value, Expr) else value)
+    @staticmethod
+    def lte(field: str, value: Any) -> 'Expr':
+        return BinaryExpr(ExprBuilder.column(field), BinaryOp.Lte, ExprBuilder.value(value) if not isinstance(value, Expr) else value)
+    @staticmethod
+    def like(field: str, value: Any) -> 'Expr':
+        return BinaryExpr(ExprBuilder.column(field), BinaryOp.Like, ExprBuilder.value(value) if not isinstance(value, Expr) else value)
+    @staticmethod
+    def not_like(field: str, value: Any) -> 'Expr':
+        return BinaryExpr(ExprBuilder.column(field), BinaryOp.NotLike, ExprBuilder.value(value) if not isinstance(value, Expr) else value)
+
+    @staticmethod
+    def new_and(left: 'Expr', right: 'Expr') -> 'Expr':
+        return AndExpr([left, right])
+
 
 @dataclass
 class ColumnExpr(Expr):

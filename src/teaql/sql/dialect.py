@@ -77,7 +77,7 @@ class SqlDialect(ABC):
 
     def column_definition_sql(self, property_desc: PropertyDescriptor) -> str:
         parts = [
-            self.quote_ident(property_desc.column_name),
+            self.quote_ident(property_desc.column_name_val),
             self.schema_type_sql(property_desc.property_type, property_desc)
         ]
         if getattr(property_desc, 'is_id_val', False) or getattr(property_desc, 'is_id', lambda: False)():
@@ -172,16 +172,16 @@ class SqlDialect(ABC):
         return CompiledQuery(sql=sql, params=params)
 
     def compile_update(self, entity: EntityDescriptor, command: UpdateMutation) -> CompiledQuery:
-        id_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_id_val', False) or (callable(getattr(p, 'is_id', None)) and p.is_id())), None)
+        id_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, '_is_id', False)), None)
         if not id_property:
             raise MissingIdPropertyError(entity._name)
             
         assignments = []
         params = []
         for prop in getattr(entity, 'properties', []):
-            if getattr(prop, 'is_id_val', False) or (callable(getattr(prop, 'is_id', None)) and prop.is_id()):
+            if getattr(prop, '_is_id', False):
                 continue
-            is_version = getattr(prop, 'is_version_val', False) or (callable(getattr(prop, 'is_version', None)) and prop.is_version())
+            is_version = getattr(prop, '_is_version', False)
             if is_version and command.expected_version is not None:
                 continue
             prop_name = getattr(prop, 'name', None)
@@ -192,23 +192,22 @@ class SqlDialect(ABC):
                     val = Value.TypedNull(ptype)
                 params.append(val)
                 assignments.append(f"{self.quote_ident(prop.column_name_val)} = {self.placeholder(len(params))}")
-                
-        version_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_version_val', False) or (callable(getattr(p, 'is_version', None)) and p.is_version())), None)
+        version_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, '_is_version', False)), None)
         if command.expected_version is not None:
             if not version_property:
                 raise MissingVersionPropertyError(entity._name)
             params.append(Value.I64(command.expected_version + 1))
-            assignments.append(f"{self.quote_ident(version_property.column_name)} = {self.placeholder(len(params))}")
+            assignments.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
             
         if not assignments:
             raise EmptyMutationError("update")
             
         params.append(command.id)
-        predicates = [f"{self.quote_ident(id_property.column_name)} = {self.placeholder(len(params))}"]
+        predicates = [f"{self.quote_ident(id_property.column_name_val)} = {self.placeholder(len(params))}"]
         
         if command.expected_version is not None:
             params.append(Value.I64(command.expected_version))
-            predicates.append(f"{self.quote_ident(version_property.column_name)} = {self.placeholder(len(params))}")
+            predicates.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
             
         table_name = getattr(entity, 'table_name_val', entity._name)
         sql = f"UPDATE {self.quote_ident(table_name)} SET {', '.join(assignments)} WHERE {' AND '.join(predicates)}"
@@ -232,23 +231,23 @@ class SqlDialect(ABC):
                 params.append(Value.I64(-1))
                 
             params.append(command.id)
-            predicates = [f"{self.quote_ident(id_property.column_name)} = {self.placeholder(len(params))}"]
+            predicates = [f"{self.quote_ident(id_property.column_name_val)} = {self.placeholder(len(params))}"]
             
             if command.expected_version is not None:
                 params.append(Value.I64(command.expected_version))
-                predicates.append(f"{self.quote_ident(version_property.column_name)} = {self.placeholder(len(params))}")
+                predicates.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
                 
-            sql = f"UPDATE {self.quote_ident(table_name)} SET {self.quote_ident(version_property.column_name)} = {self.placeholder(1)} WHERE {' AND '.join(predicates)}"
+            sql = f"UPDATE {self.quote_ident(table_name)} SET {self.quote_ident(version_property.column_name_val)} = {self.placeholder(1)} WHERE {' AND '.join(predicates)}"
             return CompiledQuery(sql=sql, params=params)
             
         params.append(command.id)
-        predicates = [f"{self.quote_ident(id_property.column_name)} = {self.placeholder(len(params))}"]
+        predicates = [f"{self.quote_ident(id_property.column_name_val)} = {self.placeholder(len(params))}"]
         
         if command.expected_version is not None:
             if not version_property:
                 raise MissingVersionPropertyError(entity._name)
             params.append(Value.I64(command.expected_version))
-            predicates.append(f"{self.quote_ident(version_property.column_name)} = {self.placeholder(len(params))}")
+            predicates.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
             
         sql = f"DELETE FROM {self.quote_ident(table_name)} WHERE {' AND '.join(predicates)}"
         return CompiledQuery(sql=sql, params=params)
@@ -272,7 +271,7 @@ class SqlDialect(ABC):
         ]
         
         table_name = getattr(entity, 'table_name_val', entity._name)
-        sql = f"UPDATE {self.quote_ident(table_name)} SET {self.quote_ident(version_property.column_name)} = {self.placeholder(1)} WHERE {self.quote_ident(id_property.column_name)} = {self.placeholder(2)} AND {self.quote_ident(version_property.column_name)} = {self.placeholder(3)}"
+        sql = f"UPDATE {self.quote_ident(table_name)} SET {self.quote_ident(version_property.column_name_val)} = {self.placeholder(1)} WHERE {self.quote_ident(id_property.column_name_val)} = {self.placeholder(2)} AND {self.quote_ident(version_property.column_name_val)} = {self.placeholder(3)}"
         return CompiledQuery(sql=sql, params=params)
         
     def column_sql(self, entity: EntityDescriptor, field: str) -> str:
@@ -291,8 +290,8 @@ class SqlDialect(ABC):
         
     def select_projection(self, entity: EntityDescriptor, query: SelectQuery, params: List[Value]) -> str:
         def property_projection(p):
-            column = self.quote_ident(p.column_name)
-            return column if p.column_name == p.name else f"{column} AS {self.quote_ident(p.name)}"
+            column = self.quote_ident(p.column_name_val)
+            return column if p.column_name_val == p.name else f"{column} AS {self.quote_ident(p.name)}"
             
         if not query.projection and not query.expr_projection and not query.raw_projections and not query.dynamic_properties:
             return ", ".join(property_projection(p) for p in getattr(entity, 'properties', []))
