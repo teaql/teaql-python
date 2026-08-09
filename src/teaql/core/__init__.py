@@ -19,6 +19,12 @@ from .mutation import (
 )
 from .graph import GraphNode
 
+from .meta import EntityDescriptor, PropertyDescriptor
+from .list import SmartList
+from .eval import LoadState, EvalResult
+from .safe_expression import SafeExpression
+from .xls import XlsWorkbook, XlsPage, XlsBlock, XlsBlockBuildContext
+
 __all__ = [
     "Value", "DataType", "Timestamp",
     "BaseEntityData",
@@ -30,10 +36,11 @@ __all__ = [
     "BatchInsertMutation", "BatchUpdateMutation", "TraceNode",
     "InsertCommand", "UpdateCommand", "DeleteCommand", "RecoverCommand",
     "BatchInsertCommand", "BatchUpdateCommand", "MutationRequest",
-    "GraphNode"
+    "GraphNode",
+    "EntityDescriptor", "PropertyDescriptor", "SmartList",
+    "LoadState", "EvalResult", "SafeExpression",
+    "XlsWorkbook", "XlsPage", "XlsBlock", "XlsBlockBuildContext"
 ]
-from .meta import EntityDescriptor, PropertyDescriptor
-from .list import SmartList
 import builtins
 builtins.uint64 = int
 builtins.int64 = int
