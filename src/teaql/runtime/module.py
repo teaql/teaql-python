@@ -20,6 +20,12 @@ class RuntimeModule:
         name = getattr(entity_class, '_name', getattr(entity_class, '__name__', str(entity_class)))
         self._behaviors[name] = behavior
         return self
+        
+    def initial_graph(self, graph_node: Any) -> 'RuntimeModule':
+        if not hasattr(self, '_initial_graphs'):
+            self._initial_graphs = []
+        self._initial_graphs.append(graph_node)
+        return self
 
     def provide_custom_dependency(self, name: str, dependency: Any) -> 'RuntimeModule':
         self._dependencies[name] = dependency
@@ -28,6 +34,11 @@ class RuntimeModule:
     def apply_to(self, ctx: UserContext):
         for name, dep in self._dependencies.items():
             ctx.insert_resource(name, dep)
+        for entity in self._entities:
+            ctx.register_entity(entity)
+        if hasattr(self, '_initial_graphs'):
+            for graph in self._initial_graphs:
+                ctx.add_initial_graph(graph)
         ctx.insert_resource("entities", self._entities)
         ctx.insert_resource("behaviors", self._behaviors)
 

@@ -1,14 +1,28 @@
-from typing import Dict, Any, Optional
+from typing import Dict, Any, Optional, List
 
 class UserContext:
     def __init__(self):
         self._resources: Dict[str, Any] = {}
         self._metadata: Optional[Any] = None
         self._user_identifier: str = ""
+        self._entities: List[Any] = []
+        self._initial_graphs: List[Any] = []
 
     @classmethod
     def new(cls) -> 'UserContext':
         return cls()
+        
+    def register_entity(self, entity_desc: Any):
+        self._entities.append(entity_desc)
+        
+    def all_entities(self) -> List[Any]:
+        return self._entities
+        
+    def add_initial_graph(self, graph_node: Any):
+        self._initial_graphs.append(graph_node)
+        
+    def initial_graphs(self) -> List[Any]:
+        return self._initial_graphs
 
     def with_metadata(self, metadata: Any) -> 'UserContext':
         self._metadata = metadata

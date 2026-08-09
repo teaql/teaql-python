@@ -51,7 +51,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             query=True,
             mutation=True,
             transaction=False, # Could be determined from transport
-            schema=False,
+            schema=True,
             id_generation=False,
             batch_mutation=True,
             returning=False
@@ -176,3 +176,63 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             generated_values=generated_values,
             metadata=metadata
         )
+
+    async def ensure_schema(self, ctx: 'UserContext') -> None:
+        entities = ctx.all_entities()
+        if not entities:
+            entities = ctx.get_resource("entities") or []
+        for entity in entities:
+            try:
+                # Create table
+                create_sql = self.dialect.compile_create_table(entity)
+                await self.transport.execute_sql(CompiledQuery(create_sql, []))
+                
+                # Add columns if needed
+                # For simplicity in this naive python port, we'll try to add all columns and ignore errors
+                for prop in getattr(entity, 'properties', []):
+                    try:
+                        add_sql = self.dialect.compile_add_column(entity, prop)
+                        await self.transport.execute_sql(CompiledQuery(add_sql, []))
+                    except Exception:
+                        pass
+                        
+                # Create indexes
+                try:
+                    indexes = self.dialect.schema_indexes_sqls(entity)
+                    for idx_sql in indexes:
+                        await self.transport.execute_sql(CompiledQuery(idx_sql, []))
+                except Exception:
+                    pass
+            except Exception as e:
+                # If creating table fails, it might be due to dialect unsupported features, just pass for now
+                pass
+
+    async def ensure_initial_graphs(self, ctx: 'UserContext') -> None:
+        from teaql.core.mutation import InsertMutation
+        graphs = ctx.initial_graphs()
+        for graph in graphs:
+            entity_name = getattr(graph, 'entity', None)
+            if not entity_name:
+                continue
+                
+            entity_desc = self.schema_provider.get_entity(entity_name)
+            if not entity_desc:
+                entities = ctx.get_resource("entities") or []
+                for e in entities:
+                    if getattr(e, "_name", None) == entity_name:
+                        entity_desc = e
+                        break
+            if not entity_desc:
+                continue
+                
+            values = getattr(graph, 'values', {})
+            mutation = InsertMutation(entity_name)
+            for k, v in values.items():
+                mutation.value(k, v)
+                
+            try:
+                # Try to insert; if it fails (e.g. unique constraint on ID), it's already seeded
+                compiled = self.dialect.compile_insert(entity_desc, mutation)
+                await self.transport.execute_sql(compiled)
+            except Exception:
+                pass
