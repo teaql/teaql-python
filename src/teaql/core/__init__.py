@@ -17,6 +17,7 @@ from .mutation import (
     InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand,
     BatchInsertCommand, BatchUpdateCommand, MutationRequest
 )
+from .graph import GraphNode
 
 __all__ = [
     "Value", "DataType", "Timestamp",
@@ -28,7 +29,8 @@ __all__ = [
     "InsertMutation", "UpdateMutation", "DeleteMutation", "RecoverMutation",
     "BatchInsertMutation", "BatchUpdateMutation", "TraceNode",
     "InsertCommand", "UpdateCommand", "DeleteCommand", "RecoverCommand",
-    "BatchInsertCommand", "BatchUpdateCommand", "MutationRequest"
+    "BatchInsertCommand", "BatchUpdateCommand", "MutationRequest",
+    "GraphNode"
 ]
 from .meta import EntityDescriptor, PropertyDescriptor
 from .list import SmartList
