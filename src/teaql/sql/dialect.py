@@ -205,8 +205,8 @@ class SqlDialect(ABC):
         params.append(command.id)
         predicates = [f"{self.quote_ident(id_property.column_name_val)} = {self.placeholder(len(params))}"]
         
-        if command.expected_version is not None:
-            params.append(Value.I64(command.expected_version))
+        if command.expected_version_val is not None:
+            params.append(Value.I64(command.expected_version_val))
             predicates.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
             
         table_name = getattr(entity, 'table_name_val', entity._name)
@@ -225,16 +225,16 @@ class SqlDialect(ABC):
         if command.soft_delete:
             if not version_property:
                 raise MissingVersionPropertyError(entity._name)
-            if command.expected_version is not None:
-                params.append(Value.I64(-(command.expected_version + 1)))
+            if command.expected_version_val is not None:
+                params.append(Value.I64(-(command.expected_version_val + 1)))
             else:
                 params.append(Value.I64(-1))
                 
             params.append(command.id)
             predicates = [f"{self.quote_ident(id_property.column_name_val)} = {self.placeholder(len(params))}"]
             
-            if command.expected_version is not None:
-                params.append(Value.I64(command.expected_version))
+            if command.expected_version_val is not None:
+                params.append(Value.I64(command.expected_version_val))
                 predicates.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
                 
             sql = f"UPDATE {self.quote_ident(table_name)} SET {self.quote_ident(version_property.column_name_val)} = {self.placeholder(1)} WHERE {' AND '.join(predicates)}"
@@ -243,18 +243,18 @@ class SqlDialect(ABC):
         params.append(command.id)
         predicates = [f"{self.quote_ident(id_property.column_name_val)} = {self.placeholder(len(params))}"]
         
-        if command.expected_version is not None:
+        if command.expected_version_val is not None:
             if not version_property:
                 raise MissingVersionPropertyError(entity._name)
-            params.append(Value.I64(command.expected_version))
+            params.append(Value.I64(command.expected_version_val))
             predicates.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
             
         sql = f"DELETE FROM {self.quote_ident(table_name)} WHERE {' AND '.join(predicates)}"
         return CompiledQuery(sql=sql, params=params)
         
     def compile_recover(self, entity: EntityDescriptor, command: RecoverCommand) -> CompiledQuery:
-        if command.expected_version >= 0:
-            raise InvalidRecoverVersionError(command.expected_version)
+        if command.expected_version_val >= 0:
+            raise InvalidRecoverVersionError(command.expected_version_val)
             
         id_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_id_val', False) or (callable(getattr(p, 'is_id', None)) and p.is_id())), None)
         if not id_property:
@@ -265,9 +265,9 @@ class SqlDialect(ABC):
             raise MissingVersionPropertyError(entity._name)
             
         params = [
-            Value.I64(-command.expected_version + 1),
+            Value.I64(-command.expected_version_val + 1),
             command.id,
-            Value.I64(command.expected_version)
+            Value.I64(command.expected_version_val)
         ]
         
         table_name = getattr(entity, 'table_name_val', entity._name)

@@ -4,10 +4,17 @@ import time
 from teaql.provider.sqlite import create_sqlite_service, SimpleSchemaProvider
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
 from teaql.core.value import DataType, Value, Timestamp
-from teaql.core.query import SelectQuery
-from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
 from teaql.data_service import QueryRequest
 from teaql.runtime.context import UserContext
+
+from generated.models.platform import Platform
+from generated.models.task_status import TaskStatus
+from generated.models.task import Task
+from generated.models.task_execution_log import TaskExecutionLog
+
+from generated.requests.task_request import TaskRequest
+from generated.requests.task_execution_log_request import TaskExecutionLogRequest
+
 
 async def main():
     print("Setting up Schema Provider...")
@@ -30,7 +37,7 @@ async def main():
         .property(PropertyDescriptor("name", DataType.Text))\
         .property(PropertyDescriptor("code", DataType.Text))\
         .property(PropertyDescriptor("color", DataType.Text))\
-        .property(PropertyDescriptor("display_order", DataType.I64))\
+        .property(PropertyDescriptor("displayOrder", DataType.I64))\
         .property(PropertyDescriptor("progress", DataType.I64))\
         .property(PropertyDescriptor("platform", DataType.I64))\
         .property(PropertyDescriptor("version", DataType.I64).is_version())
@@ -71,72 +78,77 @@ async def main():
 
     # CREATE Platform
     print("Creating Platform...")
-    insert_req = MutationRequest(InsertCommand("Platform", {
-        "id": Value.I64(1), 
-        "name": Value.Text("Main Platform"),
-        "founded": Value.Timestamp(Timestamp(int(time.time() * 1000))),
-        "user_email": Value.Text("admin@robot.com"),
-        "version": Value.I64(1)
-    }))
-    await service.mutate(ctx, insert_req)
+    platform = Platform(
+        id=1,
+        name="Main Platform",
+        founded=Timestamp(int(time.time() * 1000)),
+        userEmail="admin@robot.com",
+        version=1
+    )
+    platform._action = "Create"
+    await platform.save(ctx, service)
 
     # CREATE TaskStatus
     print("Creating TaskStatus...")
-    insert_status = MutationRequest(InsertCommand("TaskStatus", {
-        "id": Value.I64(1),
-        "name": Value.Text("Planned"),
-        "code": Value.Text("PLANNED"),
-        "color": Value.Text("#94A3B8"),
-        "display_order": Value.I64(10),
-        "progress": Value.I64(0),
-        "platform": Value.I64(1),
-        "version": Value.I64(1)
-    }))
-    await service.mutate(ctx, insert_status)
+    status = TaskStatus(
+        id=1,
+        name="Planned",
+        code="PLANNED",
+        color="#94A3B8",
+        displayOrder=10,
+        progress=0,
+        platform=1,
+        version=1
+    )
+    status._action = "Create"
+    await status.save(ctx, service)
 
     # CREATE Task
     print("Creating Task...")
-    insert_task = MutationRequest(InsertCommand("Task", {
-        "id": Value.I64(1),
-        "name": Value.Text("Build Robot Arm"),
-        "status": Value.I64(1),
-        "platform": Value.I64(1),
-        "version": Value.I64(1)
-    }))
-    await service.mutate(ctx, insert_task)
+    task = Task(
+        id=1,
+        name="Build Robot Arm",
+        status=1,
+        platform=1,
+        version=1
+    )
+    task._action = "Create"
+    await task.save(ctx, service)
 
     # READ Task
     print("Reading Tasks...")
-    query_task = QueryRequest(SelectQuery("Task"))
-    res = await service.query(ctx, query_task)
-    for row in res.rows:
+    task_req = TaskRequest()
+    res = await task_req.execute_for_list(ctx, service)
+    for row in res["data"]:
         print("  - Task:", row)
 
     # UPDATE Task
     print("Updating Task...")
-    update_task = MutationRequest(UpdateCommand("Task", Value.I64(1)).value("name", Value.Text("Build Robot Leg")))
-    await service.mutate(ctx, update_task)
+    task.name = "Build Robot Leg"
+    task._action = "Update"
+    await task.save(ctx, service)
 
     # Verify Update
-    res = await service.query(ctx, query_task)
-    print("  - Updated Task:", res.rows[0])
+    res = await task_req.execute_for_list(ctx, service)
+    print("  - Updated Task:", res["data"][0])
 
     # INSERT TaskExecutionLog
     print("Inserting TaskExecutionLog...")
-    insert_log = MutationRequest(InsertCommand("TaskExecutionLog", {
-        "id": Value.I64(1),
-        "task": Value.I64(1),
-        "action": Value.Text("Updated Task"),
-        "detail": Value.Text("Changed arm to leg"),
-        "version": Value.I64(1)
-    }))
-    await service.mutate(ctx, insert_log)
+    log = TaskExecutionLog(
+        id=1,
+        task=1,
+        action="Updated Task",
+        detail="Changed arm to leg",
+        version=1
+    )
+    log._action = "Create"
+    await log.save(ctx, service)
 
     # QUERY Log
     print("Reading Logs...")
-    query_log = QueryRequest(SelectQuery("TaskExecutionLog"))
-    res = await service.query(ctx, query_log)
-    for row in res.rows:
+    log_req = TaskExecutionLogRequest()
+    res = await log_req.execute_for_list(ctx, service)
+    for row in res["data"]:
         print("  - Log:", row)
 
     print("Success!")
