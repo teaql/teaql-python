@@ -99,46 +99,46 @@ class SqlDialect(ABC):
     def compile_select(self, entity: EntityDescriptor, query: SelectQuery) -> CompiledQuery:
         params: List[Value] = []
         sql = self.compile_select_sql(entity, query, params)
-        return CompiledQuery(sql=sql, params=params, comment=query.comment)
+        query_comment = query.comment_text
+        return CompiledQuery(sql=sql, params=params, comment=query_comment)
 
     def compile_select_sql(self, entity: EntityDescriptor, query: SelectQuery, params: List[Value]) -> str:
         if query.raw_sql is not None:
             return query.raw_sql
-
+            
+        table_name = entity.table_name_val
         projection = self.compile_projection(entity, query, params)
-        table_name = getattr(entity, 'table_name_val', entity._name)
-
         
         sql = f"SELECT {projection} FROM {self.quote_ident(table_name)}"
         where_parts = []
-        if query.filter is not None:
-            where_parts.append(self.compile_expr(entity, query.filter, params))
+        if query.filter_expr is not None:
+            where_parts.append(self.compile_expr(entity, query.filter_expr, params))
         
         if query.search_with_text is not None:
-            or_parts = []
+            # Need to know which fields are searchable (Text type)
             like_value = f"%{query.search_with_text}%"
+            search_parts = []
             for prop in getattr(entity, 'properties', []):
-                ptype = getattr(prop, 'property_type', None) or getattr(prop, 'data_type', None)
-                if ptype in (DataType.Text, DataType.LargeText, "String", "Text"):
-                    params.append(Value.from_any(like_value))
-                    or_parts.append(f"{self.quote_ident(prop.column_name_val)} LIKE {self.placeholder(len(params))}")
-            if or_parts:
-                where_parts.append(f"({' OR '.join(or_parts)})")
+                if prop.property_type == DataType.Text:
+                    params.append(Value.Text(like_value))
+                    search_parts.append(f"{self.quote_ident(prop.column_name_val)} LIKE {self.placeholder(len(params))}")
+            if search_parts:
+                where_parts.append("(" + " OR ".join(search_parts) + ")")
                 
         where_parts.extend(query.raw_sql_search_criteria)
         if where_parts:
             sql += " WHERE " + " AND ".join(where_parts)
             
-        if query.group_by:
-            group_by = ", ".join(self.column_sql(entity, field) for field in query.group_by)
+        if query.group_by_items:
+            group_by = ", ".join(self.column_sql(entity, field) for field in query.group_by_items)
             sql += f" GROUP BY {group_by}"
             
-        if query.having is not None:
-            having_sql = self.compile_expr(entity, query.having, params)
+        if query.having_expr is not None:
+            having_sql = self.compile_expr(entity, query.having_expr, params)
             sql += f" HAVING {having_sql}"
             
-        if query.order_by:
-            order_by = ", ".join(self.order_by_sql(entity, order, params) for order in query.order_by)
+        if query.order_by_items:
+            order_by = ", ".join(self.order_by_sql(entity, order, params) for order in query.order_by_items)
             sql += f" ORDER BY {order_by}"
             
         if query.slice is not None:
@@ -182,7 +182,7 @@ class SqlDialect(ABC):
             if getattr(prop, '_is_id', False):
                 continue
             is_version = getattr(prop, '_is_version', False)
-            if is_version and command.expected_version is not None:
+            if is_version and command.expected_version_val is not None:
                 continue
             prop_name = getattr(prop, 'name', None)
             if prop_name in command.values:
@@ -193,10 +193,10 @@ class SqlDialect(ABC):
                 params.append(val)
                 assignments.append(f"{self.quote_ident(prop.column_name_val)} = {self.placeholder(len(params))}")
         version_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, '_is_version', False)), None)
-        if command.expected_version is not None:
+        if command.expected_version_val is not None:
             if not version_property:
                 raise MissingVersionPropertyError(entity._name)
-            params.append(Value.I64(command.expected_version + 1))
+            params.append(Value.I64(command.expected_version_val + 1))
             assignments.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
             
         if not assignments:
@@ -314,7 +314,7 @@ class SqlDialect(ABC):
 
     def aggregate_projection(self, entity: EntityDescriptor, query: SelectQuery, params: List[Value]) -> str:
         parts = []
-        for field in query.group_by + query.projection:
+        for field in query.group_by_items + query.projection:
             column = self.column_sql(entity, field)
             if column not in parts:
                 parts.append(column)

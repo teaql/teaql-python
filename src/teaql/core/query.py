@@ -115,15 +115,15 @@ class SelectQuery:
     projection: List[str] = field(default_factory=list)
     expr_projection: List[NamedExpr] = field(default_factory=list)
     search_with_text: Optional[str] = None
-    filter: Optional[Expr] = None
-    having: Optional[Expr] = None
-    order_by: List[OrderBy] = field(default_factory=list)
+    filter_expr: Optional[Expr] = None
+    having_expr: Optional[Expr] = None
+    order_by_items: List[OrderBy] = field(default_factory=list)
     slice: Optional[Slice] = None
     aggregates: List[Aggregate] = field(default_factory=list)
-    group_by: List[str] = field(default_factory=list)
+    group_by_items: List[str] = field(default_factory=list)
     relations: List[RelationLoad] = field(default_factory=list)
     aggregation_cache: Optional[AggregationCacheOptions] = None
-    comment: Optional[str] = None
+    comment_text: Optional[str] = None
     trace_chain: List[TraceNode] = field(default_factory=list)
     raw_sql: Optional[str] = None
     raw_sql_search_criteria: List[str] = field(default_factory=list)
@@ -141,7 +141,7 @@ class SelectQuery:
         return self
     
     def with_comment(self, comment: str) -> 'SelectQuery':
-        self.comment = comment
+        self.comment_text = comment
         return self
     
     def count(self, alias: str) -> 'SelectQuery':
@@ -149,22 +149,22 @@ class SelectQuery:
         return self
     
     def and_filter(self, expr: Expr) -> 'SelectQuery':
-        if self.filter:
-            self.filter = Expr.new_and(self.filter, expr)
+        if self.filter_expr:
+            self.filter_expr = Expr.new_and(self.filter_expr, expr)
         else:
-            self.filter = expr
+            self.filter_expr = expr
         return self
     
     def order_asc(self, field: str) -> 'SelectQuery':
-        self.order_by.append(OrderBy.asc(field))
+        self.order_by_items.append(OrderBy.asc(field))
         return self
 
     def order_desc(self, field: str) -> 'SelectQuery':
-        self.order_by.append(OrderBy.desc(field))
+        self.order_by_items.append(OrderBy.desc(field))
         return self
 
     def comment(self, text: str) -> 'SelectQuery':
-        self.comment = text
+        self.comment_text = text
         return self
 
     def project(self, *fields: str) -> 'SelectQuery':
@@ -184,60 +184,60 @@ class SelectQuery:
         return self
 
     def filter(self, expr: Expr) -> 'SelectQuery':
-        self.filter = expr
+        self.filter_expr = expr
         return self
 
     def or_filter(self, expr: Expr) -> 'SelectQuery':
-        if self.filter:
-            self.filter = Expr.new_or(self.filter, expr)
+        if self.filter_expr:
+            self.filter_expr = Expr.new_or(self.filter_expr, expr)
         else:
-            self.filter = expr
+            self.filter_expr = expr
         return self
 
     def having(self, expr: Expr) -> 'SelectQuery':
-        self.having = expr
+        self.having_expr = expr
         return self
 
     def and_having(self, expr: Expr) -> 'SelectQuery':
-        if self.having:
-            self.having = Expr.new_and(self.having, expr)
+        if self.having_expr:
+            self.having_expr = Expr.new_and(self.having_expr, expr)
         else:
-            self.having = expr
+            self.having_expr = expr
         return self
 
     def or_having(self, expr: Expr) -> 'SelectQuery':
-        if self.having:
-            self.having = Expr.new_or(self.having, expr)
+        if self.having_expr:
+            self.having_expr = Expr.new_or(self.having_expr, expr)
         else:
-            self.having = expr
+            self.having_expr = expr
         return self
 
     def order_by(self, order: OrderBy) -> 'SelectQuery':
-        self.order_by.append(order)
+        self.order_by_items.append(order)
         return self
 
     def asc(self, field: str) -> 'SelectQuery':
-        self.order_by.append(OrderBy.asc(field))
+        self.order_by_items.append(OrderBy.asc(field))
         return self
 
     def desc(self, field: str) -> 'SelectQuery':
-        self.order_by.append(OrderBy.desc(field))
+        self.order_by_items.append(OrderBy.desc(field))
         return self
 
     def asc_expr(self, expr: Expr) -> 'SelectQuery':
-        self.order_by.append(OrderBy.asc_expr(expr))
+        self.order_by_items.append(OrderBy.asc_expr(expr))
         return self
 
     def desc_expr(self, expr: Expr) -> 'SelectQuery':
-        self.order_by.append(OrderBy.desc_expr(expr))
+        self.order_by_items.append(OrderBy.desc_expr(expr))
         return self
 
     def asc_gbk(self, field: str) -> 'SelectQuery':
-        self.order_by.append(OrderBy.asc_gbk(field))
+        self.order_by_items.append(OrderBy.asc_gbk(field))
         return self
 
     def desc_gbk(self, field: str) -> 'SelectQuery':
-        self.order_by.append(OrderBy.desc_gbk(field))
+        self.order_by_items.append(OrderBy.desc_gbk(field))
         return self
 
     def order_expr_asc(self, expr: Expr) -> 'SelectQuery':
@@ -323,7 +323,7 @@ class SelectQuery:
         return self
 
     def group_by(self, *fields: str) -> 'SelectQuery':
-        self.group_by.extend(fields)
+        self.group_by_items.extend(fields)
         return self
 
     def object_group_by(self, property_name: str, storage_field: str, query: 'SelectQuery') -> 'SelectQuery':

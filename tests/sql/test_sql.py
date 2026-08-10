@@ -1,6 +1,6 @@
 import pytest
 from teaql.core.query import SelectQuery, OrderBy, SortDirection, Slice
-from teaql.core.mutation import InsertMutation, UpdateMutation, DeleteMutation, RecoverMutation
+from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand
 from teaql.core.expr import Expr, ExprBuilder
 from teaql.core.value import Value, DataType
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
@@ -35,12 +35,12 @@ class MyPropertyDescriptor(PropertyDescriptor):
     def __init__(self, name, column_name, data_type, is_id_val=False, is_version_val=False, nullable=True):
         super().__init__(name, data_type)
         self.column_name = column_name
-        self.is_id_val = is_id_val
-        self.is_version_val = is_version_val
+        self._is_id = is_id_val
+        self._is_version = is_version_val
         self.nullable = nullable
         
-    def is_id(self): return self.is_id_val
-    def is_version(self): return self.is_version_val
+    def is_id(self): return self._is_id
+    def is_version(self): return self._is_version
 
 def entity() -> EntityDescriptor:
     return MyEntityDescriptor("Order", "orders", [
@@ -81,20 +81,20 @@ def test_compiles_aggregate_projection():
 def test_compiles_insert_update_delete_and_recover():
     dialect = TestDialect()
     
-    insert = InsertMutation.new("Order").value("id", 1).value("name", "A")
+    insert = InsertCommand.new("Order").value("id", 1).value("name", "A")
     compiled_insert = dialect.compile_insert(entity(), insert)
     # The order of values might depend on dictionary iteration, but let's assume id then name
     assert compiled_insert.sql == 'INSERT INTO "orders" ("id", "name") VALUES ($1, $2)'
     
-    update = UpdateMutation.new("Order", 1).with_expected_version(3).value("name", "B")
+    update = UpdateCommand.new("Order", 1).expected_version(3).value("name", "B")
     compiled_update = dialect.compile_update(entity(), update)
     assert compiled_update.sql == 'UPDATE "orders" SET "name" = $1, "version" = $2 WHERE "id" = $3 AND "version" = $4'
     
-    delete = DeleteMutation.new("Order", 1).with_expected_version(3)
+    delete = DeleteCommand.new("Order", 1).expected_version(3)
     compiled_delete = dialect.compile_delete(entity(), delete)
     assert compiled_delete.sql == 'UPDATE "orders" SET "version" = $1 WHERE "id" = $2 AND "version" = $3'
     
-    recover = RecoverMutation.new("Order", 1, -4)
+    recover = RecoverCommand.new("Order", 1, -4)
     compiled_recover = dialect.compile_recover(entity(), recover)
     assert compiled_recover.sql == 'UPDATE "orders" SET "version" = $1 WHERE "id" = $2 AND "version" = $3'
 

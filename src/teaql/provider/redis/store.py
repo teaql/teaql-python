@@ -19,7 +19,7 @@ class RedisDataStore(DataStore):
         if json_str is not None:
             try:
                 json_value = json.loads(json_str)
-                return Value.from_json(json_value)
+                return Value.from_any(json_value)
             except json.JSONDecodeError:
                 pass
         return None

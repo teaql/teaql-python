@@ -1,9 +1,9 @@
 from teaql.core.mutation import (
     TraceNode,
-    InsertMutation as CoreInsertMutation,
-    UpdateMutation as CoreUpdateMutation,
-    DeleteMutation as CoreDeleteMutation,
-    RecoverMutation as CoreRecoverMutation,
+    InsertCommand as CoreInsertCommand,
+    UpdateCommand as CoreUpdateCommand,
+    DeleteCommand as CoreDeleteCommand,
+    RecoverCommand as CoreRecoverCommand,
     MutationRequest
 )
 from teaql.core.value import Value
@@ -23,7 +23,7 @@ def test_mutation_request_trace_and_comment_accessors():
     trace_chain = [trace1, trace2]
 
     # Test Insert
-    insert_cmd = CoreInsertMutation(
+    insert_cmd = CoreInsertCommand(
         entity="User",
         values={},
         trace_chain=trace_chain.copy()
@@ -34,11 +34,11 @@ def test_mutation_request_trace_and_comment_accessors():
     assert req_insert.comment() == "Create Profile"
 
     # Test Update
-    update_cmd = CoreUpdateMutation(
+    update_cmd = CoreUpdateCommand(
         entity="User",
         id=Value.from_any(1),
         values={},
-        expected_version=None,
+        expected_version_val=None,
         old_values=None,
         trace_chain=trace_chain.copy()
     )
@@ -47,10 +47,10 @@ def test_mutation_request_trace_and_comment_accessors():
     assert req_update.comment() == "Create Profile"
 
     # Test Delete
-    delete_cmd = CoreDeleteMutation(
+    delete_cmd = CoreDeleteCommand(
         entity="User",
         id=Value.from_any(1),
-        expected_version=None,
+        expected_version_val=None,
         soft_delete=True,
         trace_chain=trace_chain.copy()
     )
@@ -59,10 +59,10 @@ def test_mutation_request_trace_and_comment_accessors():
     assert req_delete.comment() == "Create Profile"
 
     # Test Recover
-    recover_cmd = CoreRecoverMutation(
+    recover_cmd = CoreRecoverCommand(
         entity="User",
         id=Value.from_any(1),
-        expected_version=1,
+        expected_version_val=1,
         trace_chain=trace_chain.copy()
     )
     req_recover = MutationRequest.Recover(recover_cmd)
@@ -75,7 +75,7 @@ def test_mutation_request_trace_and_comment_accessors():
     assert req_batch.comment() is None
 
     # Test empty trace chain
-    insert_empty = CoreInsertMutation(
+    insert_empty = CoreInsertCommand(
         entity="User",
         values={},
         trace_chain=[]
@@ -92,3 +92,25 @@ def test_data_service_capabilities_default():
     assert caps.id_generation is False
     assert caps.batch_mutation is False
     assert caps.returning is False
+
+def test_query_request_coverage():
+    from teaql.data_service import QueryRequest
+    from teaql.core.query import SelectQuery
+    q = QueryRequest(SelectQuery.new("User"))
+    q.comment("c").purpose("p")
+    assert q._comment == "c"
+    assert q._purpose == "p"
+    
+    import pytest
+    with pytest.raises(ValueError):
+        q.comment("")
+    with pytest.raises(ValueError):
+        q.purpose("")
+        
+def test_aliases():
+    from teaql.data_service import InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand
+    from teaql.core.mutation import InsertCommand as CoreInsertCommand
+    assert InsertCommand(CoreInsertCommand.new("A")) is not None
+    assert UpdateCommand(None) is not None
+    assert DeleteCommand(None) is not None
+    assert RecoverCommand(None) is not None

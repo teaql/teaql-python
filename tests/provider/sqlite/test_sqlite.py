@@ -6,7 +6,7 @@ from teaql.provider.sqlite import create_sqlite_service, SimpleSchemaProvider
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
 from teaql.core.value import DataType, Value
 from teaql.core.query import SelectQuery
-from teaql.core.mutation import InsertMutation, UpdateMutation, DeleteMutation, MutationRequest
+from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
 from teaql.data_service import QueryRequest
 
 @pytest.fixture
@@ -56,7 +56,7 @@ async def test_crud(temp_db, schema_provider, service):
         await db.commit()
 
     # Insert
-    insert_req = MutationRequest(InsertMutation("User", {"id": Value.I64(1), "name": Value.Text("Alice"), "version": Value.I64(1)}))
+    insert_req = MutationRequest(InsertCommand("User", {"id": Value.I64(1), "name": Value.Text("Alice"), "version": Value.I64(1)}))
     res = await service.mutate(None, insert_req)
     assert res.affected_rows == 1
 
@@ -69,7 +69,7 @@ async def test_crud(temp_db, schema_provider, service):
     assert query_res.rows[0]["version"] == 1
 
     # Update
-    update_req = MutationRequest(UpdateMutation("User", Value.I64(1)).value("name", Value.Text("Bob")))
+    update_req = MutationRequest(UpdateCommand("User", Value.I64(1)).value("name", Value.Text("Bob")))
     res = await service.mutate(None, update_req)
     assert res.affected_rows == 1
 
@@ -77,7 +77,7 @@ async def test_crud(temp_db, schema_provider, service):
     assert query_res.rows[0]["name"] == "Bob"
 
     # Delete
-    delete_req = MutationRequest(DeleteMutation("User", Value.I64(1)).hard_delete())
+    delete_req = MutationRequest(DeleteCommand("User", Value.I64(1)).hard_delete())
     res = await service.mutate(None, delete_req)
     assert res.affected_rows == 1
 
