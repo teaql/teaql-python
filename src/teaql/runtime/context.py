@@ -444,6 +444,69 @@ class UserContext:
         self.set_event_sink(sink)
         return self
 
+    # ==========================================
+    # Context Attribute
+    # ==========================================
+    def put_attribute(self, key: str, value: Any):
+        pass
+
+    def get_attribute(self, key: str, clazz: Any = None) -> Optional[Any]:
+        return None
+
+    # ==========================================
+    # Local Cache
+    # ==========================================
+    def put_to_local_cache(self, key: str, value: Any, time_to_live_in_seconds: Optional[int] = None):
+        pass
+
+    def get_from_local_cache(self, key: str, clazz: Any = None) -> Optional[Any]:
+        return None
+
+    def remove_from_local_cache(self, key: str):
+        pass
+
+    # ==========================================
+    # Remote Cache
+    # ==========================================
+    def put_to_remote_cache(self, key: str, value: Any, time_to_live_in_seconds: Optional[int] = None):
+        provider = self.get_resource("RemoteCacheProvider")
+        if provider and hasattr(provider, 'put_to_remote_cache'):
+            provider.put_to_remote_cache(key, value, time_to_live_in_seconds)
+
+    def get_from_remote_cache(self, key: str, clazz: Any = None) -> Optional[Any]:
+        provider = self.get_resource("RemoteCacheProvider")
+        if provider and hasattr(provider, 'get_from_remote_cache'):
+            return provider.get_from_remote_cache(key, clazz)
+        return None
+
+    def remove_from_remote_cache(self, key: str):
+        provider = self.get_resource("RemoteCacheProvider")
+        if provider and hasattr(provider, 'remove_from_remote_cache'):
+            provider.remove_from_remote_cache(key)
+
+    # ==========================================
+    # Local Lock
+    # ==========================================
+    def try_local_lock(self, key: str, timeout_millis: int, expire_millis: int) -> bool:
+        return True
+
+    def unlock_local(self, key: str):
+        pass
+
+    # ==========================================
+    # Remote Lock
+    # ==========================================
+    def try_remote_lock(self, key: str, timeout_millis: int, expire_millis: int) -> bool:
+        provider = self.get_resource("RemoteLockProvider")
+        if provider and hasattr(provider, 'try_remote_lock'):
+            return provider.try_remote_lock(key, timeout_millis, expire_millis)
+        return True
+
+    def unlock_remote(self, key: str):
+        provider = self.get_resource("RemoteLockProvider")
+        if provider and hasattr(provider, 'unlock_remote'):
+            provider.unlock_remote(key)
+
 
 class TeaqlRuntime:
     def __init__(self, ctx: UserContext):
