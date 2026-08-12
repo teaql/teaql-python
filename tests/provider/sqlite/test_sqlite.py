@@ -8,6 +8,7 @@ from teaql.core.value import DataType, Value
 from teaql.core.query import SelectQuery
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
 from teaql.data_service import QueryRequest
+from teaql.runtime import RuntimeModule
 
 @pytest.fixture
 def temp_db():
@@ -83,6 +84,42 @@ async def test_crud(temp_db, schema_provider, service):
 
     query_res = await service.query(None, query_req)
     assert len(query_res.rows) == 0
+
+@pytest.mark.asyncio
+async def test_successful_mutation_emits_raw_and_independently_masked_app_audit(temp_db):
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name VARCHAR(255), version INTEGER)")
+        await db.commit()
+
+    provider = SimpleSchemaProvider()
+    entity = MockEntityDescriptor("User").audit_mask_fields(["name"])
+    entity.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("name", DataType.Text),
+        MockPropertyDescriptor("version", DataType.I64, is_version=True),
+    ]
+    provider.register_entity(entity)
+    service = create_sqlite_service(temp_db, provider)
+
+    class RawSink:
+        events = []
+        def on_event(self, context, event): self.events.append(event)
+    class AppSink:
+        events = []
+        async def on_safe_event(self, context, event): self.events.append(event)
+
+    raw, app = RawSink(), AppSink()
+    ctx = RuntimeModule.new().entity(entity).audit_event_sink(raw).into_context().with_app_audit_event_sink(app)
+    command = InsertCommand("User", {"id": Value.I64(1), "name": Value.Text("Alice Example"), "version": Value.I64(1)})
+    command.trace_chain.append(type("Trace", (), {"comment": "approved change"})())
+    result = await service.mutate(ctx, MutationRequest(command))
+
+    assert result.affected_rows == 1
+    assert len(raw.events) == 1 and raw.events[0].changes[1].new_value.val == "Alice Example"
+    assert raw.events[0].trace_chain[0].comment == "approved change"
+    assert len(app.events) == 1
+    name_field = next(field for field in app.events[0].fields if field.field == "name")
+    assert name_field.masked and name_field.value != "Alice Example"
 
 @pytest.mark.asyncio
 async def test_nested_relation_limit_is_applied_per_parent(temp_db):

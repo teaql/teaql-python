@@ -192,6 +192,9 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             elif isinstance(req_data, DeleteCommand):
                 op = "delete"
                 compiled = self.dialect.compile_delete(entity_desc, req_data)
+            elif isinstance(req_data, RecoverCommand):
+                op = "recover"
+                compiled = self.dialect.compile_recover(entity_desc, req_data)
             else:
                 raise CompileError(SqlCompileError(f"unsupported mutation type: {type(req_data)}"))
         except SqlCompileError as e:
@@ -223,6 +226,26 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             comment=request.comment(),
             debug_query=compiled.sql_with_comment()
         )
+        if affected_rows > 0 and ctx is not None:
+            from teaql.runtime.audit import AuditFieldChange, MutationAuditKind, RawAuditEvent
+            if isinstance(req_data, InsertCommand):
+                kind = MutationAuditKind.CREATED
+                entity_id = generated_values.get("id", req_data.values.get("id"))
+                changes = tuple(AuditFieldChange(name, None, value) for name, value in req_data.values.items())
+            elif isinstance(req_data, UpdateCommand):
+                kind = MutationAuditKind.UPDATED
+                entity_id = req_data.id
+                old_values = req_data.old_values or {}
+                changes = tuple(AuditFieldChange(name, old_values.get(name), value) for name, value in req_data.values.items())
+            elif isinstance(req_data, DeleteCommand):
+                kind = MutationAuditKind.DELETED
+                entity_id = req_data.id
+                changes = ()
+            else:
+                kind = MutationAuditKind.RECOVERED
+                entity_id = req_data.id
+                changes = ()
+            await ctx.send_audit_event(RawAuditEvent(kind, req_data.entity, entity_id, changes, tuple(request.trace_chain())))
         return MutationResult(
             affected_rows=affected_rows,
             generated_values=generated_values,

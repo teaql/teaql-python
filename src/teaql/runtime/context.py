@@ -7,6 +7,8 @@ class UserContext:
         self._user_identifier: str = ""
         self._entities: List[Any] = []
         self._initial_graphs: List[Any] = []
+        self._standard_audit_sink: Optional[Any] = None
+        self._app_audit_sink: Optional[Any] = None
 
     @classmethod
     def new(cls) -> 'UserContext':
@@ -142,11 +144,11 @@ class UserContext:
         self.insert_resource("checker_registry", registry)
 
     def with_custom_event_sink(self, sink: Any) -> 'UserContext':
-        self.insert_resource("custom_event_sink", sink)
+        self._app_audit_sink = sink
         return self
 
     def set_custom_event_sink(self, sink: Any):
-        self.insert_resource("custom_event_sink", sink)
+        self._app_audit_sink = sink
 
     def with_internal_id_generator(self, gen: Any) -> 'UserContext':
         self.insert_resource("internal_id_generator", gen)
@@ -273,13 +275,22 @@ class UserContext:
             if hasattr(r, 'message'):
                 r.message = getattr(r, 'message', str(r))
 
-    def send_event(self, event: Any):
-        sink = self.get_resource("event_sink")
-        if sink and hasattr(sink, "on_event"):
-            sink.on_event(self, event)
-        custom_sink = self.get_resource("custom_event_sink")
-        if custom_sink and hasattr(custom_sink, "on_safe_event"):
-            custom_sink.on_safe_event(self, event)
+    async def send_audit_event(self, event: Any):
+        from .audit import deliver
+        if self._standard_audit_sink is not None:
+            await deliver(self._standard_audit_sink, "on_event", self, event)
+        if self._app_audit_sink is not None:
+            descriptor = self.entity(event.entity)
+            mask_fields = getattr(descriptor, "audit_mask_fields_val", []) if descriptor else []
+            max_len = getattr(descriptor, "audit_value_max_len_val", None) if descriptor else None
+            await deliver(self._app_audit_sink, "on_safe_event", self, event.safe(mask_fields, max_len))
+
+    def _set_standard_audit_sink(self, sink: Any):
+        self._standard_audit_sink = sink
+
+    def with_app_audit_event_sink(self, sink: Any) -> 'UserContext':
+        self._app_audit_sink = sink
+        return self
 
     def with_sql_log_options(self, options: 'SqlLogOptions') -> 'UserContext':
         self.insert_resource("sql_log_options", options)
@@ -438,7 +449,7 @@ class UserContext:
         self.insert_resource("executor", executor)
 
     def set_event_sink(self, sink: Any):
-        self.insert_resource("event_sink", sink)
+        self._app_audit_sink = sink
 
     def with_event_sink(self, sink: Any) -> 'UserContext':
         self.set_event_sink(sink)
@@ -644,4 +655,3 @@ class InMemoryDataStore(DataStore):
 
     async def remove(self, key: str) -> None:
         self.cache.pop(key, None)
-

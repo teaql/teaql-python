@@ -41,6 +41,8 @@ class EntityDescriptor:
         self.table_name_val = name
         self.properties = []
         self.relations = []
+        self.audit_mask_fields_val = []
+        self.audit_value_max_len_val = None
     def table_name(self, name): 
         self.table_name_val = name
         return self
@@ -54,3 +56,13 @@ class EntityDescriptor:
 
     def relation_by_name(self, name):
         return next((relation for relation in self.relations if relation.name == name), None)
+
+    def audit_mask_fields(self, fields):
+        self.audit_mask_fields_val = list(fields)
+        return self
+
+    def audit_value_max_len(self, max_len):
+        if max_len is not None and max_len < 0:
+            raise ValueError("audit value max length cannot be negative")
+        self.audit_value_max_len_val = max_len
+        return self
