@@ -3,7 +3,7 @@ import tempfile
 import os
 import aiosqlite
 from teaql.provider.sqlite import create_sqlite_service, SimpleSchemaProvider
-from teaql.core.meta import EntityDescriptor, PropertyDescriptor
+from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
 from teaql.core.value import DataType, Value
 from teaql.core.query import SelectQuery
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
@@ -83,3 +83,42 @@ async def test_crud(temp_db, schema_provider, service):
 
     query_res = await service.query(None, query_req)
     assert len(query_res.rows) == 0
+
+@pytest.mark.asyncio
+async def test_nested_relation_limit_is_applied_per_parent(temp_db):
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, version INTEGER)")
+        await db.execute("CREATE TABLE orderline (id INTEGER PRIMARY KEY, order_id INTEGER, name TEXT)")
+        await db.executemany("INSERT INTO orders VALUES (?, ?)", [(11, 1), (12, 1)])
+        lines = [(order_id * 100 + index, order_id, f"line-{order_id}-{index}")
+                 for order_id in (11, 12) for index in range(1, 6)]
+        await db.executemany("INSERT INTO orderline VALUES (?, ?, ?)", lines)
+        await db.commit()
+
+    provider = SimpleSchemaProvider()
+    order = MockEntityDescriptor("Order")
+    order.table_name_val = "orders"
+    order.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("version", DataType.I64, is_version=True),
+    ]
+    order.relation(RelationDescriptor("lines", "OrderLine").local("id").foreign("order_id").many())
+    line = MockEntityDescriptor("OrderLine")
+    line.table_name_val = "orderline"
+    line.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("order_id", DataType.I64),
+        MockPropertyDescriptor("name", DataType.Text),
+    ]
+    provider.register_entity(order)
+    provider.register_entity(line)
+    service = create_sqlite_service(temp_db, provider)
+    query = (SelectQuery("Order").order_asc("id").relation_query(
+        "lines", SelectQuery("OrderLine").project("id", "name").order_desc("id").limit(3)))
+
+    result = await service.query(None, QueryRequest(query))
+
+    assert len(result.rows) == 2
+    assert [len(parent["lines"]) for parent in result.rows] == [3, 3]
+    assert all("__teaql_partition_rank" not in child
+               for parent in result.rows for child in parent["lines"])

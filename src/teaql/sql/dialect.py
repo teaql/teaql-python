@@ -106,8 +106,18 @@ class SqlDialect(ABC):
         if query.raw_sql is not None:
             return query.raw_sql
             
-        table_name = entity.table_name_val
+        table_name = getattr(entity, 'table_name_val', entity._name)
         projection = self.compile_projection(entity, query, params)
+
+        partitioned = query.partition_by is not None and query.slice is not None
+        if partitioned:
+            partition_column = self.column_sql(entity, query.partition_by)
+            window_order = ""
+            if query.order_by_items:
+                order_by = ", ".join(self.order_by_sql(entity, order, params) for order in query.order_by_items)
+                window_order = f" ORDER BY {order_by}"
+            rank = self.quote_ident("__teaql_partition_rank")
+            projection += f", ROW_NUMBER() OVER (PARTITION BY {partition_column}{window_order}) AS {rank}"
         
         sql = f"SELECT {projection} FROM {self.quote_ident(table_name)}"
         where_parts = []
@@ -128,6 +138,14 @@ class SqlDialect(ABC):
         where_parts.extend(query.raw_sql_search_criteria)
         if where_parts:
             sql += " WHERE " + " AND ".join(where_parts)
+
+        if partitioned:
+            rank = self.quote_ident("__teaql_partition_rank")
+            predicates = [f"{rank} > {query.slice.offset}"]
+            if query.slice.limit is not None:
+                predicates.append(f"{rank} <= {query.slice.offset + query.slice.limit}")
+            alias = self.quote_ident("__teaql_partitioned")
+            return f"SELECT * FROM ({sql}) AS {alias} WHERE {' AND '.join(predicates)} ORDER BY {rank}"
             
         if query.group_by_items:
             group_by = ", ".join(self.column_sql(entity, field) for field in query.group_by_items)
@@ -172,16 +190,17 @@ class SqlDialect(ABC):
         return CompiledQuery(sql=sql, params=params)
 
     def compile_update(self, entity: EntityDescriptor, command: UpdateCommand) -> CompiledQuery:
-        id_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, '_is_id', False)), None)
+        id_property = next((p for p in getattr(entity, 'properties', [])
+                            if getattr(p, '_is_id', False) or getattr(p, 'is_id_val', False)), None)
         if not id_property:
             raise MissingIdPropertyError(entity._name)
             
         assignments = []
         params = []
         for prop in getattr(entity, 'properties', []):
-            if getattr(prop, '_is_id', False):
+            if getattr(prop, '_is_id', False) or getattr(prop, 'is_id_val', False):
                 continue
-            is_version = getattr(prop, '_is_version', False)
+            is_version = getattr(prop, '_is_version', False) or getattr(prop, 'is_version_val', False)
             if is_version and command.expected_version_val is not None:
                 continue
             prop_name = getattr(prop, 'name', None)
@@ -192,7 +211,8 @@ class SqlDialect(ABC):
                     val = Value.TypedNull(ptype)
                 params.append(val)
                 assignments.append(f"{self.quote_ident(prop.column_name_val)} = {self.placeholder(len(params))}")
-        version_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, '_is_version', False)), None)
+        version_property = next((p for p in getattr(entity, 'properties', [])
+                                 if getattr(p, '_is_version', False) or getattr(p, 'is_version_val', False)), None)
         if command.expected_version_val is not None:
             if not version_property:
                 raise MissingVersionPropertyError(entity._name)

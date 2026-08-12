@@ -63,6 +63,10 @@ class Expr:
     def new_and(left: 'Expr', right: 'Expr') -> 'Expr':
         return AndExpr([left, right])
 
+    @staticmethod
+    def new_or(left: 'Expr', right: 'Expr') -> 'Expr':
+        return OrExpr([left, right])
+
 
 @dataclass
 class ColumnExpr(Expr):
@@ -339,4 +343,3 @@ def and_(*exprs: Expr) -> Expr:
 
 def or_(*exprs: Expr) -> Expr:
     return OrExpr(list(exprs))
-

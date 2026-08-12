@@ -1,7 +1,7 @@
 import pytest
 from teaql.core.query import SelectQuery, OrderBy, SortDirection, Slice
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand
-from teaql.core.expr import Expr, ExprBuilder
+from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, Expr, ExprBuilder, ValueExpr
 from teaql.core.value import Value, DataType
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
 from teaql.sql.dialect import SqlDialect, quote_identifier_if_needed
@@ -59,10 +59,8 @@ def test_quotes_identifiers_only_when_needed():
 def test_compiles_select_with_filters_order_and_limit():
     q = SelectQuery.new("Order")
     q.projection = ["id", "name"]
-    q.filter = ExprBuilder.column("name") # Will be replaced below
-    
     from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, ValueExpr
-    q.filter = BinaryExpr(ColumnExpr("name"), BinaryOp.Eq, ValueExpr(Value.from_any("A")))
+    q.filter(BinaryExpr(ColumnExpr("name"), BinaryOp.Eq, ValueExpr(Value.from_any("A"))))
     q.order_desc("id")
     q.slice = Slice(limit=10, offset=5)
     
@@ -71,6 +69,32 @@ def test_compiles_select_with_filters_order_and_limit():
     
     assert compiled.sql == 'SELECT "id", "name" FROM "orders" WHERE ("name" = $1) ORDER BY "id" DESC LIMIT 10 OFFSET 5'
     assert compiled.params == [Value.from_any("A")]
+
+def test_compiles_partitioned_relation_limit_per_parent():
+    line = MyEntityDescriptor("OrderLine", "orderline", [
+        MyPropertyDescriptor("id", "id", DataType.U64, is_id_val=True, nullable=False),
+        MyPropertyDescriptor("order_id", "order_id", DataType.U64, nullable=False),
+        MyPropertyDescriptor("name", "name", DataType.Text),
+    ])
+    query = (SelectQuery.new("OrderLine")
+             .project("id", "order_id", "name")
+             .order_desc("id")
+             .offset(1)
+             .limit(3)
+             .partition_by_field("order_id"))
+    query.filter(BinaryExpr(
+        ColumnExpr("order_id"), BinaryOp.In,
+        ValueExpr(Value.List([Value.from_any(11), Value.from_any(12)]))))
+
+    compiled = TestDialect().compile_select(line, query)
+
+    assert compiled.sql == ('SELECT * FROM (SELECT "id", "order_id", "name", '
+                            'ROW_NUMBER() OVER (PARTITION BY "order_id" ORDER BY "id" DESC) '
+                            'AS "__teaql_partition_rank" FROM "orderline" '
+                            'WHERE ("order_id" IN ($1, $2))) AS "__teaql_partitioned" '
+                            'WHERE "__teaql_partition_rank" > 1 '
+                            'AND "__teaql_partition_rank" <= 4 ORDER BY "__teaql_partition_rank"')
+    assert compiled.params == [Value.from_any(11), Value.from_any(12)]
 
 def test_compiles_aggregate_projection():
     q = SelectQuery.new("Order").count("count")
@@ -103,11 +127,11 @@ def test_compiles_in_expression_and_validates_empty_list():
     from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, ValueExpr
     
     q = SelectQuery.new("Order")
-    q.filter = BinaryExpr(ColumnExpr("id"), BinaryOp.In, ValueExpr(Value.List([Value.from_any(1), Value.from_any(2)])))
+    q.filter(BinaryExpr(ColumnExpr("id"), BinaryOp.In, ValueExpr(Value.List([Value.from_any(1), Value.from_any(2)]))))
     compiled = dialect.compile_select(entity(), q)
     assert compiled.sql == f'SELECT {ORDER_DEFAULT_PROJECTION} FROM "orders" WHERE ("id" IN ($1, $2))'
     
     q2 = SelectQuery.new("Order")
-    q2.filter = BinaryExpr(ColumnExpr("id"), BinaryOp.In, ValueExpr(Value.List([])))
+    q2.filter(BinaryExpr(ColumnExpr("id"), BinaryOp.In, ValueExpr(Value.List([]))))
     with pytest.raises(EmptyInListError):
         dialect.compile_select(entity(), q2)

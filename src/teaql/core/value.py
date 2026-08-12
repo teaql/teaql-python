@@ -137,6 +137,8 @@ class Value:
             return cls.Timestamp(Timestamp(int(value.timestamp() * 1000)))
         if isinstance(value, dict):
             return cls.Json(value)
+        if isinstance(value, list):
+            return cls.List(value)
         return cls.Text(str(value))
 
     def try_i64(self) -> Optional[int]:
@@ -238,7 +240,7 @@ class Value:
     def to_json_value(self) -> Any:
         if self._data is None:
             return None
-        if isinstance(self._data, (bool, int, float, str, dict, list)):
+        if isinstance(self._data, (bool, int, float, str)):
             return self._data
         if isinstance(self._data, Decimal):
             return str(self._data)
@@ -247,7 +249,6 @@ class Value:
         if isinstance(self._data, Timestamp):
             return self._data.millis
         if isinstance(self._data, dict):
-            # Object serialization
             return {k: v.to_json_value() if isinstance(v, Value) else v for k, v in self._data.items()}
         if isinstance(self._data, list):
             return [v.to_json_value() if isinstance(v, Value) else v for v in self._data]

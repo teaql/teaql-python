@@ -119,6 +119,7 @@ class SelectQuery:
     having_expr: Optional[Expr] = None
     order_by_items: List[OrderBy] = field(default_factory=list)
     slice: Optional[Slice] = None
+    partition_by: Optional[str] = None
     aggregates: List[Aggregate] = field(default_factory=list)
     group_by_items: List[str] = field(default_factory=list)
     relations: List[RelationLoad] = field(default_factory=list)
@@ -146,6 +147,28 @@ class SelectQuery:
     
     def count(self, alias: str) -> 'SelectQuery':
         self.aggregates.append(Aggregate(AggregateFunction.Count, "id", alias))
+        return self
+
+    def project(self, *fields: str) -> 'SelectQuery':
+        self.projection.extend(fields)
+        return self
+
+    def limit(self, limit: int) -> 'SelectQuery':
+        offset = self.slice.offset if self.slice is not None else 0
+        self.slice = Slice(offset=offset, limit=limit)
+        return self
+
+    def offset(self, offset: int) -> 'SelectQuery':
+        limit = self.slice.limit if self.slice is not None else None
+        self.slice = Slice(offset=offset, limit=limit)
+        return self
+
+    def partition_by_field(self, field_name: str) -> 'SelectQuery':
+        self.partition_by = field_name
+        return self
+
+    def relation_query(self, name: str, query: Optional['SelectQuery'] = None) -> 'SelectQuery':
+        self.relations.append(RelationLoad(name, query))
         return self
     
     def and_filter(self, expr: Expr) -> 'SelectQuery':

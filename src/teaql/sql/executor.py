@@ -1,5 +1,6 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional
+from copy import deepcopy
 from datetime import datetime
 from teaql.data_service import (
     DataServiceExecutor, QueryExecutor, MutationExecutor,
@@ -12,6 +13,9 @@ from teaql.core.mutation import (
 )
 from .types import CompiledQuery, SqlCompileError
 from .dialect import SqlDialect
+from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, ValueExpr
+from teaql.core.query import SelectQuery
+from teaql.core.value import Value
 
 class SqlTransport(ABC):
     @abstractmethod
@@ -97,6 +101,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         except Exception as e:
             raise TransportError(e)
 
+        await self._enhance_relations(ctx, rows, request.query)
+
         facets = {}
         if getattr(request.query, 'object_group_bys', None):
             for ogb in request.query.object_group_bys:
@@ -133,6 +139,35 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             metadata=metadata,
             facets=facets
         )
+
+    async def _enhance_relations(self, ctx, parents: List[Dict[str, Any]], query: SelectQuery) -> None:
+        if not parents or not query.relations:
+            return
+        parent_desc = self.schema_provider.get_entity(query.entity)
+        if parent_desc is None:
+            raise CompileError(SqlCompileError(f"unknown entity: {query.entity}"))
+        for load in query.relations:
+            relation = parent_desc.relation_by_name(load.name)
+            if relation is None:
+                raise CompileError(SqlCompileError(f"missing relation: {query.entity}.{load.name}"))
+            parent_ids = [row[relation.local_key] for row in parents if relation.local_key in row]
+            child_query = deepcopy(load.query) if load.query is not None else SelectQuery(relation.target_entity)
+            child_query.entity = relation.target_entity
+            if relation.foreign_key not in child_query.projection:
+                child_query.projection.append(relation.foreign_key)
+            values = Value.List([Value.from_any(value) for value in parent_ids])
+            child_query.and_filter(BinaryExpr(ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
+            if child_query.slice is not None:
+                child_query.partition_by_field(relation.foreign_key)
+            children = (await self.query(ctx, QueryRequest(child_query))).rows
+            for child in children:
+                child.pop("__teaql_partition_rank", None)
+            buckets: Dict[Any, List[Dict[str, Any]]] = {}
+            for child in children:
+                buckets.setdefault(child.get(relation.foreign_key), []).append(child)
+            for parent in parents:
+                related = buckets.get(parent.get(relation.local_key), [])
+                parent[load.name] = related if relation.is_many else (related[0] if related else None)
 
     async def mutate(self, ctx: 'UserContext', request: MutationRequest) -> MutationResult:
         req_data = request._data
