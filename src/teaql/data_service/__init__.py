@@ -1,7 +1,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
-from typing import List, Dict, Any, Optional, Protocol, Union
+from typing import List, Dict, Any, Optional, Protocol, Union, AsyncIterator
 
 from teaql.core.query import SelectQuery
 from teaql.core.mutation import (
@@ -114,7 +114,7 @@ class QueryExecutor(DataServiceExecutor, Protocol):
 
 
 class StreamQueryExecutor(DataServiceExecutor, Protocol):
-    async def query_stream(self, request: QueryRequest, chunk_size: int) -> List[StreamChunk]:
+    def query_stream(self, ctx: 'UserContext', request: QueryRequest, chunk_size: int) -> AsyncIterator[StreamChunk]:
         ...
 
 

@@ -30,3 +30,14 @@ Change `with_order_number_containing`, ordering, or relation selection in `app.p
 ### Materialized-list hard limit
 
 `execute_for_list` protects the service by applying a default hard limit of 10,000 rows. A requested page size above that ceiling fails explicitly. Trusted application code can call `hard_limit(...)` to override the outer-query ceiling. **Caution:** most applications should not override it; do so only for a reviewed, exceptional requirement. This setting does not describe streaming execution.
+
+### Streaming large root queries
+
+`execute_for_stream(ctx, chunk_size)` is an async iterator of generated entities:
+
+```python
+async for order in request.comment("export orders").purpose("reviewed export").execute_for_stream(ctx, 500):
+    await write_order(order)
+```
+
+Breaking or closing the iterator releases the cursor. **Caution:** normally keep the default 1,000. Streaming relation or aggregate enhancement is rejected; use a root query or `execute_for_list`. The ordinary federation request/response protocol cannot carry local streaming configuration.

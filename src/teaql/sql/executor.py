@@ -1,12 +1,12 @@
 from abc import ABC, abstractmethod
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncIterator
 from copy import deepcopy
 from datetime import datetime
 from teaql.data_service import (
     DataServiceExecutor, QueryExecutor, MutationExecutor,
     DataServiceCapabilities, QueryRequest, QueryResult,
     MutationRequest, MutationResult, ExecutionMetadata,
-    DataServiceOperation
+    DataServiceOperation, StreamChunk
 )
 from teaql.core.mutation import (
     InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand
@@ -25,6 +25,9 @@ class SqlTransport(ABC):
     @abstractmethod
     async def execute_sql(self, query: CompiledQuery) -> int:
         pass
+
+    async def stream_sql(self, query: CompiledQuery, chunk_size: int) -> AsyncIterator[List[Dict[str, Any]]]:
+        raise NotImplementedError("streaming query is not supported by this transport")
 
 class SqlTransaction(ABC):
     @abstractmethod
@@ -77,6 +80,28 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             batch_mutation=True,
             returning=False
         )
+
+    async def query_stream(self, ctx, request: QueryRequest, chunk_size: int):
+        if chunk_size <= 0:
+            raise ValueError("chunk_size must be positive")
+        if request.query.relations or request.query.child_enhancements or request.query.object_group_bys:
+            raise ValueError(
+                "streaming relation or aggregate enhancement is not supported; "
+                "stream a root query or use execute_for_list"
+            )
+        entity_desc = self.schema_provider.get_entity(request.query.entity)
+        if not entity_desc:
+            raise CompileError(SqlCompileError(f"unknown entity: {request.query.entity}"))
+        compiled = self.dialect.compile_select(entity_desc, request.query)
+        pending = None
+        index = 0
+        async for rows in self.transport.stream_sql(compiled, chunk_size):
+            if pending is not None:
+                yield StreamChunk(pending, index, False)
+                index += 1
+            pending = rows
+        if pending is not None:
+            yield StreamChunk(pending, index, True)
 
     async def query(self, ctx: 'UserContext', request: QueryRequest) -> QueryResult:
         request.query.prepare_for_list()

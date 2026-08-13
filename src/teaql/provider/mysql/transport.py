@@ -2,7 +2,7 @@ import json
 import aiomysql
 from decimal import Decimal
 from datetime import date, datetime
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncIterator
 from teaql.sql.executor import SqlTransport
 from teaql.sql.types import CompiledQuery
 from teaql.core.value import Value, DataType, Timestamp
@@ -70,6 +70,19 @@ class MysqlTransport(SqlTransport):
                         record[key] = self._decode_value(val)
                     results.append(record)
                 return results
+        finally:
+            conn.close()
+
+    async def stream_sql(self, query: CompiledQuery, chunk_size: int) -> AsyncIterator[List[Dict[str, Any]]]:
+        user, password, host, port, db = self._parse_url()
+        conn = await aiomysql.connect(host=host, port=port, user=user, password=password, db=db, cursorclass=aiomysql.SSDictCursor)
+        try:
+            async with conn.cursor() as cur:
+                await cur.execute(query.sql_with_comment(), self._bind_values(query.params))
+                while True:
+                    rows = await cur.fetchmany(chunk_size)
+                    if not rows: break
+                    yield [{key: self._decode_value(val) for key, val in row.items()} for row in rows]
         finally:
             conn.close()
 
