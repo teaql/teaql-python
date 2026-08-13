@@ -1,0 +1,16 @@
+[project]
+name = "order-management-service-lib"
+version = "1.0.0"
+description = "Generated python library"
+dependencies = ["aiosqlite>=0.22.1"]
+
+[tool.setuptools]
+py-modules = ["Q", "E"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["models*", "requests*", "teaql*"]
+
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"

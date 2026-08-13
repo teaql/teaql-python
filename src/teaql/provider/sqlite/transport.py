@@ -2,7 +2,7 @@ import json
 import aiosqlite
 from decimal import Decimal
 from datetime import date
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncIterator
 from teaql.sql.executor import SqlTransport
 from teaql.sql.types import CompiledQuery
 from teaql.core.value import Value, DataType, Timestamp
@@ -65,6 +65,18 @@ class SqliteTransport(SqlTransport):
                         record[col_name] = self._decode_value(val)
                     results.append(record)
                 return results
+
+    async def stream_sql(self, query: CompiledQuery, chunk_size: int) -> AsyncIterator[List[Dict[str, Any]]]:
+        sql = query.sql_with_comment(); params = self._bind_values(query.params)
+        is_uri = self.db_path.startswith("file:")
+        async with aiosqlite.connect(self.db_path, uri=is_uri) as db:
+            db.row_factory = aiosqlite.Row
+            async with db.execute(sql, params) as cursor:
+                columns = [col[0] for col in cursor.description]
+                while True:
+                    rows = await cursor.fetchmany(chunk_size)
+                    if not rows: break
+                    yield [{name: self._decode_value(row[i]) for i, name in enumerate(columns)} for row in rows]
 
     async def execute_sql(self, query: CompiledQuery) -> tuple[int, int]:
         sql = query.sql_with_comment()

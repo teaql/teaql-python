@@ -134,6 +134,10 @@ class SelectQuery:
     child_enhancements: List['SelectQuery'] = field(default_factory=list)
     stream_config: Optional[StreamConfig] = None
 
+    def __post_init__(self) -> None:
+        # Local runtime policy: intentionally excluded from federation serialization.
+        self.hard_limit_value = 10_000
+
     @classmethod
     def new(cls, entity: str) -> 'SelectQuery':
         return cls(entity=entity)
@@ -157,6 +161,32 @@ class SelectQuery:
         offset = self.slice.offset if self.slice is not None else 0
         self.slice = Slice(offset=offset, limit=limit)
         return self
+
+    def hard_limit(self, hard_limit: int) -> 'SelectQuery':
+        if hard_limit <= 0:
+            raise ValueError("hard_limit must be positive")
+        self.hard_limit_value = hard_limit
+        return self
+
+    def prepare_for_list(self) -> 'SelectQuery':
+        self._apply_list_limit(self.hard_limit_value)
+        return self
+
+    def _apply_list_limit(self, ceiling: int) -> None:
+        if self.slice is None:
+            self.slice = Slice(offset=0, limit=ceiling)
+        elif self.slice.limit is None:
+            self.slice.limit = ceiling
+        elif self.slice.limit > ceiling:
+            raise ValueError(
+                f"QUERY_HARD_LIMIT_EXCEEDED: requested limit {self.slice.limit} "
+                f"exceeds hard limit {ceiling}"
+            )
+        for relation in self.relations:
+            if relation.query is not None:
+                relation.query._apply_list_limit(10_000)
+        for child in self.child_enhancements:
+            child._apply_list_limit(10_000)
 
     def offset(self, offset: int) -> 'SelectQuery':
         limit = self.slice.limit if self.slice is not None else None

@@ -9,6 +9,8 @@ from teaql.core.query import SelectQuery
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
 from teaql.data_service import QueryRequest
 from teaql.runtime import RuntimeModule
+from teaql.provider.sqlite.transport import SqliteTransport
+from teaql.sql.types import CompiledQuery
 
 @pytest.fixture
 def temp_db():
@@ -84,6 +86,26 @@ async def test_crud(temp_db, schema_provider, service):
 
     query_res = await service.query(None, query_req)
     assert len(query_res.rows) == 0
+
+@pytest.mark.asyncio
+async def test_sqlite_stream_is_chunked_and_closes_after_early_stop(temp_db):
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE stream_fixture(id INTEGER)")
+        await db.executemany("INSERT INTO stream_fixture VALUES (?)", [(i,) for i in range(1, 6)])
+        await db.commit()
+
+    transport = SqliteTransport(temp_db)
+    query = CompiledQuery("SELECT id FROM stream_fixture ORDER BY id", [])
+    chunks = [chunk async for chunk in transport.stream_sql(query, 2)]
+    assert [len(chunk) for chunk in chunks] == [2, 2, 1]
+    assert [row["id"] for chunk in chunks for row in chunk] == [1, 2, 3, 4, 5]
+
+    stream = transport.stream_sql(query, 2)
+    assert len(await anext(stream)) == 2
+    await stream.aclose()
+    async with aiosqlite.connect(temp_db) as db:
+        async with db.execute("SELECT count(*) FROM stream_fixture") as cursor:
+            assert (await cursor.fetchone())[0] == 5
 
 @pytest.mark.asyncio
 async def test_successful_mutation_emits_raw_and_independently_masked_app_audit(temp_db):

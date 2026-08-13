@@ -2,7 +2,7 @@ import json
 import asyncpg
 from decimal import Decimal
 from datetime import date, datetime, timezone
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Optional, AsyncIterator
 from teaql.sql.executor import SqlTransport
 from teaql.sql.types import CompiledQuery
 from teaql.core.value import Value, DataType, Timestamp
@@ -54,6 +54,22 @@ class PostgresTransport(SqlTransport):
                 results.append(record)
             return results
         finally:
+            await conn.close()
+
+    async def stream_sql(self, query: CompiledQuery, chunk_size: int) -> AsyncIterator[List[Dict[str, Any]]]:
+        conn = await asyncpg.connect(self.db_url)
+        transaction = conn.transaction()
+        await transaction.start()
+        try:
+            cursor = conn.cursor(query.sql_with_comment(), *self._bind_values(query.params), prefetch=chunk_size)
+            chunk = []
+            async for row in cursor:
+                chunk.append({key: self._decode_value(val) for key, val in row.items()})
+                if len(chunk) == chunk_size:
+                    yield chunk; chunk = []
+            if chunk: yield chunk
+        finally:
+            await transaction.rollback()
             await conn.close()
 
     async def execute_sql(self, query: CompiledQuery) -> tuple[int, int]:
