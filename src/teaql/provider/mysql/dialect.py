@@ -1,31 +1,41 @@
-from teaql.sql.dialect import SqlDialect
-from teaql.core.meta import EntityDescriptor
+from teaql.core.meta import PropertyDescriptor
+from teaql.core.value import DataType
+from teaql.sql.dialect import SqlDialect, quote_identifier_if_needed
+from teaql.sql.types import DatabaseKind, UnsupportedSchemaTypeError
+
 
 class MysqlDialect(SqlDialect):
-    def quote_identifier(self, identifier: str) -> str:
-        return f"`{identifier}`"
-        
+    def kind(self) -> DatabaseKind:
+        return DatabaseKind.MySql
+
+    def quote_ident(self, ident: str) -> str:
+        return quote_identifier_if_needed(ident, "`")
+
     def placeholder(self, index: int) -> str:
         return "%s"
-        
-    def compile_create_table(self, entity: EntityDescriptor) -> str:
-        lines = []
-        lines.append(f"CREATE TABLE IF NOT EXISTS {self.quote_identifier(entity.table_name)} (")
-        cols = []
-        for prop in entity.properties:
-            col_type = "TEXT"
-            if prop.type == "U64" or prop.type == "I64":
-                col_type = "BIGINT"
-            elif prop.type == "Timestamp":
-                col_type = "BIGINT"
-            elif prop.type == "Bool":
-                col_type = "TINYINT(1)"
-            
-            if prop.name == "id":
-                cols.append(f"  {self.quote_identifier(prop.column_name)} {col_type} PRIMARY KEY")
-            else:
-                cols.append(f"  {self.quote_identifier(prop.column_name)} {col_type}")
-        
-        lines.append(",\n".join(cols))
-        lines.append(")")
-        return "\n".join(lines)
+
+    def schema_type_sql(self, data_type: DataType, property_desc: PropertyDescriptor) -> str:
+        if data_type == DataType.Bool:
+            return "TINYINT(1)"
+        if data_type in (DataType.I64, DataType.U64):
+            return "BIGINT"
+        if data_type == DataType.F64:
+            return "DOUBLE"
+        if data_type == DataType.Decimal:
+            return "DECIMAL(38, 12)"
+        if data_type == DataType.Text:
+            return "VARCHAR(255)"
+        if data_type == DataType.LargeText:
+            return "LONGTEXT"
+        if data_type == DataType.Json:
+            return "JSON"
+        if data_type == DataType.Date:
+            return "DATE"
+        if data_type == DataType.Timestamp:
+            return "DATETIME(6)"
+        raise UnsupportedSchemaTypeError(data_type)
+
+    def compile_add_column(self, entity, property_desc) -> str:
+        definition = self.column_definition_sql(property_desc).replace(" NOT NULL", "")
+        table_name = getattr(entity, "table_name_val", getattr(entity, "_name", ""))
+        return f"ALTER TABLE {self.quote_ident(table_name)} ADD COLUMN {definition}"

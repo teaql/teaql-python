@@ -41,3 +41,20 @@ async for order in request.comment("export orders").purpose("reviewed export").e
 ```
 
 Breaking or closing the iterator releases the cursor. **Caution:** normally keep the default 1,000. Streaming relation or aggregate enhancement is rejected; use a root query or `execute_for_list`. The ordinary federation request/response protocol cannot carry local streaming configuration.
+
+### Optional continuous browsing optimization
+
+For a browse-only screen ordered by the unique `id`, trusted application code may opt in before `purpose(...)`:
+
+```python
+request = (Q.customer_orders()
+    .order_by_id_descending()
+    .offset(page * page_size)
+    .limit(page_size)
+    .optimize_for_continuous_page_fetch_with("recent-orders", 60))
+orders = await request.purpose("browse recent orders").comment("order browser").execute_for_list(ctx)
+```
+
+The runtime remembers the previous boundary in a bounded, expiring cursor store owned by `UserContext`. A matching next page transparently uses an `id` seek instead of a deep offset; cache misses or unsupported query shapes retain correct offset semantics. The cursor ID and selected plan are observable for diagnosis.
+
+**Caution:** this is an explicitly approximate optimization for continuous browsing, not business logic, reconciliation, export, or a stable snapshot. Prefer omitting an exact count on browse screens. The hint is local runtime state and is deliberately absent from federation JSON, so a remote caller cannot enable or alter it.

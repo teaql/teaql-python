@@ -181,3 +181,29 @@ async def test_nested_relation_limit_is_applied_per_parent(temp_db):
     assert [len(parent["lines"]) for parent in result.rows] == [3, 3]
     assert all("__teaql_partition_rank" not in child
                for parent in result.rows for child in parent["lines"])
+
+@pytest.mark.asyncio
+async def test_continuous_page_fetch_uses_seek_against_sqlite(temp_db, schema_provider):
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, version INTEGER)")
+        await db.executemany(
+            "INSERT INTO users VALUES (?, ?, 1)",
+            [(value, f"user-{value}") for value in range(1, 101)],
+        )
+        await db.commit()
+
+    service = create_sqlite_service(temp_db, schema_provider)
+    ctx = RuntimeModule.new().into_context().with_user_identifier("tenant-1:user-1")
+    first = (SelectQuery("User").order_desc("id").offset(0).limit(10)
+             .optimize_for_continuous_page_fetch_with("users", 60))
+    second = (SelectQuery("User").order_desc("id").offset(10).limit(10)
+              .optimize_for_continuous_page_fetch_with("users", 60))
+
+    first_rows = (await service.query(ctx, QueryRequest(first).comment("browse").purpose("browse users"))).rows
+    second_result = await service.query(ctx, QueryRequest(second).comment("browse").purpose("browse users"))
+
+    assert first_rows[-1]["id"] == 91
+    assert second_result.rows[0]["id"] == 90
+    assert "WHERE" in second_result.metadata.debug_query and "id <" in second_result.metadata.debug_query
+    assert "OFFSET 10" not in second_result.metadata.debug_query
+    assert ctx.continuous_page_plan() == "CURSOR_SEEK"

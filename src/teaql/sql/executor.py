@@ -1,7 +1,10 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, AsyncIterator
 from copy import deepcopy
-from datetime import datetime
+from datetime import datetime, timedelta, timezone
+from dataclasses import asdict
+import hashlib
+import time
 from teaql.data_service import (
     DataServiceExecutor, QueryExecutor, MutationExecutor,
     DataServiceCapabilities, QueryRequest, QueryResult,
@@ -13,8 +16,8 @@ from teaql.core.mutation import (
 )
 from .types import CompiledQuery, SqlCompileError
 from .dialect import SqlDialect
-from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, ValueExpr
-from teaql.core.query import SelectQuery
+from teaql.core.expr import Expr, BinaryExpr, BinaryOp, ColumnExpr, ValueExpr
+from teaql.core.query import SelectQuery, SortDirection
 from teaql.core.value import Value
 
 class SqlTransport(ABC):
@@ -104,20 +107,22 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             yield StreamChunk(pending, index, True)
 
     async def query(self, ctx: 'UserContext', request: QueryRequest) -> QueryResult:
-        request.query.prepare_for_list()
-        entity_desc = self.schema_provider.get_entity(request.query.entity)
+        query = deepcopy(request.query)
+        query.prepare_for_list()
+        query, continuous = await self._prepare_continuous_page(ctx, query)
+        entity_desc = self.schema_provider.get_entity(query.entity)
         if not entity_desc and ctx:
             entities = ctx.get_resource("entities")
             if entities:
                 for e in entities:
-                    if getattr(e, "_name", None) == request.query.entity:
+                    if getattr(e, "_name", None) == query.entity:
                         entity_desc = e
                         break
         if not entity_desc:
-            raise CompileError(SqlCompileError(f"unknown entity: {request.query.entity}"))
+            raise CompileError(SqlCompileError(f"unknown entity: {query.entity}"))
             
         try:
-            compiled = self.dialect.compile_select(entity_desc, request.query)
+            compiled = self.dialect.compile_select(entity_desc, query)
         except SqlCompileError as e:
             raise CompileError(e)
             
@@ -127,11 +132,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         except Exception as e:
             raise TransportError(e)
 
-        await self._enhance_relations(ctx, rows, request.query)
+        await self._enhance_relations(ctx, rows, query)
 
         facets = {}
-        if getattr(request.query, 'object_group_bys', None):
-            for ogb in request.query.object_group_bys:
+        if getattr(query, 'object_group_bys', None):
+            for ogb in query.object_group_bys:
                 if ogb.property_name == "status_stats":
                     # Map object field to database column name
                     column_name = ogb.storage_field
@@ -160,11 +165,100 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             comment=request._comment,
             debug_query=compiled.sql_with_comment() # Simplification for python
         )
+        await self._register_continuous_page(ctx, continuous, rows)
         return QueryResult(
             rows=rows,
             metadata=metadata,
             facets=facets
         )
+
+    async def _prepare_continuous_page(self, ctx, query: SelectQuery):
+        options = getattr(query, "continuous_page_fetch_options", None)
+        if options is None or ctx is None or not hasattr(ctx, "observe_continuous_page"):
+            if ctx is not None and hasattr(ctx, "observe_continuous_page"):
+                ctx.observe_continuous_page("DISABLED")
+            return query, None
+        if query.slice is None or query.slice.limit is None or query.slice.limit <= 0:
+            ctx.observe_continuous_page("OFFSET_FALLBACK:INVALID_SLICE")
+            return query, None
+        if query.partition_by is not None or query.aggregates or query.group_by_items:
+            ctx.observe_continuous_page("OFFSET_FALLBACK:UNSUPPORTED_QUERY_SHAPE")
+            return query, None
+        if (len(query.order_by_items) != 1
+                or query.order_by_items[0].field_name != "id"
+                or query.order_by_items[0].expr is not None):
+            ctx.observe_continuous_page("OFFSET_FALLBACK:ORDER_NOT_SEEKABLE_ID")
+            return query, None
+        order = query.order_by_items[0]
+        query_key = self._continuous_page_query_key(ctx, query, options["namespace"])
+        execution = {
+            "query_key": query_key,
+            "entity": query.entity,
+            "direction": order.direction,
+            "page_size": query.slice.limit,
+            "original_offset": query.slice.offset,
+            "ttl_seconds": options["ttl_seconds"],
+            "optimized": False,
+            "seek_cursor_id": None,
+        }
+        if query.slice.offset == 0:
+            ctx.observe_continuous_page("OFFSET_FALLBACK:FIRST_PAGE")
+            return query, execution
+        try:
+            cursor = await ctx.continuous_page_cursor_store().get(query_key, query.slice.offset)
+        except Exception:
+            ctx.observe_continuous_page("OFFSET_FALLBACK:STORE_UNAVAILABLE")
+            return query, execution
+        if cursor is None:
+            ctx.observe_continuous_page("OFFSET_FALLBACK:CACHE_MISS")
+            return query, execution
+        if (cursor.entity != query.entity or cursor.direction != order.direction
+                or cursor.page_size != query.slice.limit
+                or cursor.next_offset != query.slice.offset
+                or cursor.expires_at <= datetime.now(timezone.utc)):
+            ctx.observe_continuous_page("OFFSET_FALLBACK:CURSOR_INVALID")
+            return query, execution
+        query.slice.offset = 0
+        seek = Expr.lt("id", cursor.boundary) if order.direction == SortDirection.Desc else Expr.gt("id", cursor.boundary)
+        query.and_filter(seek)
+        execution["optimized"] = True
+        execution["seek_cursor_id"] = cursor.cursor_id
+        ctx.observe_continuous_page("CURSOR_SEEK", cursor.cursor_id)
+        return query, execution
+
+    async def _register_continuous_page(self, ctx, execution, rows) -> None:
+        if execution is None or len(rows) != execution["page_size"] or not rows or "id" not in rows[-1]:
+            return
+        from teaql.runtime.context import ContinuousPageCursor
+        cursor = ContinuousPageCursor(
+            cursor_id=f"cpg_{time.time_ns():x}",
+            query_key=execution["query_key"],
+            entity=execution["entity"],
+            direction=execution["direction"],
+            boundary=rows[-1]["id"],
+            page_size=execution["page_size"],
+            next_offset=execution["original_offset"] + len(rows),
+            expires_at=datetime.now(timezone.utc) + timedelta(seconds=execution["ttl_seconds"]),
+        )
+        try:
+            await ctx.continuous_page_cursor_store().put(cursor)
+        except Exception:
+            ctx.observe_continuous_page("OFFSET_FALLBACK:STORE_UNAVAILABLE")
+            return
+        if execution["optimized"]:
+            ctx.observe_continuous_page("CURSOR_SEEK", execution["seek_cursor_id"])
+        elif execution["original_offset"] == 0:
+            ctx.observe_continuous_page("OFFSET_FALLBACK:FIRST_PAGE")
+
+    def _continuous_page_query_key(self, ctx, query: SelectQuery, namespace: str) -> str:
+        normalized = deepcopy(query)
+        normalized.slice.offset = 0
+        normalized.comment_text = None
+        normalized.trace_chain = []
+        payload = repr(asdict(normalized))
+        owner = ctx.user_identifier() if hasattr(ctx, "user_identifier") else ""
+        digest = hashlib.sha256(f"{namespace}|{owner}|{payload}".encode("utf-8")).hexdigest()
+        return f"teaql:continuous-page:v1:{digest}"
 
     async def _enhance_relations(self, ctx, parents: List[Dict[str, Any]], query: SelectQuery) -> None:
         if not parents or not query.relations:
@@ -178,6 +272,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 raise CompileError(SqlCompileError(f"missing relation: {query.entity}.{load.name}"))
             parent_ids = [row[relation.local_key] for row in parents if relation.local_key in row]
             child_query = deepcopy(load.query) if load.query is not None else SelectQuery(relation.target_entity)
+            # Continuous-page state is meaningful only for the outer list query.
+            child_query.continuous_page_fetch_options = None
             child_query.entity = relation.target_entity
             if relation.foreign_key not in child_query.projection:
                 child_query.projection.append(relation.foreign_key)

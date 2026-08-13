@@ -118,3 +118,19 @@ def test_materialized_list_hard_limit():
         SelectQuery("Order").limit(10_001).prepare_for_list()
     SelectQuery("Order").limit(10_001).hard_limit(20_000).prepare_for_list()
     assert "hard_limit_value" not in dataclasses.asdict(SelectQuery("Order").hard_limit(20_000))
+
+
+def test_continuous_page_fetch_is_explicit_local_and_validated():
+    query = SelectQuery("Order")
+    assert query.continuous_page_fetch_options is None
+    query.optimize_for_continuous_page_fetch_with("recent-orders", 30)
+    assert query.continuous_page_fetch_options == {
+        "namespace": "recent-orders",
+        "ttl_seconds": 30,
+    }
+    serialized = dataclasses.asdict(query)
+    assert "continuous_page_fetch_options" not in serialized
+    with pytest.raises(ValueError, match="namespace"):
+        SelectQuery("Order").optimize_for_continuous_page_fetch_with(" ", 30)
+    with pytest.raises(ValueError, match="ttl_seconds"):
+        SelectQuery("Order").optimize_for_continuous_page_fetch_with("orders", 0)

@@ -137,6 +137,7 @@ class SelectQuery:
     def __post_init__(self) -> None:
         # Local runtime policy: intentionally excluded from federation serialization.
         self.hard_limit_value = 10_000
+        self.continuous_page_fetch_options = None
 
     @classmethod
     def new(cls, entity: str) -> 'SelectQuery':
@@ -191,6 +192,22 @@ class SelectQuery:
     def offset(self, offset: int) -> 'SelectQuery':
         limit = self.slice.limit if self.slice is not None else None
         self.slice = Slice(offset=offset, limit=limit)
+        return self
+
+    def optimize_for_continuous_page_fetch(self) -> 'SelectQuery':
+        return self.optimize_for_continuous_page_fetch_with("default", 600)
+
+    def optimize_for_continuous_page_fetch_with(
+        self, namespace: str, ttl_seconds: int
+    ) -> 'SelectQuery':
+        if not namespace or not namespace.strip():
+            raise ValueError("continuous page namespace must not be empty")
+        if ttl_seconds <= 0:
+            raise ValueError("continuous page ttl_seconds must be positive")
+        self.continuous_page_fetch_options = {
+            "namespace": namespace,
+            "ttl_seconds": ttl_seconds,
+        }
         return self
 
     def partition_by_field(self, field_name: str) -> 'SelectQuery':

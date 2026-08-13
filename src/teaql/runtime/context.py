@@ -1,4 +1,48 @@
 from typing import Dict, Any, Optional, List
+from dataclasses import dataclass
+from datetime import datetime, timezone
+from threading import Lock
+
+@dataclass
+class ContinuousPageCursor:
+    cursor_id: str
+    query_key: str
+    entity: str
+    direction: Any
+    boundary: Any
+    page_size: int
+    next_offset: int
+    expires_at: datetime
+
+class InMemoryContinuousPageCursorStore:
+    def __init__(self, max_entries: int = 4096):
+        if max_entries <= 0:
+            raise ValueError("max_entries must be positive")
+        self._max_entries = max_entries
+        self._cursors: Dict[str, ContinuousPageCursor] = {}
+        self._lock = Lock()
+
+    async def get(self, query_key: str, target_offset: int) -> Optional[ContinuousPageCursor]:
+        key = f"{query_key}:{target_offset}"
+        with self._lock:
+            cursor = self._cursors.get(key)
+            if cursor and cursor.expires_at <= datetime.now(timezone.utc):
+                self._cursors.pop(key, None)
+                return None
+            return cursor
+
+    async def put(self, cursor: ContinuousPageCursor) -> None:
+        with self._lock:
+            if len(self._cursors) >= self._max_entries:
+                oldest = min(self._cursors, key=lambda key: self._cursors[key].expires_at)
+                self._cursors.pop(oldest, None)
+            self._cursors[f"{cursor.query_key}:{cursor.next_offset}"] = cursor
+
+    async def invalidate(self, query_key: str) -> None:
+        prefix = f"{query_key}:"
+        with self._lock:
+            for key in [key for key in self._cursors if key.startswith(prefix)]:
+                self._cursors.pop(key, None)
 
 class UserContext:
     def __init__(self):
@@ -9,6 +53,9 @@ class UserContext:
         self._initial_graphs: List[Any] = []
         self._standard_audit_sink: Optional[Any] = None
         self._app_audit_sink: Optional[Any] = None
+        self._continuous_page_cursor_store = InMemoryContinuousPageCursorStore()
+        self._continuous_page_plan = "DISABLED"
+        self._continuous_page_cursor_id: Optional[str] = None
 
     @classmethod
     def new(cls) -> 'UserContext':
@@ -66,6 +113,24 @@ class UserContext:
 
     def user_identifier(self) -> str:
         return self._user_identifier
+
+    def set_continuous_page_cursor_store(self, store: Any) -> None:
+        if store is None:
+            raise ValueError("continuous page cursor store must not be None")
+        self._continuous_page_cursor_store = store
+
+    def continuous_page_cursor_store(self) -> Any:
+        return self._continuous_page_cursor_store
+
+    def observe_continuous_page(self, plan: str, cursor_id: Optional[str] = None) -> None:
+        self._continuous_page_plan = plan
+        self._continuous_page_cursor_id = cursor_id
+
+    def continuous_page_plan(self) -> str:
+        return self._continuous_page_plan
+
+    def continuous_page_cursor_id(self) -> Optional[str]:
+        return self._continuous_page_cursor_id
 
     def with_user_identifier(self, identifier: str) -> 'UserContext':
         self._user_identifier = identifier
