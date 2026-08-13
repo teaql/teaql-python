@@ -79,6 +79,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         )
 
     async def query(self, ctx: 'UserContext', request: QueryRequest) -> QueryResult:
+        request.query.prepare_for_list()
         entity_desc = self.schema_provider.get_entity(request.query.entity)
         if not entity_desc and ctx:
             entities = ctx.get_resource("entities")

@@ -1,4 +1,5 @@
 import pytest
+import dataclasses
 from teaql.core.query import (
     SortDirection, NamedExpr, OrderBy, AggregateFunction, Aggregate, Slice,
     RelationLoad, RelationAggregate, RawSqlProjection, ObjectGroupBy,
@@ -109,3 +110,11 @@ def test_order_by_class():
     ob8 = OrderBy.desc_gbk("name")
     assert ob1.field_name == "id"
     assert ob3.field_name == "age"
+
+
+def test_materialized_list_hard_limit():
+    assert SelectQuery("Order").prepare_for_list().slice.limit == 10_000
+    with pytest.raises(ValueError, match="QUERY_HARD_LIMIT_EXCEEDED"):
+        SelectQuery("Order").limit(10_001).prepare_for_list()
+    SelectQuery("Order").limit(10_001).hard_limit(20_000).prepare_for_list()
+    assert "hard_limit_value" not in dataclasses.asdict(SelectQuery("Order").hard_limit(20_000))

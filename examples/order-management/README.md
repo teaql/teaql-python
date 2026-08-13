@@ -27,3 +27,6 @@ Expect `WEB-2026-001`, `2026-08-12`, and `129.95`, plus matching immutable and a
 ## Customize it
 
 Change `with_order_number_containing`, ordering, or relation selection in `app.py`. Inspect the generated request for exact snake-case API names. Initialize new services and trusted global policy in `UserContext`; never add a second execute argument. Keep handwritten code in `python-app-console` and regenerate `python-lib-core`.
+### Materialized-list hard limit
+
+`execute_for_list` protects the service by applying a default hard limit of 10,000 rows. A requested page size above that ceiling fails explicitly. Trusted application code can call `hard_limit(...)` to override the outer-query ceiling. **Caution:** most applications should not override it; do so only for a reviewed, exceptional requirement. This setting does not describe streaming execution.
