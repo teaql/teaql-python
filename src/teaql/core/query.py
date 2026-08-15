@@ -1,5 +1,6 @@
 from enum import Enum, auto
 from typing import List, Optional, Any, Dict
+from copy import deepcopy
 from dataclasses import dataclass, field
 from .expr import Expr, ExprBuilder
 from .mutation import TraceNode
@@ -157,17 +158,6 @@ class SelectQuery:
         self.projection.extend(fields)
         return self
 
-    def limit(self, limit: int) -> 'SelectQuery':
-        offset = self.slice.offset if self.slice is not None else 0
-        self.slice = Slice(offset=offset, limit=limit)
-        return self
-
-    def hard_limit(self, hard_limit: int) -> 'SelectQuery':
-        if hard_limit <= 0:
-            raise ValueError("hard_limit must be positive")
-        self.hard_limit_value = hard_limit
-        return self
-
     def prepare_for_list(self) -> 'SelectQuery':
         self._apply_list_limit(self.hard_limit_value)
         return self
@@ -188,10 +178,20 @@ class SelectQuery:
         for child in self.child_enhancements:
             child._apply_list_limit(10_000)
 
-    def offset(self, offset: int) -> 'SelectQuery':
-        limit = self.slice.limit if self.slice is not None else None
-        self.slice = Slice(offset=offset, limit=limit)
-        return self
+    def for_exact_count(self, alias: str = "__teaql_total") -> 'SelectQuery':
+        count_query = deepcopy(self)
+        count_query.projection = []
+        count_query.expr_projection = []
+        count_query.order_by_items = []
+        count_query.slice = None
+        count_query.relations = []
+        count_query.child_enhancements = []
+        count_query.object_group_bys = []
+        count_query.dynamic_properties = []
+        count_query.raw_projections = []
+        count_query.group_by_items = []
+        count_query.aggregates = [Aggregate(AggregateFunction.Count, "id", alias)]
+        return count_query
 
     def partition_by_field(self, field_name: str) -> 'SelectQuery':
         self.partition_by = field_name
@@ -306,6 +306,8 @@ class SelectQuery:
         return self.desc_gbk(field)
 
     def limit(self, l: int) -> 'SelectQuery':
+        if not isinstance(l, int) or isinstance(l, bool) or l < 1:
+            raise ValueError("QUERY_INVALID_LIMIT: limit must be a positive integer")
         if not self.slice:
             self.slice = Slice(0, l)
         else:
@@ -313,6 +315,8 @@ class SelectQuery:
         return self
 
     def offset(self, o: int) -> 'SelectQuery':
+        if not isinstance(o, int) or isinstance(o, bool) or o < 0:
+            raise ValueError("QUERY_INVALID_OFFSET: offset must be a non-negative integer")
         if not self.slice:
             self.slice = Slice(o, None)
         else:
@@ -320,6 +324,10 @@ class SelectQuery:
         return self
 
     def page(self, page_no: int, page_size: int) -> 'SelectQuery':
+        if not isinstance(page_no, int) or page_no < 1:
+            raise ValueError("page_no must be a positive integer")
+        if not isinstance(page_size, int) or page_size < 1:
+            raise ValueError("QUERY_INVALID_LIMIT: page_size must be a positive integer")
         self.slice = Slice((page_no - 1) * page_size, page_size)
         return self
 

@@ -1,4 +1,14 @@
-from typing import Any, List, Dict, Iterator
+from typing import Any, List, Dict, Iterator, Generic, TypeVar
+from dataclasses import dataclass
+
+T = TypeVar("T")
+
+@dataclass(frozen=True)
+class TeaQLPage(Generic[T]):
+    data: List[T]
+    total_count: int
+    offset: int
+    limit: int
 
 class SmartList:
     def __init__(self, data: List[Any], facets: Dict[str, Any] = None, total_count: int = None):

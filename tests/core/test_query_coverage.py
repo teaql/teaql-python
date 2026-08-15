@@ -116,5 +116,7 @@ def test_materialized_list_hard_limit():
     assert SelectQuery("Order").prepare_for_list().slice.limit == 10_000
     with pytest.raises(ValueError, match="QUERY_HARD_LIMIT_EXCEEDED"):
         SelectQuery("Order").limit(10_001).prepare_for_list()
-    SelectQuery("Order").limit(10_001).hard_limit(20_000).prepare_for_list()
-    assert "hard_limit_value" not in dataclasses.asdict(SelectQuery("Order").hard_limit(20_000))
+    with pytest.raises(ValueError, match="QUERY_INVALID_LIMIT"):
+        SelectQuery("Order").limit(0)
+    with pytest.raises(ValueError, match="QUERY_INVALID_OFFSET"):
+        SelectQuery("Order").offset(-1)

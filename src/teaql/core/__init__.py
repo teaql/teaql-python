@@ -20,7 +20,7 @@ from .mutation import (
 from .graph import GraphNode
 
 from .meta import EntityDescriptor, PropertyDescriptor
-from .list import SmartList
+from .list import SmartList, TeaQLPage
 from .eval import LoadState, EvalResult
 from .safe_expression import SafeExpression
 from .xls import XlsWorkbook, XlsPage, XlsBlock, XlsBlockBuildContext
@@ -37,7 +37,7 @@ __all__ = [
     "InsertCommand", "UpdateCommand", "DeleteCommand", "RecoverCommand",
     "BatchInsertCommand", "BatchUpdateCommand", "MutationRequest",
     "GraphNode",
-    "EntityDescriptor", "PropertyDescriptor", "SmartList",
+    "EntityDescriptor", "PropertyDescriptor", "SmartList", "TeaQLPage",
     "LoadState", "EvalResult", "SafeExpression",
     "XlsWorkbook", "XlsPage", "XlsBlock", "XlsBlockBuildContext"
 ]

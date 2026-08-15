@@ -80,6 +80,7 @@ class UserContext:
 
     def insert_resource(self, resource_type: str, resource: Any):
         self._resources[resource_type] = resource
+        return self
 
     def get_resource(self, resource_type: str) -> Optional[Any]:
         return self._resources.get(resource_type)
@@ -89,6 +90,19 @@ class UserContext:
         if res is None:
             raise Exception(f"Resource {resource_type} not found")
         return res
+
+    def prepare_query(self, query: Any) -> Any:
+        """Apply trusted request policy exactly once before execution."""
+        policy = self.get_resource("request_policy")
+        if policy is None:
+            return query
+        if callable(policy):
+            prepared = policy(query)
+        elif hasattr(policy, "apply"):
+            prepared = policy.apply(query)
+        else:
+            raise TypeError("request_policy must be callable or expose apply(query)")
+        return query if prepared is None else prepared
 
     def set_user_identifier(self, identifier: str):
         self._user_identifier = identifier
