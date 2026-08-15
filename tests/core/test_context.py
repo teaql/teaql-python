@@ -30,7 +30,8 @@ def test_user_context_extensions():
         debug_query = "SELECT 1"
         operation = "Select"
         result_count = 1
-        
+
+    ctx.enable_all_sql_log()
     ctx.record_metadata_log(MockMetadata())
     assert len(ctx.sql_logs()) == 1
     assert ctx.sql_logs()[0].debug_sql == "SELECT 1"

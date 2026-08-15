@@ -61,6 +61,8 @@ class ExecutionMetadata:
     operation: DataServiceOperation
     started_at: datetime
     ended_at: datetime
+    parameterized_sql: str = ""
+    parameters: List[Any] = field(default_factory=list)
     affected_rows: Optional[int] = None
     result_count: Optional[int] = None
     trace_chain: List[TraceNode] = field(default_factory=list)

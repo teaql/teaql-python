@@ -152,14 +152,18 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         
         metadata = ExecutionMetadata(
             backend="sql",
-            operation="query",
+            operation=DataServiceOperation.Query,
             started_at=start,
             ended_at=end,
-            affected_rows=len(rows),
+            parameterized_sql=compiled.sql_with_comment(),
+            parameters=list(compiled.params),
+            result_count=len(rows),
             trace_chain=request.trace_chain,
             comment=request._comment,
-            debug_query=compiled.sql_with_comment() # Simplification for python
+            debug_query=compiled.debug_sql(self.dialect.kind())
         )
+        if ctx is not None:
+            ctx.record_metadata_log(metadata)
         return QueryResult(
             rows=rows,
             metadata=metadata,
@@ -244,14 +248,23 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
 
         metadata = ExecutionMetadata(
             backend="sql",
-            operation=op,
+            operation={
+                "insert": DataServiceOperation.Insert,
+                "update": DataServiceOperation.Update,
+                "delete": DataServiceOperation.Delete,
+                "recover": DataServiceOperation.Recover,
+            }[op],
             started_at=start,
             ended_at=end,
+            parameterized_sql=compiled.sql_with_comment(),
+            parameters=list(compiled.params),
             affected_rows=affected_rows,
             trace_chain=request.trace_chain(),
             comment=request.comment(),
-            debug_query=compiled.sql_with_comment()
+            debug_query=compiled.debug_sql(self.dialect.kind())
         )
+        if ctx is not None:
+            ctx.record_metadata_log(metadata)
         if affected_rows > 0 and ctx is not None:
             from teaql.runtime.audit import AuditFieldChange, MutationAuditKind, RawAuditEvent
             if isinstance(req_data, InsertCommand):

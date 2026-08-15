@@ -6,6 +6,7 @@ from teaql.provider.sqlite import create_sqlite_service, SimpleSchemaProvider
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
 from teaql.core.value import DataType, Value
 from teaql.core.query import SelectQuery
+from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, ValueExpr
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
 from teaql.data_service import QueryRequest
 from teaql.runtime import RuntimeModule
@@ -86,6 +87,41 @@ async def test_crud(temp_db, schema_provider, service):
 
     query_res = await service.query(None, query_req)
     assert len(query_res.rows) == 0
+
+@pytest.mark.asyncio
+async def test_structured_sql_evidence_is_parameterized_and_filterable(temp_db, schema_provider, service):
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name VARCHAR(255), version INTEGER)")
+        await db.commit()
+
+    ctx = RuntimeModule.new().into_context()
+    ctx.enable_all_sql_log()
+    secret = "secret-customer-value"
+    insert = MutationRequest(InsertCommand("User", {
+        "id": Value.I64(1), "name": Value.Text(secret), "version": Value.I64(1)
+    }))
+    await service.mutate(ctx, insert)
+    query = SelectQuery("User").filter(
+        BinaryExpr(ColumnExpr("name"), BinaryOp.Eq, ValueExpr(Value.Text(secret))))
+    await service.query(ctx, QueryRequest(query))
+
+    entries = ctx.sql_logs()
+    assert len(entries) == 2
+    assert all(entry.sql and secret not in entry.sql for entry in entries)
+    assert all(entry.params for entry in entries)
+    assert any(entry.result_count is not None for entry in entries)
+    assert any(entry.affected_rows is not None for entry in entries)
+
+    ctx.enable_select_sql_log()
+    await service.mutate(ctx, MutationRequest(InsertCommand("User", {
+        "id": Value.I64(2), "name": Value.Text("ignored"), "version": Value.I64(1)
+    })))
+    assert ctx.sql_logs() == []
+    ctx.enable_mutation_sql_log()
+    await service.query(ctx, QueryRequest(SelectQuery("User")))
+    assert ctx.sql_logs() == []
+    ctx.disable_sql_log()
+    assert ctx.sql_logs() == []
 
 @pytest.mark.asyncio
 async def test_sqlite_stream_is_chunked_and_closes_after_early_stop(temp_db):

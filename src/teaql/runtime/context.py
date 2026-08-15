@@ -350,13 +350,16 @@ class UserContext:
         return opts
 
     def enable_select_sql_log(self):
-        self.sql_log_options().select = True
+        self.set_sql_log_options(SqlLogOptions.select_only())
+        self.clear_sql_logs()
 
     def enable_mutation_sql_log(self):
-        self.sql_log_options().mutation = True
+        self.set_sql_log_options(SqlLogOptions.mutation_only())
+        self.clear_sql_logs()
 
     def enable_all_sql_log(self):
         self.set_sql_log_options(SqlLogOptions.all())
+        self.clear_sql_logs()
 
     def disable_sql_log(self):
         self.set_sql_log_options(SqlLogOptions.disabled())
@@ -408,46 +411,47 @@ class UserContext:
         return self.get_resource("language")
 
     def record_metadata_log(self, metadata: Any):
-        if hasattr(metadata, 'debug_query') and metadata.debug_query:
-            op = SqlLogOperation.Select # simplified
-            if hasattr(metadata, 'operation'):
-                op_str = str(metadata.operation).lower()
-                if 'insert' in op_str: op = SqlLogOperation.Insert
-                elif 'update' in op_str: op = SqlLogOperation.Update
-                elif 'delete' in op_str: op = SqlLogOperation.Delete
-                
-            entry = SqlLogEntry(
-                operation=op,
-                sql="",
-                params=[],
-                debug_sql=metadata.debug_query,
-                pretty_sql=metadata.debug_query,
-                started_at=getattr(metadata, 'started_at', datetime.now()),
-                ended_at=getattr(metadata, 'ended_at', datetime.now()),
-                elapsed=timedelta(0),
-                result_count=getattr(metadata, 'result_count', None),
-                result_type=None,
-                affected_rows=getattr(metadata, 'affected_rows', None),
-                result_summary=""
-            )
-            
-            if entry.result_count is not None:
-                entry.result_summary = f"{entry.result_count} rows returned"
-            elif entry.affected_rows is not None:
-                entry.result_summary = f"{entry.affected_rows} rows affected"
-                
-            logs = self.sql_logs()
-            logs.append(entry)
-            self._resources["sql_logs"] = logs
-            
-            buf = self.get_resource("UnifiedLogBuffer")
-            if buf:
-                buf.entries.append(UnifiedLogEntry(
-                    timestamp=entry.started_at,
-                    user_identifier=self.user_identifier(),
-                    trace_chain=getattr(metadata, 'trace_chain', []),
-                    payload=LogPayload.Sql(entry)
-                ))
+        op = SqlLogOperation.Select
+        op_str = str(getattr(metadata, 'operation', '')).lower()
+        if 'insert' in op_str: op = SqlLogOperation.Insert
+        elif 'update' in op_str: op = SqlLogOperation.Update
+        elif 'delete' in op_str: op = SqlLogOperation.Delete
+        elif 'recover' in op_str: op = SqlLogOperation.Recover
+        if not self.sql_log_options().enabled_for(op):
+            return
+
+        started_at = getattr(metadata, 'started_at', datetime.now())
+        ended_at = getattr(metadata, 'ended_at', started_at)
+        entry = SqlLogEntry(
+            operation=op,
+            sql=getattr(metadata, 'parameterized_sql', ''),
+            params=list(getattr(metadata, 'parameters', [])),
+            debug_sql=getattr(metadata, 'debug_query', '') or '',
+            pretty_sql=getattr(metadata, 'debug_query', '') or '',
+            started_at=started_at,
+            ended_at=ended_at,
+            elapsed=ended_at - started_at,
+            result_count=getattr(metadata, 'result_count', None),
+            result_type=None,
+            affected_rows=getattr(metadata, 'affected_rows', None),
+            result_summary=""
+        )
+        if entry.result_count is not None:
+            entry.result_summary = f"{entry.result_count} rows returned"
+        elif entry.affected_rows is not None:
+            entry.result_summary = f"{entry.affected_rows} rows affected"
+
+        logs = self.sql_logs()
+        logs.append(entry)
+        self._resources["sql_logs"] = logs
+        buf = self.get_resource("UnifiedLogBuffer")
+        if buf:
+            buf.entries.append(UnifiedLogEntry(
+                timestamp=entry.started_at,
+                user_identifier=self.user_identifier(),
+                trace_chain=getattr(metadata, 'trace_chain', []),
+                payload=LogPayload.Sql(entry)
+            ))
 
     def record_sql_log(self, operation: Any, query: Any, started_at: Any, ended_at: Any, elapsed: Any, result_count: Any = None, affected_rows: Any = None):
         if not self.sql_log_options().enabled_for(operation):
