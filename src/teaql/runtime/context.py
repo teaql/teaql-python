@@ -1,4 +1,8 @@
-from typing import Dict, Any, Optional, List
+from typing import Dict, Any, Optional, List, Callable, TypeVar
+
+
+TEntity = TypeVar("TEntity")
+EntityInitializer = Callable[["UserContext", Any], None]
 
 class UserContext:
     def __init__(self):
@@ -9,6 +13,8 @@ class UserContext:
         self._initial_graphs: List[Any] = []
         self._standard_audit_sink: Optional[Any] = None
         self._app_audit_sink: Optional[Any] = None
+        self._entity_initializers: Dict[str, List[EntityInitializer]] = {}
+        self._managed_entities: List[Any] = []
 
     @classmethod
     def new(cls) -> 'UserContext':
@@ -35,6 +41,29 @@ class UserContext:
         
     def register_entity(self, entity_desc: Any):
         self._entities.append(entity_desc)
+
+    def register_entity_initializer(
+        self, entity_name: str, initializer: EntityInitializer
+    ) -> "UserContext":
+        """Register a trusted initializer; use ``*`` for every entity type."""
+        if not isinstance(entity_name, str) or not entity_name.strip() or not callable(initializer):
+            raise ValueError("entity_name and callable initializer are required")
+        self._entity_initializers.setdefault(entity_name, []).append(initializer)
+        return self
+
+    def initialize_entity(self, entity_name: str, entity: TEntity) -> TEntity:
+        """Apply trusted initializers and bring a new entity into managed scope."""
+        if not isinstance(entity_name, str) or not entity_name.strip() or entity is None:
+            raise ValueError("entity_name and entity are required")
+        for initializer in self._entity_initializers.get("*", []):
+            initializer(self, entity)
+        for initializer in self._entity_initializers.get(entity_name, []):
+            initializer(self, entity)
+        self._managed_entities.append(entity)
+        return entity
+
+    def managed_entities(self) -> List[Any]:
+        return list(self._managed_entities)
         
     def all_entities(self) -> List[Any]:
         return self._entities
