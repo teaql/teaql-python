@@ -1,64 +1,63 @@
-from typing import Any, List, Dict, Iterator, Generic, TypeVar
+from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, TypeVar
 from dataclasses import dataclass
 
 T = TypeVar("T")
 
 @dataclass(frozen=True)
 class TeaQLPage(Generic[T]):
-    data: List[T]
+    data: 'SmartList[T]'
     total_count: int
     offset: int
     limit: int
 
-class SmartList:
-    def __init__(self, data: List[Any], facets: Dict[str, Any] = None, total_count: int = None):
-        self.data = data
+class SmartList(List[T], Generic[T]):
+    def __init__(self, data: Iterable[T] = (), facets: Optional[Dict[str, Any]] = None,
+                 total_count: Optional[int] = None):
+        super().__init__(data)
         self.facets = facets or {}
-        self.total_count = total_count if total_count is not None else len(data)
+        self.total_count = total_count if total_count is not None else len(self)
+
+    @property
+    def data(self) -> 'SmartList[T]':
+        return self
 
     def facet(self, name: str) -> Any:
         return self.facets.get(name)
 
-    def __iter__(self) -> Iterator[Any]:
-        return iter(self.data)
-
-    def __len__(self) -> int:
-        return len(self.data)
-
-    def map(self, f) -> 'SmartList':
-        return SmartList([f(x) for x in self.data], self.facets, self.total_count)
+    def map(self, f: Callable[[T], Any]) -> 'SmartList[Any]':
+        return SmartList((f(x) for x in self), self.facets, self.total_count)
 
     def filter(self, f) -> 'SmartList':
-        return SmartList([x for x in self.data if f(x)], self.facets, self.total_count)
+        return SmartList((x for x in self if f(x)), self.facets, self.total_count)
 
     def flat_map(self, f) -> 'SmartList':
         result = []
-        for x in self.data:
+        for x in self:
             result.extend(f(x))
         return SmartList(result, self.facets, self.total_count)
 
     def first(self) -> Any:
-        return self.data[0] if self.data else None
+        return self[0] if self else None
 
     def last(self) -> Any:
-        return self.data[-1] if self.data else None
+        return self[-1] if self else None
 
     def is_empty(self) -> bool:
-        return len(self.data) == 0
+        return len(self) == 0
 
     def into_vec(self) -> List[Any]:
-        return self.data
+        return list(self)
 
     def get(self, index: int) -> Any:
-        if 0 <= index < len(self.data):
-            return self.data[index]
+        if 0 <= index < len(self):
+            return self[index]
         return None
 
     def retain(self, f):
-        self.data = [x for x in self.data if f(x)]
+        self[:] = [x for x in self if f(x)]
 
 def to_list(lst: SmartList) -> List[Any]:
-    return lst.data
+    return list(lst)
 
 def to_set(lst: SmartList) -> set:
     return set(lst.data)
