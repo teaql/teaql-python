@@ -4,6 +4,16 @@ from typing import Dict, Any, Optional, List, Callable, TypeVar
 TEntity = TypeVar("TEntity")
 EntityInitializer = Callable[["UserContext", Any], None]
 
+import threading
+import time
+
+
+_local_cache = {}
+_local_cache_lock = threading.RLock()
+_local_locks = {}
+_local_lock_condition = threading.Condition(threading.RLock())
+
+
 class UserContext:
     def __init__(self):
         self._resources: Dict[str, Any] = {}
@@ -515,13 +525,30 @@ class UserContext:
     # Local Cache
     # ==========================================
     def put_to_local_cache(self, key: str, value: Any, time_to_live_in_seconds: Optional[int] = None):
-        pass
+        expires_at = (
+            time.monotonic() + time_to_live_in_seconds
+            if time_to_live_in_seconds is not None and time_to_live_in_seconds > 0
+            else None
+        )
+        with _local_cache_lock:
+            _local_cache[key] = (value, expires_at)
 
     def get_from_local_cache(self, key: str, clazz: Any = None) -> Optional[Any]:
-        return None
+        with _local_cache_lock:
+            entry = _local_cache.get(key)
+            if entry is None:
+                return None
+            value, expires_at = entry
+            if expires_at is not None and time.monotonic() >= expires_at:
+                _local_cache.pop(key, None)
+                return None
+            if clazz is not None and not isinstance(value, clazz):
+                return None
+            return value
 
     def remove_from_local_cache(self, key: str):
-        pass
+        with _local_cache_lock:
+            _local_cache.pop(key, None)
 
     # ==========================================
     # Remote Cache
@@ -546,10 +573,33 @@ class UserContext:
     # Local Lock
     # ==========================================
     def try_local_lock(self, key: str, timeout_millis: int, expire_millis: int) -> bool:
-        return True
+        owner = id(self)
+        deadline = time.monotonic() + max(timeout_millis, 0) / 1000
+        with _local_lock_condition:
+            while True:
+                now = time.monotonic()
+                current = _local_locks.get(key)
+                if current is None or (current[1] is not None and now >= current[1]):
+                    expires_at = now + expire_millis / 1000 if expire_millis > 0 else None
+                    _local_locks[key] = (owner, expires_at)
+                    return True
+                if current[0] == owner:
+                    expires_at = now + expire_millis / 1000 if expire_millis > 0 else None
+                    _local_locks[key] = (owner, expires_at)
+                    return True
+                remaining = deadline - now
+                if remaining <= 0:
+                    return False
+                lease_remaining = current[1] - now if current[1] is not None else remaining
+                _local_lock_condition.wait(min(remaining, max(lease_remaining, 0.001)))
 
     def unlock_local(self, key: str):
-        pass
+        owner = id(self)
+        with _local_lock_condition:
+            current = _local_locks.get(key)
+            if current is not None and current[0] == owner:
+                _local_locks.pop(key, None)
+                _local_lock_condition.notify_all()
 
     # ==========================================
     # Remote Lock
