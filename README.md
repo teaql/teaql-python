@@ -2,6 +2,15 @@
 
 TeaQL Python SDK is a runtime engine and toolkit for building data-driven business applications. It provides seamless integration with the TeaQL ecosystem, fully aligned with the `teaql-rs` baseline.
 
+## Recommended Agent Harness
+
+When building database-backed applications with the TeaQL Python runtime, we
+recommend using it together with the [TeaQL Agent Kit](https://github.com/teaql/teaql-agent-kit).
+The Agent Kit is TeaQL's continuously evolving **Harness Engineering** method.
+It gives coding agents a model-mediated, executable workflow for domain
+modeling, deterministic evaluation and repair, code generation, implementation,
+and evidence-based verification as the generator and runtimes evolve.
+
 ## 1. Minimum Version Requirements
 
 *   **Python**: 3.10+ (Recommended 3.12+)
