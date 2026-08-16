@@ -36,7 +36,7 @@ class SafeExpression(Generic[R, T]):
             return None
         return SafeExpression(self._root, _eval)
 
-    def or_else(self, default_value: T) -> T:
+    def or_if_null(self, default_value: T) -> T:
         val = self.eval()
         return val if val is not None else default_value
 

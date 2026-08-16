@@ -49,6 +49,10 @@ def test_safe_expression_lazy_fallback_and_error_only_run_for_missing_values():
     with pytest.raises(Exception, match="missing value"):
         missing.or_else_throw(lambda: Exception("missing value"))
 
+def test_or_if_null_returns_value_or_fallback():
+    assert SafeExpression.value(7).or_if_null(9) == 7
+    assert SafeExpression(None, lambda root: None).or_if_null(9) == 9
+
 def test_safe_expression_callbacks_only_run_for_their_matching_branch():
     present = SafeExpression.value("teaql")
     present_null_calls = [0]
