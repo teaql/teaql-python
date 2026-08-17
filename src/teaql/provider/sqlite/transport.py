@@ -3,11 +3,11 @@ import aiosqlite
 from decimal import Decimal
 from datetime import date
 from typing import List, Dict, Any, Optional, AsyncIterator
-from teaql.sql.executor import SqlTransport
+from teaql.sql.executor import SqlTransactionTransport, SqlTransactionTransportTx
 from teaql.sql.types import CompiledQuery
 from teaql.core.value import Value, DataType, Timestamp
 
-class SqliteTransport(SqlTransport):
+class SqliteTransport(SqlTransactionTransport):
     def __init__(self, db_path: str):
         self.db_path = db_path
 
@@ -87,3 +87,44 @@ class SqliteTransport(SqlTransport):
             async with db.execute(sql, params) as cursor:
                 await db.commit()
                 return cursor.rowcount, cursor.lastrowid
+
+    async def begin_sql(self) -> 'SqlTransactionTransportTx':
+        is_uri = self.db_path.startswith("file:")
+        db = await aiosqlite.connect(self.db_path, uri=is_uri)
+        await db.execute("BEGIN IMMEDIATE")
+        return _SqliteTransaction(db, self._bind_values, self._decode_value)
+
+
+class _SqliteTransaction(SqlTransactionTransportTx):
+    def __init__(self, db, bind_values, decode_value):
+        self.db = db
+        self._bind_values = bind_values
+        self._decode_value = decode_value
+
+    async def fetch_all_sql(self, query: CompiledQuery) -> List[Dict[str, Any]]:
+        self.db.row_factory = aiosqlite.Row
+        async with self.db.execute(query.sql_with_comment(), self._bind_values(query.params)) as cursor:
+            rows = await cursor.fetchall()
+            if not rows:
+                return []
+            columns = [col[0] for col in cursor.description]
+            return [
+                {name: self._decode_value(row[index]) for index, name in enumerate(columns)}
+                for row in rows
+            ]
+
+    async def execute_sql(self, query: CompiledQuery) -> tuple[int, int]:
+        async with self.db.execute(query.sql_with_comment(), self._bind_values(query.params)) as cursor:
+            return cursor.rowcount, cursor.lastrowid
+
+    async def commit_sql(self) -> None:
+        try:
+            await self.db.commit()
+        finally:
+            await self.db.close()
+
+    async def rollback_sql(self) -> None:
+        try:
+            await self.db.rollback()
+        finally:
+            await self.db.close()

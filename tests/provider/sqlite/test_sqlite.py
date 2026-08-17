@@ -63,6 +63,7 @@ async def test_crud(temp_db, schema_provider, service):
     insert_req = MutationRequest(InsertCommand("User", {"id": Value.I64(1), "name": Value.Text("Alice"), "version": Value.I64(1)}))
     res = await service.mutate(None, insert_req)
     assert res.affected_rows == 1
+    assert res.persisted_record == {"id": 1, "name": "Alice", "version": 1}
 
     # Query
     query_req = QueryRequest(SelectQuery("User"))
@@ -76,6 +77,7 @@ async def test_crud(temp_db, schema_provider, service):
     update_req = MutationRequest(UpdateCommand("User", Value.I64(1)).value("name", Value.Text("Bob")))
     res = await service.mutate(None, update_req)
     assert res.affected_rows == 1
+    assert res.persisted_record["name"] == "Bob"
 
     query_res = await service.query(None, query_req)
     assert query_res.rows[0]["name"] == "Bob"
@@ -87,6 +89,32 @@ async def test_crud(temp_db, schema_provider, service):
 
     query_res = await service.query(None, query_req)
     assert len(query_res.rows) == 0
+
+@pytest.mark.asyncio
+async def test_mutation_returns_external_database_default_in_same_transaction(temp_db):
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute(
+            "CREATE TABLE widgets (id INTEGER PRIMARY KEY AUTOINCREMENT, "
+            "name TEXT DEFAULT 'database-default', version INTEGER DEFAULT 1)"
+        )
+        await db.commit()
+
+    provider = SimpleSchemaProvider()
+    entity = MockEntityDescriptor("Widget")
+    entity.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("name", DataType.Text),
+        MockPropertyDescriptor("version", DataType.I64, is_version=True),
+    ]
+    provider.register_entity(entity)
+    service = create_sqlite_service(temp_db, provider)
+
+    result = await service.mutate(
+        None, MutationRequest(InsertCommand("Widget", {"version": Value.I64(1)})))
+
+    assert result.persisted_record["id"] > 0
+    assert result.persisted_record["name"] == "database-default"
+    assert result.persisted_record["version"] == 1
 
 @pytest.mark.asyncio
 async def test_structured_sql_evidence_is_parameterized_and_filterable(temp_db, schema_provider, service):

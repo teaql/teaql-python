@@ -200,6 +200,17 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 parent[load.name] = related if relation.is_many else (related[0] if related else None)
 
     async def mutate(self, ctx: 'UserContext', request: MutationRequest) -> MutationResult:
+        if isinstance(self.transport, SqlTransactionTransport):
+            transaction = await self.transport.begin_sql()
+            executor = SqlDataServiceExecutor(self.dialect, transaction, self.schema_provider)
+            try:
+                result = await executor.mutate(ctx, request)
+                await transaction.commit_sql()
+                return result
+            except Exception:
+                await transaction.rollback_sql()
+                raise
+
         req_data = request._data
         entity_desc = self.schema_provider.get_entity(req_data.entity)
         if not entity_desc and ctx:
@@ -241,10 +252,49 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         generated_values = {}
         if op == "insert" and last_insert_id:
             # Assumes the first ID column
-            id_prop = next((p for p in getattr(entity_desc, 'properties', []) if getattr(p, '_is_id', False)), None)
+            id_prop = next((
+                p for p in getattr(entity_desc, 'properties', [])
+                if getattr(p, '_is_id', False) or getattr(p, 'is_id_val', False)
+            ), None)
             if id_prop:
-                from teaql.core.value import Value
                 generated_values[id_prop.name] = Value.val_u64(last_insert_id)
+
+        id_prop = next(
+            (
+                p for p in getattr(entity_desc, 'properties', [])
+                if getattr(p, '_is_id', False) or getattr(p, 'is_id_val', False)
+            ),
+            None,
+        )
+        persisted_record = None
+        entity_id = generated_values.get(getattr(id_prop, 'name', 'id')) if id_prop else None
+        if entity_id is None:
+            entity_id = getattr(req_data, 'id', None)
+        if entity_id is None and id_prop is not None:
+            entity_id = getattr(req_data, 'values', {}).get(id_prop.name)
+        physically_deleted = isinstance(req_data, DeleteCommand) and not req_data.soft_delete
+        if affected_rows > 0 and not physically_deleted and id_prop is not None and entity_id is not None:
+            columns = ", ".join(
+                self.dialect.quote_ident(p.column_name_val)
+                if p.column_name_val == p.name
+                else (
+                    f"{self.dialect.quote_ident(p.column_name_val)} AS "
+                    f"{self.dialect.quote_ident(p.name)}"
+                )
+                for p in entity_desc.properties
+            )
+            table = self.dialect.quote_ident(entity_desc.table_name_val)
+            id_column = self.dialect.quote_ident(id_prop.column_name_val)
+            persisted_rows = await self.transport.fetch_all_sql(
+                CompiledQuery(
+                    f"SELECT {columns} FROM {table} WHERE {id_column} = {self.dialect.placeholder(1)}",
+                    [Value.from_any(entity_id)],
+                )
+            )
+            if not persisted_rows:
+                raise TransportError(RuntimeError(
+                    f"authoritative persisted row not found for {req_data.entity}"))
+            persisted_record = persisted_rows[0]
 
         metadata = ExecutionMetadata(
             backend="sql",
@@ -288,7 +338,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         return MutationResult(
             affected_rows=affected_rows,
             generated_values=generated_values,
-            metadata=metadata
+            metadata=metadata,
+            persisted_record=persisted_record,
         )
 
     async def ensure_schema(self, ctx: 'UserContext') -> None:

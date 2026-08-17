@@ -96,6 +96,7 @@ class MutationResult:
     affected_rows: int
     generated_values: Dict[str, Any]
     metadata: ExecutionMetadata
+    persisted_record: Optional[Dict[str, Any]] = None
 
 
 @dataclass
