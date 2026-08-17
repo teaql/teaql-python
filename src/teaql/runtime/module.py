@@ -36,6 +36,18 @@ class RuntimeModule:
         self._audit_sinks.append(sink)
         return self
 
+    def and_module(self, other: 'RuntimeModule') -> 'RuntimeModule':
+        combined = RuntimeModule.new()
+        combined._entities = [*self._entities, *other._entities]
+        combined._behaviors = {**self._behaviors, **other._behaviors}
+        combined._dependencies = {**self._dependencies, **other._dependencies}
+        combined._audit_sinks = [*self._audit_sinks, *other._audit_sinks]
+        combined._initial_graphs = [
+            *getattr(self, '_initial_graphs', []),
+            *getattr(other, '_initial_graphs', []),
+        ]
+        return combined
+
     def apply_to(self, ctx: UserContext):
         for name, dep in self._dependencies.items():
             ctx.insert_resource(name, dep)

@@ -159,6 +159,10 @@ class UserContext:
             module.apply_to(self)
         return self
 
+    def install(self, module: Any) -> 'UserContext':
+        """Install a passive runtime manifest without changing database schemas."""
+        return self.with_module(module)
+
     def set_initial_graphs(self, graphs: List[Any]):
         self._initial_graphs = graphs
 
@@ -629,6 +633,10 @@ class TeaqlRuntime:
 
     def require_service(self, name: str) -> Any:
         return self._ctx.require_resource(name)
+
+    def install(self, module: Any) -> 'TeaqlRuntime':
+        self._ctx.install(module)
+        return self
 
 from enum import Enum, auto
 from dataclasses import dataclass, field

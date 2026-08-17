@@ -30,6 +30,13 @@ def test_runtime_module_initialization():
     assert "Dummy" in behaviors
     assert isinstance(behaviors["Dummy"], DummyBehavior)
 
+def test_runtime_module_composes_and_installs_without_schema_changes():
+    first = RuntimeModule.new().entity(DummyEntity)
+    second = RuntimeModule.new().provide_custom_dependency("dummy", DummyDependency())
+    ctx = UserContext.new().install(first.and_module(second))
+    assert DummyEntity in ctx.require_resource("entities")
+    assert isinstance(ctx.require_resource("dummy"), DummyDependency)
+
 @pytest.mark.asyncio
 async def test_runtime_module_configure():
     module = RuntimeModule.new()
