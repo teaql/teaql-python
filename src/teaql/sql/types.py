@@ -1,6 +1,9 @@
 from enum import Enum, auto
 from dataclasses import dataclass
 from typing import List, Optional
+from datetime import date
+from decimal import Decimal
+import json
 from teaql.core.value import Value, DataType
 
 class DatabaseKind(Enum):
@@ -21,18 +24,73 @@ class CompiledQuery:
         return self.sql
 
     def debug_sql(self, dialect: DatabaseKind) -> str:
-        # A simple replacement for debug string
-        # This mirrors the logic to inline params into SQL for debugging
-        res = self.sql_with_comment()
-        for i, param in enumerate(self.params):
-            val_str = str(param.to_json_value())
-            if isinstance(param.to_json_value(), str):
-                val_str = f"'{val_str}'"
-            if dialect == DatabaseKind.PostgreSql:
-                res = res.replace(f"${i+1}", val_str, 1)
-            else:
-                res = res.replace("?", val_str, 1)
-        return res
+        if dialect == DatabaseKind.PostgreSql:
+            return _replace_numbered_placeholders(self.sql_with_comment(), self.params, dialect)
+        return _replace_positional_placeholders(self.sql_with_comment(), self.params, dialect)
+
+def _replace_numbered_placeholders(sql: str, params: List[Value], dialect: DatabaseKind) -> str:
+    output, index, in_string = [], 0, False
+    while index < len(sql):
+        char = sql[index]
+        if char == "'":
+            output.append(char)
+            if in_string and index + 1 < len(sql) and sql[index + 1] == "'":
+                output.append("'")
+                index += 2
+                continue
+            in_string = not in_string
+        elif not in_string and char == "$" and index + 1 < len(sql) and sql[index + 1].isdigit():
+            end = index + 1
+            while end < len(sql) and sql[end].isdigit():
+                end += 1
+            parameter_index = int(sql[index + 1:end]) - 1
+            output.append(_sql_literal(params[parameter_index], dialect)
+                          if 0 <= parameter_index < len(params) else sql[index:end])
+            index = end
+            continue
+        else:
+            output.append(char)
+        index += 1
+    return "".join(output)
+
+def _replace_positional_placeholders(sql: str, params: List[Value], dialect: DatabaseKind) -> str:
+    output, index, parameter_index, in_string = [], 0, 0, False
+    while index < len(sql):
+        char = sql[index]
+        if char == "'":
+            output.append(char)
+            if in_string and index + 1 < len(sql) and sql[index + 1] == "'":
+                output.append("'")
+                index += 2
+                continue
+            in_string = not in_string
+        elif not in_string and char == "?" and parameter_index < len(params):
+            output.append(_sql_literal(params[parameter_index], dialect))
+            parameter_index += 1
+        else:
+            output.append(char)
+        index += 1
+    return "".join(output)
+
+def _sql_literal(value: Value, dialect: DatabaseKind) -> str:
+    raw = value.val
+    if raw is None:
+        return "NULL"
+    if isinstance(raw, bool):
+        return "TRUE" if raw else "FALSE"
+    if isinstance(raw, (int, float, Decimal)):
+        return str(raw)
+    if isinstance(raw, date):
+        return _quote_sql_string(raw.isoformat())
+    if isinstance(raw, list):
+        items = ", ".join(_sql_literal(item if isinstance(item, Value) else Value.from_any(item), dialect) for item in raw)
+        return f"ARRAY[{items}]" if dialect == DatabaseKind.PostgreSql else f"({items})"
+    if isinstance(raw, dict):
+        return _quote_sql_string(json.dumps(value.to_json_value(), separators=(",", ":"), sort_keys=True))
+    return _quote_sql_string(str(raw))
+
+def _quote_sql_string(value: str) -> str:
+    return "'" + value.replace("'", "''") + "'"
 
 class SqlCompileError(Exception):
     pass

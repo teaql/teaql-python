@@ -56,6 +56,19 @@ def test_quotes_identifiers_only_when_needed():
     assert quote_identifier_if_needed("has space", '"') == '"has space"'
     assert quote_identifier_if_needed('"already_wrapped"', '"') == '"already_wrapped"'
 
+def test_debug_sql_renders_copy_paste_statement():
+    query = CompiledQuery(
+        "SELECT * FROM school WHERE name = $1 AND active = $2 AND phone IS $3 AND repeated = $1 AND note = '$2'",
+        [Value.Text("O'Brien School"), Value.Bool(True), Value.Null()],
+    )
+    assert query.debug_sql(DatabaseKind.PostgreSql) == (
+        "SELECT * FROM school WHERE name = 'O''Brien School' AND active = TRUE "
+        "AND phone IS NULL AND repeated = 'O''Brien School' AND note = '$2'"
+    )
+
+    positional = CompiledQuery("SELECT ?, ?, '?', ?", [Value.Text("O'Brien"), Value.Bool(False), Value.Null()])
+    assert positional.debug_sql(DatabaseKind.Sqlite) == "SELECT 'O''Brien', FALSE, '?', NULL"
+
 def test_compiles_select_with_filters_order_and_limit():
     q = SelectQuery.new("Order")
     q.projection = ["id", "name"]
