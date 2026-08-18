@@ -554,49 +554,89 @@ class UserContext:
     # Local Cache
     # ==========================================
     def put_to_local_cache(self, key: str, value: Any, time_to_live_in_seconds: Optional[int] = None):
-        expires_at = (
-            time.monotonic() + time_to_live_in_seconds
-            if time_to_live_in_seconds is not None and time_to_live_in_seconds > 0
-            else None
-        )
-        with _local_cache_lock:
-            _local_cache[key] = (value, expires_at)
+        def put():
+            expires_at = (
+                time.monotonic() + time_to_live_in_seconds
+                if time_to_live_in_seconds is not None and time_to_live_in_seconds > 0
+                else None
+            )
+            with _local_cache_lock:
+                _local_cache[key] = (value, expires_at)
+
+        self._observe_cache("local.put", "put", put, lambda _: {"teaql.cache.result": "stored"})
 
     def get_from_local_cache(self, key: str, clazz: Any = None) -> Optional[Any]:
-        with _local_cache_lock:
-            entry = _local_cache.get(key)
-            if entry is None:
-                return None
-            value, expires_at = entry
-            if expires_at is not None and time.monotonic() >= expires_at:
-                _local_cache.pop(key, None)
-                return None
-            if clazz is not None and not isinstance(value, clazz):
-                return None
-            return value
+        def get():
+            with _local_cache_lock:
+                entry = _local_cache.get(key)
+                if entry is None:
+                    return None
+                value, expires_at = entry
+                if expires_at is not None and time.monotonic() >= expires_at:
+                    _local_cache.pop(key, None)
+                    return None
+                if clazz is not None and not isinstance(value, clazz):
+                    return None
+                return value
+
+        return self._observe_cache(
+            "local.get", "get", get,
+            lambda value: {"teaql.cache.result": "miss" if value is None else "hit"},
+        )
 
     def remove_from_local_cache(self, key: str):
-        with _local_cache_lock:
-            _local_cache.pop(key, None)
+        def remove():
+            with _local_cache_lock:
+                _local_cache.pop(key, None)
+
+        self._observe_cache(
+            "local.remove", "remove", remove,
+            lambda _: {"teaql.cache.result": "removed"},
+        )
 
     # ==========================================
     # Remote Cache
     # ==========================================
     def put_to_remote_cache(self, key: str, value: Any, time_to_live_in_seconds: Optional[int] = None):
-        provider = self.get_resource("RemoteCacheProvider")
-        if provider and hasattr(provider, 'put_to_remote_cache'):
-            provider.put_to_remote_cache(key, value, time_to_live_in_seconds)
+        def put():
+            provider = self.get_resource("RemoteCacheProvider")
+            if provider and hasattr(provider, 'put_to_remote_cache'):
+                provider.put_to_remote_cache(key, value, time_to_live_in_seconds)
+
+        self._observe_cache("remote.put", "put", put, lambda _: {"teaql.cache.result": "stored"})
 
     def get_from_remote_cache(self, key: str, clazz: Any = None) -> Optional[Any]:
-        provider = self.get_resource("RemoteCacheProvider")
-        if provider and hasattr(provider, 'get_from_remote_cache'):
-            return provider.get_from_remote_cache(key, clazz)
-        return None
+        def get():
+            provider = self.get_resource("RemoteCacheProvider")
+            if provider and hasattr(provider, 'get_from_remote_cache'):
+                return provider.get_from_remote_cache(key, clazz)
+            return None
+
+        return self._observe_cache(
+            "remote.get", "get", get,
+            lambda value: {"teaql.cache.result": "miss" if value is None else "hit"},
+        )
 
     def remove_from_remote_cache(self, key: str):
-        provider = self.get_resource("RemoteCacheProvider")
-        if provider and hasattr(provider, 'remove_from_remote_cache'):
-            provider.remove_from_remote_cache(key)
+        def remove():
+            provider = self.get_resource("RemoteCacheProvider")
+            if provider and hasattr(provider, 'remove_from_remote_cache'):
+                provider.remove_from_remote_cache(key)
+
+        self._observe_cache(
+            "remote.remove", "remove", remove,
+            lambda _: {"teaql.cache.result": "removed"},
+        )
+
+    def _observe_cache(self, name: str, operation: str, work: Callable, completion: Callable):
+        from .telemetry import RuntimeOperation, observe_runtime_operation_sync
+
+        return observe_runtime_operation_sync(
+            self.runtime_telemetry(),
+            RuntimeOperation("cache", name, {"teaql.cache.operation": operation}),
+            work,
+            completion,
+        )
 
     # ==========================================
     # Local Lock

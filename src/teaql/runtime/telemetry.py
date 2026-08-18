@@ -113,3 +113,20 @@ async def observe_runtime_operation(
     except BaseException as error:
         scope.failure(error)
         raise
+
+
+def observe_runtime_operation_sync(
+    telemetry: Optional[RuntimeTelemetry],
+    operation: RuntimeOperation,
+    work: Callable[[], T],
+    completion: Optional[Callable[[T], Dict[str, AttributeValue]]] = None,
+) -> T:
+    """Observe synchronous runtime work without changing its result or failure."""
+    scope = start_runtime_operation(telemetry, operation)
+    try:
+        result = work()
+        scope.success(completion(result) if completion else None)
+        return result
+    except BaseException as error:
+        scope.failure(error)
+        raise

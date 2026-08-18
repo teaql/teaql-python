@@ -3,6 +3,7 @@ import pytest
 from teaql.runtime.telemetry import (
     RuntimeOperation,
     observe_runtime_operation,
+    observe_runtime_operation_sync,
     start_runtime_operation,
 )
 
@@ -61,6 +62,21 @@ def test_adapter_failures_are_isolated_and_completion_is_idempotent():
     scope.success()
     scope.failure(RuntimeError("late"))
     assert [phase for phase, _ in telemetry.events] == ["start", "success"]
+
+
+def test_sync_observation_preserves_result_and_original_failure():
+    telemetry = RecordingTelemetry()
+    assert observe_runtime_operation_sync(
+        telemetry, RuntimeOperation("cache", "local.get"), lambda: "value",
+    ) == "value"
+
+    original = RuntimeError("cache unavailable")
+    with pytest.raises(RuntimeError) as caught:
+        observe_runtime_operation_sync(
+            telemetry, RuntimeOperation("cache", "remote.get"),
+            lambda: (_ for _ in ()).throw(original),
+        )
+    assert caught.value is original
 
 
 async def _value(value):
