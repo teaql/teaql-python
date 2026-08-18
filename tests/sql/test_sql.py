@@ -81,6 +81,17 @@ def test_sqlite_debug_sql_preserves_comments_and_temporal_storage_literals():
         "SELECT '?', \"identifier?\", '2024-02-29', 1787110200123 /* block ? */"
     )
 
+def test_postgres_and_mysql_debug_sql_use_typed_temporal_literals():
+    params = [Value.Date(date(2024, 2, 29)), Value.Timestamp(Timestamp(-315521754322))]
+    postgres = CompiledQuery("-- ignored $1\nSELECT $1, $2 /* ignored $2 */", params)
+    assert postgres.debug_sql(DatabaseKind.PostgreSql) == (
+        "-- ignored $1\nSELECT DATE '2024-02-29', "
+        "TIMESTAMPTZ '1960-01-02 03:04:05.678Z' /* ignored $2 */")
+    mysql = CompiledQuery("SELECT %s, %s /* ignored %s */", params)
+    assert mysql.debug_sql(DatabaseKind.MySql) == (
+        "SELECT CAST('2024-02-29' AS DATE), "
+        "CAST('1960-01-02 03:04:05.678' AS DATETIME(3)) /* ignored %s */")
+
 def test_compiles_select_with_filters_order_and_limit():
     q = SelectQuery.new("Order")
     q.projection = ["id", "name"]

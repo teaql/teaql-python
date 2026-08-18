@@ -1,7 +1,7 @@
 import json
 import aiomysql
 from decimal import Decimal
-from datetime import date, datetime
+from datetime import date, datetime, timezone
 from typing import List, Dict, Any, Optional, AsyncIterator
 from teaql.sql.executor import SqlTransport
 from teaql.sql.types import CompiledQuery
@@ -34,7 +34,7 @@ class MysqlTransport(SqlTransport):
                 res.append(json.dumps(v._data))
             elif getattr(v, '_type_hint', None) == DataType.Timestamp or isinstance(v._data, Timestamp):
                 if hasattr(v._data, "millis"):
-                    res.append(datetime.fromtimestamp(v._data.millis / 1000.0))
+                    res.append(datetime.fromtimestamp(v._data.millis / 1000.0, tz=timezone.utc).replace(tzinfo=None))
                 else:
                     res.append(v._data)
             else:
@@ -50,7 +50,7 @@ class MysqlTransport(SqlTransport):
             except json.JSONDecodeError:
                 pass
         if isinstance(val, datetime):
-            return Timestamp(int(val.timestamp() * 1000))
+            return Timestamp(int(val.replace(tzinfo=timezone.utc).timestamp() * 1000))
         return val
 
     async def fetch_all_sql(self, query: CompiledQuery) -> List[Dict[str, Any]]:

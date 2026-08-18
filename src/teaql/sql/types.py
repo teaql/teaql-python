@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from dataclasses import dataclass
 from typing import List, Optional
-from datetime import date
+from datetime import date, datetime, timezone
 from decimal import Decimal
 import json
 from teaql.core.value import Value, DataType, Timestamp
@@ -29,17 +29,29 @@ class CompiledQuery:
         return _replace_positional_placeholders(self.sql_with_comment(), self.params, dialect)
 
 def _replace_numbered_placeholders(sql: str, params: List[Value], dialect: DatabaseKind) -> str:
-    output, index, in_string = [], 0, False
+    output, index, state = [], 0, "sql"
     while index < len(sql):
         char = sql[index]
-        if char == "'":
+        next_char = sql[index + 1] if index + 1 < len(sql) else ""
+        if state == "sql" and char == "'": output.append(char); state = "single"
+        elif state == "sql" and char == '"': output.append(char); state = "double"
+        elif state == "sql" and char == "-" and next_char == "-": output.extend("--"); index += 1; state = "line"
+        elif state == "sql" and char == "/" and next_char == "*": output.extend("/*"); index += 1; state = "block"
+        elif state == "single":
             output.append(char)
-            if in_string and index + 1 < len(sql) and sql[index + 1] == "'":
-                output.append("'")
-                index += 2
-                continue
-            in_string = not in_string
-        elif not in_string and char == "$" and index + 1 < len(sql) and sql[index + 1].isdigit():
+            if char == "'" and next_char == "'": output.append("'"); index += 1
+            elif char == "'": state = "sql"
+        elif state == "double":
+            output.append(char)
+            if char == '"' and next_char == '"': output.append('"'); index += 1
+            elif char == '"': state = "sql"
+        elif state == "line":
+            output.append(char)
+            if char in "\r\n": state = "sql"
+        elif state == "block":
+            output.append(char)
+            if char == "*" and next_char == "/": output.append("/"); index += 1; state = "sql"
+        elif char == "$" and next_char.isdigit():
             end = index + 1
             while end < len(sql) and sql[end].isdigit():
                 end += 1
@@ -88,9 +100,10 @@ def _replace_positional_placeholders(sql: str, params: List[Value], dialect: Dat
             output.append(char)
             if char == "*" and next_char == "/":
                 output.append("/"); index += 1; state = "sql"
-        elif char == "?" and parameter_index < len(params):
+        elif (char == "?" or (dialect == DatabaseKind.MySql and char == "%" and next_char == "s")) and parameter_index < len(params):
             output.append(_sql_literal(params[parameter_index], dialect))
             parameter_index += 1
+            if char == "%": index += 1
         else:
             output.append(char)
         index += 1
@@ -105,9 +118,16 @@ def _sql_literal(value: Value, dialect: DatabaseKind) -> str:
     if isinstance(raw, (int, float, Decimal)):
         return str(raw)
     if isinstance(raw, date):
-        return _quote_sql_string(raw.isoformat())
+        literal = _quote_sql_string(raw.isoformat())
+        if dialect == DatabaseKind.PostgreSql: return f"DATE {literal}"
+        if dialect == DatabaseKind.MySql: return f"CAST({literal} AS DATE)"
+        return literal
     if isinstance(raw, Timestamp):
-        return str(raw.millis) if dialect == DatabaseKind.Sqlite else _quote_sql_string(str(raw.millis))
+        if dialect == DatabaseKind.Sqlite: return str(raw.millis)
+        instant = datetime.fromtimestamp(raw.millis / 1000, tz=timezone.utc)
+        text = instant.strftime("%Y-%m-%d %H:%M:%S.%f")[:23]
+        if dialect == DatabaseKind.PostgreSql: return f"TIMESTAMPTZ {_quote_sql_string(text + 'Z')}"
+        return f"CAST({_quote_sql_string(text)} AS DATETIME(3))"
     if isinstance(raw, list):
         items = ", ".join(_sql_literal(item if isinstance(item, Value) else Value.from_any(item), dialect) for item in raw)
         return f"ARRAY[{items}]" if dialect == DatabaseKind.PostgreSql else f"({items})"
