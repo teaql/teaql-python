@@ -1,8 +1,9 @@
 import pytest
+from datetime import date
 from teaql.core.query import SelectQuery, OrderBy, SortDirection, Slice
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand
 from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, Expr, ExprBuilder, ValueExpr
-from teaql.core.value import Value, DataType
+from teaql.core.value import Value, DataType, Timestamp
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
 from teaql.sql.dialect import SqlDialect, quote_identifier_if_needed
 from teaql.sql.types import DatabaseKind, CompiledQuery, SqlCompileError, EmptyInListError, MissingIdPropertyError
@@ -68,6 +69,17 @@ def test_debug_sql_renders_copy_paste_statement():
 
     positional = CompiledQuery("SELECT ?, ?, '?', ?", [Value.Text("O'Brien"), Value.Bool(False), Value.Null()])
     assert positional.debug_sql(DatabaseKind.Sqlite) == "SELECT 'O''Brien', FALSE, '?', NULL"
+
+def test_sqlite_debug_sql_preserves_comments_and_temporal_storage_literals():
+    query = CompiledQuery(
+        "-- line ? $1\nSELECT '?', \"identifier?\", ?, ? /* block ? */",
+        [Value.Date(date(2024, 2, 29)), Value.Timestamp(Timestamp(1787110200123))],
+        "teaql purpose=temporal.verify ? $1",
+    )
+    assert query.debug_sql(DatabaseKind.Sqlite) == (
+        "/* teaql purpose=temporal.verify ? $1 */ -- line ? $1\n"
+        "SELECT '?', \"identifier?\", '2024-02-29', 1787110200123 /* block ? */"
+    )
 
 def test_compiles_select_with_filters_order_and_limit():
     q = SelectQuery.new("Order")

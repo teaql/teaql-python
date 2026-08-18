@@ -4,7 +4,7 @@ from typing import List, Optional
 from datetime import date
 from decimal import Decimal
 import json
-from teaql.core.value import Value, DataType
+from teaql.core.value import Value, DataType, Timestamp
 
 class DatabaseKind(Enum):
     PostgreSql = auto()
@@ -54,17 +54,41 @@ def _replace_numbered_placeholders(sql: str, params: List[Value], dialect: Datab
     return "".join(output)
 
 def _replace_positional_placeholders(sql: str, params: List[Value], dialect: DatabaseKind) -> str:
-    output, index, parameter_index, in_string = [], 0, 0, False
+    output, index, parameter_index, state = [], 0, 0, "sql"
     while index < len(sql):
         char = sql[index]
-        if char == "'":
+        next_char = sql[index + 1] if index + 1 < len(sql) else ""
+        if state == "sql" and char == "'":
             output.append(char)
-            if in_string and index + 1 < len(sql) and sql[index + 1] == "'":
+            state = "single_quote"
+        elif state == "sql" and char == '"':
+            output.append(char)
+            state = "double_quote"
+        elif state == "sql" and char == "-" and next_char == "-":
+            output.extend((char, next_char)); index += 1; state = "line_comment"
+        elif state == "sql" and char == "/" and next_char == "*":
+            output.extend((char, next_char)); index += 1; state = "block_comment"
+        elif state == "single_quote":
+            output.append(char)
+            if char == "'" and next_char == "'":
                 output.append("'")
-                index += 2
-                continue
-            in_string = not in_string
-        elif not in_string and char == "?" and parameter_index < len(params):
+                index += 1
+            elif char == "'":
+                state = "sql"
+        elif state == "double_quote":
+            output.append(char)
+            if char == '"' and next_char == '"':
+                output.append('"'); index += 1
+            elif char == '"':
+                state = "sql"
+        elif state == "line_comment":
+            output.append(char)
+            if char in "\r\n": state = "sql"
+        elif state == "block_comment":
+            output.append(char)
+            if char == "*" and next_char == "/":
+                output.append("/"); index += 1; state = "sql"
+        elif char == "?" and parameter_index < len(params):
             output.append(_sql_literal(params[parameter_index], dialect))
             parameter_index += 1
         else:
@@ -82,6 +106,8 @@ def _sql_literal(value: Value, dialect: DatabaseKind) -> str:
         return str(raw)
     if isinstance(raw, date):
         return _quote_sql_string(raw.isoformat())
+    if isinstance(raw, Timestamp):
+        return str(raw.millis) if dialect == DatabaseKind.Sqlite else _quote_sql_string(str(raw.millis))
     if isinstance(raw, list):
         items = ", ".join(_sql_literal(item if isinstance(item, Value) else Value.from_any(item), dialect) for item in raw)
         return f"ARRAY[{items}]" if dialect == DatabaseKind.PostgreSql else f"({items})"

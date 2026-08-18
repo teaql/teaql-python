@@ -1,17 +1,18 @@
 import pytest
 import tempfile
 import os
+from datetime import date
 import aiosqlite
 from teaql.provider.sqlite import create_sqlite_service, SimpleSchemaProvider
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
-from teaql.core.value import DataType, Value
+from teaql.core.value import DataType, Timestamp, Value
 from teaql.core.query import SelectQuery
 from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, ValueExpr
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
 from teaql.data_service import QueryRequest
 from teaql.runtime import RuntimeModule
 from teaql.provider.sqlite.transport import SqliteTransport
-from teaql.sql.types import CompiledQuery
+from teaql.sql.types import CompiledQuery, DatabaseKind
 
 @pytest.fixture
 def temp_db():
@@ -170,6 +171,33 @@ async def test_sqlite_stream_is_chunked_and_closes_after_early_stop(temp_db):
     async with aiosqlite.connect(temp_db) as db:
         async with db.execute("SELECT count(*) FROM stream_fixture") as cursor:
             assert (await cursor.fetchone())[0] == 5
+
+@pytest.mark.asyncio
+async def test_temporal_debug_sql_matches_prepared_sqlite_storage(temp_db):
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE temporal_fixture(id INTEGER, d TEXT, t INTEGER)")
+        await db.commit()
+
+    transport = SqliteTransport(temp_db)
+    prepared = CompiledQuery(
+        "INSERT INTO temporal_fixture VALUES (?, ?, ?) /* ignored ? */",
+        [Value.I64(1), Value.Date(date(2024, 2, 29)), Value.Timestamp(Timestamp(-123))],
+        "teaql source=temporal ?",
+    )
+    await transport.execute_sql(prepared)
+    literal_sql = prepared.debug_sql(DatabaseKind.Sqlite).replace(
+        "VALUES (1,", "VALUES (2,", 1)
+    await transport.execute_sql(CompiledQuery(literal_sql, []))
+
+    async with aiosqlite.connect(temp_db) as db:
+        async with db.execute(
+            "SELECT d, t, typeof(d), typeof(t) FROM temporal_fixture ORDER BY id"
+        ) as cursor:
+            rows = await cursor.fetchall()
+    assert rows == [
+        ("2024-02-29", -123, "text", "integer"),
+        ("2024-02-29", -123, "text", "integer"),
+    ]
 
 @pytest.mark.asyncio
 async def test_successful_mutation_emits_raw_and_independently_masked_app_audit(temp_db):

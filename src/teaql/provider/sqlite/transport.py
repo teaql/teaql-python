@@ -29,9 +29,9 @@ class SqliteTransport(SqlTransactionTransport):
                     res.append(str(v._data))
             elif getattr(v, '_type_hint', None) == DataType.Timestamp or isinstance(v._data, Timestamp):
                 if hasattr(v._data, "millis"):
-                    res.append(str(v._data.millis))
+                    res.append(v._data.millis)
                 else:
-                    res.append(str(v._data))
+                    res.append(int(v._data))
             else:
                 res.append(v._data)
         return tuple(res)
