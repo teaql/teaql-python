@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from time import monotonic
 from typing import Dict, Optional
 
@@ -39,15 +40,17 @@ class OpenTelemetryRuntimeTelemetry(RuntimeTelemetry):
         )
         activation.__enter__()
         return _OpenTelemetryScope(
-            span, activation, operation.family, monotonic(), self._duration, self._operations,
+            span, activation, operation.family, operation.name,
+            monotonic(), self._duration, self._operations,
         )
 
 
 class _OpenTelemetryScope:
-    def __init__(self, span, activation, family, started_at, duration, operations):
+    def __init__(self, span, activation, family, name, started_at, duration, operations):
         self._span = span
         self._activation = activation
         self._family = family
+        self._name = name
         self._started_at = started_at
         self._duration = duration
         self._operations = operations
@@ -75,7 +78,17 @@ class _OpenTelemetryScope:
             "teaql.operation.family": self._family,
             "teaql.operation.outcome": outcome,
         }
-        self._duration.record(max(0.0, (monotonic() - self._started_at) * 1000), dimensions)
+        duration_ms = max(0.0, (monotonic() - self._started_at) * 1000)
+        self._duration.record(duration_ms, dimensions)
         self._operations.add(1, dimensions)
+        logging.getLogger("teaql.runtime").info(
+            "TeaQL runtime operation completed",
+            extra={
+                "teaql.operation.family": self._family,
+                "teaql.operation.name": self._name,
+                "teaql.operation.outcome": outcome,
+                "teaql.operation.duration_ms": duration_ms,
+            },
+        )
         self._activation.__exit__(None, None, None)
         self._span.end()

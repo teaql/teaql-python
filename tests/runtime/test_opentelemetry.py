@@ -14,6 +14,13 @@ def test_exports_safe_spans_and_metrics_through_official_sdk():
     tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
     metric_reader = InMemoryMetricReader()
     meter_provider = MeterProvider(metric_readers=[metric_reader])
+    log_exporter = InMemoryLogRecordExporter()
+    logger_provider = LoggerProvider()
+    logger_provider.add_log_record_processor(SimpleLogRecordProcessor(log_exporter))
+    handler = LoggingHandler(logger_provider=logger_provider)
+    runtime_logger = logging.getLogger("teaql.runtime")
+    runtime_logger.setLevel(logging.INFO)
+    runtime_logger.addHandler(handler)
     telemetry = OpenTelemetryRuntimeTelemetry(
         tracer_provider.get_tracer("io.teaql.runtime"),
         meter_provider.get_meter("io.teaql.runtime"),
@@ -51,6 +58,23 @@ def test_exports_safe_spans_and_metrics_through_official_sdk():
         "teaql.runtime.operation.duration",
         "teaql.runtime.operation.count",
     }
+    logs = log_exporter.get_finished_logs()
+    assert len(logs) == 2
+    provider_log = next(
+        item.log_record for item in logs
+        if item.log_record.attributes["teaql.operation.family"] == "provider"
+    )
+    assert provider_log.trace_id == provider_span.context.trace_id
+    assert provider_log.span_id == provider_span.context.span_id
+    assert provider_log.attributes["teaql.operation.outcome"] == "success"
+    assert "teaql.entity.id" not in provider_log.attributes
 
+    runtime_logger.removeHandler(handler)
+    logger_provider.shutdown()
     tracer_provider.shutdown()
     meter_provider.shutdown()
+import logging
+
+from opentelemetry.instrumentation.logging.handler import LoggingHandler
+from opentelemetry.sdk._logs import LoggerProvider
+from opentelemetry.sdk._logs.export import InMemoryLogRecordExporter, SimpleLogRecordProcessor
