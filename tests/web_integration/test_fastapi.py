@@ -57,8 +57,8 @@ def test_get_tea_context(mock_build):
     request.url = "http://test"
     request.method = "GET"
     
-    ctx = get_tea_context(request)
-    assert ctx == mock_ctx
+    context = get_tea_context(request)
+    assert context == mock_ctx
     mock_ctx.set_user_identifier.assert_called_with("u1")
     mock_ctx.set_trace_id.assert_called_with("t1")
     

@@ -48,16 +48,16 @@ class RuntimeModule:
         ]
         return combined
 
-    def apply_to(self, ctx: UserContext):
+    def apply_to(self, context: UserContext):
         for name, dep in self._dependencies.items():
-            ctx.insert_resource(name, dep)
+            context.insert_resource(name, dep)
         for entity in self._entities:
-            ctx.register_entity(entity)
+            context.register_entity(entity)
         if hasattr(self, '_initial_graphs'):
             for graph in self._initial_graphs:
-                ctx.add_initial_graph(graph)
-        ctx.insert_resource("entities", self._entities)
-        ctx.insert_resource("behaviors", self._behaviors)
+                context.add_initial_graph(graph)
+        context.insert_resource("entities", self._entities)
+        context.insert_resource("behaviors", self._behaviors)
         if self._audit_sinks:
             sinks = tuple(self._audit_sinks)
             class CompositeSink:
@@ -65,12 +65,12 @@ class RuntimeModule:
                     from .audit import deliver
                     for sink in sinks:
                         await deliver(sink, "on_event", context, event)
-            ctx._set_standard_audit_sink(CompositeSink())
+            context._set_standard_audit_sink(CompositeSink())
 
     def into_context(self) -> UserContext:
-        ctx = UserContext.new()
-        self.apply_to(ctx)
-        return ctx
+        context = UserContext.new()
+        self.apply_to(context)
+        return context
 
     async def configure(self, *args, **kwargs) -> UserContext:
         return self.into_context()

@@ -67,15 +67,15 @@ class WebRequestInfo:
 # Optional Dependency for FastAPI
 def get_tea_context(request) -> UserContext:
     from teaql.runtime.env import ServiceRuntimeFromEnv
-    ctx = ServiceRuntimeFromEnv.build_context()
+    context = ServiceRuntimeFromEnv.build_context()
     
     user_id = request.headers.get("X-User-Id")
     if user_id:
-        ctx.set_user_identifier(user_id)
+        context.set_user_identifier(user_id)
         
     trace_id = request.headers.get("X-Trace-Id")
-    if trace_id and hasattr(ctx, 'set_trace_id'):
-        ctx.set_trace_id(trace_id)
+    if trace_id and hasattr(context, 'set_trace_id'):
+        context.set_trace_id(trace_id)
         
     forwarded = request.headers.get("X-Forwarded-For")
     client_ip = forwarded.split(",")[0].strip() if forwarded else None
@@ -89,5 +89,5 @@ def get_tea_context(request) -> UserContext:
         method=request.method
     )
     
-    ctx.insert_resource("WebRequestInfo", web_info)
-    return ctx
+    context.insert_resource("WebRequestInfo", web_info)
+    return context

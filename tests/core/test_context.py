@@ -4,26 +4,26 @@ from teaql.runtime.env import ServiceRuntimeFromEnv
 import os
 
 def test_user_context():
-    ctx = UserContext.new()
-    ctx.insert_resource("my_res", {"key": "value"})
-    assert ctx.get_resource("my_res") == {"key": "value"}
-    assert ctx.get_resource("missing") is None
+    context = UserContext.new()
+    context.insert_resource("my_res", {"key": "value"})
+    assert context.get_resource("my_res") == {"key": "value"}
+    assert context.get_resource("missing") is None
     
     with pytest.raises(Exception):
-        ctx.require_resource("missing")
+        context.require_resource("missing")
         
-    ctx.set_user_identifier("test_user")
-    assert ctx.user_identifier() == "test_user"
+    context.set_user_identifier("test_user")
+    assert context.user_identifier() == "test_user"
     
 def test_user_context_extensions():
     from teaql.runtime.context import SqlLogOptions, SqlLogOperation
-    ctx = UserContext.new()
+    context = UserContext.new()
     
     # Logs
-    ctx.set_sql_log_options(SqlLogOptions(select=True, mutation=True))
-    assert ctx.sql_log_options() is not None
-    ctx.disable_sql_log()
-    assert len(ctx.sql_logs()) == 0
+    context.set_sql_log_options(SqlLogOptions(select=True, mutation=True))
+    assert context.sql_log_options() is not None
+    context.disable_sql_log()
+    assert len(context.sql_logs()) == 0
     
     # Metadata logs
     class MockMetadata:
@@ -31,10 +31,10 @@ def test_user_context_extensions():
         operation = "Select"
         result_count = 1
 
-    ctx.enable_all_sql_log()
-    ctx.record_metadata_log(MockMetadata())
-    assert len(ctx.sql_logs()) == 1
-    assert ctx.sql_logs()[0].debug_sql == "SELECT 1"
+    context.enable_all_sql_log()
+    context.record_metadata_log(MockMetadata())
+    assert len(context.sql_logs()) == 1
+    assert context.sql_logs()[0].debug_sql == "SELECT 1"
     
     # SQL logs
     class MockQuery:
@@ -42,15 +42,15 @@ def test_user_context_extensions():
         params = []
     
     # Needs re-enable since disable_sql_log disabled it
-    ctx.set_sql_log_options(SqlLogOptions(select=True, mutation=True))
-    ctx.record_sql_log(SqlLogOperation.Insert, MockQuery(), None, None, None, affected_rows=1)
-    assert len(ctx.sql_logs()) == 2
-    assert ctx.sql_logs()[1].result_summary == "1 rows affected"
+    context.set_sql_log_options(SqlLogOptions(select=True, mutation=True))
+    context.record_sql_log(SqlLogOperation.Insert, MockQuery(), None, None, None, affected_rows=1)
+    assert len(context.sql_logs()) == 2
+    assert context.sql_logs()[1].result_summary == "1 rows affected"
     
-    ctx.clear_sql_logs()
-    assert len(ctx.sql_logs()) == 0
+    context.clear_sql_logs()
+    assert len(context.sql_logs()) == 0
 
 def test_service_runtime_from_env(monkeypatch):
     monkeypatch.setenv("TEAQL_USER", "env_user")
-    ctx = ServiceRuntimeFromEnv.build_context()
-    assert ctx.user_identifier() == "env_user"
+    context = ServiceRuntimeFromEnv.build_context()
+    assert context.user_identifier() == "env_user"

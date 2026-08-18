@@ -68,11 +68,11 @@ async def main():
     service = create_sqlite_service(db_path, provider)
 
     print("Initializing Database Schema...")
-    ctx = UserContext.new()
+    context = UserContext.new()
     for e in provider.entities.values():
-        ctx.register_entity(e)
+        context.register_entity(e)
     
-    await service.ensure_schema(ctx)
+    await service.ensure_schema(context)
 
     print("Performing CRUD operations...")
 
@@ -86,7 +86,7 @@ async def main():
         version=1
     )
     platform._action = "Create"
-    await platform.save(ctx, service)
+    await platform.save(context, service)
 
     # CREATE TaskStatus
     print("Creating TaskStatus...")
@@ -101,7 +101,7 @@ async def main():
         version=1
     )
     status._action = "Create"
-    await status.save(ctx, service)
+    await status.save(context, service)
 
     # CREATE Task
     print("Creating Task...")
@@ -113,12 +113,12 @@ async def main():
         version=1
     )
     task._action = "Create"
-    await task.save(ctx, service)
+    await task.save(context, service)
 
     # READ Task
     print("Reading Tasks...")
     task_req = TaskRequest()
-    res = await task_req.execute_for_list(ctx, service)
+    res = await task_req.execute_for_list(context, service)
     for row in res["data"]:
         print("  - Task:", row)
 
@@ -126,10 +126,10 @@ async def main():
     print("Updating Task...")
     task.name = "Build Robot Leg"
     task._action = "Update"
-    await task.save(ctx, service)
+    await task.save(context, service)
 
     # Verify Update
-    res = await task_req.execute_for_list(ctx, service)
+    res = await task_req.execute_for_list(context, service)
     print("  - Updated Task:", res["data"][0])
 
     # INSERT TaskExecutionLog
@@ -142,12 +142,12 @@ async def main():
         version=1
     )
     log._action = "Create"
-    await log.save(ctx, service)
+    await log.save(context, service)
 
     # QUERY Log
     print("Reading Logs...")
     log_req = TaskExecutionLogRequest()
-    res = await log_req.execute_for_list(ctx, service)
+    res = await log_req.execute_for_list(context, service)
     for row in res["data"]:
         print("  - Log:", row)
 

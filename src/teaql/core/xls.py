@@ -78,19 +78,19 @@ class XlsBlockBuildContext:
         return cls(page, 0, 0)
 
     def next(self) -> 'XlsBlockBuildContext':
-        ctx = XlsBlockBuildContext(self.page, self.start_x, self.y)
-        ctx.x = self.x + 1
-        return ctx
+        context = XlsBlockBuildContext(self.page, self.start_x, self.y)
+        context.x = self.x + 1
+        return context
 
     def new_line(self) -> 'XlsBlockBuildContext':
-        ctx = XlsBlockBuildContext(self.page, self.start_x, self.y + 1)
-        ctx.x = 0
-        return ctx
+        context = XlsBlockBuildContext(self.page, self.start_x, self.y + 1)
+        context.x = 0
+        return context
 
     def next_line(self) -> 'XlsBlockBuildContext':
-        ctx = XlsBlockBuildContext(self.page, self.start_x, self.y + 1)
-        ctx.x = self.start_x
-        return ctx
+        context = XlsBlockBuildContext(self.page, self.start_x, self.y + 1)
+        context.x = self.start_x
+        return context
 
     def to_block(self, value: Any) -> XlsBlock:
         return XlsBlock.from_context(self, value)

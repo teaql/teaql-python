@@ -123,34 +123,34 @@ async def test_structured_sql_evidence_is_parameterized_and_filterable(temp_db, 
         await db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name VARCHAR(255), version INTEGER)")
         await db.commit()
 
-    ctx = RuntimeModule.new().into_context()
-    ctx.enable_all_sql_log()
+    context = RuntimeModule.new().into_context()
+    context.enable_all_sql_log()
     secret = "secret-customer-value"
     insert = MutationRequest(InsertCommand("User", {
         "id": Value.I64(1), "name": Value.Text(secret), "version": Value.I64(1)
     }))
-    await service.mutate(ctx, insert)
+    await service.mutate(context, insert)
     query = SelectQuery("User").filter(
         BinaryExpr(ColumnExpr("name"), BinaryOp.Eq, ValueExpr(Value.Text(secret))))
-    await service.query(ctx, QueryRequest(query))
+    await service.query(context, QueryRequest(query))
 
-    entries = ctx.sql_logs()
+    entries = context.sql_logs()
     assert len(entries) == 2
     assert all(entry.sql and secret not in entry.sql for entry in entries)
     assert all(entry.params for entry in entries)
     assert any(entry.result_count is not None for entry in entries)
     assert any(entry.affected_rows is not None for entry in entries)
 
-    ctx.enable_select_sql_log()
-    await service.mutate(ctx, MutationRequest(InsertCommand("User", {
+    context.enable_select_sql_log()
+    await service.mutate(context, MutationRequest(InsertCommand("User", {
         "id": Value.I64(2), "name": Value.Text("ignored"), "version": Value.I64(1)
     })))
-    assert ctx.sql_logs() == []
-    ctx.enable_mutation_sql_log()
-    await service.query(ctx, QueryRequest(SelectQuery("User")))
-    assert ctx.sql_logs() == []
-    ctx.disable_sql_log()
-    assert ctx.sql_logs() == []
+    assert context.sql_logs() == []
+    context.enable_mutation_sql_log()
+    await service.query(context, QueryRequest(SelectQuery("User")))
+    assert context.sql_logs() == []
+    context.disable_sql_log()
+    assert context.sql_logs() == []
 
 @pytest.mark.asyncio
 async def test_sqlite_stream_is_chunked_and_closes_after_early_stop(temp_db):
@@ -223,10 +223,10 @@ async def test_successful_mutation_emits_raw_and_independently_masked_app_audit(
         async def on_safe_event(self, context, event): self.events.append(event)
 
     raw, app = RawSink(), AppSink()
-    ctx = RuntimeModule.new().entity(entity).audit_event_sink(raw).into_context().with_app_audit_event_sink(app)
+    context = RuntimeModule.new().entity(entity).audit_event_sink(raw).into_context().with_app_audit_event_sink(app)
     command = InsertCommand("User", {"id": Value.I64(1), "name": Value.Text("Alice Example"), "version": Value.I64(1)})
     command.trace_chain.append(type("Trace", (), {"comment": "approved change"})())
-    result = await service.mutate(ctx, MutationRequest(command))
+    result = await service.mutate(context, MutationRequest(command))
 
     assert result.affected_rows == 1
     assert len(raw.events) == 1 and raw.events[0].changes[1].new_value.val == "Alice Example"

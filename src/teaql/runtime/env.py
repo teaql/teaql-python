@@ -7,11 +7,11 @@ from teaql.provider.postgres import create_postgres_service
 class ServiceRuntimeFromEnv:
     @staticmethod
     def build_context() -> UserContext:
-        ctx = UserContext.new()
+        context = UserContext.new()
         # Initialize context based on common teaql environment variables
         env_user = os.environ.get("TEAQL_USER", "")
         if env_user:
-            ctx.set_user_identifier(env_user)
+            context.set_user_identifier(env_user)
             
         db_url = os.environ.get("TEAQL_DB_URL") or os.environ.get("DATABASE_URL")
         if db_url:
@@ -24,6 +24,6 @@ class ServiceRuntimeFromEnv:
                 data_service = create_postgres_service(db_url)
                 
             if data_service:
-                ctx.insert_resource("dataService", data_service)
+                context.insert_resource("dataService", data_service)
         
-        return ctx
+        return context

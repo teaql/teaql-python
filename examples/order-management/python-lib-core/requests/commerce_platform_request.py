@@ -184,32 +184,32 @@ class ExecutableCommercePlatformRequest:
     def __init__(self, request):
         self._request = request
 
-    def new_entity(self, ctx) -> CommercePlatform:
+    def new_entity(self, context) -> CommercePlatform:
         return CommercePlatform()
 
-    async def execute_for_list(self, ctx):
+    async def execute_for_list(self, context):
         self = self._request
         if not self._purpose or not self._comment:
             raise Exception("Security audit failure: comment() and purpose() must be called before execute_for_list()")
-        service = ctx.require_resource("dataService")
+        service = context.require_resource("dataService")
         req = QueryRequest(self.query)
-        res = await service.query(ctx, req)
+        res = await service.query(context, req)
 
         result = {"data": res.rows}
         return result
 
-    async def execute_for_one(self, ctx):
+    async def execute_for_one(self, context):
         self._request.limit(1)
-        res = await self.execute_for_list(ctx)
+        res = await self.execute_for_list(context)
         if res["data"]:
             return res["data"][0]
         return None
 
-    async def execute_entities_for_list(self, ctx):
-        res = await self.execute_for_list(ctx)
+    async def execute_entities_for_list(self, context):
+        res = await self.execute_for_list(context)
         return [CommercePlatform(**row) for row in res["data"]]
 
-    async def execute_entity_for_one(self, ctx):
+    async def execute_entity_for_one(self, context):
         self._request.limit(1)
-        entities = await self.execute_entities_for_list(ctx)
+        entities = await self.execute_entities_for_list(context)
         return entities[0] if entities else None

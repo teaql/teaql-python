@@ -15,20 +15,20 @@ def test_xls_block_creation():
     assert block.contains(0, 0) is False
 
 def test_xls_context_navigation():
-    ctx = XlsBlockBuildContext.from_page("Sheet1")
-    assert ctx.x == 0 and ctx.y == 0
+    context = XlsBlockBuildContext.from_page("Sheet1")
+    assert context.x == 0 and context.y == 0
     
-    ctx = ctx.next()
-    assert ctx.x == 1 and ctx.y == 0
+    context = context.next()
+    assert context.x == 1 and context.y == 0
     
-    ctx = ctx.new_line()
-    assert ctx.x == 0 and ctx.y == 1
+    context = context.new_line()
+    assert context.x == 0 and context.y == 1
     
     # Start offset testing
-    ctx = XlsBlockBuildContext("Sheet2", 2, 2)
-    assert ctx.x == 2 and ctx.y == 2
-    ctx = ctx.next_line()
-    assert ctx.x == 2 and ctx.y == 3
+    context = XlsBlockBuildContext("Sheet2", 2, 2)
+    assert context.x == 2 and context.y == 2
+    context = context.next_line()
+    assert context.x == 2 and context.y == 3
 
 def test_xls_workbook_structure():
     wb = XlsWorkbook()

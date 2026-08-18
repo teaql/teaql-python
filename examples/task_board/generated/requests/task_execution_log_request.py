@@ -81,9 +81,9 @@ class TaskExecutionLogRequest:
         return self
 
 
-    async def execute_for_list(self, ctx, service):
+    async def execute_for_list(self, context, service):
         req = QueryRequest(self.query)
-        res = await service.query(ctx, req)
+        res = await service.query(context, req)
 
         result = {"data": res.rows}
         return result

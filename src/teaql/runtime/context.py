@@ -621,8 +621,8 @@ class UserContext:
 
 
 class TeaqlRuntime:
-    def __init__(self, ctx: UserContext):
-        self._ctx = ctx
+    def __init__(self, context: UserContext):
+        self._ctx = context
 
     @property
     def context(self) -> UserContext:
@@ -725,7 +725,7 @@ from abc import ABC, abstractmethod
 
 class SchemaProvider(ABC):
     @abstractmethod
-    async def ensure_schema(self, ctx: 'UserContext') -> None:
+    async def ensure_schema(self, context: 'UserContext') -> None:
         pass
 
 class DataStore(ABC):

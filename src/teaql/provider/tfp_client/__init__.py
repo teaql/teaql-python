@@ -41,7 +41,7 @@ class TfpHttpProvider(DataService):
             id_generation=False
         )
 
-    async def query(self, ctx, request: QueryRequest) -> QueryResult:
+    async def query(self, context, request: QueryRequest) -> QueryResult:
         start_time = datetime.now()
         payload = json.dumps(request.query, cls=TfpJsonEncoder)
         
@@ -65,7 +65,7 @@ class TfpHttpProvider(DataService):
             metadata=metadata
         )
 
-    async def mutate(self, ctx, request: MutationRequest) -> MutationResult:
+    async def mutate(self, context, request: MutationRequest) -> MutationResult:
         start_time = datetime.now()
         cmd = request.cmd
         

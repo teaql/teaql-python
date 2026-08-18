@@ -162,7 +162,7 @@ class TeaQLClient:
         self._next_ids[entity] = value + 1
         return value
 
-    async def mutate(self, ctx, req):
+    async def mutate(self, context, req):
         command = req.cmd
         table = self._data.setdefault(command.entity, {})
         if hasattr(command, "payload"):
@@ -173,7 +173,7 @@ class TeaQLClient:
             table[str(record_id)] = record
             self._persist()
             result = {"success": True, "id": record_id, "version": record["version"]}
-            await ctx.emit_mutation_audit(req, result)
+            await context.emit_mutation_audit(req, result)
             return result
         if hasattr(command, "values"):
             record_id = command.pk
@@ -190,7 +190,7 @@ class TeaQLClient:
             record["version"] = int(record.get("version") or 0) + 1
             self._persist()
             result = {"success": True, "id": record_id, "version": record["version"]}
-            await ctx.emit_mutation_audit(req, result)
+            await context.emit_mutation_audit(req, result)
             return result
         if hasattr(command, "pk"):
             record_id = command.pk
@@ -204,11 +204,11 @@ class TeaQLClient:
             del table[str(record_id)]
             self._persist()
             result = {"success": True, "id": record_id, "deleted": True}
-            await ctx.emit_mutation_audit(req, result)
+            await context.emit_mutation_audit(req, result)
             return result
         raise TypeError(f"Unsupported mutation command: {type(command).__name__}")
 
-    async def query(self, ctx, req):
+    async def query(self, context, req):
         query = req.query
         rows = [copy.deepcopy(row) for row in self._data.get(query.entity, {}).values()]
         for expression in query._filters:
@@ -476,7 +476,7 @@ class AsyncSqlTeaQLClient:
             entity,
         )
 
-    async def mutate(self, ctx, req):
+    async def mutate(self, context, req):
         command = req.cmd
         connection = await self._connect()
         try:
@@ -498,7 +498,7 @@ class AsyncSqlTeaQLClient:
                         *params,
                     )
                     result = {"success": True, "id": record_id, "version": record["version"]}
-                    await ctx.emit_mutation_audit(req, result)
+                    await context.emit_mutation_audit(req, result)
                     return result
 
                 if hasattr(command, "values"):
@@ -538,7 +538,7 @@ class AsyncSqlTeaQLClient:
                         command.pk,
                     )
                     result = {"success": True, "id": command.pk, "version": row["version"]}
-                    await ctx.emit_mutation_audit(req, result)
+                    await context.emit_mutation_audit(req, result)
                     return result
 
                 if hasattr(command, "pk"):
@@ -561,7 +561,7 @@ class AsyncSqlTeaQLClient:
                             f"Optimistic lock failed or {command.entity}({command.pk}) does not exist"
                         )
                     result = {"success": True, "id": command.pk, "deleted": True}
-                    await ctx.emit_mutation_audit(req, result)
+                    await context.emit_mutation_audit(req, result)
                     return result
 
                 raise TypeError(f"Unsupported mutation command: {type(command).__name__}")
@@ -573,7 +573,7 @@ class AsyncSqlTeaQLClient:
             return f"CAST({field} AS CHAR) LIKE CONCAT('%%', {placeholder}, '%%')"
         return f"CAST({field} AS TEXT) LIKE '%' || {placeholder} || '%'"
 
-    async def query(self, ctx, req):
+    async def query(self, context, req):
         query = req.query
         filter_values = {
             expression["field"]: expression.get("value") for expression in query._filters
@@ -685,10 +685,10 @@ class AsyncSqlTeaQLClient:
         finally:
             await connection.close()
 
-        await self._enhance_relations(ctx, query, rows)
+        await self._enhance_relations(context, query, rows)
         return type('QueryResult', (object,), {'rows': rows})
 
-    async def _enhance_relations(self, ctx, query, parents):
+    async def _enhance_relations(self, context, query, parents):
         if not parents or not getattr(query, "_relations", None): return
         relations = ENTITY_SCHEMAS.get(query.entity, {}).get("relations", {})
         for load in query._relations:
@@ -699,7 +699,7 @@ class AsyncSqlTeaQLClient:
             child_query.entity = relation["target_entity"]
             child_query._filters.append(one_of(relation["foreign_key"], parent_ids))
             if child_query._limit is not None: child_query._partition_by = relation["foreign_key"]
-            children = (await self.query(ctx, QueryRequest(child_query))).rows
+            children = (await self.query(context, QueryRequest(child_query))).rows
             buckets = {}
             for child in children:
                 child.pop("__teaql_partition_rank", None)

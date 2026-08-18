@@ -112,17 +112,17 @@ class DataServiceExecutor(Protocol):
 
 
 class QueryExecutor(DataServiceExecutor, Protocol):
-    async def query(self, ctx: 'UserContext', request: QueryRequest) -> QueryResult:
+    async def query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
         ...
 
 
 class StreamQueryExecutor(DataServiceExecutor, Protocol):
-    def query_stream(self, ctx: 'UserContext', request: QueryRequest, chunk_size: int) -> AsyncIterator[StreamChunk]:
+    def query_stream(self, context: 'UserContext', request: QueryRequest, chunk_size: int) -> AsyncIterator[StreamChunk]:
         ...
 
 
 class MutationExecutor(DataServiceExecutor, Protocol):
-    async def mutate(self, ctx: 'UserContext', request: MutationRequest) -> MutationResult:
+    async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
         ...
 
 

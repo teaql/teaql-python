@@ -22,7 +22,7 @@ class TaskExecutionLog:
         self._comment = comment
         return self
 
-    async def save(self, ctx, service):
+    async def save(self, context, service):
         payload = {}
         if getattr(self, "id", None) is not None:
             payload["id"] = Value.I64(self.id)
@@ -55,4 +55,4 @@ class TaskExecutionLog:
         if self._comment:
             req.comment = self._comment
 
-        return await service.mutate(ctx, req)
+        return await service.mutate(context, req)

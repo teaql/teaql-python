@@ -35,7 +35,7 @@ class CommercePlatform:
         self._comment = comment
         return self
 
-    async def save(self, ctx):
+    async def save(self, context):
         if not self._comment:
             raise Exception("Security audit failure: audit_as() must be called before save()")
 
@@ -75,8 +75,8 @@ class CommercePlatform:
         if self._comment:
             req.comment = self._comment
 
-        service = ctx.require_resource("dataService")
-        result = await service.mutate(ctx, req)
+        service = context.require_resource("dataService")
+        result = await service.mutate(context, req)
         if action == "Create":
             self.id = result["id"]
             self.version = result.get("version")
@@ -96,7 +96,7 @@ class CommercePlatform:
                 for child in children:
                     getattr(child, updater)(self)
                     child.audit_as(self._comment)
-                    await child.save(ctx)
+                    await child.save(context)
         return result
 
     def update_id(self, value):

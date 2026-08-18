@@ -27,34 +27,34 @@ class AppAudit:
         print(f"[audit/app] {event.kind} {event.entity}#{event.entity_id}; safe_fields={len(event.fields)}")
 
 
-async def save(entity, ctx, reason):
-    await entity.audit_as(reason).save(ctx)
+async def save(entity, context, reason):
+    await entity.audit_as(reason).save(context)
     return entity
 
 
-async def seed(ctx):
+async def seed(context):
     existing = await (Q.commerce_platforms()
         .with_name_is("Northwind Demo")
         .comment("Check whether deterministic quick-start data exists")
         .purpose("Initialize the local order-management example")
-        .execute_entities_for_list(ctx))
+        .execute_entities_for_list(context))
     if existing:
         print("[seed] deterministic data already exists; no duplicate rows added")
         return
 
     now = datetime(2026, 8, 13, 9, 0, 0)
-    platform = await save(CommercePlatform(name="Northwind Demo", createTime=now, updateTime=now), ctx,
+    platform = await save(CommercePlatform(name="Northwind Demo", createTime=now, updateTime=now), context,
                           "Create quick-start commerce platform")
     customer = await save(Customer(name="Acme Retail", email="masked-in-quick-start",
-                                   commercePlatform=platform.id, createTime=now, updateTime=now), ctx,
+                                   commercePlatform=platform.id, createTime=now, updateTime=now), context,
                           "Create masked quick-start customer")
     pending = await save(OrderStatus(name="Pending", code="PENDING", color="#F97316",
-                                     displayOrder=10, commercePlatform=platform.id), ctx,
+                                     displayOrder=10, commercePlatform=platform.id), context,
                          "Create quick-start pending status")
     await save(CustomerOrder(orderNumber="WEB-2026-001", orderDate=date(2026, 8, 12),
                              totalAmount=Decimal("129.95"), status=pending.id,
                              customer=customer.id, commercePlatform=platform.id,
-                             createTime=now, updateTime=now), ctx,
+                             createTime=now, updateTime=now), context,
                "Create deterministic quick-start order")
     print("[seed] inserted deterministic platform, customer, status, and order")
 
@@ -65,21 +65,21 @@ async def main():
         print(f"[database] {database} was not found; TeaQL will create it")
     database.parent.mkdir(parents=True, exist_ok=True)
     client = SQLiteTeaQLClient(str(database))
-    ctx = (UserContext.new()
+    context = (UserContext.new()
            .insert_resource("dataService", client)
            .initialize_audit(StandardAudit(), AppAudit())
            .configure_audit_policy("Customer", mask_fields=("email",))
            .configure_audit_policy("OrderSearchPreset", mask_fields=("filter_json",)))
     await client.ensure_schema()
     print("[schema] ensured 7 generated entity tables")
-    await seed(ctx)
+    await seed(context)
 
     result = await (Q.customer_orders()
         .with_order_number_containing("WEB-")
         .order_by_id_ascending()
         .comment("List WEB orders for the terminal quick start")
         .purpose("Show the operator a deterministic order list")
-        .execute_for_list(ctx))
+        .execute_for_list(context))
     rows = result["data"]
     print(f"[query] matched {len(rows)} order(s)")
     for row in rows:
@@ -90,13 +90,13 @@ async def main():
         .with_request_id_is(request_id)
         .comment("Check idempotent quick-start preset")
         .purpose("Persist the operator's reusable search")
-        .execute_entity_for_one(ctx))
+        .execute_entity_for_one(context))
     if preset is None:
         preset = OrderSearchPreset(name="Pending web orders", filterJson='{"order_number":"WEB-"}',
                                    requestId=request_id, ownerUserId="quick-start-user",
                                    commercePlatform=rows[0]["commerce_platform"],
                                    createTime=datetime.now(), updateTime=datetime.now())
-        await save(preset, ctx, "Save idempotent quick-start search preset")
+        await save(preset, context, "Save idempotent quick-start search preset")
         print(f"[mutation] saved preset #{preset.id}")
     else:
         print(f"[mutation] preset #{preset.id} already exists")

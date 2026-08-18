@@ -81,7 +81,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             returning=False
         )
 
-    async def query_stream(self, ctx, request: QueryRequest, chunk_size: int):
+    async def query_stream(self, context, request: QueryRequest, chunk_size: int):
         if chunk_size <= 0:
             raise ValueError("chunk_size must be positive")
         if request.query.relations or request.query.child_enhancements or request.query.object_group_bys:
@@ -103,11 +103,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         if pending is not None:
             yield StreamChunk(pending, index, True)
 
-    async def query(self, ctx: 'UserContext', request: QueryRequest) -> QueryResult:
+    async def query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
         request.query.prepare_for_list()
         entity_desc = self.schema_provider.get_entity(request.query.entity)
-        if not entity_desc and ctx:
-            entities = ctx.get_resource("entities")
+        if not entity_desc and context:
+            entities = context.get_resource("entities")
             if entities:
                 for e in entities:
                     if getattr(e, "_name", None) == request.query.entity:
@@ -127,7 +127,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         except Exception as e:
             raise TransportError(e)
 
-        await self._enhance_relations(ctx, rows, request.query)
+        await self._enhance_relations(context, rows, request.query)
 
         facets = {}
         if getattr(request.query, 'object_group_bys', None):
@@ -162,15 +162,15 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             comment=request._comment,
             debug_query=compiled.debug_sql(self.dialect.kind())
         )
-        if ctx is not None:
-            ctx.record_metadata_log(metadata)
+        if context is not None:
+            context.record_metadata_log(metadata)
         return QueryResult(
             rows=rows,
             metadata=metadata,
             facets=facets
         )
 
-    async def _enhance_relations(self, ctx, parents: List[Dict[str, Any]], query: SelectQuery) -> None:
+    async def _enhance_relations(self, context, parents: List[Dict[str, Any]], query: SelectQuery) -> None:
         if not parents or not query.relations:
             return
         parent_desc = self.schema_provider.get_entity(query.entity)
@@ -189,7 +189,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             child_query.and_filter(BinaryExpr(ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
             if child_query.slice is not None:
                 child_query.partition_by_field(relation.foreign_key)
-            children = (await self.query(ctx, QueryRequest(child_query))).rows
+            children = (await self.query(context, QueryRequest(child_query))).rows
             for child in children:
                 child.pop("__teaql_partition_rank", None)
             buckets: Dict[Any, List[Dict[str, Any]]] = {}
@@ -199,12 +199,12 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 related = buckets.get(parent.get(relation.local_key), [])
                 parent[load.name] = related if relation.is_many else (related[0] if related else None)
 
-    async def mutate(self, ctx: 'UserContext', request: MutationRequest) -> MutationResult:
+    async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
         if isinstance(self.transport, SqlTransactionTransport):
             transaction = await self.transport.begin_sql()
             executor = SqlDataServiceExecutor(self.dialect, transaction, self.schema_provider)
             try:
-                result = await executor.mutate(ctx, request)
+                result = await executor.mutate(context, request)
                 await transaction.commit_sql()
                 return result
             except Exception:
@@ -213,8 +213,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
 
         req_data = request._data
         entity_desc = self.schema_provider.get_entity(req_data.entity)
-        if not entity_desc and ctx:
-            entities = ctx.get_resource("entities")
+        if not entity_desc and context:
+            entities = context.get_resource("entities")
             if entities:
                 for e in entities:
                     if getattr(e, "_name", None) == req_data.entity:
@@ -313,9 +313,9 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             comment=request.comment(),
             debug_query=compiled.debug_sql(self.dialect.kind())
         )
-        if ctx is not None:
-            ctx.record_metadata_log(metadata)
-        if affected_rows > 0 and ctx is not None:
+        if context is not None:
+            context.record_metadata_log(metadata)
+        if affected_rows > 0 and context is not None:
             from teaql.runtime.audit import AuditFieldChange, MutationAuditKind, RawAuditEvent
             if isinstance(req_data, InsertCommand):
                 kind = MutationAuditKind.CREATED
@@ -334,7 +334,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 kind = MutationAuditKind.RECOVERED
                 entity_id = req_data.id
                 changes = ()
-            await ctx.send_audit_event(RawAuditEvent(kind, req_data.entity, entity_id, changes, tuple(request.trace_chain())))
+            await context.send_audit_event(RawAuditEvent(kind, req_data.entity, entity_id, changes, tuple(request.trace_chain())))
         return MutationResult(
             affected_rows=affected_rows,
             generated_values=generated_values,
@@ -342,10 +342,10 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             persisted_record=persisted_record,
         )
 
-    async def ensure_schema(self, ctx: 'UserContext') -> None:
-        entities = ctx.all_entities()
+    async def ensure_schema(self, context: 'UserContext') -> None:
+        entities = context.all_entities()
         if not entities:
-            entities = ctx.get_resource("entities") or []
+            entities = context.get_resource("entities") or []
         for entity in entities:
             try:
                 # Create table
@@ -373,9 +373,9 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 print(f"Error creating table for entity {getattr(entity, '_name', entity)}: {e}")
                 pass
 
-    async def ensure_initial_graphs(self, ctx: 'UserContext') -> None:
+    async def ensure_initial_graphs(self, context: 'UserContext') -> None:
         from teaql.core.mutation import InsertCommand
-        graphs = ctx.initial_graphs()
+        graphs = context.initial_graphs()
         for graph in graphs:
             entity_name = getattr(graph, 'entity', None)
             if not entity_name:
@@ -383,7 +383,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 
             entity_desc = self.schema_provider.get_entity(entity_name)
             if not entity_desc:
-                entities = ctx.get_resource("entities") or []
+                entities = context.get_resource("entities") or []
                 for e in entities:
                     if getattr(e, "_name", None) == entity_name:
                         entity_desc = e
@@ -403,7 +403,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             except Exception:
                 pass
 
-    async def begin(self, ctx: 'UserContext') -> 'teaql.data_service.Transaction':
+    async def begin(self, context: 'UserContext') -> 'teaql.data_service.Transaction':
         if not isinstance(self.transport, SqlTransactionTransport):
             raise Exception("Transport does not support transactions")
         tx = await self.transport.begin_sql()
@@ -426,16 +426,16 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
             returning=False
         )
 
-    async def query(self, ctx: 'UserContext', request: QueryRequest) -> QueryResult:
+    async def query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
         executor = SqlDataServiceExecutor(self.dialect, self.transport, self.schema_provider)
-        return await executor.query(ctx, request)
+        return await executor.query(context, request)
 
-    async def mutate(self, ctx: 'UserContext', request: MutationRequest) -> MutationResult:
+    async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
         executor = SqlDataServiceExecutor(self.dialect, self.transport, self.schema_provider)
-        return await executor.mutate(ctx, request)
+        return await executor.mutate(context, request)
 
-    async def commit(self, ctx: 'UserContext') -> None:
+    async def commit(self, context: 'UserContext') -> None:
         await self.transport.commit_sql()
 
-    async def rollback(self, ctx: 'UserContext') -> None:
+    async def rollback(self, context: 'UserContext') -> None:
         await self.transport.rollback_sql()
