@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import logging
 from time import monotonic
-from typing import Dict, Optional
+from typing import Callable, Dict, Optional
 
 from opentelemetry.metrics import Meter
 from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer, use_span
@@ -18,7 +18,11 @@ from .telemetry import (
 class OpenTelemetryRuntimeTelemetry(RuntimeTelemetry):
     """Adapter over application-owned OpenTelemetry tracer and meter providers."""
 
-    def __init__(self, tracer: Tracer, meter: Meter):
+    def __init__(
+        self, tracer: Tracer, meter: Meter,
+        flush: Optional[Callable[[], None]] = None,
+        shutdown: Optional[Callable[[], None]] = None,
+    ):
         self._tracer = tracer
         self._duration = meter.create_histogram(
             "teaql.runtime.operation.duration", unit="ms",
@@ -28,6 +32,14 @@ class OpenTelemetryRuntimeTelemetry(RuntimeTelemetry):
             "teaql.runtime.operation.count", unit="{operation}",
             description="Completed TeaQL runtime operations",
         )
+        self._flush = flush or (lambda: None)
+        self._shutdown = shutdown or (lambda: None)
+
+    def flush(self) -> None:
+        self._flush()
+
+    def shutdown(self) -> None:
+        self._shutdown()
 
     def start(self, operation: RuntimeOperation) -> RuntimeTelemetryScope:
         span = self._tracer.start_span(

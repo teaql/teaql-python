@@ -46,6 +46,8 @@ class RuntimeTelemetryScope(Protocol):
 
 class RuntimeTelemetry(Protocol):
     def start(self, operation: RuntimeOperation) -> RuntimeTelemetryScope: ...
+    def flush(self) -> None: ...
+    def shutdown(self) -> None: ...
 
 
 class _NoopScope:
@@ -59,6 +61,12 @@ class _NoopScope:
 class NoopRuntimeTelemetry:
     def start(self, operation: RuntimeOperation) -> RuntimeTelemetryScope:
         return _NoopScope()
+
+    def flush(self) -> None:
+        pass
+
+    def shutdown(self) -> None:
+        pass
 
 
 NOOP_RUNTIME_TELEMETRY = NoopRuntimeTelemetry()

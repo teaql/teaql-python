@@ -73,6 +73,25 @@ def test_exports_safe_spans_and_metrics_through_official_sdk():
     logger_provider.shutdown()
     tracer_provider.shutdown()
     meter_provider.shutdown()
+
+
+def test_delegates_explicit_application_owned_lifecycle():
+    calls = []
+    tracer_provider = TracerProvider()
+    meter_provider = MeterProvider()
+    telemetry = OpenTelemetryRuntimeTelemetry(
+        tracer_provider.get_tracer("io.teaql.runtime"),
+        meter_provider.get_meter("io.teaql.runtime"),
+        flush=lambda: calls.append("flush"),
+        shutdown=lambda: calls.append("shutdown"),
+    )
+
+    telemetry.flush()
+    telemetry.shutdown()
+
+    assert calls == ["flush", "shutdown"]
+    tracer_provider.shutdown()
+    meter_provider.shutdown()
 import logging
 
 from opentelemetry.instrumentation.logging.handler import LoggingHandler
