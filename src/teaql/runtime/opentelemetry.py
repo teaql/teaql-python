@@ -4,7 +4,7 @@ from time import monotonic
 from typing import Dict, Optional
 
 from opentelemetry.metrics import Meter
-from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer
+from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer, use_span
 
 from .telemetry import (
     AttributeValue,
@@ -33,14 +33,20 @@ class OpenTelemetryRuntimeTelemetry(RuntimeTelemetry):
             f"teaql.{operation.family}", kind=SpanKind.INTERNAL,
             attributes=operation.attributes,
         )
+        activation = use_span(
+            span, end_on_exit=False, record_exception=False,
+            set_status_on_exception=False,
+        )
+        activation.__enter__()
         return _OpenTelemetryScope(
-            span, operation.family, monotonic(), self._duration, self._operations,
+            span, activation, operation.family, monotonic(), self._duration, self._operations,
         )
 
 
 class _OpenTelemetryScope:
-    def __init__(self, span, family, started_at, duration, operations):
+    def __init__(self, span, activation, family, started_at, duration, operations):
         self._span = span
+        self._activation = activation
         self._family = family
         self._started_at = started_at
         self._duration = duration
@@ -71,4 +77,5 @@ class _OpenTelemetryScope:
         }
         self._duration.record(max(0.0, (monotonic() - self._started_at) * 1000), dimensions)
         self._operations.add(1, dimensions)
+        self._activation.__exit__(None, None, None)
         self._span.end()

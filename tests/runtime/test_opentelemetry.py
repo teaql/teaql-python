@@ -25,14 +25,23 @@ def test_exports_safe_spans_and_metrics_through_official_sdk():
             "teaql.entity.id": 42,
         },
     ))
+    child = start_runtime_operation(telemetry, RuntimeOperation(
+        "provider", "sqlite.query", {
+            "teaql.provider.kind": "sqlite",
+            "teaql.provider.operation": "query",
+        },
+    ))
+    child.success()
     scope.success({"teaql.result.cardinality": 1})
 
     spans = span_exporter.get_finished_spans()
-    assert len(spans) == 1
-    assert spans[0].name == "teaql.query"
-    assert spans[0].attributes["teaql.entity.type"] == "School"
-    assert "teaql.entity.id" not in spans[0].attributes
-    assert spans[0].attributes["teaql.result.cardinality"] == 1
+    assert len(spans) == 2
+    query_span = next(span for span in spans if span.name == "teaql.query")
+    provider_span = next(span for span in spans if span.name == "teaql.provider")
+    assert query_span.attributes["teaql.entity.type"] == "School"
+    assert "teaql.entity.id" not in query_span.attributes
+    assert query_span.attributes["teaql.result.cardinality"] == 1
+    assert provider_span.parent.span_id == query_span.context.span_id
     metric_names = {
         metric.name
         for scope_metrics in metric_reader.get_metrics_data().resource_metrics[0].scope_metrics
