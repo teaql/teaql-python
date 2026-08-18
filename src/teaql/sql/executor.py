@@ -16,6 +16,7 @@ from .dialect import SqlDialect
 from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, ValueExpr
 from teaql.core.query import SelectQuery
 from teaql.core.value import Value
+from teaql.runtime.telemetry import RuntimeOperation, observe_runtime_operation, start_runtime_operation
 
 class SqlTransport(ABC):
     @abstractmethod
@@ -104,6 +105,17 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             yield StreamChunk(pending, index, True)
 
     async def query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
+        telemetry = context.runtime_telemetry() if context is not None else None
+        return await observe_runtime_operation(
+            telemetry,
+            RuntimeOperation("query", f"{request.query.entity}.list", {
+                "teaql.entity.type": request.query.entity,
+            }),
+            lambda: self._query(context, request),
+            lambda result: {"teaql.result.cardinality": len(result.rows)},
+        )
+
+    async def _query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
         request.query.prepare_for_list()
         entity_desc = self.schema_provider.get_entity(request.query.entity)
         if not entity_desc and context:
@@ -123,7 +135,15 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             
         start = datetime.now()
         try:
-            rows = await self.transport.fetch_all_sql(compiled)
+            telemetry = context.runtime_telemetry() if context is not None else None
+            rows = await observe_runtime_operation(
+                telemetry,
+                RuntimeOperation("provider", f"{self.dialect.kind()}.query", {
+                    "teaql.provider.kind": str(self.dialect.kind()),
+                    "teaql.provider.operation": "query",
+                }),
+                lambda: self.transport.fetch_all_sql(compiled),
+            )
         except Exception as e:
             raise TransportError(e)
 
@@ -177,29 +197,54 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         if parent_desc is None:
             raise CompileError(SqlCompileError(f"unknown entity: {query.entity}"))
         for load in query.relations:
-            relation = parent_desc.relation_by_name(load.name)
-            if relation is None:
-                raise CompileError(SqlCompileError(f"missing relation: {query.entity}.{load.name}"))
-            parent_ids = [row[relation.local_key] for row in parents if relation.local_key in row]
-            child_query = deepcopy(load.query) if load.query is not None else SelectQuery(relation.target_entity)
-            child_query.entity = relation.target_entity
-            if relation.foreign_key not in child_query.projection:
-                child_query.projection.append(relation.foreign_key)
-            values = Value.List([Value.from_any(value) for value in parent_ids])
-            child_query.and_filter(BinaryExpr(ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
-            if child_query.slice is not None:
-                child_query.partition_by_field(relation.foreign_key)
-            children = (await self.query(context, QueryRequest(child_query))).rows
-            for child in children:
-                child.pop("__teaql_partition_rank", None)
-            buckets: Dict[Any, List[Dict[str, Any]]] = {}
-            for child in children:
-                buckets.setdefault(child.get(relation.foreign_key), []).append(child)
-            for parent in parents:
-                related = buckets.get(parent.get(relation.local_key), [])
-                parent[load.name] = related if relation.is_many else (related[0] if related else None)
+            telemetry = context.runtime_telemetry() if context is not None else None
+            relation_scope = start_runtime_operation(telemetry, RuntimeOperation(
+                "relation_load", f"{query.entity}.{load.name}", {
+                    "teaql.entity.type": query.entity,
+                    "teaql.relation.name": load.name,
+                },
+            ))
+            try:
+                relation = parent_desc.relation_by_name(load.name)
+                if relation is None:
+                    raise CompileError(SqlCompileError(f"missing relation: {query.entity}.{load.name}"))
+                parent_ids = [row[relation.local_key] for row in parents if relation.local_key in row]
+                child_query = deepcopy(load.query) if load.query is not None else SelectQuery(relation.target_entity)
+                child_query.entity = relation.target_entity
+                if relation.foreign_key not in child_query.projection:
+                    child_query.projection.append(relation.foreign_key)
+                values = Value.List([Value.from_any(value) for value in parent_ids])
+                child_query.and_filter(BinaryExpr(ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
+                if child_query.slice is not None:
+                    child_query.partition_by_field(relation.foreign_key)
+                children = (await self.query(context, QueryRequest(child_query))).rows
+                for child in children:
+                    child.pop("__teaql_partition_rank", None)
+                buckets: Dict[Any, List[Dict[str, Any]]] = {}
+                for child in children:
+                    buckets.setdefault(child.get(relation.foreign_key), []).append(child)
+                for parent in parents:
+                    related = buckets.get(parent.get(relation.local_key), [])
+                    parent[load.name] = related if relation.is_many else (related[0] if related else None)
+                relation_scope.success({"teaql.result.cardinality": len(children)})
+            except BaseException as error:
+                relation_scope.failure(error)
+                raise
 
     async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
+        entity = getattr(request._data, "entity", "unknown")
+        kind = type(request._data).__name__.replace("Command", "").lower()
+        telemetry = context.runtime_telemetry() if context is not None else None
+        return await observe_runtime_operation(
+            telemetry,
+            RuntimeOperation("mutation", f"{entity}.{kind}", {
+                "teaql.entity.type": entity,
+                "teaql.mutation.kind": kind,
+            }),
+            lambda: self._mutate(context, request),
+        )
+
+    async def _mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
         if isinstance(self.transport, SqlTransactionTransport):
             transaction = await self.transport.begin_sql()
             executor = SqlDataServiceExecutor(self.dialect, transaction, self.schema_provider)
@@ -244,7 +289,15 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         start = datetime.now()
         last_insert_id = None
         try:
-            affected_rows, last_insert_id = await self.transport.execute_sql(compiled)
+            telemetry = context.runtime_telemetry() if context is not None else None
+            affected_rows, last_insert_id = await observe_runtime_operation(
+                telemetry,
+                RuntimeOperation("provider", f"{self.dialect.kind()}.mutation", {
+                    "teaql.provider.kind": str(self.dialect.kind()),
+                    "teaql.provider.operation": op,
+                }),
+                lambda: self.transport.execute_sql(compiled),
+            )
         except Exception as e:
             raise TransportError(e)
         end = datetime.now()

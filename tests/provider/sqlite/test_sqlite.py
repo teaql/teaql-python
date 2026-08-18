@@ -13,6 +13,7 @@ from teaql.data_service import QueryRequest
 from teaql.runtime import RuntimeModule
 from teaql.provider.sqlite.transport import SqliteTransport
 from teaql.sql.types import CompiledQuery, DatabaseKind
+from teaql.runtime.telemetry import RuntimeOperation
 
 @pytest.fixture
 def temp_db():
@@ -90,6 +91,31 @@ async def test_crud(temp_db, schema_provider, service):
 
     query_res = await service.query(None, query_req)
     assert len(query_res.rows) == 0
+
+@pytest.mark.asyncio
+async def test_crud_emits_balanced_runtime_telemetry(temp_db, schema_provider, service):
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name VARCHAR(255), version INTEGER)")
+        await db.commit()
+
+    events = []
+    class Telemetry:
+        def start(self, operation: RuntimeOperation):
+            events.append(("start", operation.family))
+            class Scope:
+                def success(self, attributes=None): events.append(("success", operation.family))
+                def failure(self, error): events.append(("failure", operation.family))
+            return Scope()
+
+    context = RuntimeModule.new().into_context().with_runtime_telemetry(Telemetry())
+    await service.mutate(context, MutationRequest(InsertCommand("User", {
+        "id": Value.I64(1), "name": Value.Text("Alice"), "version": Value.I64(1)
+    })))
+    await service.query(context, QueryRequest(SelectQuery("User")))
+
+    starts = [family for phase, family in events if phase == "start"]
+    assert set(starts) >= {"mutation", "provider", "audit", "query"}
+    assert len(starts) == len([1 for phase, _ in events if phase != "start"])
 
 @pytest.mark.asyncio
 async def test_mutation_returns_external_database_default_in_same_transaction(temp_db):

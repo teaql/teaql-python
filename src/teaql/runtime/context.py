@@ -25,6 +25,8 @@ class UserContext:
         self._app_audit_sink: Optional[Any] = None
         self._entity_initializers: Dict[str, List[EntityInitializer]] = {}
         self._managed_entities: List[Any] = []
+        from .telemetry import NOOP_RUNTIME_TELEMETRY
+        self._runtime_telemetry = NOOP_RUNTIME_TELEMETRY
 
     @classmethod
     def new(cls) -> 'UserContext':
@@ -74,6 +76,16 @@ class UserContext:
 
     def managed_entities(self) -> List[Any]:
         return list(self._managed_entities)
+
+    def with_runtime_telemetry(self, telemetry: Any) -> "UserContext":
+        self._runtime_telemetry = telemetry
+        return self
+
+    def set_runtime_telemetry(self, telemetry: Any) -> None:
+        self._runtime_telemetry = telemetry
+
+    def runtime_telemetry(self) -> Any:
+        return self._runtime_telemetry
         
     def all_entities(self) -> List[Any]:
         return self._entities
@@ -334,13 +346,26 @@ class UserContext:
 
     async def send_audit_event(self, event: Any):
         from .audit import deliver
-        if self._standard_audit_sink is not None:
-            await deliver(self._standard_audit_sink, "on_event", self, event)
-        if self._app_audit_sink is not None:
-            descriptor = self.entity(event.entity)
-            mask_fields = getattr(descriptor, "audit_mask_fields_val", []) if descriptor else []
-            max_len = getattr(descriptor, "audit_value_max_len_val", None) if descriptor else None
-            await deliver(self._app_audit_sink, "on_safe_event", self, event.safe(mask_fields, max_len))
+        from .telemetry import RuntimeOperation, start_runtime_operation
+        scope = start_runtime_operation(self._runtime_telemetry, RuntimeOperation(
+            "audit", f"{event.entity}.audit", {
+                "teaql.entity.type": event.entity,
+                "teaql.mutation.kind": event.kind.value,
+                "teaql.audit.changed_field_count": len(event.changes),
+            },
+        ))
+        try:
+            if self._standard_audit_sink is not None:
+                await deliver(self._standard_audit_sink, "on_event", self, event)
+            if self._app_audit_sink is not None:
+                descriptor = self.entity(event.entity)
+                mask_fields = getattr(descriptor, "audit_mask_fields_val", []) if descriptor else []
+                max_len = getattr(descriptor, "audit_value_max_len_val", None) if descriptor else None
+                await deliver(self._app_audit_sink, "on_safe_event", self, event.safe(mask_fields, max_len))
+            scope.success()
+        except BaseException as error:
+            scope.failure(error)
+            raise
 
     def _set_standard_audit_sink(self, sink: Any):
         self._standard_audit_sink = sink
