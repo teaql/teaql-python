@@ -6,6 +6,19 @@ from teaql.runtime.telemetry import (
     observe_runtime_operation_sync,
     start_runtime_operation,
 )
+from teaql.runtime.telemetry import runtime_error_category
+
+
+def test_error_category_uses_native_type_not_message():
+    class DatabaseTimeoutError(Exception):
+        pass
+
+    class UnknownTeaQLError(Exception):
+        pass
+
+    assert runtime_error_category(DatabaseTimeoutError("secret")) == "timeout"
+    assert runtime_error_category("PermissionError") == "authorization"
+    assert runtime_error_category(UnknownTeaQLError("timeout in message")) == "internal"
 
 
 class RecordingTelemetry:

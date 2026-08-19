@@ -20,6 +20,22 @@ FORBIDDEN_ATTRIBUTES = frozenset({
 })
 
 
+def runtime_error_category(error_or_type: BaseException | str) -> str:
+    """Derive a stable category from a native error type, never its message."""
+    error_type = (error_or_type if isinstance(error_or_type, str)
+                  else type(error_or_type).__name__).lower()
+    rules = (
+        ("timeout", ("timeout", "deadline")),
+        ("authorization", ("authentication", "authorization", "unauthorized", "forbidden", "permission")),
+        ("validation", ("validation", "invalidargument", "valueerror", "parse", "format")),
+        ("conflict", ("conflict", "optimistic", "version", "duplicate", "alreadyexists")),
+        ("transport", ("transport", "network", "connection", "socket", "http", "ioerror")),
+        ("provider", ("provider", "sql", "database", "jdbc")),
+    )
+    return next((category for category, terms in rules
+                 if any(term in error_type for term in terms)), "internal")
+
+
 @dataclass(frozen=True)
 class RuntimeOperation:
     family: str

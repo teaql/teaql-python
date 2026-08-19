@@ -12,6 +12,7 @@ from .telemetry import (
     RuntimeOperation,
     RuntimeTelemetry,
     RuntimeTelemetryScope,
+    runtime_error_category,
 )
 
 
@@ -80,11 +81,13 @@ class _OpenTelemetryScope:
     def failure(self, error: BaseException) -> None:
         if self._ended:
             return
+        category = runtime_error_category(error)
         self._span.set_attribute("teaql.error.type", type(error).__name__)
+        self._span.set_attribute("teaql.error.category", category)
         self._span.set_status(Status(StatusCode.ERROR))
-        self._finish("failure")
+        self._finish("failure", category)
 
-    def _finish(self, outcome: str) -> None:
+    def _finish(self, outcome: str, error_category: Optional[str] = None) -> None:
         self._ended = True
         dimensions = {
             "teaql.operation.family": self._family,
@@ -93,14 +96,17 @@ class _OpenTelemetryScope:
         duration_ms = max(0.0, (monotonic() - self._started_at) * 1000)
         self._duration.record(duration_ms, dimensions)
         self._operations.add(1, dimensions)
+        log_attributes = {
+            "teaql.operation.family": self._family,
+            "teaql.operation.name": self._name,
+            "teaql.operation.outcome": outcome,
+            "teaql.operation.duration_ms": duration_ms,
+        }
+        if error_category:
+            log_attributes["teaql.error.category"] = error_category
         logging.getLogger("teaql.runtime").info(
             "TeaQL runtime operation completed",
-            extra={
-                "teaql.operation.family": self._family,
-                "teaql.operation.name": self._name,
-                "teaql.operation.outcome": outcome,
-                "teaql.operation.duration_ms": duration_ms,
-            },
+            extra=log_attributes,
         )
         self._activation.__exit__(None, None, None)
         self._span.end()
