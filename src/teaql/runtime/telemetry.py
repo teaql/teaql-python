@@ -62,6 +62,7 @@ class RuntimeTelemetryScope(Protocol):
 
 class RuntimeTelemetry(Protocol):
     def start(self, operation: RuntimeOperation) -> RuntimeTelemetryScope: ...
+    def inject(self, carrier: Dict[str, str]) -> None: ...
     def flush(self) -> None: ...
     def shutdown(self) -> None: ...
 
@@ -81,11 +82,29 @@ class NoopRuntimeTelemetry:
     def flush(self) -> None:
         pass
 
+    def inject(self, carrier: Dict[str, str]) -> None:
+        pass
+
     def shutdown(self) -> None:
         pass
 
 
 NOOP_RUNTIME_TELEMETRY = NoopRuntimeTelemetry()
+
+
+def inject_runtime_context(
+    telemetry: Optional[RuntimeTelemetry], carrier: Dict[str, str],
+) -> Dict[str, str]:
+    """Fail-open W3C propagation hook owned by transports such as TFP."""
+    if telemetry is None:
+        return carrier
+    try:
+        inject = getattr(telemetry, "inject", None)
+        if inject is not None:
+            inject(carrier)
+    except BaseException:
+        pass
+    return carrier
 
 
 class _FailOpenScope:

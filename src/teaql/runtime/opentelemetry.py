@@ -5,6 +5,7 @@ from time import monotonic
 from typing import Callable, Dict, Optional
 
 from opentelemetry.metrics import Meter
+from opentelemetry.propagate import inject
 from opentelemetry.trace import SpanKind, Status, StatusCode, Tracer, use_span
 
 from .telemetry import (
@@ -41,6 +42,9 @@ class OpenTelemetryRuntimeTelemetry(RuntimeTelemetry):
 
     def shutdown(self) -> None:
         self._shutdown()
+
+    def inject(self, carrier: Dict[str, str]) -> None:
+        inject(carrier)
 
     def start(self, operation: RuntimeOperation) -> RuntimeTelemetryScope:
         span = self._tracer.start_span(

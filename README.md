@@ -33,7 +33,7 @@ The SDK's organizational architecture strictly mirrors the Rust version:
 *   `teaql.data_service`: Defines universal data service abstractions, handling structured inputs and outputs.
 *   `teaql.sql`: Provides a cross-dialect SQL compilation executor, translating ASTs into physical queries for various databases.
 *   `teaql.runtime`: Contains the pipeline and application context mechanisms (e.g., `UserContext`, environment mounts).
-*   `teaql.provider`: Packages for physical database driver implementations (e.g., `sqlite`, `mysql`, `postgres`).
+*   `teaql.provider`: Packages for physical database drivers and the canonical TeaQL Federal Protocol client.
 *   `teaql.web`: Web framework integration middleware (e.g., `FastAPI` / `Starlette`).
 
 ## 4. Features
@@ -43,6 +43,23 @@ The SDK's organizational architecture strictly mirrors the Rust version:
 *   **Facet Aggregation & Grouping**: Out-of-the-box support for multi-dimensional facet aggregations, group-bys, and hierarchical data processing.
 *   **Provider Support**: Highly extensible asynchronous database connectivity (integrating third-party async drivers like `aiosqlite` through a unified Transport layer).
 *   **Context & Logging Management**: Built-in support for lifecycle context passing, end-to-end tracing, and SQL execution log interception and dispatch.
+*   **TeaQL Federal Protocol Client**: `TeaQLFederalClient` and `TfpHttpProvider`
+    execute governed canonical TFP v1 queries and audited mutations against a
+    remote TeaQL endpoint such as Rust. Direct query execution returns
+    `SmartList`; Python intentionally does not expose a TFP server endpoint.
+
+```python
+from teaql.provider.tfp_client import FederalQuery, TeaQLFederalClient
+
+client = TeaQLFederalClient("https://orders.example.com/tfp")
+orders = await client.execute_query(FederalQuery(
+    entity="CustomerOrder",
+    filter_condition={"status": {"$eq": "NEW"}},
+    comment="List new orders",
+    purpose="Render operations queue",
+))
+await client.aclose()
+```
 
 ---
 To run test validations and business logic simulations locally, simply run `pytest` in the project root.
