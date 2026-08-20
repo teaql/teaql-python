@@ -241,14 +241,29 @@ class UserContext:
             raise Exception("missing schema provider")
 
     def with_language(self, language: Any) -> 'UserContext':
-        self.insert_resource("language", language)
+        self.set_locale_code(language)
         return self
 
     def set_language(self, language: Any):
-        self.insert_resource("language", language)
+        self.set_locale_code(language)
 
     def set_language_code(self, code: str):
-        self.insert_resource("language_code", code)
+        self.set_locale_code(code)
+
+    def set_locale_code(self, code: str):
+        from .i18n import Locale
+        locale = Locale.parse(code)
+        self.insert_resource("locale", locale)
+        return self
+
+    def install_i18n_catalog(self, catalog: Any):
+        if catalog is None: raise ValueError("catalog is required")
+        self.insert_resource("i18n_catalog", catalog)
+        return self
+
+    def i18n_catalog(self):
+        from .i18n import I18nCatalog
+        return self.get_resource("i18n_catalog") or I18nCatalog.builtin()
 
     def generate_id(self, entity: str) -> Optional[int]:
         gen = self.get_resource("internal_id_generator")
@@ -338,11 +353,9 @@ class UserContext:
             raise Exception(f"Check failed: {results}")
 
     def translate_check_results(self, results: Any):
-        # Python naive translation stub based on rust translate_check_results
-        lang = self.language()
         for r in results:
-            if hasattr(r, 'message'):
-                r.message = getattr(r, 'message', str(r))
+            self.i18n_catalog().translate_check_result(r, self.language())
+        return results
 
     async def send_audit_event(self, event: Any):
         from .audit import deliver
@@ -447,7 +460,8 @@ class UserContext:
         return self.data_service_internal(entity)
 
     def language(self) -> Any:
-        return self.get_resource("language")
+        from .i18n import Locale
+        return self.get_resource("locale") or Locale.ENGLISH
 
     def record_metadata_log(self, metadata: Any):
         op = SqlLogOperation.Select
