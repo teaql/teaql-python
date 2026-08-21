@@ -24,5 +24,10 @@ def test_initialize_entity_rejects_invalid_contracts():
     with pytest.raises(ValueError):
         context.initialize_entity("Person", None)
 
+
+def test_user_context_owns_a_stable_entity_root():
+    context = UserContext.new()
+    assert context.entity_root() is context.entity_root()
+
     with pytest.raises(ValueError):
         context.register_entity_initializer("Person", object())

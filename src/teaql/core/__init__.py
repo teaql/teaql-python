@@ -1,5 +1,5 @@
 from .value import Value, DataType, Timestamp
-from .entity import BaseEntityData
+from .entity import BaseEntityData, EntityKey, EntityChangeSet, EntityRoot
 from .expr import (
     Expr, ExprBuilder, BinaryOp, ExprFunction,
     ColumnExpr, ValueExpr, FunctionExpr, BinaryExpr,
@@ -27,7 +27,7 @@ from .xls import XlsWorkbook, XlsPage, XlsBlock, XlsBlockBuildContext
 
 __all__ = [
     "Value", "DataType", "Timestamp",
-    "BaseEntityData",
+    "BaseEntityData", "EntityKey", "EntityChangeSet", "EntityRoot",
     "Expr", "ExprBuilder", "BinaryOp", "ExprFunction",
     "SelectQuery", "SortDirection", "OrderBy", "Aggregate", "AggregateFunction",
     "Slice", "RelationLoad", "RawSqlProjection", "ObjectGroupBy",

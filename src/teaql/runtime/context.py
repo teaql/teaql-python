@@ -30,6 +30,8 @@ _local_lock_condition = threading.Condition(threading.RLock())
 class UserContext:
     def __init__(self):
         self._resources: Dict[str, Any] = {}
+        from teaql.core.entity import EntityRoot
+        self._resources["entity_root"] = EntityRoot()
         self._metadata: Optional[Any] = None
         self._user_identifier: str = ""
         self._entities: List[Any] = []
