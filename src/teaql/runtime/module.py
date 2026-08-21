@@ -7,6 +7,7 @@ class RuntimeModule:
         self._behaviors: Dict[str, Any] = {}
         self._dependencies: Dict[str, Any] = {}
         self._audit_sinks: List[Any] = []
+        self._checkers: Dict[str, Any] = {}
 
     @classmethod
     def new(cls) -> 'RuntimeModule':
@@ -36,12 +37,17 @@ class RuntimeModule:
         self._audit_sinks.append(sink)
         return self
 
+    def checker(self, entity: str, checker: Any) -> 'RuntimeModule':
+        self._checkers[entity] = checker
+        return self
+
     def and_module(self, other: 'RuntimeModule') -> 'RuntimeModule':
         combined = RuntimeModule.new()
         combined._entities = [*self._entities, *other._entities]
         combined._behaviors = {**self._behaviors, **other._behaviors}
         combined._dependencies = {**self._dependencies, **other._dependencies}
         combined._audit_sinks = [*self._audit_sinks, *other._audit_sinks]
+        combined._checkers = {**self._checkers, **other._checkers}
         combined._initial_graphs = [
             *getattr(self, '_initial_graphs', []),
             *getattr(other, '_initial_graphs', []),
@@ -58,6 +64,12 @@ class RuntimeModule:
                 context.add_initial_graph(graph)
         context.insert_resource("entities", self._entities)
         context.insert_resource("behaviors", self._behaviors)
+        if self._checkers:
+            checkers = dict(self._checkers)
+            class GeneratedCheckerRegistry:
+                def checker(inner_self, entity):
+                    return checkers.get(entity)
+            context.set_checker_registry(GeneratedCheckerRegistry())
         if self._audit_sinks:
             sinks = tuple(self._audit_sinks)
             class CompositeSink:

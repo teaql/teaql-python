@@ -361,10 +361,12 @@ class UserContext:
             return
         from datetime import datetime
         self.insert_resource("fix_time", datetime.now())
+        self.insert_resource("fix_operation", type(mutation).__name__.replace("Command", "").lower())
         try:
             self.check_and_fix_record(entity, record)
         finally:
             self._resources.pop("fix_time", None)
+            self._resources.pop("fix_operation", None)
 
     def translate_check_results(self, results: Any):
         for r in results:
