@@ -1,4 +1,4 @@
-from .context import UserContext, TeaqlRuntime, SqlLogEntry, SqlLogOperation
+from .context import ContextEntityRef, ContextRootError, UserContext, TeaqlRuntime, SqlLogEntry, SqlLogOperation
 from .tools import (
     ContextTools, ExecutableHttpTool, HTTP_TOOL, HttpIntentPhase, HttpTool,
     HttpToolProvider, ToolDeniedError, ToolError, ToolPolicy, ToolRisk,
@@ -10,4 +10,4 @@ from .store import DataStore
 from .audit import RawAuditEvent, SafeAuditEvent, MutationAuditKind
 from .i18n import CheckException, CheckResult, I18nCatalog, Locale, UnsupportedLocaleError
 
-__all__ = ["CheckException", "CheckResult", "I18nCatalog", "Locale", "UnsupportedLocaleError", "UserContext", "TeaqlRuntime", "SqlLogEntry", "SqlLogOperation", "ServiceRuntimeFromEnv", "RuntimeModule", "DataStore", "RawAuditEvent", "SafeAuditEvent", "MutationAuditKind", "ContextTools", "ExecutableHttpTool", "HTTP_TOOL", "HttpIntentPhase", "HttpTool", "HttpToolProvider", "ToolDeniedError", "ToolError", "ToolPolicy", "ToolRisk", "Tools", "ToolToken", "ToolUnavailableError"]
+__all__ = ["ContextEntityRef", "ContextRootError", "CheckException", "CheckResult", "I18nCatalog", "Locale", "UnsupportedLocaleError", "UserContext", "TeaqlRuntime", "SqlLogEntry", "SqlLogOperation", "ServiceRuntimeFromEnv", "RuntimeModule", "DataStore", "RawAuditEvent", "SafeAuditEvent", "MutationAuditKind", "ContextTools", "ExecutableHttpTool", "HTTP_TOOL", "HttpIntentPhase", "HttpTool", "HttpToolProvider", "ToolDeniedError", "ToolError", "ToolPolicy", "ToolRisk", "Tools", "ToolToken", "ToolUnavailableError"]

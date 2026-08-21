@@ -1,6 +1,6 @@
 import os
 import pytest
-from teaql.runtime import CheckException, CheckResult, RuntimeModule, UserContext, TeaqlRuntime, ServiceRuntimeFromEnv
+from teaql.runtime import ContextEntityRef, ContextRootError, CheckException, CheckResult, RuntimeModule, UserContext, TeaqlRuntime, ServiceRuntimeFromEnv
 from teaql.core.mutation import InsertCommand
 
 class DummyEntity:
@@ -28,6 +28,15 @@ class DummyCheckerRegistry:
 
     def checker(self, entity):
         return self.value if entity == "Dummy" else None
+
+def test_active_root_is_typed_and_fails_closed():
+    context = UserContext.new()
+    with pytest.raises(ContextRootError, match="missing"):
+        context.require_active_root("Tenant")
+    context.with_active_root(ContextEntityRef("Tenant", 42))
+    assert context.require_active_root("Tenant").id == 42
+    with pytest.raises(ContextRootError, match="type_mismatch"):
+        context.require_active_root("Store")
 
 def test_check_and_fix_mutation_is_typed_and_save_scoped():
     checker = RequiredNameChecker()

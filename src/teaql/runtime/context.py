@@ -1,8 +1,21 @@
 from typing import Dict, Any, Optional, List, Callable, TypeVar
+from dataclasses import dataclass
 
 
 TEntity = TypeVar("TEntity")
 EntityInitializer = Callable[["UserContext", Any], None]
+
+@dataclass(frozen=True)
+class ContextEntityRef:
+    entity: str
+    id: int
+
+class ContextRootError(Exception):
+    def __init__(self, reason: str, expected_type: str, active_root: Optional[ContextEntityRef] = None):
+        self.reason = reason
+        self.expected_type = expected_type
+        self.active_root = active_root
+        super().__init__(f"context root {reason}: expected {expected_type}")
 
 import threading
 import time
@@ -34,6 +47,20 @@ class UserContext:
 
     def entity_root(self) -> Any:
         return self.get_resource("entity_root")
+
+    def with_active_root(self, root: ContextEntityRef) -> 'UserContext':
+        if not isinstance(root, ContextEntityRef):
+            raise TypeError("active root must be ContextEntityRef")
+        self.insert_resource("active_root", root)
+        return self
+
+    def require_active_root(self, expected_type: str) -> ContextEntityRef:
+        root = self.get_resource("active_root")
+        if not isinstance(root, ContextEntityRef):
+            raise ContextRootError("missing", expected_type)
+        if root.entity != expected_type:
+            raise ContextRootError("type_mismatch", expected_type, root)
+        return root
 
     async def get_in_store(self, key: str) -> Optional[Any]:
         store = self.get_resource("data_store")
