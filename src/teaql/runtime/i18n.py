@@ -36,6 +36,14 @@ _ALIASES={"en-us":Locale.ENGLISH,"en-gb":Locale.ENGLISH,"zh":Locale.CHINESE_SIMP
 class CheckResult:
     rule_id:str; location:Any; input_value:Any=None; system_value:Any=None; message:str|None=None
 
+class CheckException(Exception):
+    """Stable machine-readable model validation failure."""
+    def __init__(self, violations):
+        self.violations = list(violations)
+        super().__init__("Check failed: " + "; ".join(
+            result.message or str(result) for result in self.violations
+        ))
+
 class I18nCatalog:
     _builtin=None
     def __init__(self, locales:Mapping[str,Any], fallback=None):

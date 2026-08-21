@@ -234,6 +234,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
     async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
         entity = getattr(request._data, "entity", "unknown")
         kind = type(request._data).__name__.replace("Command", "").lower()
+        if context is not None:
+            context.check_and_fix_mutation(request._data)
         telemetry = context.runtime_telemetry() if context is not None else None
         return await observe_runtime_operation(
             telemetry,
@@ -249,7 +251,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             transaction = await self.transport.begin_sql()
             executor = SqlDataServiceExecutor(self.dialect, transaction, self.schema_provider)
             try:
-                result = await executor.mutate(context, request)
+                result = await executor._mutate(context, request)
                 await transaction.commit_sql()
                 return result
             except Exception:

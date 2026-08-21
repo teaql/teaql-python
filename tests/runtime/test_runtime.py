@@ -1,6 +1,7 @@
 import os
 import pytest
-from teaql.runtime import RuntimeModule, UserContext, TeaqlRuntime, ServiceRuntimeFromEnv
+from teaql.runtime import CheckException, CheckResult, RuntimeModule, UserContext, TeaqlRuntime, ServiceRuntimeFromEnv
+from teaql.core.mutation import InsertCommand
 
 class DummyEntity:
     _name = "Dummy"
@@ -10,6 +11,36 @@ class DummyBehavior:
 
 class DummyDependency:
     pass
+
+class RequiredNameChecker:
+    def __init__(self):
+        self.calls = 0
+
+    def check_and_fix(self, context, record, location, results):
+        self.calls += 1
+        assert context.get_resource("fix_time") is not None
+        if "name" not in record:
+            results.append(CheckResult("REQUIRED", "name"))
+
+class DummyCheckerRegistry:
+    def __init__(self, checker):
+        self.value = checker
+
+    def checker(self, entity):
+        return self.value if entity == "Dummy" else None
+
+def test_check_and_fix_mutation_is_typed_and_save_scoped():
+    checker = RequiredNameChecker()
+    context = UserContext.new().with_checker_registry(DummyCheckerRegistry(checker))
+    command = InsertCommand.new("Dummy")
+
+    for _ in range(2):
+        with pytest.raises(CheckException) as failure:
+            context.check_and_fix_mutation(command)
+        assert failure.value.violations[0].location == "name"
+
+    assert checker.calls == 2
+    assert context.get_resource("fix_time") is None
 
 def test_runtime_module_initialization():
     module = RuntimeModule.new()

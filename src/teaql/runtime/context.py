@@ -350,7 +350,21 @@ class UserContext:
             
         if results:
             self.translate_check_results(results)
-            raise Exception(f"Check failed: {results}")
+            from .i18n import CheckException
+            raise CheckException(results)
+
+    def check_and_fix_mutation(self, mutation: Any):
+        """Run generated fixes and checks before a mutation reaches a provider."""
+        entity = getattr(mutation, "entity", None)
+        record = getattr(mutation, "values", None)
+        if not entity or record is None:
+            return
+        from datetime import datetime
+        self.insert_resource("fix_time", datetime.now())
+        try:
+            self.check_and_fix_record(entity, record)
+        finally:
+            self._resources.pop("fix_time", None)
 
     def translate_check_results(self, results: Any):
         for r in results:
@@ -447,6 +461,7 @@ class UserContext:
                 command.value(field, val)
                 
             request = MutationRequest(command)
+            self.check_and_fix_mutation(command)
             await executor.mutate(request)
 
     def data_service_internal(self, entity: str) -> Any:
