@@ -34,6 +34,16 @@ class EntityChangeSet:
     def clear_entity(self, key: EntityKey) -> None:
         self._changes.pop(key, None)
 
+    def merge_from(self, other: 'EntityChangeSet') -> None:
+        for key, values in other.changes():
+            for field, value in values.items():
+                self.set(key, field, value)
+
+    def rekey(self, old_key: EntityKey, new_key: EntityKey) -> None:
+        values = self._changes.pop(old_key, None)
+        if values:
+            self._changes.setdefault(new_key, {}).update(values)
+
     def is_empty(self) -> bool:
         return not self._changes
 
@@ -105,6 +115,35 @@ class EntityRoot:
             self._change_sets[-1] = EntityChangeSet()
             self._new_keys.clear()
             self._deleted_keys.clear()
+
+    def merge_from(self, other: 'EntityRoot') -> None:
+        if other is self:
+            return
+        with self._lock, other._lock:
+            self._change_sets[-1].merge_from(other._change_sets[-1])
+            self._original_versions.update(other._original_versions)
+            self._new_keys.update(other._new_keys)
+            self._deleted_keys.update(other._deleted_keys)
+
+    def rekey(self, old_key: EntityKey, new_key: EntityKey) -> None:
+        with self._lock:
+            for change_set in self._change_sets:
+                change_set.rekey(old_key, new_key)
+            if old_key in self._original_versions:
+                self._original_versions[new_key] = self._original_versions.pop(old_key)
+            if old_key in self._new_keys:
+                self._new_keys.remove(old_key)
+                self._new_keys.add(new_key)
+            if old_key in self._deleted_keys:
+                self._deleted_keys.remove(old_key)
+                self._deleted_keys.add(new_key)
+
+    def clear_entity(self, key: EntityKey) -> None:
+        with self._lock:
+            for change_set in self._change_sets:
+                change_set.clear_entity(key)
+            self._new_keys.discard(key)
+            self._deleted_keys.discard(key)
 
 class BaseEntityData:
     def __init__(self, id: int = 0, version: int = 0, dynamic: Optional[Dict[str, Value]] = None):
