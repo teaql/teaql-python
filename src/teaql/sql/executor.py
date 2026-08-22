@@ -66,6 +66,8 @@ class SchemaProvider(ABC):
         pass
 
 class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
+    MAX_ID_ALLOCATION_ATTEMPTS = 100
+
     def __init__(self, dialect: SqlDialect, transport: SqlTransport, schema_provider: SchemaProvider):
         self.dialect = dialect
         self.transport = transport
@@ -77,7 +79,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             mutation=True,
             transaction=False, # Could be determined from transport
             schema=True,
-            id_generation=False,
+            id_generation=True,
             batch_mutation=True,
             returning=False
         )
@@ -269,6 +271,22 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         break
         if not entity_desc:
             raise CompileError(SqlCompileError(f"unknown entity: {req_data.entity}"))
+
+        id_prop = next(
+            (
+                p for p in getattr(entity_desc, 'properties', [])
+                if getattr(p, '_is_id', False) or getattr(p, 'is_id_val', False)
+            ),
+            None,
+        )
+        if isinstance(req_data, InsertCommand) and id_prop is not None:
+            if id_prop.name not in req_data.values:
+                req_data.values[id_prop.name] = Value.from_any(
+                    await self.next_id(req_data.entity)
+                )
+            else:
+                await self.ensure_id_floor(
+                    req_data.entity, int(req_data.values[id_prop.name].val))
             
         try:
             if isinstance(req_data, InsertCommand):
@@ -397,6 +415,95 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             persisted_record=persisted_record,
         )
 
+    async def next_id(self, entity: str) -> int:
+        await self.transport.execute_sql(CompiledQuery(
+            "CREATE TABLE IF NOT EXISTS teaql_id_space ("
+            "type_name VARCHAR(255) NOT NULL PRIMARY KEY, "
+            "current_level BIGINT NOT NULL)", []))
+        first = self.dialect.placeholder(1)
+        second = self.dialect.placeholder(2)
+        third = self.dialect.placeholder(3)
+        for attempt in range(1, self.MAX_ID_ALLOCATION_ATTEMPTS + 1):
+            rows = await self.transport.fetch_all_sql(CompiledQuery(
+                f"SELECT current_level FROM teaql_id_space WHERE type_name = {first}",
+                [Value.from_any(entity)]))
+            if not rows:
+                try:
+                    changed, _ = await self.transport.execute_sql(CompiledQuery(
+                        f"INSERT INTO teaql_id_space(type_name, current_level) "
+                        f"VALUES ({first}, 1)", [Value.from_any(entity)]))
+                    if changed == 1:
+                        return 1
+                    raise RuntimeError(
+                        f"ID space insert for {entity} changed {changed} rows")
+                except Exception:
+                    winner = await self.transport.fetch_all_sql(CompiledQuery(
+                        f"SELECT current_level FROM teaql_id_space WHERE type_name = {first}",
+                        [Value.from_any(entity)]))
+                    if not winner:
+                        raise
+                    continue
+            current = int(rows[0]["current_level"])
+            if current >= 2**63 - 1:
+                raise RuntimeError(f"ID space overflow for {entity}")
+            next_value = current + 1
+            changed, _ = await self.transport.execute_sql(CompiledQuery(
+                "UPDATE teaql_id_space SET current_level = " + first
+                + " WHERE type_name = " + second + " AND current_level = " + third,
+                [Value.from_any(next_value), Value.from_any(entity), Value.from_any(current)]))
+            if changed == 1:
+                return next_value
+            if changed != 0:
+                raise RuntimeError(
+                    f"ID space update for {entity} changed {changed} rows on attempt {attempt}")
+        raise RuntimeError(
+            f"Unable to allocate ID for {entity} after "
+            f"{self.MAX_ID_ALLOCATION_ATTEMPTS} optimistic-lock attempts")
+
+    async def ensure_id_floor(self, entity: str, floor: int) -> None:
+        if floor < 0 or floor >= 2**63:
+            raise ValueError(f"Invalid ID space floor {floor} for {entity}")
+        await self.transport.execute_sql(CompiledQuery(
+            "CREATE TABLE IF NOT EXISTS teaql_id_space ("
+            "type_name VARCHAR(255) NOT NULL PRIMARY KEY, "
+            "current_level BIGINT NOT NULL)", []))
+        placeholders = [self.dialect.placeholder(index) for index in (1, 2, 3)]
+        for attempt in range(1, self.MAX_ID_ALLOCATION_ATTEMPTS + 1):
+            rows = await self.transport.fetch_all_sql(CompiledQuery(
+                f"SELECT current_level FROM teaql_id_space WHERE type_name = {placeholders[0]}",
+                [Value.from_any(entity)]))
+            if not rows:
+                try:
+                    changed, _ = await self.transport.execute_sql(CompiledQuery(
+                        "INSERT INTO teaql_id_space(type_name, current_level) VALUES ("
+                        f"{placeholders[0]}, {placeholders[1]})",
+                        [Value.from_any(entity), Value.from_any(floor)]))
+                    if changed == 1:
+                        return
+                except Exception:
+                    winner = await self.transport.fetch_all_sql(CompiledQuery(
+                        f"SELECT current_level FROM teaql_id_space WHERE type_name = {placeholders[0]}",
+                        [Value.from_any(entity)]))
+                    if not winner:
+                        raise
+                continue
+            current = int(rows[0]["current_level"])
+            if current >= floor:
+                return
+            changed, _ = await self.transport.execute_sql(CompiledQuery(
+                f"UPDATE teaql_id_space SET current_level = {placeholders[0]} "
+                f"WHERE type_name = {placeholders[1]} AND current_level = {placeholders[2]}",
+                [Value.from_any(floor), Value.from_any(entity), Value.from_any(current)]))
+            if changed == 1:
+                return
+            if changed != 0:
+                raise RuntimeError(
+                    f"ID space floor update for {entity} changed {changed} rows "
+                    f"on attempt {attempt}")
+        raise RuntimeError(
+            f"Unable to synchronize ID space floor for {entity} after "
+            f"{self.MAX_ID_ALLOCATION_ATTEMPTS} optimistic-lock attempts")
+
     async def ensure_schema(self, context: 'UserContext') -> None:
         entities = context.all_entities()
         if not entities:
@@ -427,6 +534,10 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 # If creating table fails, it might be due to dialect unsupported features, just pass for now
                 print(f"Error creating table for entity {getattr(entity, '_name', entity)}: {e}")
                 pass
+        await self.transport.execute_sql(CompiledQuery(
+            "CREATE TABLE IF NOT EXISTS teaql_id_space ("
+            "type_name VARCHAR(255) NOT NULL PRIMARY KEY, "
+            "current_level BIGINT NOT NULL)", []))
 
     async def ensure_initial_graphs(self, context: 'UserContext') -> None:
         from teaql.core.mutation import InsertCommand
@@ -476,7 +587,7 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
             mutation=True,
             transaction=False,
             schema=True,
-            id_generation=False,
+            id_generation=True,
             batch_mutation=True,
             returning=False
         )
@@ -488,6 +599,14 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
     async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
         executor = SqlDataServiceExecutor(self.dialect, self.transport, self.schema_provider)
         return await executor.mutate(context, request)
+
+    async def next_id(self, entity: str) -> int:
+        executor = SqlDataServiceExecutor(self.dialect, self.transport, self.schema_provider)
+        return await executor.next_id(entity)
+
+    async def ensure_id_floor(self, entity: str, floor: int) -> None:
+        executor = SqlDataServiceExecutor(self.dialect, self.transport, self.schema_provider)
+        await executor.ensure_id_floor(entity, floor)
 
     async def commit(self, context: 'UserContext') -> None:
         await self.transport.commit_sql()
