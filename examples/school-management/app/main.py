@@ -21,8 +21,8 @@ async def main() -> None:
     client = SQLiteTeaQLClient(str(database))
     context = (UserContext.new().install(GENERATED_RUNTIME_MODULE)
                .insert_resource("dataService", client))
-    await client.ensure_schema(context)
-    await client.ensure_schema(context)
+    await context.ensure_schema()
+    await context.ensure_schema()
     platform = await (Q.platforms().with_id_is(1)
         .comment("Load the generated domain root")
         .purpose("Verify idempotent schema bootstrap").execute_for_one(context))
@@ -37,7 +37,7 @@ async def main() -> None:
     assert [item.version for item in constants] == [1, 1]
 
     GENERATED_RUNTIME_MODULE.initial_graphs[0].set("name", "Primary School")
-    await client.ensure_schema(context)
+    await context.ensure_schema()
     reconciled = await (Q.school_types().with_id_is(1001)
         .comment("Load the reconciled Primary constant")
         .purpose("Verify model-defined constant updates").execute_for_one(context))

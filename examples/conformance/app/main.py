@@ -21,7 +21,7 @@ async def main() -> None:
     context = (UserContext.new().install(GENERATED_RUNTIME_MODULE)
                .insert_resource("dataService", client))
 
-    await client.ensure_schema()
+    await context.ensure_schema()
     print("PASS ensure_schema (explicit SQLite DDL)")
 
     invalid = WorkItem(platform=1)

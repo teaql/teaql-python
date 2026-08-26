@@ -132,6 +132,13 @@ class UserContext:
         module.apply_to(self)
         return self
 
+    async def ensure_schema(self):
+        """Reconcile schema through this context's configured data service."""
+        service = self._resources.get("dataService")
+        if service is None:
+            raise RuntimeError("missing schema provider: UserContext resource dataService")
+        await service.ensure_schema(self)
+
     def check_and_fix_mutation(self, mutation):
         checker = self._checker_registry.get(getattr(mutation, "entity", None))
         if checker is None:

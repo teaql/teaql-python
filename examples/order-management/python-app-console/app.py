@@ -70,7 +70,7 @@ async def main():
            .initialize_audit(StandardAudit(), AppAudit())
            .configure_audit_policy("Customer", mask_fields=("email",))
            .configure_audit_policy("OrderSearchPreset", mask_fields=("filter_json",)))
-    await client.ensure_schema()
+    await context.ensure_schema()
     print("[schema] ensured 7 generated entity tables")
     await seed(context)
 

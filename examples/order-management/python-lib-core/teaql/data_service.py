@@ -439,7 +439,9 @@ class AsyncSqlTeaQLClient:
             )
         return table
 
-    async def ensure_schema(self):
+    async def ensure_schema(self, context):
+        if context is None:
+            raise TypeError("ensure_schema requires UserContext")
         connection = await self._connect()
         try:
             async with connection.transaction():

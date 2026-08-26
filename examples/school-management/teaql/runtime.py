@@ -174,6 +174,10 @@ class UserContext:
             raise RuntimeError(f"Required UserContext resource is missing: {resource_type}")
         return resource
 
+    async def ensure_schema(self):
+        """Reconcile schema through this context's configured data service."""
+        await self.require_resource("dataService").ensure_schema(self)
+
     def with_active_root(self, root):
         if not isinstance(root, ContextEntityRef):
             raise TypeError("active root must be ContextEntityRef")

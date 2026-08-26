@@ -42,6 +42,10 @@ class UserContext:
             raise RuntimeError(f"Required UserContext resource is missing: {resource_type}")
         return resource
 
+    async def ensure_schema(self):
+        """Reconcile schema through this context's configured data service."""
+        await self.require_resource("dataService").ensure_schema(self)
+
     def initialize_audit(self, standard_sink, app_sink=None):
         self._standard_audit_sink = standard_sink
         self._app_audit_sink = app_sink
