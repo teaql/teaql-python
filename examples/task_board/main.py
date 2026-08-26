@@ -1,5 +1,6 @@
 import asyncio
 import aiosqlite
+import os
 import time
 from teaql.provider.sqlite import create_sqlite_service, SimpleSchemaProvider
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
@@ -63,7 +64,7 @@ async def main():
         .property(PropertyDescriptor("version", DataType.I64).is_version())
     provider.register_entity(log_entity)
 
-    db_path = "task_board.db"
+    db_path = os.environ.get("TEAQL_TASK_BOARD_DB", "task_board.db")
     print(f"Creating sqlite service at {db_path}...")
     service = create_sqlite_service(db_path, provider)
 
