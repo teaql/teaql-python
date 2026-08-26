@@ -1,5 +1,7 @@
 from dataclasses import dataclass
 
+_SCHEMA_INVOCATION = object()
+
 @dataclass(frozen=True)
 class RawAuditEvent:
     kind: str
@@ -44,7 +46,7 @@ class UserContext:
 
     async def ensure_schema(self):
         """Reconcile schema through this context's configured data service."""
-        await self.require_resource("dataService").ensure_schema(self)
+        await self.require_resource("dataService")._ensure_schema(self, _SCHEMA_INVOCATION)
 
     def initialize_audit(self, standard_sink, app_sink=None):
         self._standard_audit_sink = standard_sink

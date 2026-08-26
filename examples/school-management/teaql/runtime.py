@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
 
+_SCHEMA_INVOCATION = object()
+
 @dataclass
 class CheckResult:
     rule_id: str
@@ -176,7 +178,7 @@ class UserContext:
 
     async def ensure_schema(self):
         """Reconcile schema through this context's configured data service."""
-        await self.require_resource("dataService").ensure_schema(self)
+        await self.require_resource("dataService")._ensure_schema(self, _SCHEMA_INVOCATION)
 
     def with_active_root(self, root):
         if not isinstance(root, ContextEntityRef):

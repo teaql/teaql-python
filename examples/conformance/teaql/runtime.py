@@ -2,6 +2,8 @@ from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
 
+_SCHEMA_INVOCATION = object()
+
 @dataclass
 class CheckResult:
     rule_id: str
@@ -137,7 +139,7 @@ class UserContext:
         service = self._resources.get("dataService")
         if service is None:
             raise RuntimeError("missing schema provider: UserContext resource dataService")
-        await service.ensure_schema(self)
+        await service._ensure_schema(self, _SCHEMA_INVOCATION)
 
     def check_and_fix_mutation(self, mutation):
         checker = self._checker_registry.get(getattr(mutation, "entity", None))

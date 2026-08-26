@@ -3,6 +3,7 @@ import json
 import os
 import re
 import tempfile
+from teaql.runtime import _SCHEMA_INVOCATION
 from datetime import date, datetime
 from decimal import Decimal
 from urllib.parse import parse_qs, unquote, urlparse
@@ -439,9 +440,9 @@ class AsyncSqlTeaQLClient:
             )
         return table
 
-    async def ensure_schema(self, context):
-        if context is None:
-            raise TypeError("ensure_schema requires UserContext")
+    async def _ensure_schema(self, context, invocation):
+        if invocation is not _SCHEMA_INVOCATION:
+            raise PermissionError("Ensure Schema must be invoked through UserContext.ensure_schema()")
         connection = await self._connect()
         try:
             async with connection.transaction():
