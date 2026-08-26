@@ -2,7 +2,15 @@ import json
 from importlib.resources import files
 import pytest
 
-from teaql.runtime import CheckResult, I18nCatalog, Locale, UnsupportedLocaleError, UserContext
+from teaql.runtime import CheckResult, I18nCatalog, Locale, ObjectLocation, UnsupportedLocaleError, UserContext
+
+def test_object_location_preserves_all_three_path_dialects():
+    location = ObjectLocation().property("order_items").index(2).property("user_url")
+    assert location.model_path == "order_items[2].user_url"
+    assert location.native_path == "order_items[2].user_url"
+    assert location.instance_path == "/orderItems/2/userUrl"
+    escaped = ObjectLocation().property("a/b~c")
+    assert escaped.instance_path == "/a~1b~0c"
 
 def test_fifteen_locales_times_five_checker_rules():
     catalog = I18nCatalog.builtin()
