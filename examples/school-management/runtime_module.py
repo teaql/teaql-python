@@ -1,5 +1,15 @@
+from datetime import datetime, timezone
 from teaql.runtime import CheckResult, RuntimeModule
 from teaql.core.value import Value
+try:
+    from teaql.core.graph import GraphNode
+except ImportError:
+    class GraphNode:
+        def __init__(self, entity):
+            self.entity, self.fields = entity, {}
+        def set(self, field, value):
+            self.fields[field] = value
+            return self
 from models.platform import Platform
 from models.school_type import SchoolType
 from models.school import School
@@ -123,4 +133,8 @@ GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Platform)
     .checker("Platform", _PlatformChecker()).entity(SchoolType)
     .checker("SchoolType", _SchoolTypeChecker()).entity(School)
     .checker("School", _SchoolChecker())
+
+    .root_graph(GraphNode("Platform").set("id", 1).set("name", "Campus Learning Platform").set("base_url", "https://campus.example.com").set("create_time", datetime.now(timezone.utc)).set("update_time", datetime.now(timezone.utc)))
+    .initial_graph(GraphNode("SchoolType").set("id", 1001).set("platform", 1).set("name", "Primary").set("code", "PRIMARY").set("display_order", 1))
+    .initial_graph(GraphNode("SchoolType").set("id", 1002).set("platform", 1).set("name", "Secondary").set("code", "SECONDARY").set("display_order", 2))
 )

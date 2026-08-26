@@ -299,10 +299,12 @@ class UserContext:
 
 class RuntimeModule:
     """Immutable generated runtime manifest."""
-    def __init__(self, entities=(), schemas=None, checkers=None):
+    def __init__(self, entities=(), schemas=None, checkers=None, root_graphs=(), initial_graphs=()):
         self.entities = tuple(entities)
         self.schemas = dict(schemas or {})
         self.checkers = dict(checkers or {})
+        self.root_graphs = tuple(root_graphs)
+        self.initial_graphs = tuple(initial_graphs)
 
     def entity(self, entity):
         self.entities = (*self.entities, entity)
@@ -312,12 +314,24 @@ class RuntimeModule:
         self.checkers[entity] = checker
         return self
 
+    def root_graph(self, graph):
+        self.root_graphs = (*self.root_graphs, graph)
+        return self
+
+    def initial_graph(self, graph):
+        self.initial_graphs = (*self.initial_graphs, graph)
+        return self
+
     def and_module(self, other):
         return RuntimeModule(self.entities + other.entities,
                              {**self.schemas, **other.schemas},
-                             {**self.checkers, **other.checkers})
+                             {**self.checkers, **other.checkers},
+                             self.root_graphs + other.root_graphs,
+                             self.initial_graphs + other.initial_graphs)
 
     def apply_to(self, context):
         context.insert_resource("entities", self.entities)
         context.insert_resource("entity_schemas", dict(self.schemas))
         context._checker_registry.update(self.checkers)
+        context.insert_resource("root_graphs", self.root_graphs)
+        context.insert_resource("initial_graphs", self.initial_graphs)

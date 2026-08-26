@@ -21,20 +21,28 @@ async def main() -> None:
     client = SQLiteTeaQLClient(str(database))
     context = (UserContext.new().install(GENERATED_RUNTIME_MODULE)
                .insert_resource("dataService", client))
-    await client.ensure_schema()
+    await client.ensure_schema(context)
+    await client.ensure_schema(context)
+    platform = await (Q.platforms().with_id_is(1)
+        .comment("Load the generated domain root")
+        .purpose("Verify idempotent schema bootstrap").execute_for_one(context))
+    primary = await (Q.school_types().with_id_is(1001)
+        .comment("Load the generated Primary constant")
+        .purpose("Verify idempotent schema bootstrap").execute_for_one(context))
+    constants = await (Q.school_types().comment("Load generated constants")
+        .purpose("Verify idempotent schema bootstrap").execute_for_list(context))
+    assert platform.id == 1
+    assert [(item.id, item.code) for item in constants] == [
+        (1001, "PRIMARY"), (1002, "SECONDARY")]
+    assert [item.version for item in constants] == [1, 1]
 
-    platform = Q.platforms().comment("Create the example root").purpose(
-        "Prepare the School example").new_entity(context)
-    platform.update_name("Campus Learning Platform")
-    platform.update_base_url("https://campus.example.com")
-    await platform.audit_as("Seed the School example root").save(context)
-    primary = Q.school_types().comment("Create the primary school type").purpose(
-        "Prepare the School example").new_entity(context)
-    primary.update_platform(Platform.refer(platform.id))
-    primary.update_name("Primary")
-    primary.update_code("PRIMARY")
-    primary.update_display_order(1)
-    await primary.audit_as("Seed the primary school constant").save(context)
+    GENERATED_RUNTIME_MODULE.initial_graphs[0].set("name", "Primary School")
+    await client.ensure_schema(context)
+    reconciled = await (Q.school_types().with_id_is(1001)
+        .comment("Load the reconciled Primary constant")
+        .purpose("Verify model-defined constant updates").execute_for_one(context))
+    assert reconciled.name == "Primary School"
+    assert reconciled.version == 2
 
     school = Q.schools().comment("Create the example school").purpose(
         "Verify generated Python mutations").new_entity(context)
@@ -60,7 +68,7 @@ async def main() -> None:
     assert loaded.platform.baseUrl == "https://campus.example.com"
     assert loaded.schoolType.code == "PRIMARY"
     assert loaded.schoolType.displayOrder == 1
-    print("PASS Python School Management: multi-word hydration and forward relations")
+    print("PASS Python School Management: idempotent bootstrap, multi-word hydration, and forward relations")
     await client.close()
 
 

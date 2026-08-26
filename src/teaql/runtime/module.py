@@ -29,6 +29,13 @@ class RuntimeModule:
         self._initial_graphs.append(graph_node)
         return self
 
+    def root_graph(self, graph_node: Any) -> 'RuntimeModule':
+        """Register a create-if-absent root graph whose existing values are preserved."""
+        if not hasattr(self, '_root_graphs'):
+            self._root_graphs = []
+        self._root_graphs.append(graph_node)
+        return self
+
     def provide_custom_dependency(self, name: str, dependency: Any) -> 'RuntimeModule':
         self._dependencies[name] = dependency
         return self
@@ -52,6 +59,10 @@ class RuntimeModule:
             *getattr(self, '_initial_graphs', []),
             *getattr(other, '_initial_graphs', []),
         ]
+        combined._root_graphs = [
+            *getattr(self, '_root_graphs', []),
+            *getattr(other, '_root_graphs', []),
+        ]
         return combined
 
     def apply_to(self, context: UserContext):
@@ -62,6 +73,9 @@ class RuntimeModule:
         if hasattr(self, '_initial_graphs'):
             for graph in self._initial_graphs:
                 context.add_initial_graph(graph)
+        if hasattr(self, '_root_graphs'):
+            for graph in self._root_graphs:
+                context.add_root_graph(graph)
         context.insert_resource("entities", self._entities)
         context.insert_resource("behaviors", self._behaviors)
         if self._checkers:

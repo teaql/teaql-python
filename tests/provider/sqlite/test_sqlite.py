@@ -14,6 +14,7 @@ from teaql.runtime import RuntimeModule
 from teaql.provider.sqlite.transport import SqliteTransport
 from teaql.sql.types import CompiledQuery, DatabaseKind
 from teaql.runtime.telemetry import RuntimeOperation
+from teaql.core.graph import GraphNode
 
 @pytest.fixture
 def temp_db():
@@ -54,6 +55,50 @@ def schema_provider():
 @pytest.fixture
 def service(temp_db, schema_provider):
     return create_sqlite_service(temp_db, schema_provider)
+
+@pytest.mark.asyncio
+async def test_schema_bootstrap_is_idempotent_reconciles_constants_and_preserves_root(temp_db):
+    provider = SimpleSchemaProvider()
+    platform = MockEntityDescriptor("Platform")
+    platform.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("name", DataType.Text),
+        MockPropertyDescriptor("version", DataType.I64, is_version=True),
+    ]
+    school_type = MockEntityDescriptor("SchoolType")
+    school_type.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("name", DataType.Text),
+        MockPropertyDescriptor("code", DataType.Text),
+        MockPropertyDescriptor("version", DataType.I64, is_version=True),
+    ]
+    provider.register_entity(platform)
+    provider.register_entity(school_type)
+    service = create_sqlite_service(temp_db, provider)
+    root = GraphNode("Platform").set("id", 1).set("name", "Campus Learning Platform")
+    primary = (GraphNode("SchoolType").set("id", 1001)
+        .set("name", "Primary").set("code", "PRIMARY"))
+    secondary = (GraphNode("SchoolType").set("id", 1002)
+        .set("name", "Secondary").set("code", "SECONDARY"))
+    context = (RuntimeModule.new().entity(platform).entity(school_type)
+        .root_graph(root).initial_graph(primary).initial_graph(secondary).into_context())
+
+    await service.ensure_schema(context)
+    await service.mutate(context, MutationRequest(
+        UpdateCommand("Platform", Value.I64(1)).value("name", "Customer Name")))
+    primary.set("name", "Primary School")
+    await service.ensure_schema(context)
+
+    platforms = (await service.query(context, QueryRequest(SelectQuery("Platform")))).rows
+    constants = (await service.query(context, QueryRequest(SelectQuery("SchoolType")))).rows
+    assert [(row["id"], row["name"]) for row in platforms] == [(1, "Customer Name")]
+    assert [(row["id"], row["name"], row["code"]) for row in constants] == [
+        (1001, "Primary School", "PRIMARY"),
+        (1002, "Secondary", "SECONDARY"),
+    ]
+    assert next(row["version"] for row in constants if row["id"] == 1001) == 2
+    assert next(row["version"] for row in constants if row["id"] == 1002) == 1
+    assert await service.next_id("SchoolType") > 1002
 
 @pytest.mark.asyncio
 async def test_crud(temp_db, schema_provider, service):

@@ -36,6 +36,7 @@ class UserContext:
         self._user_identifier: str = ""
         self._entities: List[Any] = []
         self._initial_graphs: List[Any] = []
+        self._root_graphs: List[Any] = []
         self._standard_audit_sink: Optional[Any] = None
         self._app_audit_sink: Optional[Any] = None
         self._entity_initializers: Dict[str, List[EntityInitializer]] = {}
@@ -124,6 +125,12 @@ class UserContext:
         
     def initial_graphs(self) -> List[Any]:
         return self._initial_graphs
+
+    def add_root_graph(self, graph_node: Any):
+        self._root_graphs.append(graph_node)
+
+    def root_graphs(self) -> List[Any]:
+        return self._root_graphs
 
     def with_metadata(self, metadata: Any) -> 'UserContext':
         self._metadata = metadata

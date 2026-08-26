@@ -538,11 +538,15 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             "CREATE TABLE IF NOT EXISTS teaql_id_space ("
             "type_name VARCHAR(255) NOT NULL PRIMARY KEY, "
             "current_level BIGINT NOT NULL)", []))
+        await self.ensure_initial_graphs(context)
 
     async def ensure_initial_graphs(self, context: 'UserContext') -> None:
-        from teaql.core.mutation import InsertCommand
-        graphs = context.initial_graphs()
-        for graph in graphs:
+        from teaql.core.mutation import InsertCommand, UpdateCommand
+        graphs = [
+            *((graph, False) for graph in context.root_graphs()),
+            *((graph, True) for graph in context.initial_graphs()),
+        ]
+        for graph, reconcile in graphs:
             entity_name = getattr(graph, 'entity', None)
             if not entity_name:
                 continue
@@ -557,17 +561,37 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             if not entity_desc:
                 continue
                 
-            values = getattr(graph, 'values', {})
-            mutation = InsertCommand(entity_name)
-            for k, v in values.items():
-                mutation.value(k, v)
-                
-            try:
-                # Try to insert; if it fails (e.g. unique constraint on ID), it's already seeded
-                compiled = self.dialect.compile_insert(entity_desc, mutation)
-                await self.transport.execute_sql(compiled)
-            except Exception:
-                pass
+            values = getattr(graph, 'fields', getattr(graph, 'values', {}))
+            seed_id = values.get('id')
+            seed_id = seed_id.val if hasattr(seed_id, 'val') else seed_id
+            if seed_id is None:
+                raise ValueError(f"bootstrap graph {entity_name} must define id")
+            query = SelectQuery(entity_name).filter(BinaryExpr(
+                ColumnExpr('id'), BinaryOp.Eq, ValueExpr(Value.from_any(seed_id))))
+            current_rows = (await self._query(context, QueryRequest(query))).rows
+            if not current_rows:
+                mutation = InsertCommand(entity_name)
+                for k, v in values.items():
+                    mutation.value(k, v)
+                version_prop = next((p for p in getattr(entity_desc, 'properties', [])
+                    if getattr(p, '_is_version', False) or getattr(p, 'is_version_val', False)), None)
+                if version_prop is not None and version_prop.name not in mutation.values:
+                    mutation.value(version_prop.name, 1)
+                await self.transport.execute_sql(self.dialect.compile_insert(entity_desc, mutation))
+            elif reconcile:
+                current = current_rows[0]
+                changed = {k: v for k, v in values.items() if k != 'id'
+                    and current.get(k) != (v.val if hasattr(v, 'val') else v)}
+                if changed:
+                    mutation = UpdateCommand(entity_name, Value.from_any(seed_id))
+                    for k, v in changed.items():
+                        mutation.value(k, v)
+                    version = current.get('version')
+                    version = version.val if hasattr(version, 'val') else version
+                    if version is not None:
+                        mutation.expected_version(int(version))
+                    await self.transport.execute_sql(self.dialect.compile_update(entity_desc, mutation))
+            await self.ensure_id_floor(entity_name, int(seed_id))
 
     async def begin(self, context: 'UserContext') -> 'teaql.data_service.Transaction':
         if not isinstance(self.transport, SqlTransactionTransport):

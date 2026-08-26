@@ -565,12 +565,40 @@ class AsyncSqlTeaQLClient:
             )
         return table
 
-    async def ensure_schema(self):
+    async def ensure_schema(self, context=None):
         connection = await self._connect()
         try:
             async with connection.transaction():
                 for entity in ENTITY_SCHEMAS:
                     await self._ensure_table(connection, entity)
+                if context is not None:
+                    roots = context.get_resource("root_graphs") or ()
+                    constants = context.get_resource("initial_graphs") or ()
+                    for graph, reconcile in (tuple((g, False) for g in roots)
+                                             + tuple((g, True) for g in constants)):
+                        table = await self._ensure_table(connection, graph.entity, graph.fields)
+                        seed_id = int(graph.fields["id"])
+                        existing = await connection.fetch_one(
+                            f"SELECT * FROM {self._identifier(table)} WHERE {self._identifier('id')} = {self._placeholder(1)}",
+                            seed_id)
+                        if existing is None:
+                            record = dict(graph.fields)
+                            record["version"] = int(record.get("version") or 1)
+                            fields = list(record)
+                            await connection.execute(
+                                f"INSERT INTO {self._identifier(table)} ({', '.join(self._identifier(f) for f in fields)}) VALUES ({', '.join(self._placeholder(i) for i in range(1, len(fields)+1))})",
+                                *(self._normalize(record[f]) for f in fields))
+                        elif reconcile:
+                            existing = dict(existing)
+                            changed = {k: v for k, v in graph.fields.items()
+                                       if k != "id" and existing.get(k) != self._normalize(v)}
+                            if changed:
+                                fields = list(changed)
+                                next_index = len(fields) + 1
+                                await connection.execute(
+                                    f"UPDATE {self._identifier(table)} SET {', '.join(self._identifier(f) + ' = ' + self._placeholder(i) for i, f in enumerate(fields, 1))}, {self._identifier('version')} = {self._identifier('version')} + 1 WHERE {self._identifier('id')} = {self._placeholder(next_index)}",
+                                    *(self._normalize(changed[f]) for f in fields), seed_id)
+                        await self._ensure_id_floor(connection, graph.entity, seed_id)
         finally:
             await connection.close()
 
