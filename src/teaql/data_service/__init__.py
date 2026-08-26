@@ -140,17 +140,17 @@ class TransactionExecutor(DataServiceExecutor, Protocol):
 
 
 @dataclass
-class SchemaRequest:
+class _SchemaRequest:
     entity_name: str
 
 
 @dataclass
-class SchemaResult:
+class _SchemaResult:
     changed: bool
 
 
-class SchemaExecutor(DataServiceExecutor, Protocol):
-    async def ensure_schema(self, request: SchemaRequest) -> SchemaResult:
+class _SchemaExecutor(DataServiceExecutor, Protocol):
+    async def _ensure_schema_request(self, request: _SchemaRequest) -> _SchemaResult:
         ...
 
 
@@ -182,9 +182,6 @@ __all__ = [
     "MutationExecutor",
     "Transaction",
     "TransactionExecutor",
-    "SchemaRequest",
-    "SchemaResult",
-    "SchemaExecutor",
     "IdGeneratorExecutor",
     "DataService"
 ]

@@ -504,7 +504,10 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             f"Unable to synchronize ID space floor for {entity} after "
             f"{self.MAX_ID_ALLOCATION_ATTEMPTS} optimistic-lock attempts")
 
-    async def ensure_schema(self, context: 'UserContext') -> None:
+    async def _ensure_schema(self, context: 'UserContext', capability: object) -> None:
+        from teaql.runtime._schema_capability import SCHEMA_CAPABILITY
+        if capability is not SCHEMA_CAPABILITY:
+            raise PermissionError("Ensure Schema is available only through UserContext.ensure_schema()")
         entities = context.all_entities()
         if not entities:
             entities = context.get_resource("entities") or []

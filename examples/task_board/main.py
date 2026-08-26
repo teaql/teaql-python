@@ -72,7 +72,8 @@ async def main():
     for e in provider.entities.values():
         context.register_entity(e)
     
-    await service.ensure_schema(context)
+    context.with_schema_provider(service)
+    await context.ensure_schema()
 
     print("Performing CRUD operations...")
 

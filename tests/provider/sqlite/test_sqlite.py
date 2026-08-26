@@ -75,6 +75,7 @@ async def test_schema_bootstrap_is_idempotent_reconciles_constants_and_preserves
     provider.register_entity(platform)
     provider.register_entity(school_type)
     service = create_sqlite_service(temp_db, provider)
+    assert not hasattr(service, "ensure_schema")
     root = GraphNode("Platform").set("id", 1).set("name", "Campus Learning Platform")
     primary = (GraphNode("SchoolType").set("id", 1001)
         .set("name", "Primary").set("code", "PRIMARY"))
@@ -83,11 +84,12 @@ async def test_schema_bootstrap_is_idempotent_reconciles_constants_and_preserves
     context = (RuntimeModule.new().entity(platform).entity(school_type)
         .root_graph(root).initial_graph(primary).initial_graph(secondary).into_context())
 
-    await service.ensure_schema(context)
+    context.with_schema_provider(service)
+    await context.ensure_schema()
     await service.mutate(context, MutationRequest(
         UpdateCommand("Platform", Value.I64(1)).value("name", "Customer Name")))
     primary.set("name", "Primary School")
-    await service.ensure_schema(context)
+    await context.ensure_schema()
 
     platforms = (await service.query(context, QueryRequest(SelectQuery("Platform")))).rows
     constants = (await service.query(context, QueryRequest(SelectQuery("SchoolType")))).rows

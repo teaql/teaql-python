@@ -272,7 +272,8 @@ class UserContext:
     async def ensure_schema(self):
         provider = self.get_resource("schema_provider")
         if provider:
-            await provider.ensure_schema(self)
+            from ._schema_capability import SCHEMA_CAPABILITY
+            await provider._ensure_schema(self, SCHEMA_CAPABILITY)
         else:
             raise Exception("missing schema provider")
 
@@ -857,7 +858,7 @@ from abc import ABC, abstractmethod
 
 class SchemaProvider(ABC):
     @abstractmethod
-    async def ensure_schema(self, context: 'UserContext') -> None:
+    async def _ensure_schema(self, context: 'UserContext', capability: object) -> None:
         pass
 
 class DataStore(ABC):
