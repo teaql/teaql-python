@@ -85,7 +85,8 @@ async def main() -> None:
         ("date range", Q.schools().with_established_date_between(date(1995, 1, 1), date(1995, 12, 31)), 1),
         ("known", Q.schools().with_address_is_known(), 1),
         ("unknown", Q.schools().with_address_is_unknown(), 0),
-        ("boolean", Q.schools().which_are_active(), 1),
+        ("boolean true", Q.schools().which_are_active(), 1),
+        ("boolean false", Q.schools().which_are_not_active(), 0),
         ("constant relation", Q.schools().with_school_type_is_primary(), 1),
     ]
     for label, request, expected in query_cases:
