@@ -1,7 +1,11 @@
 from teaql.core.query import SelectQuery
 from teaql.core.list import SmartList, TeaQLPage
 from teaql.data_service import QueryRequest
-from teaql.core.expr import eq, contain, gte, lte
+from teaql.core.expr import (
+    begin_with, between, column, contain, end_with, eq, gt, gte,
+    in_list, is_not_null, is_null, lt, lte, ne, not_begin_with,
+    not_contain, not_end_with, not_in_list, value,
+)
 from models.school import School
 
 class SchoolRequest:
@@ -109,6 +113,46 @@ class SchoolRequest:
         self.query.and_filter(eq("id", val))
         return self
 
+    def with_id_is_not(self, val):
+        self.query.and_filter(ne("id", val))
+        return self
+
+    def with_id_in(self, *vals):
+        self.query.and_filter(in_list("id", list(vals)))
+        return self
+
+    def with_id_not_in(self, *vals):
+        self.query.and_filter(not_in_list("id", list(vals)))
+        return self
+
+    def with_id_greater_than(self, val):
+        self.query.and_filter(gt("id", val))
+        return self
+
+    def with_id_greater_than_or_equal_to(self, val):
+        self.query.and_filter(gte("id", val))
+        return self
+
+    def with_id_less_than(self, val):
+        self.query.and_filter(lt("id", val))
+        return self
+
+    def with_id_less_than_or_equal_to(self, val):
+        self.query.and_filter(lte("id", val))
+        return self
+
+    def with_id_between(self, lower, upper):
+        self.query.and_filter(between(column("id"), value(lower), value(upper)))
+        return self
+
+    def with_id_is_known(self):
+        self.query.and_filter(is_not_null(column("id")))
+        return self
+
+    def with_id_is_unknown(self):
+        self.query.and_filter(is_null(column("id")))
+        return self
+
     def filter_by_platform(self, val):
         self.query.and_filter(eq("platform", val))
         return self
@@ -124,24 +168,222 @@ class SchoolRequest:
         self.query.and_filter(contain("name", val))
         return self
 
+    def with_name_not_containing(self, val: str):
+        self.query.and_filter(not_contain("name", val))
+        return self
+
+    def with_name_starting_with(self, val: str):
+        self.query.and_filter(begin_with("name", val))
+        return self
+
+    def with_name_not_starting_with(self, val: str):
+        self.query.and_filter(not_begin_with("name", val))
+        return self
+
+    def with_name_ending_with(self, val: str):
+        self.query.and_filter(end_with("name", val))
+        return self
+
+    def with_name_not_ending_with(self, val: str):
+        self.query.and_filter(not_end_with("name", val))
+        return self
+
     def with_name_is(self, val: str):
         self.query.and_filter(eq("name", val))
+        return self
+    def with_name_is_not(self, val):
+        self.query.and_filter(ne("name", val))
+        return self
+
+    def with_name_in(self, *vals):
+        self.query.and_filter(in_list("name", list(vals)))
+        return self
+
+    def with_name_not_in(self, *vals):
+        self.query.and_filter(not_in_list("name", list(vals)))
+        return self
+
+    def with_name_greater_than(self, val):
+        self.query.and_filter(gt("name", val))
+        return self
+
+    def with_name_greater_than_or_equal_to(self, val):
+        self.query.and_filter(gte("name", val))
+        return self
+
+    def with_name_less_than(self, val):
+        self.query.and_filter(lt("name", val))
+        return self
+
+    def with_name_less_than_or_equal_to(self, val):
+        self.query.and_filter(lte("name", val))
+        return self
+
+    def with_name_between(self, lower, upper):
+        self.query.and_filter(between(column("name"), value(lower), value(upper)))
+        return self
+
+    def with_name_is_known(self):
+        self.query.and_filter(is_not_null(column("name")))
+        return self
+
+    def with_name_is_unknown(self):
+        self.query.and_filter(is_null(column("name")))
         return self
 
     def with_address_containing(self, val: str):
         self.query.and_filter(contain("address", val))
         return self
 
+    def with_address_not_containing(self, val: str):
+        self.query.and_filter(not_contain("address", val))
+        return self
+
+    def with_address_starting_with(self, val: str):
+        self.query.and_filter(begin_with("address", val))
+        return self
+
+    def with_address_not_starting_with(self, val: str):
+        self.query.and_filter(not_begin_with("address", val))
+        return self
+
+    def with_address_ending_with(self, val: str):
+        self.query.and_filter(end_with("address", val))
+        return self
+
+    def with_address_not_ending_with(self, val: str):
+        self.query.and_filter(not_end_with("address", val))
+        return self
+
     def with_address_is(self, val: str):
         self.query.and_filter(eq("address", val))
+        return self
+    def with_address_is_not(self, val):
+        self.query.and_filter(ne("address", val))
+        return self
+
+    def with_address_in(self, *vals):
+        self.query.and_filter(in_list("address", list(vals)))
+        return self
+
+    def with_address_not_in(self, *vals):
+        self.query.and_filter(not_in_list("address", list(vals)))
+        return self
+
+    def with_address_greater_than(self, val):
+        self.query.and_filter(gt("address", val))
+        return self
+
+    def with_address_greater_than_or_equal_to(self, val):
+        self.query.and_filter(gte("address", val))
+        return self
+
+    def with_address_less_than(self, val):
+        self.query.and_filter(lt("address", val))
+        return self
+
+    def with_address_less_than_or_equal_to(self, val):
+        self.query.and_filter(lte("address", val))
+        return self
+
+    def with_address_between(self, lower, upper):
+        self.query.and_filter(between(column("address"), value(lower), value(upper)))
+        return self
+
+    def with_address_is_known(self):
+        self.query.and_filter(is_not_null(column("address")))
+        return self
+
+    def with_address_is_unknown(self):
+        self.query.and_filter(is_null(column("address")))
         return self
 
     def with_established_date_is(self, val):
         self.query.and_filter(eq("established_date", val))
         return self
 
+    def with_established_date_is_not(self, val):
+        self.query.and_filter(ne("established_date", val))
+        return self
+
+    def with_established_date_in(self, *vals):
+        self.query.and_filter(in_list("established_date", list(vals)))
+        return self
+
+    def with_established_date_not_in(self, *vals):
+        self.query.and_filter(not_in_list("established_date", list(vals)))
+        return self
+
+    def with_established_date_greater_than(self, val):
+        self.query.and_filter(gt("established_date", val))
+        return self
+
+    def with_established_date_greater_than_or_equal_to(self, val):
+        self.query.and_filter(gte("established_date", val))
+        return self
+
+    def with_established_date_less_than(self, val):
+        self.query.and_filter(lt("established_date", val))
+        return self
+
+    def with_established_date_less_than_or_equal_to(self, val):
+        self.query.and_filter(lte("established_date", val))
+        return self
+
+    def with_established_date_between(self, lower, upper):
+        self.query.and_filter(between(column("established_date"), value(lower), value(upper)))
+        return self
+
+    def with_established_date_is_known(self):
+        self.query.and_filter(is_not_null(column("established_date")))
+        return self
+
+    def with_established_date_is_unknown(self):
+        self.query.and_filter(is_null(column("established_date")))
+        return self
+
     def with_student_capacity_is(self, val):
         self.query.and_filter(eq("student_capacity", val))
+        return self
+
+    def with_student_capacity_is_not(self, val):
+        self.query.and_filter(ne("student_capacity", val))
+        return self
+
+    def with_student_capacity_in(self, *vals):
+        self.query.and_filter(in_list("student_capacity", list(vals)))
+        return self
+
+    def with_student_capacity_not_in(self, *vals):
+        self.query.and_filter(not_in_list("student_capacity", list(vals)))
+        return self
+
+    def with_student_capacity_greater_than(self, val):
+        self.query.and_filter(gt("student_capacity", val))
+        return self
+
+    def with_student_capacity_greater_than_or_equal_to(self, val):
+        self.query.and_filter(gte("student_capacity", val))
+        return self
+
+    def with_student_capacity_less_than(self, val):
+        self.query.and_filter(lt("student_capacity", val))
+        return self
+
+    def with_student_capacity_less_than_or_equal_to(self, val):
+        self.query.and_filter(lte("student_capacity", val))
+        return self
+
+    def with_student_capacity_between(self, lower, upper):
+        self.query.and_filter(between(column("student_capacity"), value(lower), value(upper)))
+        return self
+
+    def with_student_capacity_is_known(self):
+        self.query.and_filter(is_not_null(column("student_capacity")))
+        return self
+
+    def with_student_capacity_is_unknown(self):
+        self.query.and_filter(is_null(column("student_capacity")))
         return self
 
     def which_are_active(self):
@@ -151,17 +393,176 @@ class SchoolRequest:
     def which_are_not_active(self):
         self.query.and_filter(eq("active", False))
         return self
+    def with_active_is_not(self, val):
+        self.query.and_filter(ne("active", val))
+        return self
+
+    def with_active_in(self, *vals):
+        self.query.and_filter(in_list("active", list(vals)))
+        return self
+
+    def with_active_not_in(self, *vals):
+        self.query.and_filter(not_in_list("active", list(vals)))
+        return self
+
+    def with_active_greater_than(self, val):
+        self.query.and_filter(gt("active", val))
+        return self
+
+    def with_active_greater_than_or_equal_to(self, val):
+        self.query.and_filter(gte("active", val))
+        return self
+
+    def with_active_less_than(self, val):
+        self.query.and_filter(lt("active", val))
+        return self
+
+    def with_active_less_than_or_equal_to(self, val):
+        self.query.and_filter(lte("active", val))
+        return self
+
+    def with_active_between(self, lower, upper):
+        self.query.and_filter(between(column("active"), value(lower), value(upper)))
+        return self
+
+    def with_active_is_known(self):
+        self.query.and_filter(is_not_null(column("active")))
+        return self
+
+    def with_active_is_unknown(self):
+        self.query.and_filter(is_null(column("active")))
+        return self
 
     def with_create_time_is(self, val):
         self.query.and_filter(eq("create_time", val))
+        return self
+
+    def with_create_time_is_not(self, val):
+        self.query.and_filter(ne("create_time", val))
+        return self
+
+    def with_create_time_in(self, *vals):
+        self.query.and_filter(in_list("create_time", list(vals)))
+        return self
+
+    def with_create_time_not_in(self, *vals):
+        self.query.and_filter(not_in_list("create_time", list(vals)))
+        return self
+
+    def with_create_time_greater_than(self, val):
+        self.query.and_filter(gt("create_time", val))
+        return self
+
+    def with_create_time_greater_than_or_equal_to(self, val):
+        self.query.and_filter(gte("create_time", val))
+        return self
+
+    def with_create_time_less_than(self, val):
+        self.query.and_filter(lt("create_time", val))
+        return self
+
+    def with_create_time_less_than_or_equal_to(self, val):
+        self.query.and_filter(lte("create_time", val))
+        return self
+
+    def with_create_time_between(self, lower, upper):
+        self.query.and_filter(between(column("create_time"), value(lower), value(upper)))
+        return self
+
+    def with_create_time_is_known(self):
+        self.query.and_filter(is_not_null(column("create_time")))
+        return self
+
+    def with_create_time_is_unknown(self):
+        self.query.and_filter(is_null(column("create_time")))
         return self
 
     def with_update_time_is(self, val):
         self.query.and_filter(eq("update_time", val))
         return self
 
+    def with_update_time_is_not(self, val):
+        self.query.and_filter(ne("update_time", val))
+        return self
+
+    def with_update_time_in(self, *vals):
+        self.query.and_filter(in_list("update_time", list(vals)))
+        return self
+
+    def with_update_time_not_in(self, *vals):
+        self.query.and_filter(not_in_list("update_time", list(vals)))
+        return self
+
+    def with_update_time_greater_than(self, val):
+        self.query.and_filter(gt("update_time", val))
+        return self
+
+    def with_update_time_greater_than_or_equal_to(self, val):
+        self.query.and_filter(gte("update_time", val))
+        return self
+
+    def with_update_time_less_than(self, val):
+        self.query.and_filter(lt("update_time", val))
+        return self
+
+    def with_update_time_less_than_or_equal_to(self, val):
+        self.query.and_filter(lte("update_time", val))
+        return self
+
+    def with_update_time_between(self, lower, upper):
+        self.query.and_filter(between(column("update_time"), value(lower), value(upper)))
+        return self
+
+    def with_update_time_is_known(self):
+        self.query.and_filter(is_not_null(column("update_time")))
+        return self
+
+    def with_update_time_is_unknown(self):
+        self.query.and_filter(is_null(column("update_time")))
+        return self
+
     def with_version_is(self, val):
         self.query.and_filter(eq("version", val))
+        return self
+
+    def with_version_is_not(self, val):
+        self.query.and_filter(ne("version", val))
+        return self
+
+    def with_version_in(self, *vals):
+        self.query.and_filter(in_list("version", list(vals)))
+        return self
+
+    def with_version_not_in(self, *vals):
+        self.query.and_filter(not_in_list("version", list(vals)))
+        return self
+
+    def with_version_greater_than(self, val):
+        self.query.and_filter(gt("version", val))
+        return self
+
+    def with_version_greater_than_or_equal_to(self, val):
+        self.query.and_filter(gte("version", val))
+        return self
+
+    def with_version_less_than(self, val):
+        self.query.and_filter(lt("version", val))
+        return self
+
+    def with_version_less_than_or_equal_to(self, val):
+        self.query.and_filter(lte("version", val))
+        return self
+
+    def with_version_between(self, lower, upper):
+        self.query.and_filter(between(column("version"), value(lower), value(upper)))
+        return self
+
+    def with_version_is_known(self):
+        self.query.and_filter(is_not_null(column("version")))
+        return self
+
+    def with_version_is_unknown(self):
+        self.query.and_filter(is_null(column("version")))
         return self
 
     def order_by_id_ascending(self):

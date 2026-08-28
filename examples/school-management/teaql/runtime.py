@@ -134,6 +134,11 @@ class UserContext:
         module.apply_to(self)
         return self
 
+    async def ensure_schema(self):
+        """Explicitly reconcile schema and generated bootstrap data."""
+        provider = self.require_resource("dataService")
+        await provider._ensure_schema(self, _SCHEMA_INVOCATION)
+
     def check_and_fix_mutation(self, mutation):
         checker = self._checker_registry.get(getattr(mutation, "entity", None))
         if checker is None:
@@ -175,10 +180,6 @@ class UserContext:
         if resource is None:
             raise RuntimeError(f"Required UserContext resource is missing: {resource_type}")
         return resource
-
-    async def ensure_schema(self):
-        """Reconcile schema through this context's configured data service."""
-        await self.require_resource("dataService")._ensure_schema(self, _SCHEMA_INVOCATION)
 
     def with_active_root(self, root):
         if not isinstance(root, ContextEntityRef):

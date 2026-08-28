@@ -10,7 +10,7 @@ from decimal import Decimal
 from urllib.parse import parse_qs, unquote, urlparse
 from dataclasses import dataclass
 from typing import Any, Callable, Dict, Generic, Iterable, Optional, TypeVar
-from teaql.runtime import SqlLogOperation
+from teaql.runtime import SqlLogOperation, _SCHEMA_INVOCATION
 
 TPage = TypeVar("TPage")
 
@@ -175,12 +175,25 @@ class DeleteCommand:
         self.expected_version = expected_version
 
 def eq(a, b): return {"type": "eq", "field": a, "value": b}
+def ne(a, b): return {"type": "ne", "field": a, "value": b}
 def contain(a, b): return {"type": "contain", "field": a, "value": b}
+def not_contain(a, b): return {"type": "not_contain", "field": a, "value": b}
+def begin_with(a, b): return {"type": "begin_with", "field": a, "value": b}
+def not_begin_with(a, b): return {"type": "not_begin_with", "field": a, "value": b}
+def end_with(a, b): return {"type": "end_with", "field": a, "value": b}
+def not_end_with(a, b): return {"type": "not_end_with", "field": a, "value": b}
 def one_of(a, values): return {"type": "in", "field": a, "value": list(values)}
+def in_list(a, values): return one_of(a, values)
+def not_in_list(a, values): return {"type": "not_in", "field": a, "value": list(values)}
 def gte(a, b): return {"type": "gte", "field": a, "value": b}
 def lte(a, b): return {"type": "lte", "field": a, "value": b}
 def gt(a, b): return {"type": "gt", "field": a, "value": b}
 def lt(a, b): return {"type": "lt", "field": a, "value": b}
+def column(a): return a
+def value(a): return a
+def between(a, lower, upper): return {"type": "between", "field": a, "value": [lower, upper]}
+def is_null(a): return {"type": "is_null", "field": a}
+def is_not_null(a): return {"type": "is_not_null", "field": a}
 
 def _prepare_continuous_page(context, original):
     query = copy.deepcopy(original)
@@ -330,8 +343,28 @@ class TeaQLClient:
                 rows = [row for row in rows if row.get(expression["field"]) == expression["value"]]
             elif expression.get("type") == "contain":
                 rows = [row for row in rows if expression["value"] in str(row.get(expression["field"], ""))]
+            elif expression.get("type") == "not_contain":
+                rows = [row for row in rows if expression["value"] not in str(row.get(expression["field"], ""))]
+            elif expression.get("type") == "begin_with":
+                rows = [row for row in rows if str(row.get(expression["field"], "")).startswith(str(expression["value"]))]
+            elif expression.get("type") == "not_begin_with":
+                rows = [row for row in rows if not str(row.get(expression["field"], "")).startswith(str(expression["value"]))]
+            elif expression.get("type") == "end_with":
+                rows = [row for row in rows if str(row.get(expression["field"], "")).endswith(str(expression["value"]))]
+            elif expression.get("type") == "not_end_with":
+                rows = [row for row in rows if not str(row.get(expression["field"], "")).endswith(str(expression["value"]))]
             elif expression.get("type") == "in":
                 rows = [row for row in rows if row.get(expression["field"]) in expression["value"]]
+            elif expression.get("type") == "not_in":
+                rows = [row for row in rows if row.get(expression["field"]) not in expression["value"]]
+            elif expression.get("type") == "ne":
+                rows = [row for row in rows if row.get(expression["field"]) != expression["value"]]
+            elif expression.get("type") == "between":
+                rows = [row for row in rows if expression["value"][0] <= row.get(expression["field"]) <= expression["value"][1]]
+            elif expression.get("type") == "is_null":
+                rows = [row for row in rows if row.get(expression["field"]) is None]
+            elif expression.get("type") == "is_not_null":
+                rows = [row for row in rows if row.get(expression["field"]) is not None]
             elif expression.get("type") == "gte":
                 rows = [row for row in rows if row.get(expression["field"]) >= expression["value"]]
             elif expression.get("type") == "lte":
@@ -565,7 +598,9 @@ class AsyncSqlTeaQLClient:
             )
         return table
 
-    async def ensure_schema(self, context=None):
+    async def _ensure_schema(self, context, invocation):
+        if invocation is not _SCHEMA_INVOCATION:
+            raise PermissionError("Ensure Schema must be invoked through UserContext.ensure_schema()")
         connection = await self._connect()
         try:
             async with connection.transaction():
@@ -817,23 +852,41 @@ class AsyncSqlTeaQLClient:
             for expression in query._filters:
                 field = self._identifier(expression["field"])
                 operator = expression.get("type")
-                if operator == "in":
+                if operator in ("in", "not_in"):
                     values = list(expression.get("value") or [])
                     if not values:
-                        predicates.append("1 = 0")
+                        predicates.append("1 = 0" if operator == "in" else "1 = 1")
                         continue
                     placeholders = []
                     for value in values:
                         params.append(self._normalize(value))
                         placeholders.append(self._placeholder(len(params)))
-                    predicates.append(f"{field} IN ({', '.join(placeholders)})")
+                    predicates.append(f"{field} {'IN' if operator == 'in' else 'NOT IN'} ({', '.join(placeholders)})")
+                    continue
+                if operator in ("is_null", "is_not_null"):
+                    predicates.append(f"{field} IS {'NULL' if operator == 'is_null' else 'NOT NULL'}")
+                    continue
+                if operator == "between":
+                    bounds = list(expression.get("value") or [])
+                    if len(bounds) != 2: raise ValueError("between requires exactly two bounds")
+                    params.extend([self._normalize(bounds[0]), self._normalize(bounds[1])])
+                    predicates.append(f"{field} BETWEEN {self._placeholder(len(params)-1)} AND {self._placeholder(len(params))}")
                     continue
                 params.append(self._normalize(expression.get("value")))
                 placeholder = self._placeholder(len(params))
                 if operator == "eq":
                     predicates.append(f"{field} = {placeholder}")
+                elif operator == "ne":
+                    predicates.append(f"{field} <> {placeholder}")
                 elif operator == "contain":
                     predicates.append(self._contains_predicate(field, placeholder))
+                elif operator == "not_contain":
+                    predicates.append(f"NOT ({self._contains_predicate(field, placeholder)})")
+                elif operator in ("begin_with", "not_begin_with", "end_with", "not_end_with"):
+                    raw = str(expression.get("value") or "")
+                    params[-1] = ("%" if "end" in operator else "") + raw + ("%" if "begin" in operator else "")
+                    clause = f"{field} LIKE {placeholder}"
+                    predicates.append(f"NOT ({clause})" if operator.startswith("not_") else clause)
                 elif operator == "gte":
                     predicates.append(f"{field} >= {placeholder}")
                 elif operator == "lte":

@@ -68,7 +68,38 @@ async def main() -> None:
     assert loaded.platform.baseUrl == "https://campus.example.com"
     assert loaded.schoolType.code == "PRIMARY"
     assert loaded.schoolType.displayOrder == 1
-    print("PASS Python School Management: idempotent bootstrap, multi-word hydration, and forward relations")
+
+    query_cases = [
+        ("string equality", Q.schools().with_name_is("Riverside Primary School"), 1),
+        ("string inequality", Q.schools().with_name_is_not("Another School"), 1),
+        ("string membership", Q.schools().with_name_in("Riverside Primary School", "Another School"), 1),
+        ("negative membership", Q.schools().with_name_not_in("Another School"), 1),
+        ("contains", Q.schools().with_name_containing("Primary"), 1),
+        ("negative contains", Q.schools().with_name_not_containing("Secondary"), 1),
+        ("starts with", Q.schools().with_name_starting_with("Riverside"), 1),
+        ("negative starts with", Q.schools().with_name_not_starting_with("Lakeside"), 1),
+        ("ends with", Q.schools().with_name_ending_with("School"), 1),
+        ("negative ends with", Q.schools().with_name_not_ending_with("Academy"), 1),
+        ("number range", Q.schools().with_student_capacity_between(700, 900), 1),
+        ("strict comparison", Q.schools().with_student_capacity_greater_than(799).with_student_capacity_less_than(801), 1),
+        ("date range", Q.schools().with_established_date_between(date(1995, 1, 1), date(1995, 12, 31)), 1),
+        ("known", Q.schools().with_address_is_known(), 1),
+        ("unknown", Q.schools().with_address_is_unknown(), 0),
+        ("boolean", Q.schools().which_are_active(), 1),
+        ("constant relation", Q.schools().with_school_type_is_primary(), 1),
+    ]
+    for label, request, expected in query_cases:
+        result = await (request.comment(f"Query parity: {label}")
+            .purpose("Execute the shared School Query conformance case")
+            .execute_for_list(context))
+        assert len(result) == expected, f"{label}: expected {expected}, got {len(result)}"
+
+    projected = await (Q.schools().select_name().order_by_id_descending()
+        .comment("Query parity: projection and ordering")
+        .purpose("Execute the shared School Query conformance case")
+        .execute_for_list(context))
+    assert len(projected) == 1 and projected[0].name == "Riverside Primary School"
+    print("PASS Python School Management: bootstrap, portable Query parity, and forward relations")
     await client.close()
 
 
