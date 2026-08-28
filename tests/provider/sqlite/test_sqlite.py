@@ -7,7 +7,7 @@ from teaql.provider.sqlite import create_sqlite_service, SimpleSchemaProvider
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
 from teaql.core.value import DataType, Timestamp, Value
 from teaql.core.query import SelectQuery
-from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, ValueExpr
+from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, ValueExpr, contain
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
 from teaql.data_service import QueryRequest
 from teaql.runtime import RuntimeModule
@@ -346,3 +346,46 @@ async def test_nested_relation_limit_is_applied_per_parent(temp_db):
     assert [len(parent["lines"]) for parent in result.rows] == [3, 3]
     assert all("__teaql_partition_rank" not in child
                for parent in result.rows for child in parent["lines"])
+
+@pytest.mark.asyncio
+async def test_relation_facet_merges_outer_filter_and_supports_include_all(temp_db):
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE schools (id INTEGER PRIMARY KEY, name TEXT, school_type INTEGER, version INTEGER)")
+        await db.execute("CREATE TABLE school_types (id INTEGER PRIMARY KEY, code TEXT, version INTEGER)")
+        await db.executemany("INSERT INTO schools VALUES (?, ?, ?, 1)", [
+            (1, "Riverside", 1001), (2, "Riverside Annex", 1001), (3, "Other", 1002)])
+        await db.executemany("INSERT INTO school_types VALUES (?, ?, 1)", [
+            (1001, "PRIMARY"), (1002, "SECONDARY"), (1003, "VOCATIONAL")])
+        await db.commit()
+
+    provider = SimpleSchemaProvider()
+    school = MockEntityDescriptor("School")
+    school.table_name_val = "schools"
+    school.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("name", DataType.Text),
+        MockPropertyDescriptor("school_type", DataType.I64),
+        MockPropertyDescriptor("version", DataType.I64, is_version=True),
+    ]
+    school_type = MockEntityDescriptor("SchoolType")
+    school_type.table_name_val = "school_types"
+    school_type.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("code", DataType.Text),
+        MockPropertyDescriptor("version", DataType.I64, is_version=True),
+    ]
+    provider.register_entity(school)
+    provider.register_entity(school_type)
+    service = create_sqlite_service(temp_db, provider)
+
+    nested = SelectQuery("SchoolType").project("id", "code").count_field("id", "school_count")
+    outer = (SelectQuery("School")
+        .and_filter(contain("name", "Riverside"))
+        .facet_by("types", "school_type", nested))
+    result = await service.query(None, QueryRequest(outer))
+    assert [(row["code"], row["school_count"]) for row in result.facets["types"]] == [
+        ("PRIMARY", 2), ("SECONDARY", 0), ("VOCATIONAL", 0)]
+
+    outer.facets[0].include_all_facets = False
+    matched = await service.query(None, QueryRequest(outer))
+    assert [(row["code"], row["school_count"]) for row in matched.facets["types"]] == [("PRIMARY", 2)]

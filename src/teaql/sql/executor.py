@@ -14,7 +14,7 @@ from teaql.core.mutation import (
 from .types import CompiledQuery, SqlCompileError
 from .dialect import SqlDialect
 from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, ValueExpr
-from teaql.core.query import SelectQuery
+from teaql.core.query import Aggregate, AggregateFunction, SelectQuery
 from teaql.core.value import Value
 from teaql.runtime.telemetry import RuntimeOperation, observe_runtime_operation, start_runtime_operation
 
@@ -87,7 +87,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
     async def query_stream(self, context, request: QueryRequest, chunk_size: int):
         if chunk_size <= 0:
             raise ValueError("chunk_size must be positive")
-        if request.query.relations or request.query.child_enhancements or request.query.object_group_bys:
+        if (request.query.relations or request.query.child_enhancements
+                or request.query.object_group_bys or request.query.facets):
             raise ValueError(
                 "streaming relation or aggregate enhancement is not supported; "
                 "stream a root query or use execute_for_list"
@@ -152,23 +153,43 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         await self._enhance_relations(context, rows, request.query)
 
         facets = {}
-        if getattr(request.query, 'object_group_bys', None):
-            for ogb in request.query.object_group_bys:
-                if ogb.property_name == "status_stats":
-                    # Map object field to database column name
-                    column_name = ogb.storage_field
-                    for p in getattr(entity_desc, 'properties', []):
-                        if p.name == ogb.storage_field:
-                            column_name = getattr(p, 'column_name_val', ogb.storage_field)
-                            break
-                    # Simple hardcoded facet query for test
-                    q = f"SELECT {column_name} as id, COUNT(*) as count_tasks FROM {entity_desc.table_name_val} GROUP BY {column_name}"
-                    try:
-                        facet_rows = await self.transport.fetch_all_sql(compiled.__class__(q, []))
-                        from teaql.core.list import SmartList
-                        facets[ogb.property_name] = SmartList(facet_rows)
-                    except Exception as e:
-                        pass
+        for facet in getattr(request.query, 'facets', []):
+            membership_query = deepcopy(request.query)
+            membership_query.facets = []
+            membership_query.relations = []
+            membership_query.order_by_items = []
+            membership_query.slice = None
+            membership_query.projection = []
+            membership_query.aggregates = [Aggregate(
+                AggregateFunction.Count, "id", "__teaql_facet_count")]
+            membership_query.group_by_items = [facet.relation_name]
+            membership_result = await self._query(context, QueryRequest(membership_query))
+            counts = {
+                str(row[facet.relation_name]): int(row["__teaql_facet_count"])
+                for row in membership_result.rows
+                if row.get(facet.relation_name) is not None
+            }
+
+            nested_query = deepcopy(facet.query)
+            nested_query.facets = []
+            count_aliases = [
+                aggregate.alias for aggregate in nested_query.aggregates
+                if aggregate.function == AggregateFunction.Count
+            ]
+            nested_query.aggregates = []
+            nested_query.group_by_items = []
+            nested_result = await self._query(context, QueryRequest(nested_query))
+            facet_rows = []
+            for row in nested_result.rows:
+                count = counts.get(str(row.get("id")), 0)
+                if not facet.include_all_facets and count == 0:
+                    continue
+                decorated = dict(row)
+                for alias in count_aliases or ["count"]:
+                    decorated[alias] = count
+                facet_rows.append(decorated)
+            from teaql.core.list import SmartList
+            facets[facet.name] = SmartList(facet_rows)
         
         end = datetime.now()
         

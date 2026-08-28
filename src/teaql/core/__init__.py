@@ -8,7 +8,7 @@ from .expr import (
 )
 from .query import (
     SelectQuery, SortDirection, OrderBy, Aggregate, AggregateFunction,
-    Slice, RelationLoad, RawSqlProjection, ObjectGroupBy,
+    Slice, RelationLoad, RawSqlProjection, ObjectGroupBy, FacetRequest,
     AggregationCacheOptions, StreamConfig, NamedExpr
 )
 from .mutation import (
@@ -30,7 +30,7 @@ __all__ = [
     "BaseEntityData", "EntityKey", "EntityChangeSet", "EntityRoot",
     "Expr", "ExprBuilder", "BinaryOp", "ExprFunction",
     "SelectQuery", "SortDirection", "OrderBy", "Aggregate", "AggregateFunction",
-    "Slice", "RelationLoad", "RawSqlProjection", "ObjectGroupBy",
+    "Slice", "RelationLoad", "RawSqlProjection", "ObjectGroupBy", "FacetRequest",
     "AggregationCacheOptions", "StreamConfig", "NamedExpr",
     "InsertCommand", "UpdateCommand", "DeleteCommand", "RecoverCommand",
     "BatchInsertCommand", "BatchUpdateCommand", "TraceNode",

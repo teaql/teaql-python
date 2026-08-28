@@ -100,6 +100,13 @@ class ObjectGroupBy:
     query: 'SelectQuery'
 
 @dataclass
+class FacetRequest:
+    name: str
+    relation_name: str
+    query: 'SelectQuery'
+    include_all_facets: bool = True
+
+@dataclass
 class AggregationCacheOptions:
     enabled: bool
     cache_expired_millis: int
@@ -132,6 +139,7 @@ class SelectQuery:
     dynamic_properties: List[RawSqlProjection] = field(default_factory=list)
     raw_projections: List[RawSqlProjection] = field(default_factory=list)
     object_group_bys: List[ObjectGroupBy] = field(default_factory=list)
+    facets: List[FacetRequest] = field(default_factory=list)
     child_enhancements: List['SelectQuery'] = field(default_factory=list)
     stream_config: Optional[StreamConfig] = None
 
@@ -187,6 +195,7 @@ class SelectQuery:
         count_query.relations = []
         count_query.child_enhancements = []
         count_query.object_group_bys = []
+        count_query.facets = []
         count_query.dynamic_properties = []
         count_query.raw_projections = []
         count_query.group_by_items = []
@@ -389,6 +398,11 @@ class SelectQuery:
 
     def object_group_by(self, property_name: str, storage_field: str, query: 'SelectQuery') -> 'SelectQuery':
         self.object_group_bys.append(ObjectGroupBy(property_name, storage_field, query))
+        return self
+
+    def facet_by(self, name: str, relation_name: str, query: 'SelectQuery',
+                 include_all_facets: bool = True) -> 'SelectQuery':
+        self.facets.append(FacetRequest(name, relation_name, query, include_all_facets))
         return self
 
     def relation(self, name: str) -> 'SelectQuery':
