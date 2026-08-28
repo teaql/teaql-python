@@ -7,9 +7,38 @@ from teaql.sql.executor import SqlTransactionTransport, SqlTransactionTransportT
 from teaql.sql.types import CompiledQuery
 from teaql.core.value import Value, DataType, Timestamp
 
+def _soundex(value: Optional[str]) -> str:
+    if value is None:
+        return "?000"
+    letters = [char.upper() for char in str(value) if char.isascii() and char.isalpha()]
+    if not letters:
+        return "?000"
+    groups = {
+        **dict.fromkeys("BFPV", "1"), **dict.fromkeys("CGJKQSXZ", "2"),
+        **dict.fromkeys("DT", "3"), "L": "4", **dict.fromkeys("MN", "5"), "R": "6",
+    }
+    result = letters[0]
+    previous = groups.get(letters[0], "0")
+    for letter in letters[1:]:
+        current = groups.get(letter, "0")
+        if current != "0" and current != previous:
+            result += current
+            if len(result) == 4:
+                break
+        previous = current
+    return result.ljust(4, "0")
+
 class SqliteTransport(SqlTransactionTransport):
     def __init__(self, db_path: str):
         self.db_path = db_path
+        self._soundex_enabled = False
+
+    async def enable_soundex(self) -> None:
+        self._soundex_enabled = True
+
+    async def _prepare(self, db: aiosqlite.Connection) -> None:
+        if self._soundex_enabled:
+            await db.create_function("soundex", 1, _soundex, deterministic=True)
 
     def _bind_values(self, params: List[Value]) -> tuple:
         res = []
@@ -50,6 +79,7 @@ class SqliteTransport(SqlTransactionTransport):
         
         is_uri = self.db_path.startswith("file:")
         async with aiosqlite.connect(self.db_path, uri=is_uri) as db:
+            await self._prepare(db)
             db.row_factory = aiosqlite.Row
             async with db.execute(sql, params) as cursor:
                 rows = await cursor.fetchall()
@@ -70,6 +100,7 @@ class SqliteTransport(SqlTransactionTransport):
         sql = query.sql_with_comment(); params = self._bind_values(query.params)
         is_uri = self.db_path.startswith("file:")
         async with aiosqlite.connect(self.db_path, uri=is_uri) as db:
+            await self._prepare(db)
             db.row_factory = aiosqlite.Row
             async with db.execute(sql, params) as cursor:
                 columns = [col[0] for col in cursor.description]
@@ -84,6 +115,7 @@ class SqliteTransport(SqlTransactionTransport):
         
         is_uri = self.db_path.startswith("file:")
         async with aiosqlite.connect(self.db_path, uri=is_uri) as db:
+            await self._prepare(db)
             async with db.execute(sql, params) as cursor:
                 await db.commit()
                 return cursor.rowcount, cursor.lastrowid
@@ -91,6 +123,7 @@ class SqliteTransport(SqlTransactionTransport):
     async def begin_sql(self) -> 'SqlTransactionTransportTx':
         is_uri = self.db_path.startswith("file:")
         db = await aiosqlite.connect(self.db_path, uri=is_uri)
+        await self._prepare(db)
         await db.execute("BEGIN IMMEDIATE")
         return _SqliteTransaction(db, self._bind_values, self._decode_value)
 

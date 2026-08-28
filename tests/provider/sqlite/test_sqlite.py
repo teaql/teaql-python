@@ -57,6 +57,22 @@ def service(temp_db, schema_provider):
     return create_sqlite_service(temp_db, schema_provider)
 
 @pytest.mark.asyncio
+async def test_ensure_schema_registers_soundex_on_every_sqlite_connection(temp_db):
+    provider = SimpleSchemaProvider()
+    entity = MockEntityDescriptor("Person")
+    entity.properties = [MockPropertyDescriptor("id", DataType.I64, is_id=True)]
+    provider.register_entity(entity)
+    service = create_sqlite_service(temp_db, provider)
+    context = RuntimeModule.new().entity(entity).into_context()
+    context.with_schema_provider(service)
+    await context.ensure_schema()
+    await context.ensure_schema()
+    rows = await service.transport.fetch_all_sql(CompiledQuery(
+        "SELECT soundex('Robert') AS encoded, "
+        "soundex('Robert') = soundex('Rupert') AS matched, soundex(NULL) AS empty", []))
+    assert rows == [{"encoded": "R163", "matched": 1, "empty": "?000"}]
+
+@pytest.mark.asyncio
 async def test_schema_bootstrap_is_idempotent_reconciles_constants_and_preserves_root(temp_db):
     provider = SimpleSchemaProvider()
     platform = MockEntityDescriptor("Platform")

@@ -529,6 +529,9 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         from teaql.runtime._schema_capability import SCHEMA_CAPABILITY
         if capability is not SCHEMA_CAPABILITY:
             raise PermissionError("Ensure Schema is available only through UserContext.ensure_schema()")
+        enable_soundex = getattr(self.transport, "enable_soundex", None)
+        if callable(enable_soundex):
+            await enable_soundex()
         entities = context.all_entities()
         if not entities:
             entities = context.get_resource("entities") or []
