@@ -30,8 +30,6 @@ _local_lock_condition = threading.Condition(threading.RLock())
 class UserContext:
     def __init__(self):
         self._resources: Dict[str, Any] = {}
-        from teaql.core.entity import EntityRoot
-        self._resources["entity_root"] = EntityRoot()
         self._metadata: Optional[Any] = None
         self._user_identifier: str = ""
         self._entities: List[Any] = []
@@ -47,9 +45,6 @@ class UserContext:
     @classmethod
     def new(cls) -> 'UserContext':
         return cls()
-
-    def entity_root(self) -> Any:
-        return self.get_resource("entity_root")
 
     def with_active_root(self, root: ContextEntityRef) -> 'UserContext':
         if not isinstance(root, ContextEntityRef):
@@ -475,33 +470,6 @@ class UserContext:
 
     def clear_sql_logs(self):
         self._resources["sql_logs"] = []
-
-    async def commit_changes_internal(self):
-        root = self.entity_root()
-        if not root or not hasattr(root, 'current_change_set'):
-            return
-            
-        change_set = root.current_change_set()
-        if not change_set or not hasattr(change_set, 'changes'):
-            return
-            
-        executor = self.get_resource("executor")
-        if not executor:
-            raise Exception("cannot commit changes without executor")
-            
-        from teaql.core.mutation import UpdateCommand, MutationRequest
-        
-        for key, changes in change_set.changes():
-            if not changes:
-                continue
-            
-            command = UpdateCommand(getattr(key, 'entity', ''), getattr(key, 'id', None))
-            for field, val in changes.items():
-                command.value(field, val)
-                
-            request = MutationRequest(command)
-            self.check_and_fix_mutation(command)
-            await executor.mutate(request)
 
     def data_service_internal(self, entity: str) -> Any:
         # Returns internal data service for entity

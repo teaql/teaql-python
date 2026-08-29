@@ -25,9 +25,9 @@ def test_initialize_entity_rejects_invalid_contracts():
         context.initialize_entity("Person", None)
 
 
-def test_user_context_owns_a_stable_entity_root():
+def test_user_context_does_not_own_a_mutation_ledger():
     context = UserContext.new()
-    assert context.entity_root() is context.entity_root()
+    assert not hasattr(context, "entity_root")
 
     with pytest.raises(ValueError):
         context.register_entity_initializer("Person", object())
