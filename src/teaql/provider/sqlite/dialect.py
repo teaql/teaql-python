@@ -14,6 +14,9 @@ class SqliteDialect(SqlDialect):
     def placeholder(self, index: int) -> str:
         return "?"
 
+    def relation_top_n_policy(self) -> str:
+        return "always_probe"
+
     def schema_type_sql(self, data_type: Any, property_desc: PropertyDescriptor) -> str:
         if isinstance(data_type, str):
             dt_str = data_type.lower()

@@ -152,6 +152,7 @@ class SelectQuery:
     child_enhancements: List['SelectQuery'] = field(default_factory=list)
     stream_config: Optional[StreamConfig] = None
     id_set_pagination: Optional[IdSetPaginationOptions] = field(default=None, repr=False)
+    top_n_probe_threshold_value: Optional[int] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         # Local runtime policy: intentionally excluded from federation serialization.
@@ -214,6 +215,12 @@ class SelectQuery:
 
     def partition_by_field(self, field_name: str) -> 'SelectQuery':
         self.partition_by = field_name
+        return self
+
+    def top_n_probe_parent_threshold(self, parent_count: int) -> 'SelectQuery':
+        if parent_count < 0:
+            raise ValueError("Top-N probe parent threshold must not be negative")
+        self.top_n_probe_threshold_value = parent_count
         return self
 
     def optimize_pagination_with_id_set(self) -> 'SelectQuery':

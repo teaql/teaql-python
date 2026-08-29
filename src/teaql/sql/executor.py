@@ -416,11 +416,35 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 child_query.entity = relation.target_entity
                 if relation.foreign_key not in child_query.projection:
                     child_query.projection.append(relation.foreign_key)
-                values = Value.List([Value.from_any(value) for value in parent_ids])
-                child_query.and_filter(BinaryExpr(ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
-                if child_query.slice is not None:
-                    child_query.partition_by_field(relation.foreign_key)
-                children = (await self.query(context, QueryRequest(child_query))).rows
+                limited = child_query.slice is not None and child_query.slice.limit is not None
+                if limited and not any(order.field_name == "id" for order in child_query.order_by_items):
+                    child_query.order_asc("id")
+                threshold = child_query.top_n_probe_threshold_value
+                provider_policy = self.dialect.relation_top_n_policy()
+                use_probes = limited and (
+                    provider_policy == "always_probe" and threshold is None
+                    or threshold is not None and threshold > 0 and len(parent_ids) <= threshold
+                )
+                if use_probes:
+                    children = []
+                    for parent_id in parent_ids:
+                        probe = deepcopy(child_query)
+                        probe.partition_by = None
+                        probe.and_filter(BinaryExpr(
+                            ColumnExpr(relation.foreign_key), BinaryOp.Eq,
+                            ValueExpr(Value.from_any(parent_id))))
+                        children.extend((await self.query(context, QueryRequest(probe))).rows)
+                    selected_plan = "bounded_probes"
+                    probe_count = len(parent_ids)
+                else:
+                    values = Value.List([Value.from_any(value) for value in parent_ids])
+                    child_query.and_filter(BinaryExpr(
+                        ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
+                    if limited:
+                        child_query.partition_by_field(relation.foreign_key)
+                    children = (await self.query(context, QueryRequest(child_query))).rows
+                    selected_plan = "window" if limited else "batch"
+                    probe_count = 0
                 for child in children:
                     child.pop("__teaql_partition_rank", None)
                 buckets: Dict[Any, List[Dict[str, Any]]] = {}
@@ -429,7 +453,16 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 for parent in parents:
                     related = buckets.get(parent.get(relation.local_key), [])
                     parent[load.name] = related if relation.is_many else (related[0] if related else None)
-                relation_scope.success({"teaql.result.cardinality": len(children)})
+                relation_scope.success({
+                    "teaql.result.cardinality": len(children),
+                    "teaql.relation.parent_count": len(parent_ids),
+                    "teaql.relation.per_parent_limit": (
+                        child_query.slice.limit if limited else 0),
+                    "teaql.relation.configured_probe_threshold": (
+                        threshold if threshold is not None else -1),
+                    "teaql.relation.selected_plan": selected_plan,
+                    "teaql.relation.probe_count": probe_count,
+                })
             except BaseException as error:
                 relation_scope.failure(error)
                 raise

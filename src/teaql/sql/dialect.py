@@ -66,6 +66,25 @@ class SqlDialect(ABC):
     def schema_setup_sqls(self) -> List[str]:
         return []
 
+    def relation_top_n_policy(self) -> str:
+        return "window"
+
+    def schema_indexes_sqls(self, entity: EntityDescriptor) -> List[str]:
+        table_name = getattr(entity, 'table_name_val', entity._name)
+        statements = []
+        for prop in getattr(entity, 'properties', []):
+            name = getattr(prop, 'name', '')
+            if not (name.endswith('_id') or name.endswith('Id')):
+                continue
+            column = getattr(prop, 'column_name_val', name)
+            index_name = f"idx_{table_name}_{column}_id_desc"
+            statements.append(
+                f"CREATE INDEX IF NOT EXISTS {self.quote_ident(index_name)} ON "
+                f"{self.quote_ident(table_name)} "
+                f"({self.quote_ident(column)}, {self.quote_ident('id')} DESC)"
+            )
+        return statements
+
     def schema_type_sql(self, data_type: DataType, property_desc: PropertyDescriptor) -> str:
         if data_type == DataType.Bool: return "BOOLEAN"
         if data_type in (DataType.I64, DataType.U64): return "INTEGER"

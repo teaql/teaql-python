@@ -664,11 +664,12 @@ async def test_successful_mutation_emits_raw_and_independently_masked_app_audit(
 async def test_nested_relation_limit_is_applied_per_parent(temp_db):
     async with aiosqlite.connect(temp_db) as db:
         await db.execute("CREATE TABLE orders (id INTEGER PRIMARY KEY, version INTEGER)")
-        await db.execute("CREATE TABLE orderline (id INTEGER PRIMARY KEY, order_id INTEGER, name TEXT)")
-        await db.executemany("INSERT INTO orders VALUES (?, ?)", [(11, 1), (12, 1)])
-        lines = [(order_id * 100 + index, order_id, f"line-{order_id}-{index}")
+        await db.execute("CREATE TABLE orderline (id INTEGER PRIMARY KEY, order_id INTEGER, name TEXT, state TEXT, version INTEGER)")
+        await db.executemany("INSERT INTO orders VALUES (?, ?)", [(11, 1), (12, 1), (13, 1)])
+        lines = [(order_id * 100 + index, order_id, "same", "visible", 1)
                  for order_id in (11, 12) for index in range(1, 6)]
-        await db.executemany("INSERT INTO orderline VALUES (?, ?, ?)", lines)
+        lines.append((9999, 11, "same", "hidden", 1))
+        await db.executemany("INSERT INTO orderline VALUES (?, ?, ?, ?, ?)", lines)
         await db.commit()
 
     provider = SimpleSchemaProvider()
@@ -685,19 +686,93 @@ async def test_nested_relation_limit_is_applied_per_parent(temp_db):
         MockPropertyDescriptor("id", DataType.I64, is_id=True),
         MockPropertyDescriptor("order_id", DataType.I64),
         MockPropertyDescriptor("name", DataType.Text),
+        MockPropertyDescriptor("state", DataType.Text),
+        MockPropertyDescriptor("version", DataType.I64, is_version=True),
     ]
     provider.register_entity(order)
     provider.register_entity(line)
     service = create_sqlite_service(temp_db, provider)
-    query = (SelectQuery("Order").order_asc("id").relation_query(
-        "lines", SelectQuery("OrderLine").project("id", "name").order_desc("id").limit(3)))
+    queries = []
+    delegate = service.transport.fetch_all_sql
+    async def recording_fetch(compiled):
+        queries.append(compiled.sql)
+        return await delegate(compiled)
+    service.transport.fetch_all_sql = recording_fetch
 
-    result = await service.query(None, QueryRequest(query))
+    completions = []
+    class Telemetry:
+        def start(self, operation):
+            class Scope:
+                def success(self, attributes=None):
+                    if operation.family == "relation_load":
+                        completions.append(attributes)
+                def failure(self, error): pass
+            return Scope()
+    context = RuntimeModule.new().into_context().with_runtime_telemetry(Telemetry())
 
-    assert len(result.rows) == 2
-    assert [len(parent["lines"]) for parent in result.rows] == [3, 3]
+    def nested(threshold=None):
+        child = (SelectQuery("OrderLine").project("id", "name")
+                 .and_filter(BinaryExpr(column("state"), BinaryOp.Eq, value("visible")))
+                 .and_filter(BinaryExpr(column("version"), BinaryOp.Gt, value(0)))
+                 .order_desc("name").limit(3))
+        if threshold is not None:
+            child.top_n_probe_parent_threshold(threshold)
+        return SelectQuery("Order").order_asc("id").relation_query("lines", child)
+
+    def relation_ids(rows):
+        return {parent["id"]: [child["id"] for child in parent["lines"]]
+                for parent in rows}
+
+    result = await service.query(context, QueryRequest(nested()))
+    assert len(result.rows) == 3
+    assert [len(parent["lines"]) for parent in result.rows] == [3, 3, 0]
+    assert len(queries) == 4
+    assert all("COUNT(" not in sql.upper() for sql in queries)
+    assert all("state" in sql and "version" in sql for sql in queries[1:])
     assert all("__teaql_partition_rank" not in child
                for parent in result.rows for child in parent["lines"])
+    probe_ids = relation_ids(result.rows)
+
+    queries.clear()
+    window = await service.query(context, QueryRequest(nested(0)))
+    assert len(queries) == 2 and "ROW_NUMBER() OVER" in queries[1]
+    assert relation_ids(window.rows) == probe_ids
+    assert "state" in queries[1] and "version" in queries[1]
+
+    for threshold, expected_queries in ((3, 4), (2, 2)):
+        queries.clear()
+        first = await service.query(context, QueryRequest(nested(threshold)))
+        first_sql = list(queries)
+        queries.clear()
+        second = await service.query(context, QueryRequest(nested(threshold)))
+        assert relation_ids(first.rows) == relation_ids(second.rows) == probe_ids
+        assert queries == first_sql
+        assert len(queries) == expected_queries
+
+    assert any(event["teaql.relation.selected_plan"] == "window"
+               and event["teaql.relation.parent_count"] == 3
+               and event["teaql.relation.per_parent_limit"] == 3
+               for event in completions)
+
+@pytest.mark.asyncio
+async def test_top_n_relation_index_ensure_is_idempotent(temp_db):
+    provider = SimpleSchemaProvider()
+    line = MockEntityDescriptor("OrderLine")
+    line.table_name_val = "orderline"
+    line.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("order_id", DataType.I64),
+    ]
+    provider.register_entity(line)
+    service = create_sqlite_service(temp_db, provider)
+    context = (RuntimeModule.new().entity(line)
+               .provide_custom_dependency("dataService", service)
+               .provide_custom_dependency("schema_provider", service).into_context())
+    await context.ensure_schema()
+    await context.ensure_schema()
+    async with aiosqlite.connect(temp_db) as db:
+        rows = await (await db.execute("PRAGMA index_list('orderline')")).fetchall()
+    assert [row[1] for row in rows].count("idx_orderline_order_id_id_desc") == 1
 
 @pytest.mark.asyncio
 async def test_relation_facet_merges_outer_filter_and_supports_include_all(temp_db):
