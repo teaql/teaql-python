@@ -188,6 +188,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             raise TransportError(e)
 
         await self._enhance_relations(context, rows, request.query)
+        await self._enhance_relation_aggregates(context, rows, request.query)
 
         facets = {}
         for facet in getattr(request.query, 'facets', []):
@@ -290,6 +291,71 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             except BaseException as error:
                 relation_scope.failure(error)
                 raise
+
+    async def _enhance_relation_aggregates(self, context, parents: List[Dict[str, Any]], query: SelectQuery) -> None:
+        if not parents or not query.relation_aggregates:
+            return
+        parent_desc = self.schema_provider.get_entity(query.entity)
+        if parent_desc is None:
+            raise CompileError(SqlCompileError(f"unknown entity: {query.entity}"))
+        for aggregate in query.relation_aggregates:
+            relation = parent_desc.relation_by_name(aggregate.relation_name)
+            if relation is None:
+                raise CompileError(SqlCompileError(
+                    f"missing relation: {query.entity}.{aggregate.relation_name}"))
+            parent_ids = [row[relation.local_key] for row in parents if relation.local_key in row]
+            if not parent_ids:
+                self._attach_empty_relation_aggregate(parents, aggregate, aggregate.query)
+                continue
+            child_query = deepcopy(aggregate.query)
+            child_query.entity = relation.target_entity
+            child_query.projection = []
+            child_query.expr_projection = []
+            child_query.order_by_items = []
+            child_query.slice = None
+            child_query.relations = []
+            child_query.relation_aggregates = []
+            if not child_query.aggregates:
+                child_query.aggregates = [Aggregate(
+                    AggregateFunction.Count, "id", aggregate.alias)]
+            if relation.foreign_key not in child_query.group_by_items:
+                child_query.group_by_items.append(relation.foreign_key)
+            values = Value.List([Value.from_any(value) for value in parent_ids])
+            child_query.and_filter(BinaryExpr(
+                ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
+            rows = (await self.query(context, QueryRequest(child_query))).rows
+            child_desc = self.schema_provider.get_entity(relation.target_entity)
+            foreign_property = child_desc.property_by_name(relation.foreign_key) if child_desc else None
+            if foreign_property and foreign_property.column_name_val != relation.foreign_key:
+                for row in rows:
+                    if foreign_property.column_name_val in row:
+                        row[relation.foreign_key] = row[foreign_property.column_name_val]
+            buckets = {row[relation.foreign_key]: row for row in rows
+                       if relation.foreign_key in row}
+            for parent in parents:
+                row = buckets.get(parent.get(relation.local_key))
+                if row is None:
+                    parent[aggregate.alias] = self._empty_aggregate_value(aggregate.query)
+                elif aggregate.single_result:
+                    inner_alias = (child_query.aggregates[0].alias
+                                   if child_query.aggregates else aggregate.alias)
+                    parent[aggregate.alias] = row.get(inner_alias)
+                else:
+                    parent[aggregate.alias] = {
+                        key: value for key, value in row.items()
+                        if key != relation.foreign_key
+                    }
+
+    @staticmethod
+    def _empty_aggregate_value(query: SelectQuery):
+        if not query.aggregates or query.aggregates[0].function == AggregateFunction.Count:
+            return 0
+        return None
+
+    def _attach_empty_relation_aggregate(self, parents, aggregate, query):
+        value = self._empty_aggregate_value(query) if aggregate.single_result else {}
+        for parent in parents:
+            parent[aggregate.alias] = value
 
     async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
         entity = getattr(request._data, "entity", "unknown")

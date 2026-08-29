@@ -57,6 +57,9 @@ class EntityDescriptor:
     def relation_by_name(self, name):
         return next((relation for relation in self.relations if relation.name == name), None)
 
+    def property_by_name(self, name):
+        return next((prop for prop in self.properties if prop.name == name), None)
+
     def audit_mask_fields(self, fields):
         self.audit_mask_fields_val = list(fields)
         return self

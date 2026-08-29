@@ -84,8 +84,10 @@ class RelationLoad:
 
 @dataclass
 class RelationAggregate:
-    name: str
+    relation_name: str
+    alias: str
     query: 'SelectQuery'
+    single_result: bool = True
 
 
 @dataclass
@@ -131,6 +133,7 @@ class SelectQuery:
     aggregates: List[Aggregate] = field(default_factory=list)
     group_by_items: List[str] = field(default_factory=list)
     relations: List[RelationLoad] = field(default_factory=list)
+    relation_aggregates: List[RelationAggregate] = field(default_factory=list)
     aggregation_cache: Optional[AggregationCacheOptions] = None
     comment_text: Optional[str] = None
     trace_chain: List[TraceNode] = field(default_factory=list)

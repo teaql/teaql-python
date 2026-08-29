@@ -7,7 +7,7 @@ import aiosqlite
 from teaql.provider.sqlite import create_sqlite_service, SimpleSchemaProvider
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
 from teaql.core.value import DataType, Timestamp, Value
-from teaql.core.query import SelectQuery
+from teaql.core.query import SelectQuery, RelationAggregate, Aggregate, AggregateFunction
 from teaql.core.expr import (BinaryExpr, BinaryOp, ColumnExpr, ValueExpr, between,
     contain, column, in_list, in_subquery, is_not_null, is_null, not_in_subquery,
     value)
@@ -74,6 +74,41 @@ async def test_ensure_schema_registers_soundex_on_every_sqlite_connection(temp_d
         "SELECT soundex('Robert') AS encoded, "
         "soundex('Robert') = soundex('Rupert') AS matched, soundex(NULL) AS empty", []))
     assert rows == [{"encoded": "R163", "matched": 1, "empty": "?000"}]
+
+@pytest.mark.asyncio
+async def test_query_attaches_batched_relation_aggregate_aliases(temp_db):
+    provider = SimpleSchemaProvider()
+    school = MockEntityDescriptor("School")
+    school.properties = [MockPropertyDescriptor("id", DataType.I64, is_id=True)]
+    school.relation(RelationDescriptor("students", "Student").foreign("school_id").many())
+    student = MockEntityDescriptor("Student")
+    student.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("school_id", DataType.I64),
+        MockPropertyDescriptor("score", DataType.I64),
+    ]
+    provider.register_entity(school)
+    provider.register_entity(student)
+    service = create_sqlite_service(temp_db, provider)
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE schools(id INTEGER PRIMARY KEY)")
+        await db.execute("CREATE TABLE students(id INTEGER PRIMARY KEY, school_id INTEGER, score INTEGER)")
+        await db.executemany("INSERT INTO schools(id) VALUES (?)", [(1,), (2,)])
+        await db.executemany("INSERT INTO students(id,school_id,score) VALUES (?,?,?)", [(10,1,11),(11,1,31)])
+        await db.commit()
+    query = SelectQuery("School")
+    query.relation_aggregates.extend([
+        RelationAggregate("students", "record_count", SelectQuery("Student").count("inner_count"), True),
+        RelationAggregate("students", "score_total", SelectQuery("Student", aggregates=[
+            Aggregate(AggregateFunction.Sum, "score", "inner_total")]), True),
+    ])
+
+    rows = (await service.query(None, QueryRequest(query))).rows
+
+    assert rows[0]["record_count"] == 2
+    assert rows[0]["score_total"] == 42
+    assert rows[1]["record_count"] == 0
+    assert rows[1]["score_total"] is None
 
 @pytest.mark.asyncio
 async def test_schema_bootstrap_is_idempotent_reconciles_constants_and_preserves_root(temp_db):
