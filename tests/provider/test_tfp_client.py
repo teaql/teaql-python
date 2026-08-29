@@ -10,6 +10,7 @@ from teaql.core.query import SelectQuery, Slice
 from teaql.data_service import MutationRequest, QueryRequest
 from teaql.provider.tfp_client import (
     FederalMutation, FederalQuery, TeaQLFederalClient, TfpError, TfpHttpProvider,
+    _reject_trusted_fields,
 )
 
 
@@ -139,3 +140,5 @@ async def test_fails_closed_for_trusted_fields_errors_and_streaming():
     assert remote.value.code == "TFP_FORBIDDEN_FIELD"
     with pytest.raises(TfpError, match="dedicated protocol"):
         await client.execute_for_stream()
+    with pytest.raises(TfpError, match="TFP_FORBIDDEN_FIELD"):
+        _reject_trusted_fields({"idSetPagination": {"namespace": "attacker"}})

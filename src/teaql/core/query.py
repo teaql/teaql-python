@@ -119,6 +119,12 @@ class AggregationCacheOptions:
 class StreamConfig:
     chunk_size: int = 1000
 
+@dataclass(frozen=True)
+class IdSetPaginationOptions:
+    namespace: str = "default"
+    ttl_seconds: int = 600
+    max_ids: int = 3_000_000
+
 @dataclass
 class SelectQuery:
     entity: str
@@ -145,6 +151,7 @@ class SelectQuery:
     facets: List[FacetRequest] = field(default_factory=list)
     child_enhancements: List['SelectQuery'] = field(default_factory=list)
     stream_config: Optional[StreamConfig] = None
+    id_set_pagination: Optional[IdSetPaginationOptions] = field(default=None, repr=False)
 
     def __post_init__(self) -> None:
         # Local runtime policy: intentionally excluded from federation serialization.
@@ -207,6 +214,20 @@ class SelectQuery:
 
     def partition_by_field(self, field_name: str) -> 'SelectQuery':
         self.partition_by = field_name
+        return self
+
+    def optimize_pagination_with_id_set(self) -> 'SelectQuery':
+        return self.optimize_pagination_with_id_set_config("default", 600, 3_000_000)
+
+    def optimize_pagination_with_id_set_config(
+            self, namespace: str, ttl_seconds: int, max_ids: int) -> 'SelectQuery':
+        if not isinstance(namespace, str) or not namespace.strip():
+            raise ValueError("ID set pagination namespace must not be empty")
+        if ttl_seconds <= 0:
+            raise ValueError("ID set pagination ttl_seconds must be positive")
+        if max_ids <= 0:
+            raise ValueError("ID set pagination max_ids must be positive")
+        self.id_set_pagination = IdSetPaginationOptions(namespace, ttl_seconds, max_ids)
         return self
 
     def relation_query(self, name: str, query: Optional['SelectQuery'] = None) -> 'SelectQuery':

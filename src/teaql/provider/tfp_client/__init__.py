@@ -312,6 +312,7 @@ def _reject_trusted_fields(value: Any, path: str = "$") -> None:
         "permissions", "requestPolicy", "purposePolicy", "trustedContext",
         "hardLimit", "hard_limit", "hardLimitValue", "hard_limit_value",
         "continuousPageFetch", "continuous_page_fetch", "continuousPageRuntime",
+        "idSetPagination", "id_set_pagination", "paginationWithIdSet",
     }
     if isinstance(value, dict):
         for key, child in value.items():

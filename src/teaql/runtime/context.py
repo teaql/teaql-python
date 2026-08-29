@@ -1,5 +1,6 @@
 from typing import Dict, Any, Optional, List, Callable, TypeVar
 from dataclasses import dataclass
+from array import array
 
 
 TEntity = TypeVar("TEntity")
@@ -26,6 +27,44 @@ _local_cache_lock = threading.RLock()
 _local_locks = {}
 _local_lock_condition = threading.Condition(threading.RLock())
 
+@dataclass(frozen=True)
+class RetainedIdSet:
+    query_key: str
+    ids: array
+    expires_at: float
+
+class InMemoryIdSetStore:
+    def __init__(self, max_entries: int = 64, max_bytes: int = 256 << 20):
+        self._lock = threading.RLock()
+        self._sets: Dict[str, RetainedIdSet] = {}
+        self._max_entries = max_entries
+        self._max_bytes = max_bytes
+
+    def get(self, query_key: str) -> Optional[RetainedIdSet]:
+        with self._lock:
+            retained = self._sets.get(query_key)
+            if retained is not None and retained.expires_at <= time.time():
+                self._sets.pop(query_key, None)
+                return None
+            return retained
+
+    def put(self, retained: RetainedIdSet) -> None:
+        size = len(retained.ids) * retained.ids.itemsize
+        if size > self._max_bytes:
+            raise ValueError("retained ID set exceeds store memory ceiling")
+        with self._lock:
+            while self._sets and (len(self._sets) >= self._max_entries or
+                                  sum(len(value.ids) * value.ids.itemsize for value in self._sets.values()) + size > self._max_bytes):
+                oldest = min(self._sets, key=lambda key: self._sets[key].expires_at)
+                self._sets.pop(oldest, None)
+            self._sets[retained.query_key] = retained
+
+    def invalidate(self, query_key: str) -> None:
+        with self._lock:
+            self._sets.pop(query_key, None)
+
+_default_id_set_store = InMemoryIdSetStore()
+
 
 class UserContext:
     def __init__(self):
@@ -41,6 +80,10 @@ class UserContext:
         self._managed_entities: List[Any] = []
         from .telemetry import NOOP_RUNTIME_TELEMETRY
         self._runtime_telemetry = NOOP_RUNTIME_TELEMETRY
+        self._id_set_store = _default_id_set_store
+        self._id_set_plan = "ID_SET_DISABLED"
+        self._id_set_count = 0
+        self._id_set_count_accuracy = "UNKNOWN"
 
     @classmethod
     def new(cls) -> 'UserContext':
@@ -111,6 +154,25 @@ class UserContext:
 
     def runtime_telemetry(self) -> Any:
         return self._runtime_telemetry
+
+    def set_id_set_store(self, store: Any) -> None:
+        if store is None:
+            raise ValueError("ID set store must not be None")
+        self._id_set_store = store
+
+    def id_set_store(self) -> Any:
+        return self._id_set_store
+
+    def observe_id_set(self, plan: str, accuracy: str = "UNKNOWN", count: int = 0) -> None:
+        self._id_set_plan = plan
+        self._id_set_count_accuracy = accuracy
+        self._id_set_count = count
+
+    def id_set_plan(self) -> str:
+        return self._id_set_plan
+
+    def id_set_count(self) -> tuple[int, str]:
+        return self._id_set_count, self._id_set_count_accuracy
         
     def all_entities(self) -> List[Any]:
         return self._entities

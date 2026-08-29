@@ -4,6 +4,7 @@ import os
 from datetime import date
 from decimal import Decimal
 import aiosqlite
+import asyncio
 from teaql.provider.sqlite import create_sqlite_service, SimpleSchemaProvider
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
 from teaql.core.value import DataType, Timestamp, Value
@@ -14,6 +15,7 @@ from teaql.core.expr import (BinaryExpr, BinaryOp, ColumnExpr, ValueExpr, betwee
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
 from teaql.data_service import QueryRequest
 from teaql.runtime import RuntimeModule
+from teaql.runtime.context import InMemoryIdSetStore, ContextEntityRef
 from teaql.provider.sqlite.transport import SqliteTransport
 from teaql.sql.types import CompiledQuery, DatabaseKind
 from teaql.runtime.telemetry import RuntimeOperation
@@ -192,6 +194,180 @@ async def test_crud(temp_db, schema_provider, service):
 
     query_res = await service.query(None, query_req)
     assert len(query_res.rows) == 0
+
+@pytest.mark.asyncio
+async def test_id_set_pagination_jumps_restores_order_and_avoids_count(temp_db, schema_provider):
+    service = create_sqlite_service(temp_db, schema_provider)
+    context = RuntimeModule.new().entity(schema_provider.get_entity("User")).into_context()
+    context.with_schema_provider(service).with_user_identifier("tenant:user")
+    await context.ensure_schema()
+    async with aiosqlite.connect(temp_db) as db:
+        await db.executemany(
+            "INSERT INTO users(id,name,version) VALUES (?,?,?)",
+            [(1, "one", 1), (2, "two", 1), (3, "three", 1), (4, "four", 1), (5, "five", 1)])
+        await db.commit()
+
+    calls = 0
+    fetch = service.transport.fetch_all_sql
+    async def counted_fetch(compiled):
+        nonlocal calls
+        calls += 1
+        return await fetch(compiled)
+    service.transport.fetch_all_sql = counted_fetch
+
+    jumped = SelectQuery("User").order_desc("id").offset(2).limit(2)
+    jumped.optimize_pagination_with_id_set_config("users", 60, 100)
+    rows = (await service.query(context, QueryRequest(jumped))).rows
+    assert [row["id"] for row in rows] == [3, 2]
+    assert context.id_set_count() == (5, "EXACT")
+    assert context.id_set_plan() == "ID_SET_BUILD"
+
+    first = SelectQuery("User").order_desc("id").offset(0).limit(2)
+    first.optimize_pagination_with_id_set_config("users", 60, 100)
+    rows = (await service.query(context, QueryRequest(first))).rows
+    assert [row["id"] for row in rows] == [5, 4]
+    assert context.id_set_count() == (5, "EXACT")
+    assert context.id_set_plan() == "ID_SET_HIT"
+    assert calls == 3  # one ID build plus two page queries; no COUNT(*)
+
+@pytest.mark.asyncio
+async def test_id_set_pagination_lifecycle_isolation_and_fallbacks(temp_db, schema_provider):
+    service = create_sqlite_service(temp_db, schema_provider)
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, version INTEGER)")
+        await db.executemany(
+            "INSERT INTO users(id,name,version) VALUES (?,?,?)",
+            [(1, "one", 1), (2, "two", 1), (3, "three", 1), (4, "four", 1), (5, "five", 1)])
+        await db.commit()
+
+    def new_context(store=None, user="tenant:user", root=1, source=None, policy=None):
+        context = RuntimeModule.new().entity(schema_provider.get_entity("User")).into_context()
+        context.with_schema_provider(service).with_user_identifier(user)
+        context.with_active_root(ContextEntityRef("Platform", root))
+        if source is not None:
+            context.insert_resource("db", source)
+        if policy is not None:
+            context.insert_resource("request_policy", policy)
+        if store is not None:
+            context.set_id_set_store(store)
+        return context
+
+    # Empty sequences are retained and do not issue a second SQL query.
+    context = new_context(InMemoryIdSetStore())
+    calls = 0
+    compiled_sql = []
+    fetch = service.transport.fetch_all_sql
+    async def counted_fetch(compiled):
+        nonlocal calls
+        calls += 1
+        compiled_sql.append(compiled.sql)
+        return await fetch(compiled)
+    service.transport.fetch_all_sql = counted_fetch
+    for _ in range(2):
+        empty = SelectQuery("User").and_filter(BinaryExpr(
+            ColumnExpr("name"), BinaryOp.Eq, ValueExpr(Value.Text("missing"))))
+        empty.order_asc("name").offset(0).limit(2)
+        empty.optimize_pagination_with_id_set_config("empty", 60, 10)
+        assert (await service.query(context, QueryRequest(empty))).rows == []
+    assert calls == 1
+    assert "ORDER BY name ASC, id ASC" in compiled_sql[0]
+    assert context.id_set_count() == (0, "EXACT")
+    assert context.id_set_plan() == "ID_SET_HIT"
+
+    # max_ids + 1 is a lower bound and visibly falls back.
+    overflow = SelectQuery("User").order_desc("id").offset(0).limit(2)
+    overflow.optimize_pagination_with_id_set_config("overflow", 60, 3)
+    assert len((await service.query(context, QueryRequest(overflow))).rows) == 2
+    assert context.id_set_count() == (4, "LOWER_BOUND")
+    assert context.id_set_plan() == "ID_SET_FALLBACK_LIMIT_EXCEEDED"
+
+    # Unsupported grouped shape and store failure preserve ordinary results.
+    unsupported = SelectQuery("User").count("row_count").limit(2)
+    unsupported.optimize_pagination_with_id_set_config("unsupported", 60, 10)
+    assert (await service.query(context, QueryRequest(unsupported))).rows[0]["row_count"] == 5
+    assert context.id_set_plan() == "ID_SET_FALLBACK_UNSUPPORTED_SHAPE"
+
+    class UnavailableStore:
+        def get(self, _key): raise RuntimeError("down")
+        def put(self, _retained): raise RuntimeError("down")
+        def invalidate(self, _key): raise RuntimeError("down")
+    context.set_id_set_store(UnavailableStore())
+    fallback = SelectQuery("User").order_desc("id").offset(0).limit(2)
+    fallback.optimize_pagination_with_id_set_config("store-down", 60, 10)
+    assert [row["id"] for row in (await service.query(context, QueryRequest(fallback))).rows] == [5, 4]
+    assert context.id_set_plan() == "ID_SET_FALLBACK_STORE_UNAVAILABLE"
+
+    # TTL expiry rebuilds; principal, predicate, and active root produce separate keys.
+    store = InMemoryIdSetStore()
+    context = new_context(store)
+    ttl = SelectQuery("User").order_desc("id").offset(0).limit(1)
+    ttl.optimize_pagination_with_id_set_config("ttl", 1, 10)
+    await service.query(context, QueryRequest(ttl))
+    await asyncio.sleep(1.05)
+    ttl = SelectQuery("User").order_desc("id").offset(0).limit(1)
+    ttl.optimize_pagination_with_id_set_config("ttl", 1, 10)
+    await service.query(context, QueryRequest(ttl))
+    assert context.id_set_plan() == "ID_SET_BUILD"
+
+    source_one, source_two, policy_one, policy_two = object(), object(), object(), object()
+    cases = [
+        ("tenant:user-a", 1, "one", source_one, policy_one),
+        ("tenant:user-b", 1, "one", source_one, policy_one),
+        ("tenant:user-b", 1, "two", source_one, policy_one),
+        ("tenant:user-b", 2, "two", source_one, policy_one),
+        ("tenant:user-b", 2, "two", source_two, policy_one),
+        ("tenant:user-b", 2, "two", source_two, policy_two),
+    ]
+    for user, root, name, source, policy in cases:
+        isolated = new_context(store, user, root, source, policy)
+        query = SelectQuery("User").and_filter(BinaryExpr(
+            ColumnExpr("name"), BinaryOp.Eq, ValueExpr(Value.Text(name))))
+        query.order_desc("id").offset(0).limit(1)
+        query.optimize_pagination_with_id_set_config("isolation", 60, 10)
+        await service.query(isolated, QueryRequest(query))
+        assert isolated.id_set_plan() == "ID_SET_BUILD"
+
+    # A retained page does not shift when one of its IDs is deleted.
+    context = new_context(InMemoryIdSetStore())
+    snapshot = SelectQuery("User").order_desc("id").offset(2).limit(2)
+    snapshot.optimize_pagination_with_id_set_config("deletion", 60, 10)
+    assert [row["id"] for row in (await service.query(context, QueryRequest(snapshot))).rows] == [3, 2]
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("DELETE FROM users WHERE id=3")
+        await db.commit()
+    snapshot = SelectQuery("User").order_desc("id").offset(2).limit(2)
+    snapshot.optimize_pagination_with_id_set_config("deletion", 60, 10)
+    assert [row["id"] for row in (await service.query(context, QueryRequest(snapshot))).rows] == [2]
+    assert context.id_set_plan() == "ID_SET_HIT"
+
+@pytest.mark.asyncio
+async def test_id_set_pagination_coalesces_concurrent_contexts(temp_db, schema_provider):
+    service = create_sqlite_service(temp_db, schema_provider)
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, version INTEGER)")
+        await db.executemany("INSERT INTO users VALUES (?,?,?)", [(1,"one",1),(2,"two",1)])
+        await db.commit()
+    store = InMemoryIdSetStore()
+    calls = 0
+    fetch = service.transport.fetch_all_sql
+    async def counted_fetch(compiled):
+        nonlocal calls
+        calls += 1
+        await asyncio.sleep(0.01)
+        return await fetch(compiled)
+    service.transport.fetch_all_sql = counted_fetch
+
+    async def execute():
+        context = RuntimeModule.new().entity(schema_provider.get_entity("User")).into_context()
+        context.with_schema_provider(service).with_user_identifier("same-user")
+        context.set_id_set_store(store)
+        query = SelectQuery("User").order_desc("id").offset(0).limit(1)
+        query.optimize_pagination_with_id_set_config("single-flight", 60, 10)
+        return await service.query(context, QueryRequest(query))
+
+    results = await asyncio.gather(execute(), execute())
+    assert [[row["id"] for row in result.rows] for result in results] == [[2], [2]]
+    assert calls == 3  # one ID build plus one page query per caller
 
 @pytest.mark.asyncio
 async def test_relation_subquery_resolves_generated_entity_name_and_executes(temp_db):

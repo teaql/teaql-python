@@ -2,6 +2,13 @@ from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, AsyncIterator
 from copy import deepcopy
 from datetime import datetime
+import asyncio
+import hashlib
+import time
+import threading
+from array import array
+from dataclasses import fields, is_dataclass
+from enum import Enum
 from teaql.data_service import (
     DataServiceExecutor, QueryExecutor, MutationExecutor,
     DataServiceCapabilities, QueryRequest, QueryResult,
@@ -20,6 +27,27 @@ from teaql.core.expr import (
 from teaql.core.query import Aggregate, AggregateFunction, SelectQuery
 from teaql.core.value import Value
 from teaql.runtime.telemetry import RuntimeOperation, observe_runtime_operation, start_runtime_operation
+from teaql.runtime.context import RetainedIdSet
+
+_id_set_build_locks = {}
+_id_set_build_locks_guard = threading.RLock()
+
+def _canonical_id_set_value(value):
+    if isinstance(value, Value):
+        return ("Value", str(value._type_hint), _canonical_id_set_value(value.val))
+    if isinstance(value, Enum):
+        return (type(value).__name__, value.name)
+    if is_dataclass(value):
+        return (type(value).__name__, tuple(
+            (item.name, _canonical_id_set_value(getattr(value, item.name)))
+            for item in fields(value)))
+    if isinstance(value, dict):
+        return tuple(sorted((str(key), _canonical_id_set_value(item)) for key, item in value.items()))
+    if isinstance(value, (list, tuple)):
+        return tuple(_canonical_id_set_value(item) for item in value)
+    if isinstance(value, (str, int, float, bool, type(None))):
+        return value
+    return (type(value).__name__, str(value))
 
 class SqlTransport(ABC):
     @abstractmethod
@@ -156,6 +184,18 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
 
     async def _query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
         request.query.prepare_for_list()
+        execution_query, retained_order, retained_empty = await self._prepare_id_set_page(context, request.query)
+        if retained_empty:
+            now = datetime.now()
+            metadata = ExecutionMetadata(
+                backend="sql", operation=DataServiceOperation.Query,
+                started_at=now, ended_at=now, result_count=0,
+                trace_chain=request.trace_chain, comment=request._comment,
+            )
+            if context is not None:
+                context.record_metadata_log(metadata)
+            return QueryResult(rows=[], metadata=metadata)
+        request = QueryRequest(execution_query, request.trace_chain, request._comment, request._purpose)
         entity_desc = self.schema_provider.get_entity(request.query.entity)
         if not entity_desc and context:
             entities = context.get_resource("entities")
@@ -189,6 +229,9 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
 
         await self._enhance_relations(context, rows, request.query)
         await self._enhance_relation_aggregates(context, rows, request.query)
+        if retained_order:
+            by_id = {int(row["id"]): row for row in rows if row.get("id") is not None}
+            rows = [by_id[entity_id] for entity_id in retained_order if entity_id in by_id]
 
         facets = {}
         for facet in getattr(request.query, 'facets', []):
@@ -250,6 +293,105 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             metadata=metadata,
             facets=facets
         )
+
+    async def _prepare_id_set_page(self, context, query: SelectQuery):
+        options = getattr(query, "id_set_pagination", None)
+        if context is None or options is None:
+            if context is not None:
+                context.observe_id_set("ID_SET_DISABLED")
+            return query, [], False
+        if (query.slice is None or not query.slice.limit or query.partition_by is not None or
+                query.aggregates or query.group_by_items or query.raw_sql is not None):
+            context.observe_id_set("ID_SET_FALLBACK_UNSUPPORTED_SHAPE")
+            return query, [], False
+        if any(order.expr is not None or not order.field_name for order in query.order_by_items):
+            context.observe_id_set("ID_SET_FALLBACK_NON_DETERMINISTIC_ORDER")
+            return query, [], False
+
+        stable = deepcopy(query)
+        if not any(order.field_name == "id" for order in stable.order_by_items):
+            stable.order_asc("id")
+        query_key = self._id_set_query_key(context, stable, options.namespace)
+        store = context.id_set_store()
+        try:
+            retained = store.get(query_key)
+        except Exception:
+            context.observe_id_set("ID_SET_FALLBACK_STORE_UNAVAILABLE")
+            return query, [], False
+
+        plan = "ID_SET_HIT"
+        if retained is None:
+            loop = asyncio.get_running_loop()
+            lock_key = (id(loop), query_key)
+            with _id_set_build_locks_guard:
+                lock = _id_set_build_locks.setdefault(lock_key, asyncio.Lock())
+            async with lock:
+                try:
+                    retained = store.get(query_key)
+                except Exception:
+                    context.observe_id_set("ID_SET_FALLBACK_STORE_UNAVAILABLE")
+                    return query, [], False
+                if retained is None:
+                    id_query = deepcopy(stable)
+                    id_query.projection = ["id"]
+                    id_query.expr_projection = []
+                    id_query.relations = []
+                    id_query.relation_aggregates = []
+                    id_query.child_enhancements = []
+                    id_query.facets = []
+                    id_query.slice = None
+                    id_query.limit(options.max_ids + 1)
+                    id_query.id_set_pagination = None
+                    id_result = await self._query(context, QueryRequest(id_query))
+                    try:
+                        ids = array("Q", (int(row["id"]) for row in id_result.rows))
+                    except (KeyError, TypeError, ValueError, OverflowError):
+                        context.observe_id_set("ID_SET_FALLBACK_UNSUPPORTED_SHAPE")
+                        return query, [], False
+                    if len(ids) > options.max_ids:
+                        context.observe_id_set("ID_SET_FALLBACK_LIMIT_EXCEEDED", "LOWER_BOUND", len(ids))
+                        return query, [], False
+                    retained = RetainedIdSet(query_key, ids, time.time() + options.ttl_seconds)
+                    try:
+                        store.put(retained)
+                    except Exception:
+                        context.observe_id_set("ID_SET_FALLBACK_STORE_UNAVAILABLE")
+                        return query, [], False
+                    plan = "ID_SET_BUILD"
+            with _id_set_build_locks_guard:
+                if not lock.locked():
+                    _id_set_build_locks.pop(lock_key, None)
+
+        context.observe_id_set(plan, "EXACT", len(retained.ids))
+        start = query.slice.offset
+        if start >= len(retained.ids):
+            return query, [], True
+        end = min(start + query.slice.limit, len(retained.ids))
+        page_ids = list(retained.ids[start:end])
+        page = deepcopy(query)
+        page.slice = None
+        page.id_set_pagination = None
+        page.and_filter(BinaryExpr(
+            ColumnExpr("id"), BinaryOp.In,
+            ValueExpr(Value.List([Value.from_any(entity_id) for entity_id in page_ids]))))
+        return page, page_ids, False
+
+    @staticmethod
+    def _id_set_query_key(context, query: SelectQuery, namespace: str) -> str:
+        normalized = deepcopy(query)
+        normalized.slice = None
+        normalized.projection = []
+        normalized.expr_projection = []
+        normalized.relations = []
+        normalized.relation_aggregates = []
+        normalized.comment_text = None
+        normalized.trace_chain = []
+        normalized.id_set_pagination = None
+        scope = (namespace, context.user_identifier(), id(context.get_resource("db")),
+                 id(context.get_resource("request_policy")),
+                 _canonical_id_set_value(context.get_resource("active_root")),
+                 _canonical_id_set_value(normalized))
+        return "teaql:id-set:v1:" + hashlib.sha256(repr(scope).encode("utf-8")).hexdigest()
 
     async def _enhance_relations(self, context, parents: List[Dict[str, Any]], query: SelectQuery) -> None:
         if not parents or not query.relations:
