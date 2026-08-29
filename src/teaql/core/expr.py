@@ -1,4 +1,5 @@
 from enum import Enum, auto
+from copy import deepcopy
 from typing import List, Optional, Any, Union
 from dataclasses import dataclass
 from .value import Value
@@ -327,7 +328,13 @@ def in_subquery(left: Expr, entity: Any, query: Any) -> Expr:
     return subquery(left, BinaryOp.In, entity, query)
 
 def not_in_subquery(left: Expr, entity: Any, query: Any) -> Expr:
-    return subquery(left, BinaryOp.NotIn, entity, query)
+    # A NULL in a SQL NOT IN projection poisons the whole predicate. Keep the
+    # caller's request immutable and exclude orphan relation keys in the copy;
+    # unknown relations remain addressable through the explicit null predicate.
+    safe_query = deepcopy(query)
+    if len(safe_query.projection) == 1:
+        safe_query.and_filter(is_not_null(column(safe_query.projection[0])))
+    return subquery(left, BinaryOp.NotIn, entity, safe_query)
 
 def negate(expr: Expr) -> Expr:
     return NotExpr(expr)

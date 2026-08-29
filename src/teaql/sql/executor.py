@@ -13,7 +13,10 @@ from teaql.core.mutation import (
 )
 from .types import CompiledQuery, SqlCompileError
 from .dialect import SqlDialect
-from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, ValueExpr
+from teaql.core.expr import (
+    AndExpr, BetweenExpr, BinaryExpr, BinaryOp, FunctionExpr, IsNotNullExpr,
+    IsNullExpr, NotExpr, OrExpr, SubQueryExpr, ColumnExpr, ValueExpr,
+)
 from teaql.core.query import Aggregate, AggregateFunction, SelectQuery
 from teaql.core.value import Value
 from teaql.runtime.telemetry import RuntimeOperation, observe_runtime_operation, start_runtime_operation
@@ -73,6 +76,38 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         self.transport = transport
         self.schema_provider = schema_provider
 
+    def _resolve_subquery_entities(self, expr) -> None:
+        if expr is None:
+            return
+        if isinstance(expr, SubQueryExpr):
+            if isinstance(expr.entity, str):
+                descriptor = self.schema_provider.get_entity(expr.entity)
+                if descriptor is None:
+                    raise CompileError(SqlCompileError(
+                        f"unknown subquery entity: {expr.entity}"))
+                expr.entity = descriptor
+            self._resolve_subquery_entities(getattr(expr.query, "filter_expr", None))
+            return
+        if isinstance(expr, (AndExpr, OrExpr)):
+            for child in expr.exprs:
+                self._resolve_subquery_entities(child)
+            return
+        if isinstance(expr, BinaryExpr):
+            self._resolve_subquery_entities(expr.left)
+            self._resolve_subquery_entities(expr.right)
+            return
+        if isinstance(expr, BetweenExpr):
+            self._resolve_subquery_entities(expr.expr)
+            self._resolve_subquery_entities(expr.lower)
+            self._resolve_subquery_entities(expr.upper)
+            return
+        if isinstance(expr, (IsNullExpr, IsNotNullExpr, NotExpr)):
+            self._resolve_subquery_entities(expr.expr)
+            return
+        if isinstance(expr, FunctionExpr):
+            for child in expr.args:
+                self._resolve_subquery_entities(child)
+
     def capabilities(self) -> DataServiceCapabilities:
         return DataServiceCapabilities(
             query=True,
@@ -96,6 +131,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         entity_desc = self.schema_provider.get_entity(request.query.entity)
         if not entity_desc:
             raise CompileError(SqlCompileError(f"unknown entity: {request.query.entity}"))
+        self._resolve_subquery_entities(request.query.filter_expr)
         compiled = self.dialect.compile_select(entity_desc, request.query)
         pending = None
         index = 0
@@ -130,6 +166,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         break
         if not entity_desc:
             raise CompileError(SqlCompileError(f"unknown entity: {request.query.entity}"))
+        self._resolve_subquery_entities(request.query.filter_expr)
             
         try:
             compiled = self.dialect.compile_select(entity_desc, request.query)

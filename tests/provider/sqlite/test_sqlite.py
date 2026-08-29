@@ -2,12 +2,15 @@ import pytest
 import tempfile
 import os
 from datetime import date
+from decimal import Decimal
 import aiosqlite
 from teaql.provider.sqlite import create_sqlite_service, SimpleSchemaProvider
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
 from teaql.core.value import DataType, Timestamp, Value
 from teaql.core.query import SelectQuery
-from teaql.core.expr import BinaryExpr, BinaryOp, ColumnExpr, ValueExpr, contain
+from teaql.core.expr import (BinaryExpr, BinaryOp, ColumnExpr, ValueExpr, between,
+    contain, column, in_list, in_subquery, is_not_null, is_null, not_in_subquery,
+    value)
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
 from teaql.data_service import QueryRequest
 from teaql.runtime import RuntimeModule
@@ -154,6 +157,128 @@ async def test_crud(temp_db, schema_provider, service):
 
     query_res = await service.query(None, query_req)
     assert len(query_res.rows) == 0
+
+@pytest.mark.asyncio
+async def test_relation_subquery_resolves_generated_entity_name_and_executes(temp_db):
+    provider = SimpleSchemaProvider()
+    group = MockEntityDescriptor("QueryGroup")
+    group.table_name_val = "query_group_data"
+    group.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("name", DataType.Text),
+        MockPropertyDescriptor("version", DataType.I64, is_version=True),
+    ]
+    record = MockEntityDescriptor("QueryRecord")
+    record.table_name_val = "query_record_data"
+    record.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("query_group", DataType.I64),
+        MockPropertyDescriptor("name", DataType.Text),
+        MockPropertyDescriptor("version", DataType.I64, is_version=True),
+    ]
+    provider.register_entity(group)
+    provider.register_entity(record)
+    service = create_sqlite_service(temp_db, provider)
+    context = RuntimeModule.new().entity(group).entity(record).into_context()
+    context.with_schema_provider(service)
+    await context.ensure_schema()
+    async with aiosqlite.connect(temp_db) as db:
+        await db.executemany(
+            "INSERT INTO query_group_data(id,name,version) VALUES (?,?,?)",
+            [(1, "Core", 1), (2, "Other", 1), (3, "Empty", 1)])
+        await db.executemany(
+            "INSERT INTO query_record_data(id,query_group,name,version) VALUES (?,?,?,?)",
+            [(11, 1, "included", 1), (12, 2, "excluded", 1),
+             (13, None, "orphan", 1)])
+        await db.commit()
+    child = SelectQuery("QueryGroup").and_filter(BinaryExpr(
+        column("name"), BinaryOp.Eq, ValueExpr(Value.Text("Core")))).project("id")
+    included = SelectQuery("QueryRecord").and_filter(
+        in_subquery(column("query_group"), "QueryGroup", child))
+    excluded = SelectQuery("QueryRecord").and_filter(
+        not_in_subquery(column("query_group"), "QueryGroup", child))
+
+    assert [row["name"] for row in (await service.query(context, QueryRequest(included))).rows] == ["included"]
+    assert [row["name"] for row in (await service.query(context, QueryRequest(excluded))).rows] == ["excluded"]
+
+    async def ids(query):
+        return [row["id"] for row in (await service.query(context, QueryRequest(query))).rows]
+
+    assert await ids(SelectQuery("QueryRecord").and_filter(
+        is_not_null(column("query_group"))).order_asc("id")) == [11, 12]
+    assert await ids(SelectQuery("QueryRecord").and_filter(
+        is_null(column("query_group"))).order_asc("id")) == [13]
+    assert await ids(SelectQuery("QueryRecord").and_filter(
+        in_subquery(column("query_group"), "QueryGroup", child)).order_asc("id")) == [11]
+    assert await ids(SelectQuery("QueryRecord").and_filter(
+        not_in_subquery(column("query_group"), "QueryGroup", child)).order_asc("id")) == [12]
+
+    all_records = SelectQuery("QueryRecord").project("query_group")
+    assert await ids(SelectQuery("QueryGroup").and_filter(
+        in_subquery(column("id"), "QueryRecord", all_records)).order_asc("id")) == [1, 2]
+    assert await ids(SelectQuery("QueryGroup").and_filter(
+        not_in_subquery(column("id"), "QueryRecord", all_records)).order_asc("id")) == [3]
+
+@pytest.mark.asyncio
+async def test_complete_scalar_fixture_including_nullable_boolean_executes(temp_db):
+    provider = SimpleSchemaProvider()
+    record = MockEntityDescriptor("QueryRecord")
+    record.table_name_val = "query_record_scalar"
+    record.properties = [
+        MockPropertyDescriptor("id", DataType.I64, is_id=True),
+        MockPropertyDescriptor("required_text", DataType.Text),
+        MockPropertyDescriptor("optional_text", DataType.Text),
+        MockPropertyDescriptor("required_integer", DataType.I64),
+        MockPropertyDescriptor("optional_long", DataType.I64),
+        MockPropertyDescriptor("required_decimal", DataType.Decimal),
+        MockPropertyDescriptor("required_float", DataType.F64),
+        MockPropertyDescriptor("required_double", DataType.F64),
+        MockPropertyDescriptor("required_date", DataType.Date),
+        MockPropertyDescriptor("required_time", DataType.I64),
+        MockPropertyDescriptor("required_timestamp", DataType.Timestamp),
+        MockPropertyDescriptor("active", DataType.Bool),
+        MockPropertyDescriptor("reviewed", DataType.Bool),
+        MockPropertyDescriptor("version", DataType.I64, is_version=True),
+    ]
+    provider.register_entity(record)
+    service = create_sqlite_service(temp_db, provider)
+    context = RuntimeModule.new().entity(record).into_context()
+    context.with_schema_provider(service)
+    await context.ensure_schema()
+    async with aiosqlite.connect(temp_db) as db:
+        await db.executemany(
+            "INSERT INTO query_record_scalar VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            [
+                (1, "Alpha", "optional", 42, 42_000_000_000, "42.125", 42.5, 42.75,
+                 "2026-08-29", 34_200_000, 1_777_632_600_000, 1, 0, 1),
+                (2, "Beta", None, 7, None, "7.500", 7.5, 7.75,
+                 "2026-08-30", 36_000_000, 1_777_720_400_000, 0, None, 1),
+                (3, "Gamma", "tail", 99, 99_000_000_000, "99.875", 99.5, 99.75,
+                 "2026-08-31", 37_800_000, 1_777_808_200_000, 1, 1, 1),
+            ])
+        await db.commit()
+
+    async def ids(expr):
+        query = SelectQuery("QueryRecord").project("id").and_filter(expr).order_asc("id")
+        return [row["id"] for row in (await service.query(context, QueryRequest(query))).rows]
+
+    assert await ids(BinaryExpr(column("required_text"), BinaryOp.Eq, value("Alpha"))) == [1]
+    assert await ids(BinaryExpr(column("required_text"), BinaryOp.Ne, value("Alpha"))) == [2, 3]
+    assert await ids(in_list("required_text", ["Alpha", "Gamma"])) == [1, 3]
+    assert await ids(contain("required_text", "et")) == [2]
+    assert await ids(between(column("required_integer"), value(40), value(100))) == [1, 3]
+    assert await ids(BinaryExpr(column("required_decimal"), BinaryOp.Gt, value(Decimal("50")))) == [3]
+    assert await ids(BinaryExpr(column("required_float"), BinaryOp.Lte, value(7.5))) == [2]
+    assert await ids(BinaryExpr(column("required_double"), BinaryOp.Gte, value(99.75))) == [3]
+    assert await ids(between(column("required_date"), value(date(2026, 8, 30)), value(date(2026, 8, 31)))) == [2, 3]
+    assert await ids(BinaryExpr(column("required_time"), BinaryOp.Gt, value(36_000_000))) == [3]
+    assert await ids(BinaryExpr(column("required_timestamp"), BinaryOp.Lt, value(Timestamp(1_777_750_000_000)))) == [1, 2]
+    assert await ids(is_null(column("optional_text"))) == [2]
+    assert await ids(is_not_null(column("optional_long"))) == [1, 3]
+    assert await ids(BinaryExpr(column("active"), BinaryOp.Eq, value(False))) == [2]
+    assert await ids(BinaryExpr(column("reviewed"), BinaryOp.Eq, value(True))) == [3]
+    assert await ids(BinaryExpr(column("reviewed"), BinaryOp.Eq, value(False))) == [1]
+    assert await ids(is_null(column("reviewed"))) == [2]
 
 @pytest.mark.asyncio
 async def test_crud_emits_balanced_runtime_telemetry(temp_db, schema_provider, service):

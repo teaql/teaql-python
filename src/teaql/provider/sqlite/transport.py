@@ -48,7 +48,10 @@ class SqliteTransport(SqlTransactionTransport):
             elif isinstance(v._data, bool):
                 res.append(1 if v._data else 0)
             elif isinstance(v._data, Decimal):
-                res.append(f"__teaql_decimal__:{v._data}")
+                # SQLite applies NUMERIC affinity to an ordinary decimal string.
+                # A tagged transport sentinel would be stored/compared as text and
+                # breaks ordered predicates such as amount > Decimal("50").
+                res.append(str(v._data))
             elif getattr(v, '_type_hint', None) == DataType.Json or isinstance(v._data, (dict, list)):
                 res.append(json.dumps(v._data))
             elif getattr(v, '_type_hint', None) == DataType.Date or isinstance(v._data, date):
