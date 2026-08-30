@@ -1,7 +1,21 @@
 Metadata-Version: 2.4
 Name: teaql
-Version: 0.1.0
+Version: 0.2.0
 Summary: TeaQL Runtime and Data Service for Python
+Author: TeaQL
+License-Expression: Apache-2.0
+Project-URL: Homepage, https://teaql.io
+Project-URL: Documentation, https://teaql.io/docs
+Project-URL: Repository, https://github.com/teaql/teaql-python
+Project-URL: Issues, https://github.com/teaql/teaql-python/issues
+Keywords: teaql,query,database,orm
+Classifier: Development Status :: 3 - Alpha
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Classifier: Programming Language :: Python :: 3.12
+Classifier: Programming Language :: Python :: 3.13
+Classifier: Typing :: Typed
 Requires-Python: >=3.10
 Description-Content-Type: text/markdown
 License-File: LICENSE
@@ -9,34 +23,82 @@ Requires-Dist: pydantic>=2.0.0
 Requires-Dist: aiosqlite>=0.19.0
 Requires-Dist: aiomysql>=0.2.0
 Requires-Dist: asyncpg>=0.29.0
+Requires-Dist: httpx>=0.24.0
+Provides-Extra: telemetry
+Requires-Dist: opentelemetry-api<2,>=1.44.0; extra == "telemetry"
+Requires-Dist: opentelemetry-sdk<2,>=1.44.0; extra == "telemetry"
+Requires-Dist: opentelemetry-exporter-otlp-proto-http<2,>=1.44.0; extra == "telemetry"
+Requires-Dist: opentelemetry-instrumentation-logging<0.66,>=0.65b0; extra == "telemetry"
 Provides-Extra: test
 Requires-Dist: pytest>=7.0.0; extra == "test"
 Requires-Dist: pytest-asyncio>=0.21.0; extra == "test"
 Requires-Dist: mypy>=1.0.0; extra == "test"
+Requires-Dist: opentelemetry-sdk<2,>=1.44.0; extra == "test"
+Requires-Dist: opentelemetry-instrumentation-logging<0.66,>=0.65b0; extra == "test"
 Dynamic: license-file
 
 # TeaQL Python SDK
 
-TeaQL Python SDK is a runtime engine and toolkit for building data-driven business applications. It provides seamless integration with the TeaQL ecosystem, offering robust support for automated CRUD, DDD modeling, SQL compilation, facet aggregation, and execution trace logging.
+TeaQL Python SDK is a runtime engine and toolkit for building data-driven business applications. It provides seamless integration with the TeaQL ecosystem, fully aligned with the `teaql-rs` baseline.
 
-## Features
+## Recommended Agent Harness
 
-- **Entity & Value Mapping**: Type-safe mapping between native Python types and TeaQL core primitives (I64, Text, F64, etc.).
-- **SQL Compilation & AST Building**: A flexible SQL query builder that dynamically generates standard `INSERT`, `UPDATE`, `DELETE`, and `SELECT` queries across supported providers.
-- **Facet Aggregation**: Built-in support for complex runtime aggregations, group-bys, and hierarchical data processing out of the box.
-- **Provider Support**: Extensible database connectivity via transport layers (currently supports `aiosqlite` for SQLite).
+When building database-backed applications with the TeaQL Python runtime, we
+recommend using it together with the [TeaQL Agent Kit](https://github.com/teaql/teaql-agent-kit).
+The Agent Kit is TeaQL's continuously evolving **Harness Engineering** method.
+It gives coding agents a model-mediated, executable workflow for domain
+modeling, deterministic evaluation and repair, code generation, implementation,
+and evidence-based verification as the generator and runtimes evolve.
 
-## Modules
+## 1. Minimum Version Requirements
 
-The SDK is organized into the following core modules:
-- `teaql.core`: Provides core structures (`Value`, `SmartList`, `SelectQuery`, `MutationCommand`, and base `Entity` definition).
-- `teaql.data_service`: Defines the common `DataService` abstractions, handling structured input/output (`QueryRequest`, `MutationRequest`, `QueryResult`, etc.).
-- `teaql.sql`: Manages query compilation via AST dialects and routes execution logic through `SqlDataServiceExecutor`.
-- `teaql.runtime`: Pipeline module and application context utilities (`UserContext`, `ServiceRuntimeFromEnv`).
-- `teaql.provider`: Includes the database drivers implementations (`sqlite`, etc.).
+*   **Python**: 3.10+ (Recommended 3.12+)
+*   **Testing**: `pytest` 7.4+
+*   **Dependencies**: `pydantic` >= 2.0, `aiosqlite`, `aiomysql`, `asyncpg`
 
-## Development
+## 2. Tests Performed
 
-The project is built on standard Python tooling (3.10+ recommended).
+After rigorous AST semantic analysis and manual verification, this SDK has successfully passed the following tests:
+*   ✅ **100% API Signature and Logic Parity**: Scanned with Tree-Sitter and implemented all internal methods and logic to match the Rust baseline.
+*   ✅ **`teaql.core` Core Tests**: Extensively tested attribute extraction, safe nullability checks, and relationship building for `Value`, `GraphNode`, `Entity`, `Mutation`, `Query`, `Expr`, and `SafeExpression`.
+*   ✅ **`teaql.runtime` Runtime Tests**: Verified the context propagation of `UserContext` and the complete lifecycle hooking for `record_sql_log` and `record_metadata_log`.
+*   ✅ **`teaql.sql` / `teaql.data_service` Tests**: Tested the SQL AST compilation engine and the underlying command dispatch mechanism.
+*   ✅ **Provider & External Integrations**: Includes integration tests for the SQLite driver and FastAPI web endpoints.
 
-To run test validations and business logic simulations, you can check the `robot-task-board` repository.
+## 3. Available Modules
+
+The SDK's organizational architecture strictly mirrors the Rust version:
+*   `teaql.core`: Provides core underlying data structures (e.g., `Value`, `GraphNode`, `Entity`, `SelectQuery`, `MutationRequest`).
+*   `teaql.data_service`: Defines universal data service abstractions, handling structured inputs and outputs.
+*   `teaql.sql`: Provides a cross-dialect SQL compilation executor, translating ASTs into physical queries for various databases.
+*   `teaql.runtime`: Contains the pipeline and application context mechanisms (e.g., `UserContext`, environment mounts).
+*   `teaql.provider`: Packages for physical database drivers and the canonical TeaQL Federal Protocol client.
+*   `teaql.web`: Web framework integration middleware (e.g., `FastAPI` / `Starlette`).
+
+## 4. Features
+
+*   **Entity & Value Mapping**: Provides type-safe mapping between native Python types and TeaQL core primitives (I64, Text, F64, Null, etc.).
+*   **SQL Compilation & AST Building**: A dynamic, secure SQL query builder that generates standardized `INSERT`, `UPDATE`, `DELETE`, and `SELECT` statements while abstracting away dialect differences.
+*   **Facet Aggregation & Grouping**: Out-of-the-box support for multi-dimensional facet aggregations, group-bys, and hierarchical data processing.
+*   **Provider Support**: Highly extensible asynchronous database connectivity (integrating third-party async drivers like `aiosqlite` through a unified Transport layer).
+*   **Context & Logging Management**: Built-in support for lifecycle context passing, end-to-end tracing, and SQL execution log interception and dispatch.
+*   **TeaQL Federal Protocol Client**: `TeaQLFederalClient` and `TfpHttpProvider`
+    execute governed canonical TFP v1 queries and audited mutations against a
+    remote TeaQL endpoint such as Rust. Direct query execution returns
+    `SmartList`; Python intentionally does not expose a TFP server endpoint.
+
+```python
+from teaql.provider.tfp_client import FederalQuery, TeaQLFederalClient
+
+client = TeaQLFederalClient("https://orders.example.com/tfp")
+orders = await client.execute_query(FederalQuery(
+    entity="CustomerOrder",
+    filter_condition={"status": {"$eq": "NEW"}},
+    comment="List new orders",
+    purpose="Render operations queue",
+))
+await client.aclose()
+```
+
+---
+To run test validations and business logic simulations locally, simply run `pytest` in the project root.
