@@ -29,6 +29,27 @@ class DummyCheckerRegistry:
     def checker(self, entity):
         return self.value if entity == "Dummy" else None
 
+
+class RecordingTransaction:
+    def __init__(self, events):
+        self.events = events
+
+    async def commit(self, context):
+        self.events.append("commit")
+
+    async def rollback(self, context):
+        self.events.append("rollback")
+
+
+class RecordingTransactionProvider:
+    def __init__(self, events):
+        self.events = events
+        self.transaction = RecordingTransaction(events)
+
+    async def begin(self, context):
+        self.events.append("begin")
+        return self.transaction
+
 def test_active_root_is_typed_and_fails_closed():
     context = UserContext.new()
     with pytest.raises(ContextRootError, match="missing"):
@@ -82,6 +103,89 @@ async def test_runtime_module_configure():
     module = RuntimeModule.new()
     context = await module.configure()
     assert isinstance(context, UserContext)
+
+
+@pytest.mark.asyncio
+async def test_graph_save_uses_one_transaction_and_retains_rollback_order():
+    events = []
+    provider = RecordingTransactionProvider(events)
+    context = UserContext.new().insert_resource("dataService", provider)
+
+    async def failing_graph():
+        assert context.require_resource("dataService") is provider.transaction
+        context.after_graph_rollback(lambda: events.append("parent rollback"))
+
+        async def nested_save():
+            context.after_graph_rollback(lambda: events.append("child rollback"))
+
+        await context.execute_graph_save(nested_save)
+        raise RuntimeError("injected graph failure")
+
+    with pytest.raises(RuntimeError, match="injected graph failure"):
+        await context.execute_graph_save(failing_graph)
+
+    assert events == ["begin", "rollback", "child rollback", "parent rollback"]
+    assert context.require_resource("dataService") is provider
+
+
+@pytest.mark.asyncio
+async def test_graph_save_runs_commit_actions_only_after_provider_commit():
+    events = []
+    provider = RecordingTransactionProvider(events)
+    context = UserContext.new().insert_resource("dataService", provider)
+
+    async def successful_graph():
+        context.after_graph_commit(lambda: events.append("ledger clear"))
+        return "saved"
+
+    assert await context.execute_graph_save(successful_graph) == "saved"
+    assert events == ["begin", "commit", "ledger clear"]
+    assert context.require_resource("dataService") is provider
+
+
+@pytest.mark.asyncio
+async def test_graph_save_captures_one_fix_clock_for_all_nodes():
+    events = []
+    observed = []
+
+    class ClockChecker:
+        def check_and_fix(self, context, record, location, results):
+            observed.append(context.require_resource("fix_time"))
+
+    provider = RecordingTransactionProvider(events)
+    context = (UserContext.new()
+               .insert_resource("dataService", provider)
+               .with_checker_registry(DummyCheckerRegistry(ClockChecker())))
+
+    async def graph():
+        context.check_and_fix_mutation(InsertCommand.new("Dummy"))
+        await __import__("asyncio").sleep(0.005)
+        context.check_and_fix_mutation(InsertCommand.new("Dummy"))
+
+    await context.execute_graph_save(graph)
+    assert len(observed) == 2 and observed[0] is observed[1]
+    assert context.get_resource("fix_time") is None
+    assert events == ["begin", "commit"]
+
+
+@pytest.mark.asyncio
+async def test_independent_concurrent_graph_saves_do_not_join_transaction():
+    events = []
+    provider = RecordingTransactionProvider(events)
+    context = UserContext.new().insert_resource("dataService", provider)
+
+    async def save(name, delay):
+        async def graph():
+            events.append(f"{name}:start")
+            await __import__("asyncio").sleep(delay)
+            events.append(f"{name}:end")
+        await context.execute_graph_save(graph)
+
+    await __import__("asyncio").gather(save("first", 0.01), save("second", 0))
+    assert events == [
+        "begin", "first:start", "first:end", "commit",
+        "begin", "second:start", "second:end", "commit",
+    ]
 
 def test_service_runtime_from_env(monkeypatch):
     monkeypatch.setenv("TEAQL_USER", "test_user")

@@ -17,6 +17,9 @@ class ObjectLocation:
     def index(self, value: int) -> ObjectLocation:
         return ObjectLocation(self.segments + (("index", value),))
 
+    def prefixed_by(self, prefix: ObjectLocation) -> ObjectLocation:
+        return ObjectLocation(prefix.segments + self.segments)
+
     @builtins.property
     def model_path(self) -> str:
         return self._render(lambda value: value)

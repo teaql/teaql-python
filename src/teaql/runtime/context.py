@@ -1,4 +1,6 @@
 from typing import Dict, Any, Optional, List, Callable, TypeVar
+import asyncio
+import contextvars
 from dataclasses import dataclass
 from array import array
 
@@ -10,6 +12,13 @@ EntityInitializer = Callable[["UserContext", Any], None]
 class ContextEntityRef:
     entity: str
     id: int
+
+@dataclass(frozen=True)
+class FixEvidence:
+    entity_type: str
+    model_path: str
+    source: str
+    source_label: str
 
 class ContextRootError(Exception):
     def __init__(self, reason: str, expected_type: str, active_root: Optional[ContextEntityRef] = None):
@@ -84,6 +93,35 @@ class UserContext:
         self._id_set_plan = "ID_SET_DISABLED"
         self._id_set_count = 0
         self._id_set_count_accuracy = "UNKNOWN"
+        self._graph_save_active = False
+        self._graph_save_lock = asyncio.Lock()
+        self._graph_save_owner = contextvars.ContextVar(
+            f"teaql_graph_save_owner_{id(self)}", default=None
+        )
+        self._graph_commit_actions: List[Any] = []
+        self._graph_rollback_actions: List[Any] = []
+        self._fix_evidence_current: List[FixEvidence] = []
+        self._fix_evidence_last: List[FixEvidence] = []
+
+    def begin_fix_evidence(self):
+        self._fix_evidence_current = []
+        return self
+
+    def record_fix_evidence(self, entity_type: str, model_path: str, source: str, source_label: str):
+        normalized = source_label.lower()
+        if not entity_type or not model_path or source not in ("clock", "context") or not source_label \
+                or "authorization" in normalized or "cookie" in normalized or "token=" in normalized:
+            raise ValueError("Fix evidence must contain only safe framework provenance labels")
+        self._fix_evidence_current.append(FixEvidence(entity_type, model_path, source, source_label))
+        return self
+
+    def finish_fix_evidence(self):
+        self._fix_evidence_last = list(self._fix_evidence_current)
+        self._fix_evidence_current = []
+        return self
+
+    def last_fix_evidence(self):
+        return tuple(self._fix_evidence_last)
 
     @classmethod
     def new(cls) -> 'UserContext':
@@ -102,6 +140,74 @@ class UserContext:
         if root.entity != expected_type:
             raise ContextRootError("type_mismatch", expected_type, root)
         return root
+
+    async def execute_graph_save(self, work):
+        """Run one generated entity graph in one provider transaction."""
+        if self._graph_save_owner.get() is not None:
+            return await work()
+        async with self._graph_save_lock:
+            provider = self.require_resource("dataService")
+            begin = getattr(provider, "begin", None)
+            if not callable(begin):
+                raise RuntimeError("Configured dataService does not support graph transactions")
+            try:
+                transaction = await begin(self)
+            except TypeError:
+                transaction = await begin()
+            owner_token = self._graph_save_owner.set(object())
+            self._graph_save_active = True
+            self._graph_commit_actions = []
+            self._graph_rollback_actions = []
+            self.insert_resource("fix_time", datetime.now())
+            self.begin_fix_evidence()
+            self.insert_resource("dataService", transaction)
+            try:
+                result = await work()
+            except BaseException:
+                try:
+                    await self._finish_graph_transaction(transaction, "rollback")
+                finally:
+                    for action in reversed(self._graph_rollback_actions):
+                        action()
+                raise
+            else:
+                try:
+                    await self._finish_graph_transaction(transaction, "commit")
+                except BaseException:
+                    try:
+                        await self._finish_graph_transaction(transaction, "rollback")
+                    finally:
+                        for action in reversed(self._graph_rollback_actions):
+                            action()
+                    raise
+                for action in self._graph_commit_actions:
+                    action()
+                return result
+            finally:
+                self.insert_resource("dataService", provider)
+                self._graph_save_active = False
+                self._graph_commit_actions = []
+                self._graph_rollback_actions = []
+                self._resources.pop("fix_time", None)
+                self.finish_fix_evidence()
+                self._graph_save_owner.reset(owner_token)
+
+    async def _finish_graph_transaction(self, transaction, operation: str) -> None:
+        finish = getattr(transaction, operation)
+        try:
+            await finish(self)
+        except TypeError:
+            await finish()
+
+    def after_graph_commit(self, work) -> None:
+        if not self._graph_save_active:
+            raise RuntimeError("No graph save is active")
+        self._graph_commit_actions.append(work)
+
+    def after_graph_rollback(self, work) -> None:
+        if not self._graph_save_active:
+            raise RuntimeError("No graph save is active")
+        self._graph_rollback_actions.append(work)
 
     async def get_in_store(self, key: str) -> Optional[Any]:
         store = self.get_resource("data_store")
@@ -454,12 +560,17 @@ class UserContext:
         if not entity or record is None:
             return
         from datetime import datetime
-        self.insert_resource("fix_time", datetime.now())
+        owns_fix_time = self.get_resource("fix_time") is None
+        if owns_fix_time:
+            self.insert_resource("fix_time", datetime.now())
+            self.begin_fix_evidence()
         self.insert_resource("fix_operation", type(mutation).__name__.replace("Command", "").lower())
         try:
             self.check_and_fix_record(entity, record)
         finally:
-            self._resources.pop("fix_time", None)
+            if owns_fix_time:
+                self._resources.pop("fix_time", None)
+                self.finish_fix_evidence()
             self._resources.pop("fix_operation", None)
 
     def translate_check_results(self, results: Any):
