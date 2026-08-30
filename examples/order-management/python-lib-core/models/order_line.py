@@ -19,7 +19,7 @@ class OrderLine:
         self.commercePlatform = kwargs.get("commercePlatform")
         self.createTime = kwargs.get("createTime")
         self.version = kwargs.get("version")
-    def mark_as_deleted(self):
+    def mark_for_deletion(self):
         self._action = "Delete"
         return self
 

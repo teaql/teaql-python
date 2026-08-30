@@ -19,7 +19,7 @@ class Customer:
         self.version = kwargs.get("version")
         self._customer_order_list = []
         self._loaded_fields.add("customer_order_list")
-    def mark_as_deleted(self):
+    def mark_for_deletion(self):
         self._action = "Delete"
         return self
 

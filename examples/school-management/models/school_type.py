@@ -57,7 +57,7 @@ class SchoolType:
         for child in self._school_list:
             child._teaql_attach_root(root)
         return self
-    def mark_as_deleted(self):
+    def mark_for_deletion(self):
         self._action = "Delete"
         self._entity_root.mark_as_deleted(self._teaql_entity_key())
         return self

@@ -17,7 +17,7 @@ class TaskStatus:
             if not hasattr(self, k):
                 setattr(self, k, v)
 
-    def mark_as_deleted(self):
+    def mark_for_deletion(self):
         self._action = "Delete"
         return self
 

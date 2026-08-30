@@ -20,7 +20,7 @@ class Product:
         self.version = kwargs.get("version")
         self._order_line_list = []
         self._loaded_fields.add("order_line_list")
-    def mark_as_deleted(self):
+    def mark_for_deletion(self):
         self._action = "Delete"
         return self
 

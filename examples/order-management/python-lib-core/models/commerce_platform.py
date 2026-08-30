@@ -27,7 +27,7 @@ class CommercePlatform:
         self._loaded_fields.add("order_line_list")
         self._order_search_preset_list = []
         self._loaded_fields.add("order_search_preset_list")
-    def mark_as_deleted(self):
+    def mark_for_deletion(self):
         self._action = "Delete"
         return self
 

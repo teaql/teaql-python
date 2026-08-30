@@ -70,7 +70,7 @@ class School:
             root.merge_from(self._entity_root)
             self._entity_root = root
         return self
-    def mark_as_deleted(self):
+    def mark_for_deletion(self):
         self._action = "Delete"
         self._entity_root.mark_as_deleted(self._teaql_entity_key())
         return self

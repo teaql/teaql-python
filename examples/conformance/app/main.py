@@ -66,7 +66,7 @@ async def main() -> None:
     assert queried.version == previous_version + 1
     print(f"PASS Update (version {previous_version} -> {queried.version})")
 
-    await queried.mark_as_deleted().audit_as("Delete conformance work item").save(context)
+    await queried.mark_for_deletion().audit_as("Delete conformance work item").save(context)
     remaining = await (Q.work_items().with_id_is(created.id)
         .comment("Verify soft-deleted work item is excluded")
         .purpose("Verify delete semantics").execute_for_list(context))
