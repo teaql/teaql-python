@@ -618,9 +618,16 @@ class UserContext:
     def sql_log_options(self) -> 'SqlLogOptions':
         opts = self.get_resource("sql_log_options")
         if not opts:
-            opts = SqlLogOptions.all()
+            opts = SqlLogOptions.disabled()
             self.insert_resource("sql_log_options", opts)
         return opts
+
+    def with_diagnostic_sql_log_sink(self, sink: 'DiagnosticSqlLogSink') -> 'UserContext':
+        self.insert_resource("diagnostic_sql_log_sink", sink)
+        return self
+
+    def set_diagnostic_sql_log_sink(self, sink: Optional['DiagnosticSqlLogSink']):
+        self.insert_resource("diagnostic_sql_log_sink", sink)
 
     def enable_select_sql_log(self):
         self.set_sql_log_options(SqlLogOptions.select_only())
@@ -692,6 +699,9 @@ class UserContext:
         logs = self.sql_logs()
         logs.append(entry)
         self._resources["sql_logs"] = logs
+        sink = self.get_resource("diagnostic_sql_log_sink")
+        if sink is not None:
+            sink.write(entry)
         buf = self.get_resource("UnifiedLogBuffer")
         if buf:
             buf.entries.append(UnifiedLogEntry(
@@ -730,6 +740,9 @@ class UserContext:
         logs = self.sql_logs()
         logs.append(entry)
         self._resources["sql_logs"] = logs
+        sink = self.get_resource("diagnostic_sql_log_sink")
+        if sink is not None:
+            sink.write(entry)
         
         buf = self.get_resource("UnifiedLogBuffer")
         if buf:
@@ -967,6 +980,22 @@ class SqlLogEntry:
     result_type: Optional[str]
     affected_rows: Optional[int]
     result_summary: str
+
+class DiagnosticSqlLogSink:
+    """Explicit value-bearing diagnostic SQL destination; never installed by default."""
+    def write(self, entry: SqlLogEntry) -> None:
+        raise NotImplementedError
+
+class TextDiagnosticSqlLogSink(DiagnosticSqlLogSink):
+    def __init__(self, writer=print):
+        self._writer = writer
+
+    def write(self, entry: SqlLogEntry) -> None:
+        elapsed_us = int(entry.elapsed.total_seconds() * 1_000_000) if entry.elapsed else 0
+        self._writer(
+            f"[TeaQL SQL][{entry.operation.name.lower()}][{elapsed_us}us] "
+            f"{entry.result_summary}\n{entry.debug_sql}"
+        )
 
 @dataclass
 class InfoLogEntry:

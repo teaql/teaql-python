@@ -16,8 +16,10 @@ def test_user_context():
     assert context.user_identifier() == "test_user"
     
 def test_user_context_extensions():
-    from teaql.runtime.context import SqlLogOptions, SqlLogOperation
+    from teaql.runtime.context import SqlLogOptions, SqlLogOperation, TextDiagnosticSqlLogSink
     context = UserContext.new()
+    assert not context.sql_log_options().select
+    assert not context.sql_log_options().mutation
     
     # Logs
     context.set_sql_log_options(SqlLogOptions(select=True, mutation=True))
@@ -32,9 +34,12 @@ def test_user_context_extensions():
         result_count = 1
 
     context.enable_all_sql_log()
+    output = []
+    context.set_diagnostic_sql_log_sink(TextDiagnosticSqlLogSink(output.append))
     context.record_metadata_log(MockMetadata())
     assert len(context.sql_logs()) == 1
     assert context.sql_logs()[0].debug_sql == "SELECT 1"
+    assert output[0].endswith("\nSELECT 1")
     
     # SQL logs
     class MockQuery:
@@ -49,6 +54,11 @@ def test_user_context_extensions():
     
     context.clear_sql_logs()
     assert len(context.sql_logs()) == 0
+
+    context.disable_sql_log()
+    output.clear()
+    context.record_metadata_log(MockMetadata())
+    assert output == []
 
 def test_service_runtime_from_env(monkeypatch):
     monkeypatch.setenv("TEAQL_USER", "env_user")
