@@ -49,6 +49,14 @@ async def main() -> None:
     assert queried.title == "Verify Python runtime"
     print("PASS Q API (typed WorkItem in SmartList boundary)")
 
+    related = await (Q.work_items().with_id_is(created.id)
+        .select_platform_with(Q.platforms().select_name())
+        .comment("what: load work item with platform")
+        .purpose("why: prove generated relation trace inheritance")
+        .execute_for_one(context))
+    assert related.platform is not None and related.platform.name == "Runtime Example"
+    print("PASS relation query (typed Platform and inherited trace intent)")
+
     assert E.work_item(queried).title().eval() == "Verify Python runtime"
     assert E.work_item(queried).description().or_if_null("N/A") == "N/A"
     minimal = await (Q.work_items_minimal().with_id_is(created.id)

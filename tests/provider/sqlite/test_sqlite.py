@@ -12,7 +12,7 @@ from teaql.core.query import SelectQuery, RelationAggregate, Aggregate, Aggregat
 from teaql.core.expr import (BinaryExpr, BinaryOp, ColumnExpr, ValueExpr, between,
     contain, column, in_list, in_subquery, is_not_null, is_null, not_in_subquery,
     value)
-from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
+from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest, TraceNode
 from teaql.data_service import QueryRequest
 from teaql.runtime import RuntimeModule
 from teaql.runtime.context import InMemoryIdSetStore, ContextEntityRef
@@ -549,7 +549,7 @@ async def test_structured_sql_evidence_is_parameterized_and_filterable(temp_db, 
         await db.commit()
 
     context = RuntimeModule.new().into_context()
-    context.enable_all_sql_log()
+    assert context.sql_log_options().select and context.sql_log_options().mutation
     secret = "secret-customer-value"
     insert = MutationRequest(InsertCommand("User", {
         "id": Value.I64(1), "name": Value.Text(secret), "version": Value.I64(1)
@@ -557,7 +557,12 @@ async def test_structured_sql_evidence_is_parameterized_and_filterable(temp_db, 
     await service.mutate(context, insert)
     query = SelectQuery("User").filter(
         BinaryExpr(ColumnExpr("name"), BinaryOp.Eq, ValueExpr(Value.Text(secret))))
-    await service.query(context, QueryRequest(query))
+    request = QueryRequest(query, trace_chain=[
+        TraceNode(kind="relation", name="User.organization", comment="organization"),
+        TraceNode(kind="relation", name="Organization.region", comment="region"),
+        TraceNode(kind="relation", name="Region.country", comment="country"),
+    ]).comment("what: load governed users").purpose("why: verify trace inheritance")
+    await service.query(context, request)
 
     entries = context.sql_logs()
     assert len(entries) == 2
@@ -565,6 +570,12 @@ async def test_structured_sql_evidence_is_parameterized_and_filterable(temp_db, 
     assert all(entry.params for entry in entries)
     assert any(entry.result_count is not None for entry in entries)
     assert any(entry.affected_rows is not None for entry in entries)
+    select_entry = next(entry for entry in entries if entry.operation.is_select())
+    assert select_entry.comment == "what: load governed users"
+    assert select_entry.purpose == "why: verify trace inheritance"
+    assert [node.kind for node in select_entry.trace_path] == [
+        "operation", "request", "relation", "relation", "relation", "provider", "sql"
+    ]
 
     context.enable_select_sql_log()
     await service.mutate(context, MutationRequest(InsertCommand("User", {
@@ -731,6 +742,12 @@ async def test_nested_relation_limit_is_applied_per_parent(temp_db):
     assert all("state" in sql and "version" in sql for sql in queries[1:])
     assert all("__teaql_partition_rank" not in child
                for parent in result.rows for child in parent["lines"])
+    relation_entries = [entry for entry in context.sql_logs()
+                        if any(node.kind == "relation" for node in entry.trace_path)]
+    assert relation_entries
+    assert [node.kind for node in relation_entries[0].trace_path] == [
+        "operation", "request", "relation", "provider", "sql"]
+    assert relation_entries[0].trace_path[2].name == "Order.lines"
     probe_ids = relation_ids(result.rows)
 
     queries.clear()

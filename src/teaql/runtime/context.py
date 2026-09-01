@@ -78,6 +78,8 @@ _default_id_set_store = InMemoryIdSetStore()
 class UserContext:
     def __init__(self):
         self._resources: Dict[str, Any] = {}
+        self._resources["sql_log_options"] = SqlLogOptions.all()
+        self._resources["diagnostic_sql_log_sink"] = TextDiagnosticSqlLogSink()
         self._metadata: Optional[Any] = None
         self._user_identifier: str = ""
         self._entities: List[Any] = []
@@ -618,7 +620,7 @@ class UserContext:
     def sql_log_options(self) -> 'SqlLogOptions':
         opts = self.get_resource("sql_log_options")
         if not opts:
-            opts = SqlLogOptions.disabled()
+            opts = SqlLogOptions.all()
             self.insert_resource("sql_log_options", opts)
         return opts
 
@@ -644,6 +646,14 @@ class UserContext:
     def disable_sql_log(self):
         self.set_sql_log_options(SqlLogOptions.disabled())
         self.clear_sql_logs()
+
+    def disable_select_sql_log(self):
+        options = self.sql_log_options()
+        self.set_sql_log_options(SqlLogOptions(False, options.mutation))
+
+    def disable_mutation_sql_log(self):
+        options = self.sql_log_options()
+        self.set_sql_log_options(SqlLogOptions(options.select, False))
 
     def sql_logs(self) -> List['SqlLogEntry']:
         return self._resources.get("sql_logs", [])
@@ -679,6 +689,10 @@ class UserContext:
         ended_at = getattr(metadata, 'ended_at', started_at)
         entry = SqlLogEntry(
             operation=op,
+            comment=getattr(metadata, 'comment', None),
+            purpose=getattr(metadata, 'purpose', None),
+            audit_reason=getattr(metadata, 'audit_reason', None),
+            trace_path=list(getattr(metadata, 'trace_chain', [])),
             sql=getattr(metadata, 'parameterized_sql', ''),
             params=list(getattr(metadata, 'parameters', [])),
             debug_sql=getattr(metadata, 'debug_query', '') or '',
@@ -719,6 +733,10 @@ class UserContext:
         
         entry = SqlLogEntry(
             operation=operation,
+            comment=None,
+            purpose=None,
+            audit_reason=None,
+            trace_path=[],
             sql=getattr(query, 'sql', ""),
             params=getattr(query, 'params', []),
             debug_sql=debug_sql,
@@ -944,8 +962,8 @@ class SqlLogOperation(Enum):
 
 @dataclass
 class SqlLogOptions:
-    select: bool = False
-    mutation: bool = False
+    select: bool = True
+    mutation: bool = True
 
     @classmethod
     def disabled(cls) -> 'SqlLogOptions':
@@ -969,6 +987,10 @@ class SqlLogOptions:
 @dataclass
 class SqlLogEntry:
     operation: SqlLogOperation
+    comment: Optional[str]
+    purpose: Optional[str]
+    audit_reason: Optional[str]
+    trace_path: List[Any]
     sql: str
     params: List[Any]
     debug_sql: str
@@ -982,7 +1004,7 @@ class SqlLogEntry:
     result_summary: str
 
 class DiagnosticSqlLogSink:
-    """Explicit value-bearing diagnostic SQL destination; never installed by default."""
+    """Value-bearing diagnostic SQL destination; the text sink is installed by default."""
     def write(self, entry: SqlLogEntry) -> None:
         raise NotImplementedError
 
@@ -994,7 +1016,10 @@ class TextDiagnosticSqlLogSink(DiagnosticSqlLogSink):
         elapsed_us = int(entry.elapsed.total_seconds() * 1_000_000) if entry.elapsed else 0
         self._writer(
             f"[TeaQL SQL][{entry.operation.name.lower()}][{elapsed_us}us] "
-            f"{entry.result_summary}\n{entry.debug_sql}"
+            f"{entry.result_summary} comment={entry.comment!r} purpose={entry.purpose!r} "
+            f"auditReason={entry.audit_reason!r} tracePath={entry.trace_path!r}\n"
+            f"Parameterized SQL: {entry.sql} params={entry.params!r}\n"
+            f"Debug SQL: {entry.debug_sql}"
         )
 
 @dataclass

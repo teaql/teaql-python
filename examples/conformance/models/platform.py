@@ -1,6 +1,6 @@
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
 from teaql.core.value import Value
-from teaql.runtime import EntityKey, EntityRoot
+from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
 import itertools
 
 class Platform:
@@ -11,6 +11,12 @@ class Platform:
 
     def __init__(self, **kwargs):
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
+        if "id" in kwargs and "id" not in kwargs:
+            kwargs["id"] = kwargs.pop("id")
+        if "name" in kwargs and "name" not in kwargs:
+            kwargs["name"] = kwargs.pop("name")
+        if "version" in kwargs and "version" not in kwargs:
+            kwargs["version"] = kwargs.pop("version")
         self._action = "Update" if kwargs.get("id") else "Create"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
@@ -20,6 +26,12 @@ class Platform:
         self._work_item_list = kwargs.get("work_item_list", [])
         if "work_item_list" in kwargs or kwargs.get("id") is None:
             self._loaded_fields.add("work_item_list")
+        if self._work_item_list:
+            from models.work_item import WorkItem
+            self._work_item_list = [
+                item if isinstance(item, WorkItem) else WorkItem(**item)
+                for item in self._work_item_list
+            ]
         self._ledger_id = getattr(self, "id", None)
         if self._ledger_id is None:
             self._ledger_id = -next(self._teaql_temporary_ids)
@@ -51,10 +63,13 @@ class Platform:
         return self
 
     async def save(self, context):
-        if not self._comment or not self._comment.strip():
-            raise Exception("Security audit failure: audit_as() must be called before save()")
+        return await context.execute_graph_save(lambda: self._teaql_preflight_and_save(context))
 
-        self._teaql_attach_root(self._entity_root)
+    async def _teaql_preflight_and_save(self, context):
+        self._teaql_preflight_graph(context)
+        return await self._teaql_save_within_graph(context)
+
+    def _teaql_build_command(self):
         payload = {}
         if "id" in self._loaded_fields:
             payload["id"] = Value.I64(self.id)
@@ -62,28 +77,58 @@ class Platform:
             payload["name"] = Value.Text(self.name)
         if "version" in self._loaded_fields:
             payload["version"] = Value.I64(self.version)
-
         action = self._action
         if action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
         if action == "Create":
             cmd = InsertCommand("Platform", payload)
-        elif self._action == "Update":
-            cmd = UpdateCommand(
-                "Platform",
-                Value.from_any(getattr(self, "id", None)),
-                getattr(self, "version", None),
-            )
-            for k, v in payload.items():
-                if k not in ("id", "version"):
-                    cmd.value(k, v)
-        elif self._action == "Delete":
-            cmd = DeleteCommand(
-                "Platform",
-                Value.from_any(getattr(self, "id", None)),
-                getattr(self, "version", None),
-            )
+        elif action == "Update":
+            cmd = UpdateCommand("Platform", Value.from_any(getattr(self, "id", None)), getattr(self, "version", None))
+            for key, value in payload.items():
+                if key not in ("id", "version"): cmd.value(key, value)
+        else:
+            cmd = DeleteCommand("Platform", Value.from_any(getattr(self, "id", None)), getattr(self, "version", None))
+        return action, cmd
+
+    def _teaql_preflight_graph(self, context):
+        if not self._comment or not self._comment.strip():
+            raise Exception("Security audit failure: audit_as() must be called before save()")
+        if self._action == "Update":
+            if "id" not in self._loaded_fields:
+                raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
+            if "name" not in self._loaded_fields:
+                raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity")])
+            if "version" not in self._loaded_fields:
+                raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
+        _action, cmd = self._teaql_build_command()
+        try:
+            context.check_and_fix_mutation(cmd)
+        finally:
+            for field, value in getattr(cmd, "values", {}).items():
+                if field not in ("id", "version"):
+                    self._entity_root.set(self._teaql_entity_key(), field, value)
+        for index, child in enumerate(self._work_item_list):
+            child._teaql_attach_root(self._entity_root)
+            setattr(child, "platform", self)
+            child._loaded_fields.add("platform")
+            child._entity_root.set(child._teaql_entity_key(), "platform", Value.Object(self))
+            child.audit_as(self._comment)
+            try:
+                child._teaql_preflight_graph(context)
+            except CheckException as error:
+                prefix = ObjectLocation().property("work_item_list").index(index)
+                raise CheckException([
+                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message)
+                    for v in error.violations
+                ]) from error
+
+    async def _teaql_save_within_graph(self, context):
+        if not self._comment or not self._comment.strip():
+            raise Exception("Security audit failure: audit_as() must be called before save()")
+
+        self._teaql_attach_root(self._entity_root)
+        action, cmd = self._teaql_build_command()
 
 
         req = MutationRequest(cmd)
@@ -104,28 +149,72 @@ class Platform:
             raise RuntimeError(
                 "Mutation provider did not return authoritative persisted state for Platform"
             )
+        rollback_payload = {field: getattr(self, field, None) for field in self._loaded_fields | {"id", "version"}}
+        rollback_ledger_id = self._ledger_id
+        rollback_action = self._action
+        rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        for field, value in persisted.items():
-            setattr(self, field, value)
+        if "id" in persisted:
+            self.id = persisted["id"]
+            self._loaded_fields.add("id")
+        elif "id" in persisted:
+            self.id = persisted["id"]
+            self._loaded_fields.add("id")
+        if "name" in persisted:
+            self.name = persisted["name"]
+            self._loaded_fields.add("name")
+        elif "name" in persisted:
+            self.name = persisted["name"]
+            self._loaded_fields.add("name")
+        if "version" in persisted:
+            self.version = persisted["version"]
+            self._loaded_fields.add("version")
+        elif "version" in persisted:
+            self.version = persisted["version"]
+            self._loaded_fields.add("version")
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
             self._entity_root.rekey(old_key, new_key)
-        self._loaded_fields.update(persisted.keys())
+        def rollback_entity():
+            for field, value in rollback_payload.items():
+                setattr(self, field, value)
+            self._ledger_id = rollback_ledger_id
+            self._action = rollback_action
+            self._loaded_fields = rollback_loaded_fields
+            if old_key != new_key:
+                self._entity_root.rekey(new_key, old_key)
+        context.after_graph_rollback(rollback_entity)
         if action != "Delete":
             self._action = "Update"
 
         cascade_relations = []
-        cascade_relations.append((self._work_item_list, "update_platform"))
+        cascade_relations.append(("work_item_list", self._work_item_list, "update_platform"))
         if action != "Delete":
-            for children, updater in cascade_relations:
-                for child in children:
+            for relation_name, children, updater in cascade_relations:
+                for index, child in enumerate(children):
+                    child._teaql_attach_root(self._entity_root)
                     getattr(child, updater)(self)
                     child.audit_as(self._comment)
-                    await child.save(context)
-        self._entity_root.clear_entity(new_key)
-        if getattr(self, "version", None) is not None:
-            self._entity_root.set_original_version(new_key, int(self.version))
+                    try:
+                        await child._teaql_save_within_graph(context)
+                    except CheckException as error:
+                        prefix = ObjectLocation().property(relation_name).index(index)
+                        raise CheckException([
+                            CheckResult(
+                                violation.rule_id,
+                                violation.location.prefixed_by(prefix),
+                                violation.input_value,
+                                violation.system_value,
+                                violation.message,
+                            )
+                            for violation in error.violations
+                        ]) from error
+        def commit_entity():
+            self._entity_root.clear_entity(new_key)
+            if getattr(self, "version", None) is not None:
+                self._entity_root.set_original_version(new_key, int(self.version))
+        context.after_graph_commit(commit_entity)
         return self
 
     def update_id(self, value):

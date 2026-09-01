@@ -1,5 +1,15 @@
-from teaql.runtime import CheckResult, RuntimeModule
+from datetime import datetime, timezone
+from teaql.runtime import CheckResult, ObjectLocation, RuntimeModule
 from teaql.core.value import Value
+try:
+    from teaql.core.graph import GraphNode
+except ImportError:
+    class GraphNode:
+        def __init__(self, entity):
+            self.entity, self.fields = entity, {}
+        def set(self, field, value):
+            self.fields[field] = value
+            return self
 from models.platform import Platform
 from models.work_item import WorkItem
 
@@ -22,9 +32,9 @@ class _PlatformChecker:
         operation = context.get_resource("fix_operation")
         now = context.get_resource("fix_time")
         if (operation == "insert" and "name" not in record) or ("name" in record and _teaql_is_null(record["name"])):
-            results.append(CheckResult("required", "name"))
+            results.append(CheckResult("required", ObjectLocation().property("name")))
         if "name" in record and _teaql_raw(record["name"]) is not None and len(_teaql_raw(record["name"])) > 100:
-            results.append(CheckResult("max_length", "name", _teaql_raw(record["name"]), 100))
+            results.append(CheckResult("max_length", ObjectLocation().property("name"), _teaql_raw(record["name"]), 100))
 
 
 
@@ -33,17 +43,17 @@ class _WorkItemChecker:
         operation = context.get_resource("fix_operation")
         now = context.get_resource("fix_time")
         if (operation == "insert" and "title" not in record) or ("title" in record and _teaql_is_null(record["title"])):
-            results.append(CheckResult("required", "title"))
+            results.append(CheckResult("required", ObjectLocation().property("title")))
         if "title" in record and _teaql_raw(record["title"]) is not None and not len(_teaql_raw(record["title"])) >= 1:
-            results.append(CheckResult("min_length", "title", _teaql_raw(record["title"]), 1))
+            results.append(CheckResult("min_length", ObjectLocation().property("title"), _teaql_raw(record["title"]), 1))
         if "title" in record and _teaql_raw(record["title"]) is not None and len(_teaql_raw(record["title"])) > 80:
-            results.append(CheckResult("max_length", "title", _teaql_raw(record["title"]), 80))
+            results.append(CheckResult("max_length", ObjectLocation().property("title"), _teaql_raw(record["title"]), 80))
 
         if "description" in record and _teaql_raw(record["description"]) is not None and len(_teaql_raw(record["description"])) > 100:
-            results.append(CheckResult("max_length", "description", _teaql_raw(record["description"]), 100))
+            results.append(CheckResult("max_length", ObjectLocation().property("description"), _teaql_raw(record["description"]), 100))
 
         if (operation == "insert" and "platform" not in record) or ("platform" in record and _teaql_is_null(record["platform"])):
-            results.append(CheckResult("required", "platform"))
+            results.append(CheckResult("required", ObjectLocation().property("platform")))
 
 
 
@@ -51,4 +61,6 @@ class _WorkItemChecker:
 GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Platform)
     .checker("Platform", _PlatformChecker()).entity(WorkItem)
     .checker("WorkItem", _WorkItemChecker())
+
+    .root_graph(GraphNode("Platform").set("id", 1).set("name", "Runtime Example"))
 )

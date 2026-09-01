@@ -18,8 +18,8 @@ def test_user_context():
 def test_user_context_extensions():
     from teaql.runtime.context import SqlLogOptions, SqlLogOperation, TextDiagnosticSqlLogSink
     context = UserContext.new()
-    assert not context.sql_log_options().select
-    assert not context.sql_log_options().mutation
+    assert context.sql_log_options().select
+    assert context.sql_log_options().mutation
     
     # Logs
     context.set_sql_log_options(SqlLogOptions(select=True, mutation=True))
@@ -39,7 +39,8 @@ def test_user_context_extensions():
     context.record_metadata_log(MockMetadata())
     assert len(context.sql_logs()) == 1
     assert context.sql_logs()[0].debug_sql == "SELECT 1"
-    assert output[0].endswith("\nSELECT 1")
+    assert output[0].endswith("\nDebug SQL: SELECT 1")
+    assert "Parameterized SQL:" in output[0]
     
     # SQL logs
     class MockQuery:
@@ -55,6 +56,15 @@ def test_user_context_extensions():
     context.clear_sql_logs()
     assert len(context.sql_logs()) == 0
 
+    context.disable_sql_log()
+    context.enable_all_sql_log()
+    context.disable_select_sql_log()
+    assert not context.sql_log_options().select
+    assert context.sql_log_options().mutation
+    context.enable_all_sql_log()
+    context.disable_mutation_sql_log()
+    assert context.sql_log_options().select
+    assert not context.sql_log_options().mutation
     context.disable_sql_log()
     output.clear()
     context.record_metadata_log(MockMetadata())

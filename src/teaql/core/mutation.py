@@ -8,6 +8,8 @@ class TraceNode:
     entity_type: str = ""
     entity_id: Optional[int] = None
     comment: str = ""
+    kind: str = "entity"
+    name: str = ""
 
 @dataclass
 class InsertCommand:
@@ -146,4 +148,3 @@ class MutationRequest:
     @classmethod
     def Batch(cls, cmds: List['MutationRequest']) -> 'MutationRequest':
         return cls(cmds)
-

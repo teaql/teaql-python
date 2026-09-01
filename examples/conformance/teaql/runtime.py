@@ -1,8 +1,80 @@
 from dataclasses import dataclass
 from datetime import timedelta
 from enum import Enum
+import asyncio
+import builtins
+import contextvars
+import time
+
+_ID_SET_STORE = {}
+_ID_SET_LOCKS = {}
 
 _SCHEMA_INVOCATION = object()
+
+_CHECK_MESSAGES = {
+    "en": {
+        "required": "{location} is required",
+        "min": "{location} is below the minimum",
+        "max": "{location} exceeds the maximum",
+        "min_length": "{location} is too short",
+        "max_length": "{location} is too long",
+    },
+    "zh-CN": {
+        "required": "{location} 为必填项",
+        "min": "{location} 小于最小值",
+        "max": "{location} 超过最大值",
+        "min_length": "{location} 长度不足",
+        "max_length": "{location} 长度过长",
+    },
+}
+_SUPPORTED_LOCALES = {"en", "zh-CN", "zh-TW", "ja", "ko", "de", "fr", "es", "pt", "ar", "th", "id", "fil", "uk", "vi"}
+_LOCALE_ALIASES = {"zh": "zh-CN", "zh-hans": "zh-CN", "cn": "zh-CN", "zh-hant": "zh-TW", "tw": "zh-TW", "en-us": "en", "en-gb": "en"}
+
+@dataclass(frozen=True)
+class ObjectLocation:
+    segments: tuple = ()
+
+    @classmethod
+    def root(cls):
+        return cls()
+
+    def property(self, name):
+        if not isinstance(name, str) or not name:
+            raise ValueError("A canonical KSML property name is required")
+        return ObjectLocation(self.segments + (("property", name),))
+
+    def index(self, value):
+        if value < 0:
+            raise ValueError("Object location index must not be negative")
+        return ObjectLocation(self.segments + (("index", value),))
+
+    def prefixed_by(self, prefix):
+        return ObjectLocation(prefix.segments + self.segments)
+
+    @builtins.property
+    def model_path(self):
+        result = ""
+        for kind, value in self.segments:
+            result += f"[{value}]" if kind == "index" else ("." if result else "") + value
+        return result
+
+    @builtins.property
+    def native_path(self):
+        # Python's generated API uses canonical snake_case property names.
+        return self.model_path
+
+    @builtins.property
+    def instance_path(self):
+        def lower_camel(value):
+            parts = value.split("_")
+            return parts[0] + "".join(part[:1].upper() + part[1:] for part in parts[1:])
+        def escape(value):
+            return str(value).replace("~", "~0").replace("/", "~1")
+        return "".join("/" + escape(lower_camel(value) if kind == "property" else value)
+                       for kind, value in self.segments)
+
+    def __str__(self):
+        return self.native_path
 
 @dataclass
 class CheckResult:
@@ -23,6 +95,13 @@ class CheckException(Exception):
 class ContextEntityRef:
     entity: str
     id: int
+
+@dataclass(frozen=True)
+class FixEvidence:
+    entity_type: str
+    model_path: str
+    source: str
+    source_label: str
 
 class ContextRootError(Exception):
     def __init__(self, reason, expected_type, active_root=None):
@@ -76,12 +155,49 @@ class SqlLogOperation(str, Enum):
 @dataclass(frozen=True)
 class SqlLogEntry:
     operation: SqlLogOperation
+    comment: object
+    purpose: object
+    audit_reason: object
+    trace_path: tuple
     sql: str
     params: tuple
+    debug_sql: str
     elapsed: timedelta
     result_count: object = None
     affected_rows: object = None
     result_summary: str = ""
+
+class DiagnosticSqlLogSink:
+    """Value-bearing diagnostic SQL destination; the text sink is installed by default."""
+    def write(self, entry):
+        raise NotImplementedError
+
+class TextDiagnosticSqlLogSink(DiagnosticSqlLogSink):
+    def __init__(self, writer=print): self._writer = writer
+    def write(self, entry):
+        trace = " -> ".join(f"{key}:{value}" for key, value in entry.trace_path)
+        comment = "" if entry.comment is None else str(entry.comment)
+        purpose = "" if entry.purpose is None else str(entry.purpose)
+        audit_reason = "" if entry.audit_reason is None else str(entry.audit_reason)
+        self._writer(
+            f"[TeaQL SQL][{entry.operation.value}][{int(entry.elapsed.total_seconds() * 1000000)}us] "
+            f"{entry.result_summary} comment={comment} purpose={purpose} "
+            f"auditReason={audit_reason} tracePath=[{trace}]\n"
+            f"Parameterized SQL: {entry.sql} params={entry.params!r}\n"
+            f"Debug SQL: {entry.debug_sql}")
+
+def _diagnostic_sql_literal(value):
+    if value is None: return "NULL"
+    if isinstance(value, bool): return "1" if value else "0"
+    if isinstance(value, (int, float)): return str(value)
+    if isinstance(value, (bytes, bytearray)): return "X'" + bytes(value).hex().upper() + "'"
+    return "'" + str(value).replace("'", "''") + "'"
+
+def _render_diagnostic_sql(sql, params):
+    rendered = sql
+    for value in params:
+        rendered = rendered.replace("?", _diagnostic_sql_literal(value), 1)
+    return rendered
 
 @dataclass(frozen=True)
 class RawAuditEvent:
@@ -113,10 +229,40 @@ class UserContext:
         self._continuous_page_cursors = {}
         self._continuous_page_plan = "DISABLED"
         self._continuous_page_cursor_id = None
-        self._sql_log_mode = "all"
+        self._id_set_plan = "ID_SET_DISABLED"
+        self._id_set_count = 0
+        self._id_set_count_accuracy = "UNKNOWN"
+        self._query_sql_log_enabled = True
+        self._mutation_sql_log_enabled = True
         self._sql_logs = []
+        self._resources["diagnostic_sql_log_sink"] = TextDiagnosticSqlLogSink()
         self._checker_registry = {}
         self._checked_mutations = set()
+        self._graph_save_active = False
+        self._graph_save_lock = asyncio.Lock()
+        self._graph_save_owner = contextvars.ContextVar(
+            f"teaql_graph_save_owner_{id(self)}", default=None)
+        self._graph_commit_actions = []
+        self._graph_rollback_actions = []
+
+    def begin_fix_evidence(self):
+        self._resources["fix_evidence_current"] = []
+        return self
+
+    def record_fix_evidence(self, entity_type, model_path, source, source_label):
+        normalized = str(source_label).lower()
+        if not entity_type or not model_path or source not in ("clock", "context") or not source_label or "authorization" in normalized or "cookie" in normalized or "token=" in normalized:
+            raise ValueError("Fix evidence must contain only safe framework provenance labels")
+        self._resources.setdefault("fix_evidence_current", []).append(FixEvidence(entity_type, model_path, source, source_label))
+        return self
+
+    def finish_fix_evidence(self):
+        self._resources["fix_evidence_last"] = tuple(self._resources.get("fix_evidence_current", ()))
+        self._resources.pop("fix_evidence_current", None)
+        return self
+
+    def last_fix_evidence(self):
+        return self._resources.get("fix_evidence_last", ())
 
     @classmethod
     def new(cls):
@@ -129,17 +275,99 @@ class UserContext:
         self._resources[resource_type] = resource
         return self
 
+    def set_locale_code(self, code):
+        if not isinstance(code, str) or not code.strip():
+            raise ValueError(f"Unsupported locale: {code}")
+        normalized = code.strip().replace("_", "-")
+        canonical = next((value for value in _SUPPORTED_LOCALES if value.lower() == normalized.lower()), None)
+        canonical = canonical or _LOCALE_ALIASES.get(normalized.lower())
+        if canonical is None:
+            raise ValueError(f"Unsupported locale: {code}")
+        self.insert_resource("locale", canonical)
+        return self
+
+    def set_language_code(self, code):
+        return self.set_locale_code(code)
+
+    def _translate_check_results(self, results):
+        locale = self.get_resource("locale") or "en"
+        messages = _CHECK_MESSAGES.get(locale, _CHECK_MESSAGES["en"])
+        for result in results:
+            key = str(result.rule_id).lower()
+            if key == "min_str_len": key = "min_length"
+            if key == "max_str_len": key = "max_length"
+            template = messages.get(key) or _CHECK_MESSAGES["en"].get(key) or f"checker.{key}"
+            location = getattr(result.location, "native_path", str(result.location))
+            result.message = template.replace("{location}", location)
+        return results
+
+    async def execute_graph_save(self, work):
+        if self._graph_save_owner.get() is not None:
+            return await work()
+        async with self._graph_save_lock:
+            provider = self.require_resource("dataService")
+            begin = getattr(provider, "begin", None)
+            if not callable(begin):
+                raise RuntimeError("Configured dataService does not support graph transactions")
+            transaction = await begin(self)
+            owner_token = self._graph_save_owner.set(object())
+            self._graph_save_active = True
+            self._graph_commit_actions = []
+            self._graph_rollback_actions = []
+            from datetime import datetime
+            self.insert_resource("fix_time", datetime.now())
+            self.begin_fix_evidence()
+            self.insert_resource("dataService", transaction)
+            try:
+                result = await work()
+            except BaseException:
+                try:
+                    await transaction.rollback(self)
+                finally:
+                    for action in reversed(self._graph_rollback_actions):
+                        action()
+                raise
+            else:
+                try:
+                    await transaction.commit(self)
+                except BaseException:
+                    try:
+                        await transaction.rollback(self)
+                    finally:
+                        for action in reversed(self._graph_rollback_actions):
+                            action()
+                    raise
+                for action in self._graph_commit_actions:
+                    action()
+                return result
+            finally:
+                self.insert_resource("dataService", provider)
+                self._graph_save_active = False
+                self._graph_commit_actions = []
+                self._graph_rollback_actions = []
+                self._resources.pop("fix_time", None)
+                self.finish_fix_evidence()
+                self._graph_save_owner.reset(owner_token)
+
+    def after_graph_commit(self, work):
+        if not self._graph_save_active:
+            raise RuntimeError("No graph save is active")
+        self._graph_commit_actions.append(work)
+
+    def after_graph_rollback(self, work):
+        if not self._graph_save_active:
+            raise RuntimeError("No graph save is active")
+        self._graph_rollback_actions.append(work)
+
     def install(self, module):
         """Install a passive metadata manifest; this never changes a database schema."""
         module.apply_to(self)
         return self
 
     async def ensure_schema(self):
-        """Reconcile schema through this context's configured data service."""
-        service = self._resources.get("dataService")
-        if service is None:
-            raise RuntimeError("missing schema provider: UserContext resource dataService")
-        await service._ensure_schema(self, _SCHEMA_INVOCATION)
+        """Explicitly reconcile schema and generated bootstrap data."""
+        provider = self.require_resource("dataService")
+        await provider._ensure_schema(self, _SCHEMA_INVOCATION)
 
     def check_and_fix_mutation(self, mutation):
         checker = self._checker_registry.get(getattr(mutation, "entity", None))
@@ -151,15 +379,21 @@ class UserContext:
         from datetime import datetime
         from teaql.core.value import Value
         record = {name: Value.from_any(value) for name, value in raw_record.items()}
-        self.insert_resource("fix_time", datetime.now())
+        owns_fix_time = self._resources.get("fix_time") is None
+        if owns_fix_time:
+            self.insert_resource("fix_time", datetime.now())
+            self.begin_fix_evidence()
         self.insert_resource("fix_operation", "insert" if hasattr(mutation, "payload") else "update")
         results = []
         try:
             checker.check_and_fix(self, record, None, results)
         finally:
-            self._resources.pop("fix_time", None)
+            if owns_fix_time:
+                self._resources.pop("fix_time", None)
+                self.finish_fix_evidence()
             self._resources.pop("fix_operation", None)
         if results:
+            self._translate_check_results(results)
             raise CheckException(results)
         raw_record.clear()
         raw_record.update({name: getattr(value, "val", value) for name, value in record.items()})
@@ -248,8 +482,33 @@ class UserContext:
     def continuous_page_plan(self): return self._continuous_page_plan
     def continuous_page_cursor_id(self): return self._continuous_page_cursor_id
 
+    def id_set_get(self, key):
+        retained = _ID_SET_STORE.get(key)
+        if retained is not None and retained["expires_at"] <= time.time():
+            _ID_SET_STORE.pop(key, None)
+            return None
+        return retained
+
+    def id_set_put(self, key, ids, ttl_seconds):
+        if len(ids) * 8 > 256 * 1024 * 1024:
+            raise ValueError("retained ID set exceeds store memory ceiling")
+        while len(_ID_SET_STORE) >= 64:
+            oldest = min(_ID_SET_STORE, key=lambda item: _ID_SET_STORE[item]["expires_at"])
+            _ID_SET_STORE.pop(oldest, None)
+        _ID_SET_STORE[key] = {"ids": tuple(ids), "expires_at": time.time() + ttl_seconds}
+
+    def id_set_lock(self, key):
+        return _ID_SET_LOCKS.setdefault((id(asyncio.get_running_loop()), key), asyncio.Lock())
+
+    def observe_id_set(self, plan, accuracy="UNKNOWN", count=0):
+        self._id_set_plan, self._id_set_count_accuracy, self._id_set_count = plan, accuracy, count
+
+    def id_set_plan(self): return self._id_set_plan
+    def id_set_count(self): return self._id_set_count, self._id_set_count_accuracy
+
     def _set_sql_log_mode(self, mode):
-        self._sql_log_mode = mode
+        self._query_sql_log_enabled = mode in ("all", "select")
+        self._mutation_sql_log_enabled = mode in ("all", "mutation")
         self._sql_logs = []
         return self
 
@@ -257,21 +516,35 @@ class UserContext:
     def enable_select_sql_log(self): return self._set_sql_log_mode("select")
     def enable_mutation_sql_log(self): return self._set_sql_log_mode("mutation")
     def disable_sql_log(self): return self._set_sql_log_mode("disabled")
+    def disable_select_sql_log(self):
+        self._query_sql_log_enabled = False
+        return self
+    def disable_mutation_sql_log(self):
+        self._mutation_sql_log_enabled = False
+        return self
     def clear_sql_logs(self): self._sql_logs = []
     def sql_logs(self): return list(self._sql_logs)
+    def with_diagnostic_sql_log_sink(self, sink):
+        self._resources["diagnostic_sql_log_sink"] = sink
+        return self
+    def set_diagnostic_sql_log_sink(self, sink):
+        self._resources["diagnostic_sql_log_sink"] = sink
 
     def record_sql_evidence(self, operation, sql, params, elapsed_micros,
-                            result_count=None, affected_rows=None):
+                            result_count=None, affected_rows=None, comment=None,
+                            purpose=None, audit_reason=None, trace_path=()):
         is_select = operation == SqlLogOperation.Select
-        if (self._sql_log_mode == "disabled"
-                or (self._sql_log_mode == "select" and not is_select)
-                or (self._sql_log_mode == "mutation" and is_select)):
+        if ((is_select and not self._query_sql_log_enabled)
+                or (not is_select and not self._mutation_sql_log_enabled)):
             return
         summary = (f"{result_count} rows returned" if result_count is not None
                    else f"{affected_rows} rows affected")
-        self._sql_logs.append(SqlLogEntry(
-            operation, sql, tuple(params), timedelta(microseconds=elapsed_micros),
-            result_count, affected_rows, summary))
+        entry = SqlLogEntry(operation, comment, purpose, audit_reason, tuple(trace_path),
+                            sql, tuple(params), _render_diagnostic_sql(sql, params),
+                            timedelta(microseconds=elapsed_micros), result_count, affected_rows, summary)
+        self._sql_logs.append(entry)
+        sink = self._resources.get("diagnostic_sql_log_sink")
+        if sink is not None: sink.write(entry)
 
     def initialize_audit(self, standard_sink, app_sink=None):
         self._standard_audit_sink = standard_sink
@@ -308,10 +581,12 @@ class UserContext:
 
 class RuntimeModule:
     """Immutable generated runtime manifest."""
-    def __init__(self, entities=(), schemas=None, checkers=None):
+    def __init__(self, entities=(), schemas=None, checkers=None, root_graphs=(), initial_graphs=()):
         self.entities = tuple(entities)
         self.schemas = dict(schemas or {})
         self.checkers = dict(checkers or {})
+        self.root_graphs = tuple(root_graphs)
+        self.initial_graphs = tuple(initial_graphs)
 
     def entity(self, entity):
         self.entities = (*self.entities, entity)
@@ -321,12 +596,24 @@ class RuntimeModule:
         self.checkers[entity] = checker
         return self
 
+    def root_graph(self, graph):
+        self.root_graphs = (*self.root_graphs, graph)
+        return self
+
+    def initial_graph(self, graph):
+        self.initial_graphs = (*self.initial_graphs, graph)
+        return self
+
     def and_module(self, other):
         return RuntimeModule(self.entities + other.entities,
                              {**self.schemas, **other.schemas},
-                             {**self.checkers, **other.checkers})
+                             {**self.checkers, **other.checkers},
+                             self.root_graphs + other.root_graphs,
+                             self.initial_graphs + other.initial_graphs)
 
     def apply_to(self, context):
         context.insert_resource("entities", self.entities)
         context.insert_resource("entity_schemas", dict(self.schemas))
         context._checker_registry.update(self.checkers)
+        context.insert_resource("root_graphs", self.root_graphs)
+        context.insert_resource("initial_graphs", self.initial_graphs)

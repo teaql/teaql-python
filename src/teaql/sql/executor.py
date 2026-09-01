@@ -16,7 +16,7 @@ from teaql.data_service import (
     DataServiceOperation, StreamChunk
 )
 from teaql.core.mutation import (
-    InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand
+    InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand, TraceNode
 )
 from .types import CompiledQuery, SqlCompileError
 from .dialect import SqlDialect
@@ -187,10 +187,19 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         execution_query, retained_order, retained_empty = await self._prepare_id_set_page(context, request.query)
         if retained_empty:
             now = datetime.now()
+            provider = str(self.dialect.kind()).lower()
             metadata = ExecutionMetadata(
-                backend="sql", operation=DataServiceOperation.Query,
+                backend=provider, operation=DataServiceOperation.Query,
                 started_at=now, ended_at=now, result_count=0,
-                trace_chain=request.trace_chain, comment=request._comment,
+                trace_chain=[
+                    TraceNode(kind="operation", name="query", comment="query"),
+                    TraceNode(kind="request", name=request.query.entity,
+                              comment=request.query.entity),
+                    *request.trace_chain,
+                    TraceNode(kind="provider", name=provider, comment=provider),
+                    TraceNode(kind="sql", name="select", comment="select"),
+                ],
+                comment=request._comment, purpose=request._purpose,
             )
             if context is not None:
                 context.record_metadata_log(metadata)
@@ -227,8 +236,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         except Exception as e:
             raise TransportError(e)
 
-        await self._enhance_relations(context, rows, request.query)
-        await self._enhance_relation_aggregates(context, rows, request.query)
+        await self._enhance_relations(context, rows, request)
+        await self._enhance_relation_aggregates(context, rows, request)
         if retained_order:
             by_id = {int(row["id"]): row for row in rows if row.get("id") is not None}
             rows = [by_id[entity_id] for entity_id in retained_order if entity_id in by_id]
@@ -274,16 +283,25 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         
         end = datetime.now()
         
+        provider = str(self.dialect.kind()).lower()
+        trace_path = [
+            TraceNode(kind="operation", name="query", comment="query"),
+            TraceNode(kind="request", name=request.query.entity, comment=request.query.entity),
+            *request.trace_chain,
+            TraceNode(kind="provider", name=provider, comment=provider),
+            TraceNode(kind="sql", name="select", comment="select"),
+        ]
         metadata = ExecutionMetadata(
-            backend="sql",
+            backend=provider,
             operation=DataServiceOperation.Query,
             started_at=start,
             ended_at=end,
             parameterized_sql=compiled.sql_with_comment(),
             parameters=list(compiled.params),
             result_count=len(rows),
-            trace_chain=request.trace_chain,
+            trace_chain=trace_path,
             comment=request._comment,
+            purpose=request._purpose,
             debug_query=compiled.debug_sql(self.dialect.kind())
         )
         if context is not None:
@@ -393,7 +411,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                  _canonical_id_set_value(normalized))
         return "teaql:id-set:v1:" + hashlib.sha256(repr(scope).encode("utf-8")).hexdigest()
 
-    async def _enhance_relations(self, context, parents: List[Dict[str, Any]], query: SelectQuery) -> None:
+    async def _enhance_relations(self, context, parents: List[Dict[str, Any]], request: QueryRequest) -> None:
+        query = request.query
         if not parents or not query.relations:
             return
         parent_desc = self.schema_provider.get_entity(query.entity)
@@ -433,7 +452,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         probe.and_filter(BinaryExpr(
                             ColumnExpr(relation.foreign_key), BinaryOp.Eq,
                             ValueExpr(Value.from_any(parent_id))))
-                        children.extend((await self.query(context, QueryRequest(probe))).rows)
+                        child_trace = [*request.trace_chain, TraceNode(
+                            kind="relation", name=f"{query.entity}.{load.name}",
+                            comment=load.name)]
+                        children.extend((await self.query(context, QueryRequest(
+                            probe, child_trace, request._comment, request._purpose))).rows)
                     selected_plan = "bounded_probes"
                     probe_count = len(parent_ids)
                 else:
@@ -442,7 +465,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
                     if limited:
                         child_query.partition_by_field(relation.foreign_key)
-                    children = (await self.query(context, QueryRequest(child_query))).rows
+                    child_trace = [*request.trace_chain, TraceNode(
+                        kind="relation", name=f"{query.entity}.{load.name}",
+                        comment=load.name)]
+                    children = (await self.query(context, QueryRequest(
+                        child_query, child_trace, request._comment, request._purpose))).rows
                     selected_plan = "window" if limited else "batch"
                     probe_count = 0
                 for child in children:
@@ -467,7 +494,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 relation_scope.failure(error)
                 raise
 
-    async def _enhance_relation_aggregates(self, context, parents: List[Dict[str, Any]], query: SelectQuery) -> None:
+    async def _enhance_relation_aggregates(self, context, parents: List[Dict[str, Any]], request: QueryRequest) -> None:
+        query = request.query
         if not parents or not query.relation_aggregates:
             return
         parent_desc = self.schema_provider.get_entity(query.entity)
@@ -498,7 +526,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             values = Value.List([Value.from_any(value) for value in parent_ids])
             child_query.and_filter(BinaryExpr(
                 ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
-            rows = (await self.query(context, QueryRequest(child_query))).rows
+            child_trace = [*request.trace_chain, TraceNode(
+                kind="relation", name=f"{query.entity}.{aggregate.relation_name}",
+                comment=aggregate.relation_name)]
+            rows = (await self.query(context, QueryRequest(
+                child_query, child_trace, request._comment, request._purpose))).rows
             child_desc = self.schema_provider.get_entity(relation.target_entity)
             foreign_property = child_desc.property_by_name(relation.foreign_key) if child_desc else None
             if foreign_property and foreign_property.column_name_val != relation.foreign_key:
@@ -668,8 +700,16 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     f"authoritative persisted row not found for {req_data.entity}"))
             persisted_record = persisted_rows[0]
 
+        provider = str(self.dialect.kind()).lower()
+        trace_path = [
+            TraceNode(kind="operation", name="mutation", comment="mutation"),
+            TraceNode(kind="entity", name=req_data.entity, comment=req_data.entity),
+            *request.trace_chain(),
+            TraceNode(kind="provider", name=provider, comment=provider),
+            TraceNode(kind="sql", name=op, comment=op),
+        ]
         metadata = ExecutionMetadata(
-            backend="sql",
+            backend=provider,
             operation={
                 "insert": DataServiceOperation.Insert,
                 "update": DataServiceOperation.Update,
@@ -681,8 +721,9 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             parameterized_sql=compiled.sql_with_comment(),
             parameters=list(compiled.params),
             affected_rows=affected_rows,
-            trace_chain=request.trace_chain(),
+            trace_chain=trace_path,
             comment=request.comment(),
+            audit_reason=request.comment(),
             debug_query=compiled.debug_sql(self.dialect.kind())
         )
         if context is not None:

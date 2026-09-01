@@ -67,6 +67,8 @@ class ExecutionMetadata:
     result_count: Optional[int] = None
     trace_chain: List[TraceNode] = field(default_factory=list)
     comment: Optional[str] = None
+    purpose: Optional[str] = None
+    audit_reason: Optional[str] = None
     backend_request_id: Optional[str] = None
     debug_query: Optional[str] = None
 
