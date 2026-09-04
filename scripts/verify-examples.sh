@@ -22,8 +22,11 @@ fi
 
 PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
 PYTHONPATH="$repo/examples/school-management:$repo/src" python -m app.main
-PYTHONPATH="$repo/examples/order-management/python-lib-core:$repo/src" python "$repo/examples/order-management/python-app-console/app.py"
+order_management_tmp="$(mktemp -d)"
 task_board_tmp="$(mktemp -d)"
-trap 'rm -rf "$task_board_tmp"' EXIT
+trap 'rm -rf "$order_management_tmp" "$task_board_tmp"' EXIT
+TEAQL_ORDER_MANAGEMENT_DB="$order_management_tmp/order.db" \
+  PYTHONPATH="$repo/examples/order-management/python-lib-core:$repo/src" \
+  python "$repo/examples/order-management/python-app-console/app.py"
 TEAQL_TASK_BOARD_DB="$task_board_tmp/task_board.db" PYTHONPATH="$repo/examples/task_board:$repo/src" python "$repo/examples/task_board/main.py"
 echo "PASS: all Python examples"

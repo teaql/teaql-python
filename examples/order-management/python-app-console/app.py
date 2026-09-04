@@ -1,6 +1,7 @@
 import asyncio
 from datetime import date, datetime
 from decimal import Decimal
+import os
 from pathlib import Path
 import sys
 
@@ -64,7 +65,7 @@ async def seed(context):
 
 
 async def main():
-    database = ROOT / ".local" / "order.db"
+    database = Path(os.environ.get("TEAQL_ORDER_MANAGEMENT_DB", ROOT / ".local" / "order.db"))
     if not database.exists():
         print(f"[database] {database} was not found; TeaQL will create it")
     database.parent.mkdir(parents=True, exist_ok=True)
