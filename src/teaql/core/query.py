@@ -321,7 +321,14 @@ class SelectQuery:
             self.having_expr = expr
         return self
 
-    def order_by(self, order: OrderBy) -> 'SelectQuery':
+    def order_by(self, order: OrderBy | str, direction: str | None = None) -> 'SelectQuery':
+        if isinstance(order, str):
+            normalized = (direction or "asc").lower()
+            if normalized not in ("asc", "desc"):
+                raise ValueError(f"unsupported order direction: {direction}")
+            order = OrderBy.asc(order) if normalized == "asc" else OrderBy.desc(order)
+        elif direction is not None:
+            raise TypeError("direction is only valid when order is a field name")
         self.order_by_items.append(order)
         return self
 

@@ -72,7 +72,6 @@
         },
         "zh-CN": {
             "vocabulary": {
-                "property.platform.baseUrl": "https"
             },
             "messages": {
             }

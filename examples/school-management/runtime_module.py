@@ -1,6 +1,8 @@
 import asyncio
 from datetime import datetime, timezone
-from teaql.runtime import CheckResult, ContextEntityRef, ObjectLocation, RuntimeModule
+from teaql.runtime import CheckResult, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
+from teaql.core.value import DataType
 from Q import Q
 from teaql.core.value import Value
 try:
@@ -136,6 +138,18 @@ class _SchoolChecker:
 
 
 
+_Platform_DESCRIPTOR = (EntityDescriptor("Platform")
+    .table_name("platform_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").required()).property(PropertyDescriptor("base_url", DataType.Text).column_name("base_url").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").required()).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").required()).property(PropertyDescriptor("version", DataType.I64).column_name("version").is_version().required()).relation(RelationDescriptor("school_type_list", "SchoolType").local("id").foreign("platform").many()).relation(RelationDescriptor("school_list", "School").local("id").foreign("platform").many())
+)
+
+_SchoolType_DESCRIPTOR = (EntityDescriptor("SchoolType")
+    .table_name("school_type_data").property(PropertyDescriptor("platform", DataType.I64).column_name("platform").required()).property(PropertyDescriptor("id", DataType.I64).column_name("id").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").required()).property(PropertyDescriptor("code", DataType.Text).column_name("code").required()).property(PropertyDescriptor("display_order", DataType.Decimal).column_name("display_order").required()).property(PropertyDescriptor("version", DataType.I64).column_name("version").is_version().required()).relation(RelationDescriptor("platform", "Platform").local("platform").foreign("id")).relation(RelationDescriptor("school_list", "School").local("id").foreign("school_type").many())
+)
+
+_School_DESCRIPTOR = (EntityDescriptor("School")
+    .table_name("school_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").is_id().required()).property(PropertyDescriptor("platform", DataType.I64).column_name("platform").required()).property(PropertyDescriptor("school_type", DataType.I64).column_name("school_type").required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").required()).property(PropertyDescriptor("address", DataType.Text).column_name("address").required()).property(PropertyDescriptor("established_date", DataType.Date).column_name("established_date").required()).property(PropertyDescriptor("student_capacity", DataType.I64).column_name("student_capacity").required()).property(PropertyDescriptor("active", DataType.Bool).column_name("active").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").required()).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").required()).property(PropertyDescriptor("version", DataType.I64).column_name("version").is_version().required()).relation(RelationDescriptor("platform", "Platform").local("platform").foreign("id")).relation(RelationDescriptor("school_type", "SchoolType").local("school_type").foreign("id"))
+)
+
 async def _ensure_generated_bootstrap_once(context):
     previous_actor = context.user_identifier() if hasattr(context, 'user_identifier') else None
     previous_category = context.get_resource('bootstrapCategory')
@@ -244,8 +258,14 @@ async def _ensure_generated_bootstrap(context):
 
 # Passive generated manifest. Call ensure_schema() separately and explicitly.
 GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Platform)
-    .checker("Platform", _PlatformChecker()).entity(SchoolType)
-    .checker("SchoolType", _SchoolTypeChecker()).entity(School)
+    .schema_entity(_Platform_DESCRIPTOR)
+    .checker("Platform", _PlatformChecker())
+    .wire_metadata("Platform", create_wire_entity_metadata("Platform", ["id", "name", "base_url", "create_time", "update_time", "version"], JsonFieldNamingProfile.CAMEL_CASE, {"id": ["id"], "name": ["name"], "base_url": ["base_url"], "create_time": ["create_time"], "update_time": ["update_time"], "version": ["version"]})).entity(SchoolType)
+    .schema_entity(_SchoolType_DESCRIPTOR)
+    .checker("SchoolType", _SchoolTypeChecker())
+    .wire_metadata("SchoolType", create_wire_entity_metadata("SchoolType", ["platform", "id", "name", "code", "display_order", "version"], JsonFieldNamingProfile.CAMEL_CASE, {"platform": ["platform"], "id": ["id"], "name": ["name"], "code": ["code"], "display_order": ["display_order"], "version": ["version"]})).entity(School)
+    .schema_entity(_School_DESCRIPTOR)
     .checker("School", _SchoolChecker())
+    .wire_metadata("School", create_wire_entity_metadata("School", ["id", "platform", "school_type", "name", "address", "established_date", "student_capacity", "active", "create_time", "update_time", "version"], JsonFieldNamingProfile.CAMEL_CASE, {"id": ["id"], "platform": ["platform"], "school_type": ["school_type"], "name": ["name"], "address": ["address"], "established_date": ["established_date"], "student_capacity": ["student_capacity"], "active": ["active"], "create_time": ["create_time"], "update_time": ["update_time"], "version": ["version"]}))
     .generated_bootstrap(_ensure_generated_bootstrap)
 )

@@ -1,5 +1,9 @@
+import asyncio
 from datetime import datetime, timezone
-from teaql.runtime import CheckResult, ObjectLocation, RuntimeModule
+from teaql.runtime import CheckResult, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
+from teaql.core.value import DataType
+from Q import Q
 from teaql.core.value import Value
 try:
     from teaql.core.graph import GraphNode
@@ -57,10 +61,60 @@ class _WorkItemChecker:
 
 
 
+_Platform_DESCRIPTOR = (EntityDescriptor("Platform")
+    .table_name("platform_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").required()).property(PropertyDescriptor("version", DataType.I64).column_name("version").is_version().required()).relation(RelationDescriptor("work_item_list", "WorkItem").local("id").foreign("platform").many())
+)
+
+_WorkItem_DESCRIPTOR = (EntityDescriptor("WorkItem")
+    .table_name("work_item_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").is_id().required()).property(PropertyDescriptor("title", DataType.Text).column_name("title").required()).property(PropertyDescriptor("description", DataType.Text).column_name("description")).property(PropertyDescriptor("platform", DataType.I64).column_name("platform").required()).property(PropertyDescriptor("version", DataType.I64).column_name("version").is_version().required()).relation(RelationDescriptor("platform", "Platform").local("platform").foreign("id"))
+)
+
+async def _ensure_generated_bootstrap_once(context):
+    previous_actor = context.user_identifier() if hasattr(context, 'user_identifier') else None
+    previous_category = context.get_resource('bootstrapCategory')
+    if hasattr(context, 'set_user_identifier'):
+        context.set_user_identifier('teaql-generated-bootstrap')
+    context.insert_resource('bootstrapCategory', 'runtime-bootstrap')
+    try:
+        platform_1 = await (Q.platforms().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
+        if platform_1 is None:
+            platform_1 = Platform._teaql_new_with_fixed_id(1)
+            platform_1.update_name("Runtime Example")
+            try:
+                await platform_1.audit_as('create model root Platform(1)').save(context)
+            except Exception as _teaql_create_error:
+                for _teaql_attempt in range(5):
+                    platform_1 = await (Q.platforms().with_id_is(1).comment('what: recover concurrent bootstrap').purpose('why: make generated bootstrap idempotent').execute_for_one(context))
+                    if platform_1 is not None:
+                        break
+                    if _teaql_attempt < 4:
+                        await asyncio.sleep((_teaql_attempt + 1) * 0.01)
+                if platform_1 is None:
+                    raise _teaql_create_error
+        context.with_active_root(ContextEntityRef("Platform", 1))
+    finally:
+        if hasattr(context, 'set_user_identifier'):
+            context.set_user_identifier(previous_actor)
+        context.insert_resource('bootstrapCategory', previous_category)
+
+async def _ensure_generated_bootstrap(context):
+    for _teaql_attempt in range(5):
+        try:
+            await _ensure_generated_bootstrap_once(context)
+            return
+        except Exception:
+            if _teaql_attempt == 4:
+                raise
+            await asyncio.sleep((_teaql_attempt + 1) * 0.01)
+
+
 # Passive generated manifest. Call ensure_schema() separately and explicitly.
 GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Platform)
-    .checker("Platform", _PlatformChecker()).entity(WorkItem)
+    .schema_entity(_Platform_DESCRIPTOR)
+    .checker("Platform", _PlatformChecker())
+    .wire_metadata("Platform", create_wire_entity_metadata("Platform", ["id", "name", "version"], JsonFieldNamingProfile.CAMEL_CASE, {"id": ["id"], "name": ["name"], "version": ["version"]})).entity(WorkItem)
+    .schema_entity(_WorkItem_DESCRIPTOR)
     .checker("WorkItem", _WorkItemChecker())
-
-    .root_graph(GraphNode("Platform").set("id", 1).set("name", "Runtime Example"))
+    .wire_metadata("WorkItem", create_wire_entity_metadata("WorkItem", ["id", "title", "description", "platform", "version"], JsonFieldNamingProfile.CAMEL_CASE, {"id": ["id"], "title": ["title"], "description": ["description"], "platform": ["platform"], "version": ["version"]}))
+    .generated_bootstrap(_ensure_generated_bootstrap)
 )
