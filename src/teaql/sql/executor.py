@@ -104,6 +104,19 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         self.transport = transport
         self.schema_provider = schema_provider
 
+    def _sync_generated_schema(self, context: 'UserContext') -> None:
+        register = getattr(self.schema_provider, "register_entity", None)
+        if callable(register) and context is not None:
+            for entity in context.all_entities():
+                register(entity)
+
+    async def close(self) -> None:
+        close = getattr(self.transport, "close", None)
+        if callable(close):
+            result = close()
+            if hasattr(result, "__await__"):
+                await result
+
     def _resolve_subquery_entities(self, expr) -> None:
         if expr is None:
             return
@@ -183,6 +196,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         )
 
     async def _query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
+        self._sync_generated_schema(context)
         request.query.prepare_for_list()
         execution_query, retained_order, retained_empty = await self._prepare_id_set_page(context, request.query)
         if retained_empty:
@@ -565,6 +579,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             parent[aggregate.alias] = value
 
     async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
+        self._sync_generated_schema(context)
         entity = getattr(request._data, "entity", "unknown")
         kind = type(request._data).__name__.replace("Command", "").lower()
         if context is not None:
@@ -618,6 +633,12 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             else:
                 await self.ensure_id_floor(
                     req_data.entity, int(req_data.values[id_prop.name].val))
+            version_prop = next((
+                prop for prop in getattr(entity_desc, "properties", [])
+                if getattr(prop, "_is_version", False)
+            ), None)
+            if version_prop is not None and version_prop.name not in req_data.values:
+                req_data.values[version_prop.name] = Value.from_any(1)
             
         try:
             if isinstance(req_data, InsertCommand):
@@ -722,8 +743,10 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             parameters=list(compiled.params),
             affected_rows=affected_rows,
             trace_chain=trace_path,
-            comment=request.comment(),
-            audit_reason=request.comment(),
+            comment=(request.comment() if callable(getattr(request, "comment", None))
+                     else getattr(request, "comment", None)),
+            audit_reason=(request.comment() if callable(getattr(request, "comment", None))
+                          else getattr(request, "comment", None)),
             debug_query=compiled.debug_sql(self.dialect.kind())
         )
         if context is not None:
@@ -856,6 +879,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         from teaql.runtime._schema_capability import SCHEMA_CAPABILITY
         if capability is not SCHEMA_CAPABILITY:
             raise PermissionError("Ensure Schema is available only through UserContext.ensure_schema()")
+        self._sync_generated_schema(context)
         enable_soundex = getattr(self.transport, "enable_soundex", None)
         if callable(enable_soundex):
             await enable_soundex()

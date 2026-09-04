@@ -104,6 +104,7 @@ class UserContext:
         self._graph_rollback_actions: List[Any] = []
         self._fix_evidence_current: List[FixEvidence] = []
         self._fix_evidence_last: List[FixEvidence] = []
+        self._checked_mutations = set()
 
     def begin_fix_evidence(self):
         self._fix_evidence_current = []
@@ -303,6 +304,8 @@ class UserContext:
 
     def insert_resource(self, resource_type: str, resource: Any):
         self._resources[resource_type] = resource
+        if resource_type == "dataService" and hasattr(resource, "_ensure_schema"):
+            self._resources["schema_provider"] = resource
         return self
 
     def get_resource(self, resource_type: str) -> Optional[Any]:
@@ -419,6 +422,20 @@ class UserContext:
 
     def set_custom_event_sink(self, sink: Any):
         self._app_audit_sink = sink
+
+    def initialize_audit(self, raw_sink: Any, app_sink: Any = None) -> 'UserContext':
+        """Compatibility entry point for generated applications."""
+        self._set_standard_audit_sink(raw_sink)
+        self._app_audit_sink = app_sink
+        return self
+
+    def configure_audit_policy(self, entity: str, mask_fields: List[str],
+                               value_max_len: Optional[int] = None) -> 'UserContext':
+        descriptor = self.entity(entity)
+        if descriptor is not None:
+            descriptor.audit_mask_fields(mask_fields)
+            descriptor.audit_value_max_len(value_max_len)
+        return self
 
     def with_internal_id_generator(self, gen: Any) -> 'UserContext':
         self.insert_resource("internal_id_generator", gen)
@@ -576,6 +593,16 @@ class UserContext:
                 self._resources.pop("fix_time", None)
                 self.finish_fix_evidence()
             self._resources.pop("fix_operation", None)
+
+    def mark_mutation_checked(self, mutation: Any) -> None:
+        self._checked_mutations.add(id(mutation))
+
+    def consume_mutation_checked(self, mutation: Any) -> bool:
+        key = id(mutation)
+        if key not in self._checked_mutations:
+            return False
+        self._checked_mutations.remove(key)
+        return True
 
     def translate_check_results(self, results: Any):
         for r in results:

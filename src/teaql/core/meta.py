@@ -5,6 +5,7 @@ class PropertyDescriptor:
         self.column_name_val = name
         self._is_id = False
         self._is_version = False
+        self.nullable = True
     def column_name(self, name): 
         self.column_name_val = name
         return self
@@ -13,6 +14,9 @@ class PropertyDescriptor:
         return self
     def is_version(self): 
         self._is_version = True
+        return self
+    def required(self):
+        self.nullable = False
         return self
 
 class RelationDescriptor:

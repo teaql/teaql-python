@@ -88,6 +88,8 @@ class Value:
     def Json(v: Any) -> 'Value':
         return Value(v, DataType.Json)
 
+    JSON = Json
+
     @staticmethod
     def Date(v: date) -> 'Value':
         return Value(v)
@@ -95,6 +97,10 @@ class Value:
     @staticmethod
     def Timestamp(v: Timestamp) -> 'Value':
         return Value(v)
+
+    @staticmethod
+    def DateTime(v: Any) -> 'Value':
+        return Value.from_any(v)
 
     @staticmethod
     def Object(v: Dict[str, 'Value']) -> 'Value':
