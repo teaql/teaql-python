@@ -10,6 +10,7 @@ class RuntimeModule:
         self._checkers: Dict[str, Any] = {}
         self._generated_bootstraps: List[Any] = []
         self._schema_entities: List[Any] = []
+        self._wire_metadata: Dict[str, Any] = {}
 
     @classmethod
     def new(cls) -> 'RuntimeModule':
@@ -55,6 +56,10 @@ class RuntimeModule:
         self._generated_bootstraps.append(bootstrap)
         return self
 
+    def wire_metadata(self, entity: str, metadata: Any) -> 'RuntimeModule':
+        self._wire_metadata[entity] = metadata
+        return self
+
     def schema_entity(self, descriptor: Any) -> 'RuntimeModule':
         """Register generated storage metadata without embedding a provider."""
         self._schema_entities.append(descriptor)
@@ -72,6 +77,7 @@ class RuntimeModule:
             *other._generated_bootstraps,
         ]
         combined._schema_entities = [*self._schema_entities, *other._schema_entities]
+        combined._wire_metadata = {**self._wire_metadata, **other._wire_metadata}
         combined._initial_graphs = [
             *getattr(self, '_initial_graphs', []),
             *getattr(other, '_initial_graphs', []),
@@ -97,6 +103,7 @@ class RuntimeModule:
         context.insert_resource("entities", installed_entities)
         context.insert_resource("entity_classes", self._entities)
         context.insert_resource("behaviors", self._behaviors)
+        context.insert_resource("wireMetadata", dict(self._wire_metadata))
         context.insert_resource("_teaql_generated_bootstraps", tuple(self._generated_bootstraps))
         if self._checkers:
             checkers = dict(self._checkers)
