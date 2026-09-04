@@ -2,6 +2,7 @@ import os
 import pytest
 from teaql.runtime import ContextEntityRef, ContextRootError, CheckException, CheckResult, RuntimeModule, UserContext, TeaqlRuntime, ServiceRuntimeFromEnv
 from teaql.core.mutation import InsertCommand
+from teaql.runtime.audit import AuditFieldChange, MutationAuditKind, RawAuditEvent
 
 class DummyEntity:
     _name = "Dummy"
@@ -28,6 +29,21 @@ class DummyCheckerRegistry:
 
     def checker(self, entity):
         return self.value if entity == "Dummy" else None
+
+
+def test_bootstrap_audit_identity_survives_safe_projection():
+    event = RawAuditEvent(
+        MutationAuditKind.CREATED,
+        "SchoolType",
+        1001,
+        (AuditFieldChange("code", None, "PRIMARY"),),
+        (),
+        "teaql-generated-bootstrap",
+        "runtime-bootstrap",
+    )
+    safe = event.safe([], None)
+    assert safe.actor == "teaql-generated-bootstrap"
+    assert safe.category == "runtime-bootstrap"
 
 
 class RecordingTransaction:
@@ -209,3 +225,25 @@ def test_service_runtime_from_env_fallback(monkeypatch):
     context = ServiceRuntimeFromEnv.build_context()
     assert context.user_identifier() == ""
     assert context.get_resource("DataService") is None
+
+
+@pytest.mark.asyncio
+async def test_ensure_schema_runs_generated_bootstrap_after_physical_schema():
+    events = []
+
+    class SchemaProvider:
+        async def _ensure_schema(self, context, capability):
+            events.append("physical-schema")
+
+    async def bootstrap(context):
+        assert context.require_resource("marker") == "installed"
+        events.append("typed-bootstrap")
+
+    module = RuntimeModule.new().generated_bootstrap(bootstrap)
+    context = (UserContext.new()
+               .insert_resource("marker", "installed")
+               .with_schema_provider(SchemaProvider())
+               .install(module))
+
+    await context.ensure_schema()
+    assert events == ["physical-schema", "typed-bootstrap"]

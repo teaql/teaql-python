@@ -747,7 +747,15 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 kind = MutationAuditKind.RECOVERED
                 entity_id = req_data.id
                 changes = ()
-            await context.send_audit_event(RawAuditEvent(kind, req_data.entity, entity_id, changes, tuple(request.trace_chain())))
+            await context.send_audit_event(RawAuditEvent(
+                kind,
+                req_data.entity,
+                entity_id,
+                changes,
+                tuple(request.trace_chain()),
+                context.user_identifier(),
+                context.get_resource("bootstrapCategory"),
+            ))
         return MutationResult(
             affected_rows=affected_rows,
             generated_values=generated_values,
@@ -884,60 +892,6 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             "CREATE TABLE IF NOT EXISTS teaql_id_space ("
             "type_name VARCHAR(255) NOT NULL PRIMARY KEY, "
             "current_level BIGINT NOT NULL)", []))
-        await self.ensure_initial_graphs(context)
-
-    async def ensure_initial_graphs(self, context: 'UserContext') -> None:
-        from teaql.core.mutation import InsertCommand, UpdateCommand
-        graphs = [
-            *((graph, False) for graph in context.root_graphs()),
-            *((graph, True) for graph in context.initial_graphs()),
-        ]
-        for graph, reconcile in graphs:
-            entity_name = getattr(graph, 'entity', None)
-            if not entity_name:
-                continue
-                
-            entity_desc = self.schema_provider.get_entity(entity_name)
-            if not entity_desc:
-                entities = context.get_resource("entities") or []
-                for e in entities:
-                    if getattr(e, "_name", None) == entity_name:
-                        entity_desc = e
-                        break
-            if not entity_desc:
-                continue
-                
-            values = getattr(graph, 'fields', getattr(graph, 'values', {}))
-            seed_id = values.get('id')
-            seed_id = seed_id.val if hasattr(seed_id, 'val') else seed_id
-            if seed_id is None:
-                raise ValueError(f"bootstrap graph {entity_name} must define id")
-            query = SelectQuery(entity_name).filter(BinaryExpr(
-                ColumnExpr('id'), BinaryOp.Eq, ValueExpr(Value.from_any(seed_id))))
-            current_rows = (await self._query(context, QueryRequest(query))).rows
-            if not current_rows:
-                mutation = InsertCommand(entity_name)
-                for k, v in values.items():
-                    mutation.value(k, v)
-                version_prop = next((p for p in getattr(entity_desc, 'properties', [])
-                    if getattr(p, '_is_version', False) or getattr(p, 'is_version_val', False)), None)
-                if version_prop is not None and version_prop.name not in mutation.values:
-                    mutation.value(version_prop.name, 1)
-                await self.transport.execute_sql(self.dialect.compile_insert(entity_desc, mutation))
-            elif reconcile:
-                current = current_rows[0]
-                changed = {k: v for k, v in values.items() if k != 'id'
-                    and current.get(k) != (v.val if hasattr(v, 'val') else v)}
-                if changed:
-                    mutation = UpdateCommand(entity_name, Value.from_any(seed_id))
-                    for k, v in changed.items():
-                        mutation.value(k, v)
-                    version = current.get('version')
-                    version = version.val if hasattr(version, 'val') else version
-                    if version is not None:
-                        mutation.expected_version(int(version))
-                    await self.transport.execute_sql(self.dialect.compile_update(entity_desc, mutation))
-            await self.ensure_id_floor(entity_name, int(seed_id))
 
     async def begin(self, context: 'UserContext') -> 'teaql.data_service.Transaction':
         if not isinstance(self.transport, SqlTransactionTransport):

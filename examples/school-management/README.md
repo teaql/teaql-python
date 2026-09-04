@@ -1,9 +1,10 @@
 # School Management example
 
-This retained SQLite example is generated from `model.xml`. It verifies idempotent
-root/constant bootstrap, the database `snake_case` boundary, Python entity member
-names, and explicit forward-relation loading. Schema bootstrap is explicit and is
-called twice to prove that it does not duplicate seed rows.
+This retained SQLite example is generated from `model.xml`. It verifies generated
+audited bootstrap mutation:
+fixed root/constants, no-op repeated bootstrap, preservation of deployment-owned
+root fields, reconciliation of drifted model-owned constants, and normal Q/E and
+mutation behavior.
 
 ```bash
 python -m venv .venv

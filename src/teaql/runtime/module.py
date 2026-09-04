@@ -8,6 +8,7 @@ class RuntimeModule:
         self._dependencies: Dict[str, Any] = {}
         self._audit_sinks: List[Any] = []
         self._checkers: Dict[str, Any] = {}
+        self._generated_bootstraps: List[Any] = []
 
     @classmethod
     def new(cls) -> 'RuntimeModule':
@@ -48,6 +49,11 @@ class RuntimeModule:
         self._checkers[entity] = checker
         return self
 
+    def generated_bootstrap(self, bootstrap: Any) -> 'RuntimeModule':
+        """Register generated typed data bootstrap; invoked only by ensure_schema()."""
+        self._generated_bootstraps.append(bootstrap)
+        return self
+
     def and_module(self, other: 'RuntimeModule') -> 'RuntimeModule':
         combined = RuntimeModule.new()
         combined._entities = [*self._entities, *other._entities]
@@ -55,6 +61,10 @@ class RuntimeModule:
         combined._dependencies = {**self._dependencies, **other._dependencies}
         combined._audit_sinks = [*self._audit_sinks, *other._audit_sinks]
         combined._checkers = {**self._checkers, **other._checkers}
+        combined._generated_bootstraps = [
+            *self._generated_bootstraps,
+            *other._generated_bootstraps,
+        ]
         combined._initial_graphs = [
             *getattr(self, '_initial_graphs', []),
             *getattr(other, '_initial_graphs', []),
@@ -78,6 +88,7 @@ class RuntimeModule:
                 context.add_root_graph(graph)
         context.insert_resource("entities", self._entities)
         context.insert_resource("behaviors", self._behaviors)
+        context.insert_resource("_teaql_generated_bootstraps", tuple(self._generated_bootstraps))
         if self._checkers:
             checkers = dict(self._checkers)
             class GeneratedCheckerRegistry:

@@ -35,14 +35,29 @@ async def main() -> None:
     assert [(item.id, item.code) for item in constants] == [
         (1001, "PRIMARY"), (1002, "SECONDARY")]
     assert [item.version for item in constants] == [1, 1]
+    first_primary_version = primary.version
 
-    GENERATED_RUNTIME_MODULE.initial_graphs[0].set("name", "Primary School")
+    import aiosqlite
+    connection = await aiosqlite.connect(database)
+    cursor = await connection.execute(
+        "SELECT current_level FROM teaql_id_space WHERE type_name = ?", ("SchoolType",))
+    id_floor = await cursor.fetchone()
+    await cursor.close()
+    assert id_floor is not None and id_floor[0] >= 1002
+    await connection.execute("UPDATE platform_data SET name = ? WHERE id = 1", ("Deployment Campus",))
+    await connection.execute("UPDATE school_type_data SET name = ? WHERE id = 1001", ("Drifted Primary",))
+    await connection.commit()
+    await connection.close()
     await context.ensure_schema()
+    preserved_root = await (Q.platforms().with_id_is(1)
+        .comment("Load the deployment-owned root")
+        .purpose("Verify generated bootstrap preserves an existing root").execute_for_one(context))
     reconciled = await (Q.school_types().with_id_is(1001)
         .comment("Load the reconciled Primary constant")
         .purpose("Verify model-defined constant updates").execute_for_one(context))
-    assert reconciled.name == "Primary School"
-    assert reconciled.version == 2
+    assert preserved_root.name == "Deployment Campus"
+    assert reconciled.name == "Primary"
+    assert reconciled.version == first_primary_version + 1
 
     school = Q.schools().comment("Create the example school").purpose(
         "Verify generated Python mutations").new_entity(context)
@@ -64,7 +79,7 @@ async def main() -> None:
     assert loaded.name == "Riverside Primary School"
     assert str(loaded.establishedDate).startswith("1995-09-01")
     assert loaded.studentCapacity == 800
-    assert loaded.platform.name == "Campus Learning Platform"
+    assert loaded.platform.name == "Deployment Campus"
     assert loaded.platform.baseUrl == "https://campus.example.com"
     assert loaded.schoolType.code == "PRIMARY"
     assert loaded.schoolType.displayOrder == 1

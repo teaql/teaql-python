@@ -439,6 +439,8 @@ class UserContext:
         if provider:
             from ._schema_capability import SCHEMA_CAPABILITY
             await provider._ensure_schema(self, SCHEMA_CAPABILITY)
+            for bootstrap in self.get_resource("_teaql_generated_bootstraps") or ():
+                await bootstrap(self)
         else:
             raise Exception("missing schema provider")
 

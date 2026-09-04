@@ -25,6 +25,8 @@ class RawAuditEvent:
     entity_id: Any
     changes: tuple[AuditFieldChange, ...]
     trace_chain: tuple[Any, ...] = field(default_factory=tuple)
+    actor: Optional[str] = None
+    category: Optional[str] = None
 
     def safe(self, mask_fields: List[str], max_length: Optional[int]) -> "SafeAuditEvent":
         fields = []
@@ -37,7 +39,10 @@ class RawAuditEvent:
             if truncated:
                 value = "*" * max_length if max_length <= 3 else value[:max_length - 3] + "..."
             fields.append(SafeAuditField(change.field, value, masked, truncated))
-        return SafeAuditEvent(self.kind, self.entity, self.entity_id, tuple(fields), self.trace_chain)
+        return SafeAuditEvent(
+            self.kind, self.entity, self.entity_id, tuple(fields), self.trace_chain,
+            self.actor, self.category,
+        )
 
 
 @dataclass(frozen=True)
@@ -55,6 +60,8 @@ class SafeAuditEvent:
     entity_id: Any
     fields: tuple[SafeAuditField, ...]
     trace_chain: tuple[Any, ...] = field(default_factory=tuple)
+    actor: Optional[str] = None
+    category: Optional[str] = None
 
 
 def _mask(value: str) -> str:

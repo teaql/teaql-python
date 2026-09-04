@@ -113,7 +113,7 @@ async def test_query_attaches_batched_relation_aggregate_aliases(temp_db):
     assert rows[1]["score_total"] is None
 
 @pytest.mark.asyncio
-async def test_schema_bootstrap_is_idempotent_reconciles_constants_and_preserves_root(temp_db):
+async def test_schema_provider_does_not_interpret_legacy_bootstrap_graphs(temp_db):
     provider = SimpleSchemaProvider()
     platform = MockEntityDescriptor("Platform")
     platform.properties = [
@@ -142,21 +142,10 @@ async def test_schema_bootstrap_is_idempotent_reconciles_constants_and_preserves
 
     context.with_schema_provider(service)
     await context.ensure_schema()
-    await service.mutate(context, MutationRequest(
-        UpdateCommand("Platform", Value.I64(1)).value("name", "Customer Name")))
-    primary.set("name", "Primary School")
-    await context.ensure_schema()
-
     platforms = (await service.query(context, QueryRequest(SelectQuery("Platform")))).rows
     constants = (await service.query(context, QueryRequest(SelectQuery("SchoolType")))).rows
-    assert [(row["id"], row["name"]) for row in platforms] == [(1, "Customer Name")]
-    assert [(row["id"], row["name"], row["code"]) for row in constants] == [
-        (1001, "Primary School", "PRIMARY"),
-        (1002, "Secondary", "SECONDARY"),
-    ]
-    assert next(row["version"] for row in constants if row["id"] == 1001) == 2
-    assert next(row["version"] for row in constants if row["id"] == 1002) == 1
-    assert await service.next_id("SchoolType") > 1002
+    assert platforms == []
+    assert constants == []
 
 @pytest.mark.asyncio
 async def test_crud(temp_db, schema_provider, service):
