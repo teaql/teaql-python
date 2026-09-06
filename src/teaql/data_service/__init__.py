@@ -165,6 +165,41 @@ class DataService(QueryExecutor, MutationExecutor, Protocol):
     pass
 
 
+def _generated_schema_provider():
+    from teaql.provider.sqlite import SimpleSchemaProvider
+    return SimpleSchemaProvider()
+
+
+class SQLiteTeaQLClient:
+    """Stable high-level SQLite entry point used by generated workspaces."""
+    def __new__(cls, database_url: str):
+        from teaql.provider.sqlite import create_sqlite_service
+        return create_sqlite_service(database_url, _generated_schema_provider())
+
+
+class TeaQLClient(SQLiteTeaQLClient):
+    """Portable local client backed by the packaged SQLite provider."""
+    pass
+
+
+class PostgreSQLTeaQLClient:
+    def __new__(cls, database_url: str):
+        from teaql.provider.postgres.dialect import PostgresDialect
+        from teaql.provider.postgres.transport import PostgresTransport
+        from teaql.sql.executor import SqlDataServiceExecutor
+        return SqlDataServiceExecutor(PostgresDialect(), PostgresTransport(database_url),
+                                      _generated_schema_provider())
+
+
+class MySQLTeaQLClient:
+    def __new__(cls, database_url: str):
+        from teaql.provider.mysql.dialect import MysqlDialect
+        from teaql.provider.mysql.transport import MysqlTransport
+        from teaql.sql.executor import SqlDataServiceExecutor
+        return SqlDataServiceExecutor(MysqlDialect(), MysqlTransport(database_url),
+                                      _generated_schema_provider())
+
+
 __all__ = [
     "DataServiceCapabilities",
     "QueryRequest",
@@ -186,4 +221,5 @@ __all__ = [
     "TransactionExecutor",
     "IdGeneratorExecutor",
     "DataService"
+    , "TeaQLClient", "SQLiteTeaQLClient", "PostgreSQLTeaQLClient", "MySQLTeaQLClient"
 ]

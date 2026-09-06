@@ -226,6 +226,16 @@ class SelectQuery:
     def optimize_pagination_with_id_set(self) -> 'SelectQuery':
         return self.optimize_pagination_with_id_set_config("default", 600, 3_000_000)
 
+    def optimize_for_continuous_page_fetch(self) -> 'SelectQuery':
+        return self.optimize_for_continuous_page_fetch_with("default", 600)
+
+    def optimize_for_continuous_page_fetch_with(
+            self, namespace: str, ttl_seconds: int) -> 'SelectQuery':
+        if not namespace or ttl_seconds <= 0:
+            raise ValueError("continuous page namespace and positive ttl are required")
+        self.continuous_page_fetch = (namespace, ttl_seconds)
+        return self
+
     def optimize_pagination_with_id_set_config(
             self, namespace: str, ttl_seconds: int, max_ids: int) -> 'SelectQuery':
         if not isinstance(namespace, str) or not namespace.strip():
@@ -258,6 +268,12 @@ class SelectQuery:
 
     def comment(self, text: str) -> 'SelectQuery':
         self.comment_text = text
+        return self
+
+    def purpose(self, text: str) -> 'SelectQuery':
+        # Purpose is carried by generated request wrappers; retaining it here
+        # keeps the query object self-describing for diagnostics.
+        self.purpose_text = text
         return self
 
     def project(self, *fields: str) -> 'SelectQuery':
@@ -305,7 +321,14 @@ class SelectQuery:
             self.having_expr = expr
         return self
 
-    def order_by(self, order: OrderBy) -> 'SelectQuery':
+    def order_by(self, order: OrderBy | str, direction: str | None = None) -> 'SelectQuery':
+        if isinstance(order, str):
+            normalized = (direction or "asc").lower()
+            if normalized not in ("asc", "desc"):
+                raise ValueError(f"unsupported order direction: {direction}")
+            order = OrderBy.asc(order) if normalized == "asc" else OrderBy.desc(order)
+        elif direction is not None:
+            raise TypeError("direction is only valid when order is a field name")
         self.order_by_items.append(order)
         return self
 

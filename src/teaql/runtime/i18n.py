@@ -6,6 +6,22 @@ import json
 from importlib.resources import files
 from typing import Any, Mapping
 
+class JsonFieldNamingProfile(str, Enum):
+    CAMEL_CASE = "camelCase"
+    SNAKE_CASE = "snake_case"
+    PASCAL_CASE = "PascalCase"
+
+    @classmethod
+    def parse(cls, value: str | None) -> JsonFieldNamingProfile:
+        if value is None or value == "": return cls.CAMEL_CASE
+        try: return cls(value)
+        except ValueError as error: raise ValueError(f"unsupported json_field_naming: {value}") from error
+
+    def render(self, canonical_name: str) -> str:
+        if self is self.SNAKE_CASE: return canonical_name
+        camel = _lower_camel(canonical_name)
+        return camel if self is self.CAMEL_CASE or not camel else camel[:1].upper() + camel[1:]
+
 @dataclass(frozen=True, eq=False)
 class ObjectLocation:
     """A checker location whose source of truth is the canonical KSML path."""
@@ -30,9 +46,12 @@ class ObjectLocation:
 
     @builtins.property
     def instance_path(self) -> str:
+        return self.instance_path_for(JsonFieldNamingProfile.CAMEL_CASE)
+
+    def instance_path_for(self, profile: JsonFieldNamingProfile) -> str:
         parts = []
         for kind, value in self.segments:
-            text = str(value) if kind == "index" else _lower_camel(str(value))
+            text = str(value) if kind == "index" else profile.render(str(value))
             parts.append(text.replace("~", "~0").replace("/", "~1"))
         return "" if not parts else "/" + "/".join(parts)
 
@@ -94,10 +113,17 @@ _ALIASES={"en-us":Locale.ENGLISH,"en-gb":Locale.ENGLISH,"zh":Locale.CHINESE_SIMP
 
 @dataclass
 class CheckResult:
-    rule_id:str; location:Any; input_value:Any=None; system_value:Any=None; message:str|None=None
+    rule_id:str; location:Any; input_value:Any=None; system_value:Any=None; message:str|None=None; entity_type:str|None=None; source_instance_path:str|None=None
     def __post_init__(self):
         if isinstance(self.location, str):
             self.location = ObjectLocation.from_model_path(self.location)
+    def to_wire(self, profile:JsonFieldNamingProfile=JsonFieldNamingProfile.CAMEL_CASE)->dict[str,Any]:
+        return {key:value for key,value in {
+            "ruleId":self.rule_id,"entityType":self.entity_type,
+            "location":[{"kind":kind, "name":value} if kind=="property" else {"kind":kind,"index":value} for kind,value in self.location.segments],
+            "instancePath":self.location.instance_path_for(profile),"sourceInstancePath":self.source_instance_path,
+            "inputValue":self.input_value,"systemValue":self.system_value,"message":self.message,
+        }.items() if value is not None}
 
 class CheckException(Exception):
     """Stable machine-readable model validation failure."""

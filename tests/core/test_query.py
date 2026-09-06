@@ -15,6 +15,11 @@ def test_order_by_builder():
     assert ob_desc.field_name == "created_at"
     assert ob_desc.direction == SortDirection.Desc
 
+    query = SelectQuery.new("User").order_by("created_at", "desc")
+    assert query.order_by_items == [ob_desc]
+    with pytest.raises(ValueError, match="unsupported order direction"):
+        query.order_by("id", "sideways")
+
 def test_id_set_pagination_is_explicit_local_and_validated():
     query = SelectQuery.new("Order")
     assert query.id_set_pagination is None

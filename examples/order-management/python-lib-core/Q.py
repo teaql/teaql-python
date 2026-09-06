@@ -10,29 +10,57 @@ from requests.order_search_preset_request import OrderSearchPresetRequest
 class Q:
     @staticmethod
     def commerce_platforms() -> CommercePlatformRequest:
-        return CommercePlatformRequest()
+        return CommercePlatformRequest(minimal=False)
+
+    @staticmethod
+    def commerce_platforms_minimal() -> CommercePlatformRequest:
+        return CommercePlatformRequest(minimal=True)
 
     @staticmethod
     def customers() -> CustomerRequest:
-        return CustomerRequest()
+        return CustomerRequest(minimal=False)
+
+    @staticmethod
+    def customers_minimal() -> CustomerRequest:
+        return CustomerRequest(minimal=True)
 
     @staticmethod
     def order_statuses() -> OrderStatusRequest:
-        return OrderStatusRequest()
+        return OrderStatusRequest(minimal=False)
+
+    @staticmethod
+    def order_statuses_minimal() -> OrderStatusRequest:
+        return OrderStatusRequest(minimal=True)
 
     @staticmethod
     def customer_orders() -> CustomerOrderRequest:
-        return CustomerOrderRequest()
+        return CustomerOrderRequest(minimal=False)
+
+    @staticmethod
+    def customer_orders_minimal() -> CustomerOrderRequest:
+        return CustomerOrderRequest(minimal=True)
 
     @staticmethod
     def products() -> ProductRequest:
-        return ProductRequest()
+        return ProductRequest(minimal=False)
+
+    @staticmethod
+    def products_minimal() -> ProductRequest:
+        return ProductRequest(minimal=True)
 
     @staticmethod
     def order_lines() -> OrderLineRequest:
-        return OrderLineRequest()
+        return OrderLineRequest(minimal=False)
+
+    @staticmethod
+    def order_lines_minimal() -> OrderLineRequest:
+        return OrderLineRequest(minimal=True)
 
     @staticmethod
     def order_search_presets() -> OrderSearchPresetRequest:
-        return OrderSearchPresetRequest()
+        return OrderSearchPresetRequest(minimal=False)
+
+    @staticmethod
+    def order_search_presets_minimal() -> OrderSearchPresetRequest:
+        return OrderSearchPresetRequest(minimal=True)
 

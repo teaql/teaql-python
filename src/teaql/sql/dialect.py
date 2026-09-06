@@ -253,13 +253,13 @@ class SqlDialect(ABC):
         return CompiledQuery(sql=sql, params=params)
         
     def compile_delete(self, entity: EntityDescriptor, command: DeleteCommand) -> CompiledQuery:
-        id_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_id_val', False) or (callable(getattr(p, 'is_id', None)) and p.is_id())), None)
+        id_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_id_val', False) or getattr(p, '_is_id', False)), None)
         if not id_property:
             raise MissingIdPropertyError(entity._name)
             
         params = []
         table_name = getattr(entity, 'table_name_val', entity._name)
-        version_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_version_val', False) or (callable(getattr(p, 'is_version', None)) and p.is_version())), None)
+        version_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_version_val', False) or getattr(p, '_is_version', False)), None)
         
         if command.soft_delete:
             if not version_property:
@@ -295,11 +295,11 @@ class SqlDialect(ABC):
         if command.expected_version_val >= 0:
             raise InvalidRecoverVersionError(command.expected_version_val)
             
-        id_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_id_val', False) or (callable(getattr(p, 'is_id', None)) and p.is_id())), None)
+        id_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_id_val', False) or getattr(p, '_is_id', False)), None)
         if not id_property:
             raise MissingIdPropertyError(entity._name)
             
-        version_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_version_val', False) or (callable(getattr(p, 'is_version', None)) and p.is_version())), None)
+        version_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_version_val', False) or getattr(p, '_is_version', False)), None)
         if not version_property:
             raise MissingVersionPropertyError(entity._name)
             

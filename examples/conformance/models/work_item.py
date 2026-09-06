@@ -10,6 +10,16 @@ class WorkItem:
     def refer(cls, entity_id):
         return cls(id=entity_id)
 
+    @classmethod
+    def _teaql_new_with_fixed_id(cls, entity_id):
+        """Generated bootstrap capability; application code must not call it."""
+        return cls(id=entity_id)._teaql_force_create()
+
+    def _teaql_force_create(self):
+        self._action = "Create"
+        self._entity_root.mark_as_new(self._teaql_entity_key())
+        return self
+
     def __init__(self, **kwargs):
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
         if "id" in kwargs and "id" not in kwargs:

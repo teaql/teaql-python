@@ -9,10 +9,24 @@ if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   exit 1
 fi
 
+mapfile -t embedded_runtime_dirs < <(find "$repo/examples" -type d -name teaql -print)
+if ((${#embedded_runtime_dirs[@]})); then
+  printf 'generated examples must depend on the packaged runtime; embedded teaql snapshot: %s\n' \
+    "${embedded_runtime_dirs[@]}" >&2
+  exit 1
+fi
+if rg -l 'include\s*=.*teaql\*' "$repo/examples" --glob pyproject.toml >/dev/null; then
+  echo 'generated example package discovery must not include an embedded teaql namespace' >&2
+  exit 1
+fi
+
 PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
 PYTHONPATH="$repo/examples/school-management:$repo/src" python -m app.main
-PYTHONPATH="$repo/examples/order-management/python-lib-core:$repo/src" python "$repo/examples/order-management/python-app-console/app.py"
+order_management_tmp="$(mktemp -d)"
 task_board_tmp="$(mktemp -d)"
-trap 'rm -rf "$task_board_tmp"' EXIT
+trap 'rm -rf "$order_management_tmp" "$task_board_tmp"' EXIT
+TEAQL_ORDER_MANAGEMENT_DB="$order_management_tmp/order.db" \
+  PYTHONPATH="$repo/examples/order-management/python-lib-core:$repo/src" \
+  python "$repo/examples/order-management/python-app-console/app.py"
 TEAQL_TASK_BOARD_DB="$task_board_tmp/task_board.db" PYTHONPATH="$repo/examples/task_board:$repo/src" python "$repo/examples/task_board/main.py"
 echo "PASS: all Python examples"
