@@ -64,3 +64,10 @@ def test_fatal_sibling_does_not_publish_warnings():
     with pytest.raises(ValueError):
         normalize_dynamic_search({'filter': {'removed': 'secret', 'id': 'bad'}}, 'Order', MODELS, warnings.append)
     assert warnings == []
+
+
+def test_shared_json_number_and_decimal_lexical_boundaries():
+    result, _ = normalize_dynamic_search('{"filter":{"id":1.0}}', 'Order', MODELS)
+    assert result['filter']['id'] == {'$eq': 1.0}
+    with pytest.raises(ValueError):
+        normalize_dynamic_search({'filter': {'amount': '١٢'}}, 'Order', MODELS)

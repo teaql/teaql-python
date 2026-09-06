@@ -66,7 +66,8 @@ def normalize_dynamic_search(source, entity, models, warn=_warning, max_clauses=
             return
         valid = False
         if kind in ('integer', 'timestamp'):
-            valid = type(item) is int and abs(item) <= 9007199254740991
+            valid = (type(item) in (int, float) and abs(item) <= 9007199254740991
+                     and math.isfinite(item) and item == int(item))
         elif kind == 'number':
             valid = type(item) in (int, float) and math.isfinite(item)
         elif kind == 'string':
@@ -74,7 +75,7 @@ def normalize_dynamic_search(source, entity, models, warn=_warning, max_clauses=
         elif kind == 'boolean':
             valid = type(item) is bool
         elif kind == 'decimal':
-            valid = (isinstance(item, str) and re.fullmatch(r'[+-]?\d+(?:\.\d+)?', item) is not None
+            valid = (isinstance(item, str) and re.fullmatch(r'[+-]?[0-9]+(?:\.[0-9]+)?', item) is not None
                      or type(item) in (int, float) and math.isfinite(item))
         elif kind == 'date' and isinstance(item, str) and re.fullmatch(r'\d{4}-\d{2}-\d{2}', item):
             try:
