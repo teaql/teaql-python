@@ -44,6 +44,58 @@ class MockPropertyDescriptor(PropertyDescriptor):
     def is_id(self): return self.is_id_val
     def is_version(self): return self.is_version_val
 
+
+@pytest.mark.asyncio
+async def test_dynamic_search_preserves_scoped_sql_and_nested_filter(temp_db):
+    from teaql.core.dynamic_search import merge_dynamic_search
+    from teaql.core.expr import Expr
+    from teaql.core.query import OrderBy
+    provider = SimpleSchemaProvider()
+    module = RuntimeModule.new()
+    for name in ('Order', 'Customer'):
+        descriptor = MockEntityDescriptor(name)
+        descriptor.properties = [
+            MockPropertyDescriptor('id', DataType.I64, is_id=True),
+            MockPropertyDescriptor('version', DataType.I64, is_version=True),
+            MockPropertyDescriptor('name', DataType.Text),
+            MockPropertyDescriptor('tenant', DataType.I64),
+        ]
+        if name == 'Order':
+            descriptor.properties.append(MockPropertyDescriptor('customer', DataType.I64))
+        provider.register_entity(descriptor)
+        module.entity(descriptor)
+    service = create_sqlite_service(temp_db, provider)
+    context = module.into_context().with_schema_provider(service)
+    await context.ensure_schema()
+    for tenant in (1, 2):
+        for name in ('Customer', 'Order'):
+            command = InsertCommand(name).value('id', tenant).value('version', 1).value('tenant', tenant).value('name', 'Ada')
+            if name == 'Order':
+                command.value('customer', tenant)
+            command.trace_chain = [TraceNode(comment='seed dynamic search fixture')]
+            await service.mutate(context, MutationRequest(command))
+    models = {
+        'Order': {'fields': {'name': 'string', 'id': 'integer'}, 'relations': {'customer': 'Customer'}},
+        'Customer': {'fields': {'name': 'string'}, 'relations': {}},
+    }
+    base = SelectQuery('Order').filter(Expr.eq('tenant', 1)).limit(10).order_asc('id')
+    original = repr(base)
+    def bind(path, predicate):
+        if path == 'customer.name':
+            child = SelectQuery('Customer').projects(['id']).filter(
+                Expr.new_and(Expr.eq('tenant', 1), Expr.eq('name', predicate['$eq'])))
+            return in_subquery(column('customer'), 'Customer', child)
+        return Expr.eq(path, predicate['$eq'])
+    query, warnings = merge_dynamic_search(base, {'filter': {
+        'removed': 'SECRET', 'missing.name': 'SECRET', 'customer.removed': 'SECRET',
+        'customer.name': 'Ada', 'name': 'Ada'}, 'orderBy': [{'field': 'removed', 'direction': 'desc'}]},
+        models, bind, lambda path, direction: OrderBy.asc(path), lambda _: None)
+    rows = (await service.query(context, QueryRequest(query).comment('what: scoped search').purpose('why: conformance'))).rows
+    assert len(rows) == 1 and rows[0]['tenant'] == 1
+    assert len(warnings) == 4 and 'SECRET' not in repr(warnings)
+    assert repr(base) == original
+    assert query.slice == base.slice and query.order_by_items == base.order_by_items
+
 @pytest.fixture
 def schema_provider():
     provider = SimpleSchemaProvider()
