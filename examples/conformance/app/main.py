@@ -10,10 +10,23 @@ from Q import Q
 from models.work_item import WorkItem
 from runtime_module import GENERATED_RUNTIME_MODULE
 from teaql.data_service import SQLiteTeaQLClient
+from teaql.core import EntityKey, EntityRoot
 from teaql.runtime import CheckException, UserContext
 
 
 async def main() -> None:
+    order_key = EntityKey("Order", 1)
+    execution_key = EntityKey("InferenceExecution", 1)
+    target_ledger = EntityRoot()
+    source_ledger = EntityRoot()
+    target_ledger.set_original_version(order_key, 3)
+    source_ledger.set_original_version(execution_key, 9)
+    source_ledger.set(execution_key, "execution_status", "COMPLETED")
+    target_ledger.merge_from(source_ledger)
+    assert target_ledger.original_version(order_key) == 3
+    assert target_ledger.original_version(execution_key) == 9
+    print("PASS Mutation ledger identity (same ID, different entity types keep versions 3/9)")
+
     database = ROOT / ".local" / "conformance.sqlite"
     database.parent.mkdir(parents=True, exist_ok=True)
     database.unlink(missing_ok=True)
@@ -81,7 +94,7 @@ async def main() -> None:
     assert len(remaining) == 0
     print("PASS Delete (default Q excludes deleted rows)")
     await client.close()
-    print("PASS Python minimum runtime conformance: 7/7")
+    print("PASS Python minimum runtime conformance: 8/8")
 
 
 if __name__ == "__main__":
