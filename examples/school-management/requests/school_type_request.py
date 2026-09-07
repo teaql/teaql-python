@@ -10,6 +10,7 @@ from teaql.core.expr import (
 )
 from models.school_type import SchoolType
 from typing import Protocol
+from copy import deepcopy
 
 class QuerySelection(Protocol):
     query: SelectQuery
@@ -105,13 +106,15 @@ class SchoolTypeRequest:
         self.query.relation_query("platform", child_request.query)
         return self
     def with_platform_matching(self, child_request):
-        child_request.query._projection = ["id"]
-        self.query.and_filter(in_subquery(column("platform"), "Platform", child_request.query))
+        child_query = deepcopy(child_request.query)
+        child_query.projection = ["id"]
+        self.query.and_filter(in_subquery(column("platform"), "Platform", child_query))
         return self
 
     def without_platform_matching(self, child_request):
-        child_request.query._projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("platform"), "Platform", child_request.query))
+        child_query = deepcopy(child_request.query)
+        child_query.projection = ["id"]
+        self.query.and_filter(not_in_subquery(column("platform"), "Platform", child_query))
         return self
 
     def have_platform(self):
@@ -555,13 +558,15 @@ class SchoolTypeRequest:
         return self.without_school_list_matching(SchoolRequest())
 
     def with_school_list_matching(self, child_request):
-        self.query.and_filter(in_subquery(column("id"), "School", child_request.query))
-        child_request.query._projection = ["school_type"]
+        child_query = deepcopy(child_request.query)
+        child_query.projection = ["school_type"]
+        self.query.and_filter(in_subquery(column("id"), "School", child_query))
         return self
 
     def without_school_list_matching(self, child_request):
-        self.query.and_filter(not_in_subquery(column("id"), "School", child_request.query))
-        child_request.query._projection = ["school_type"]
+        child_query = deepcopy(child_request.query)
+        child_query.projection = ["school_type"]
+        self.query.and_filter(not_in_subquery(column("id"), "School", child_query))
         return self
     def count_schools(self):
         return self.count_schools_as("count_schools")

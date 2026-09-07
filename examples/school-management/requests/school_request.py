@@ -10,6 +10,7 @@ from teaql.core.expr import (
 )
 from models.school import School
 from typing import Protocol
+from copy import deepcopy
 
 class QuerySelection(Protocol):
     query: SelectQuery
@@ -127,13 +128,15 @@ class SchoolRequest:
         self.query.relation_query("school_type", child_request.query)
         return self
     def with_platform_matching(self, child_request):
-        child_request.query._projection = ["id"]
-        self.query.and_filter(in_subquery(column("platform"), "Platform", child_request.query))
+        child_query = deepcopy(child_request.query)
+        child_query.projection = ["id"]
+        self.query.and_filter(in_subquery(column("platform"), "Platform", child_query))
         return self
 
     def without_platform_matching(self, child_request):
-        child_request.query._projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("platform"), "Platform", child_request.query))
+        child_query = deepcopy(child_request.query)
+        child_query.projection = ["id"]
+        self.query.and_filter(not_in_subquery(column("platform"), "Platform", child_query))
         return self
 
     def have_platform(self):
@@ -144,13 +147,15 @@ class SchoolRequest:
         self.query.and_filter(is_null(column("platform")))
         return self
     def with_school_type_matching(self, child_request):
-        child_request.query._projection = ["id"]
-        self.query.and_filter(in_subquery(column("school_type"), "SchoolType", child_request.query))
+        child_query = deepcopy(child_request.query)
+        child_query.projection = ["id"]
+        self.query.and_filter(in_subquery(column("school_type"), "SchoolType", child_query))
         return self
 
     def without_school_type_matching(self, child_request):
-        child_request.query._projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("school_type"), "SchoolType", child_request.query))
+        child_query = deepcopy(child_request.query)
+        child_query.projection = ["id"]
+        self.query.and_filter(not_in_subquery(column("school_type"), "SchoolType", child_query))
         return self
 
     def have_school_type(self):
