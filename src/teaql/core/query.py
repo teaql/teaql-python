@@ -2,7 +2,8 @@ from enum import Enum, auto
 from typing import List, Optional, Any, Dict
 from copy import deepcopy
 from dataclasses import dataclass, field
-from .expr import Expr, ExprBuilder
+from .expr import (AndExpr, BinaryExpr, BinaryOp, ColumnExpr, Expr, ExprBuilder,
+                   ValueExpr)
 from .mutation import TraceNode
 
 class SortDirection(Enum):
@@ -100,6 +101,32 @@ class ObjectGroupBy:
     property_name: str
     storage_field: str
     query: 'SelectQuery'
+
+
+def _is_default_live_filter(expr: Optional[Expr]) -> bool:
+    return (isinstance(expr, BinaryExpr)
+            and isinstance(expr.left, ColumnExpr)
+            and expr.left.name == "version"
+            and expr.op is BinaryOp.Gte
+            and isinstance(expr.right, ValueExpr)
+            and expr.right.value.val == 1)
+
+
+def _remove_default_live_filter(expr: Optional[Expr]) -> Optional[Expr]:
+    if expr is None or _is_default_live_filter(expr):
+        return None
+    if isinstance(expr, AndExpr):
+        retained = []
+        for child in expr.exprs:
+            child = _remove_default_live_filter(child)
+            if child is not None:
+                retained.append(child)
+        if not retained:
+            return None
+        if len(retained) == 1:
+            return retained[0]
+        return AndExpr(retained)
+    return expr
 
 @dataclass
 class FacetRequest:
@@ -256,6 +283,21 @@ class SelectQuery:
             self.filter_expr = Expr.new_and(self.filter_expr, expr)
         else:
             self.filter_expr = expr
+        return self
+
+    def with_deleted_rows(self) -> 'SelectQuery':
+        """Remove only TeaQL's implicit live-row predicate.
+
+        Generated requests add ``version >= 1`` during construction.  Deletion
+        helpers must not reach into private fields or discard application-owned
+        filters when opting into tombstones.
+        """
+        self.filter_expr = _remove_default_live_filter(self.filter_expr)
+        return self
+
+    def deleted_rows_only(self) -> 'SelectQuery':
+        self.with_deleted_rows()
+        self.and_filter(Expr.lte("version", -1))
         return self
     
     def order_asc(self, field: str) -> 'SelectQuery':
