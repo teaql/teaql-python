@@ -12,6 +12,41 @@ from models.school_type import SchoolType
 from runtime_module import GENERATED_RUNTIME_MODULE
 from teaql.data_service import SQLiteTeaQLClient
 from teaql.runtime import UserContext
+from teaql.core.dynamic_search import normalize_dynamic_search
+
+
+async def verify_dynamic_search(context):
+    models = {
+        "School": {"fields": {"name": "string"}, "relations": {"platform": "Platform"}},
+        "Platform": {"fields": {"name": "string"}, "relations": {}},
+    }
+    populated = {"filter": {"name": "Riverside Primary School", "platform.name": "Deployment Campus",
+        "removed": "SECRET_VALUE", "platform.removed": "SECRET_VALUE"},
+        "orderBy": [{"field": "removed", "direction": "asc"}]}
+    for authorized_platform in (1, 2):
+        for search_input in (populated, {}):
+            # Authorization remains present even when the entire search form is absent.
+            request = Q.schools().with_name_is("Riverside Primary School").with_platform_matching(
+                Q.platforms().with_id_is(authorized_platform))
+            search, warnings = normalize_dynamic_search(search_input, "School", models, lambda _: None)
+            for field, predicate in search["filter"].items():
+                value = predicate.get("$eq")
+                if not isinstance(value, str):
+                    raise ValueError("Demo binding supports string equality only")
+                if field == "name":
+                    request = request.with_name_is(value)
+                elif field == "platform.name":
+                    request = request.with_platform_matching(Q.platforms().with_name_is(value))
+                else:
+                    raise ValueError("Missing trusted demo binding")
+            rows = await (request.order_by_id_descending().limit(2)
+                .comment("what: generated School dynamic search")
+                .purpose("why: retain related authorization with stale or absent search fields")
+                .execute_for_list(context))
+            assert len(rows) == (1 if authorized_platform == 1 else 0)
+            assert len(warnings) == (3 if search_input is populated else 0)
+            assert "SECRET_VALUE" not in str(warnings)
+    print("PASS Python generated School dynamic search: independent related scope and typed Q bindings")
 
 
 async def main() -> None:
@@ -69,6 +104,8 @@ async def main() -> None:
     school.update_student_capacity(800)
     school.update_active(True)
     await school.audit_as("Create Riverside Primary School").save(context)
+
+    await verify_dynamic_search(context)
 
     loaded = await (Q.schools().with_id_is(school.id)
         .select_platform_with(Q.platforms_minimal().select_name().select_base_url())
