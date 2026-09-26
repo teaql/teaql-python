@@ -61,5 +61,26 @@ orders = await client.execute_query(FederalQuery(
 await client.aclose()
 ```
 
+## Security Foundation Status
+
+Python currently provides governed local SQL execution and a **TFP client**;
+it does not claim a public TFP server endpoint. Application queries retain
+non-empty comment/purpose and audited mutations retain their audit reason.
+Runtime logging should keep parameterized SQL and intent separate from any
+restricted value-bearing diagnostic output.
+
+Portable `UserContext` opaque entity references are not implemented in the
+Python runtime yet. Until that capability is added, applications must not
+invent a Python-specific token format or serialize internal ID/version pairs as
+if they were the TeaQL portable contract. A Python TFP client may carry an
+opaque token issued by a trusted Java, Rust, Go, or .NET backend, but it must
+not decode, rewrite, or mint that token.
+
+The planned wire format, fail-closed behavior, shared golden vector, and exact
+development-only acknowledgement are maintained in the canonical
+[opaque entity reference contract](https://github.com/teaql/teaql-conformance/blob/main/design/opaque-entity-references.md).
+Opaque tokens never replace the backend's authorization, tenant, ownership,
+role, or optimistic-version checks.
+
 ---
 To run test validations and business logic simulations locally, simply run `pytest` in the project root.
