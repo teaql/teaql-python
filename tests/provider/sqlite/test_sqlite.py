@@ -237,6 +237,40 @@ async def test_crud(temp_db, schema_provider, service):
     assert len(query_res.rows) == 0
 
 @pytest.mark.asyncio
+async def test_crud_privacy_preserves_sqlite_values_and_failure(temp_db, service, tmp_path, monkeypatch):
+    from teaql.runtime.context import TextDiagnosticSqlLogSink
+    from teaql.runtime.log_privacy import PLAINTEXT_ENV
+    monkeypatch.delenv(PLAINTEXT_ENV, raising=False)
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name TEXT, version INTEGER)")
+        await db.commit()
+    first, second, failed = "PRIVATE-CREATE-CANARY", "PRIVATE-UPDATE-CANARY", "PRIVATE-FAILURE-CANARY"
+    context = RuntimeModule.new().into_context()
+    path = tmp_path / "runtime.log"
+    with path.open("w") as output:
+        context.set_diagnostic_sql_log_sink(TextDiagnosticSqlLogSink(lambda line: print(line, file=output)))
+        def insert(name):
+            return MutationRequest(InsertCommand("User", {
+                "id": Value.I64(1), "name": Value.Text(name), "version": Value.I64(1)}))
+        created = await service.mutate(context, insert(first))
+        assert created.persisted_record["name"] == first
+        query = QueryRequest(SelectQuery("User").limit(1)).comment("read privacy fixture").purpose("verify original stored values")
+        assert (await service.query(context, query)).rows[0]["name"] == first
+        updated = await service.mutate(context, MutationRequest(
+            UpdateCommand("User", Value.I64(1)).value("name", Value.Text(second))))
+        assert updated.persisted_record["name"] == second
+        with pytest.raises(Exception):
+            await service.mutate(context, insert(failed))
+        assert (await service.query(context, query)).rows[0]["name"] == second
+        await service.mutate(context, MutationRequest(DeleteCommand("User", Value.I64(1)).hard_delete()))
+        assert (await service.query(context, query)).rows == []
+    logged = path.read_text() + repr(context.sql_logs())
+    for marker in (first, second, failed):
+        assert marker not in logged
+    for operation in ("insert", "select", "update", "delete"):
+        assert operation in logged
+
+@pytest.mark.asyncio
 async def test_id_set_pagination_jumps_restores_order_and_avoids_count(temp_db, schema_provider):
     service = create_sqlite_service(temp_db, schema_provider)
     context = RuntimeModule.new().entity(schema_provider.get_entity("User")).into_context()

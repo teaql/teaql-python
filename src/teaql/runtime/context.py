@@ -739,6 +739,8 @@ class UserContext:
         elif entry.affected_rows is not None:
             entry.result_summary = f"{entry.affected_rows} rows affected"
 
+        from .log_privacy import sql_log_projection
+        entry = sql_log_projection(entry)
         logs = self.sql_logs()
         logs.append(entry)
         self._resources["sql_logs"] = logs
@@ -750,7 +752,7 @@ class UserContext:
             buf.entries.append(UnifiedLogEntry(
                 timestamp=entry.started_at,
                 user_identifier=self.user_identifier(),
-                trace_chain=getattr(metadata, 'trace_chain', []),
+                trace_chain=entry.trace_path,
                 payload=LogPayload.Sql(entry)
             ))
 
@@ -784,6 +786,8 @@ class UserContext:
         elif affected_rows is not None:
             entry.result_summary = f"{affected_rows} rows affected"
 
+        from .log_privacy import sql_log_projection
+        entry = sql_log_projection(entry)
         logs = self.sql_logs()
         logs.append(entry)
         self._resources["sql_logs"] = logs
@@ -1033,7 +1037,7 @@ class SqlLogEntry:
     result_summary: str
 
 class DiagnosticSqlLogSink:
-    """Value-bearing diagnostic SQL destination; the text sink is installed by default."""
+    """Policy-projected SQL destination; the text sink is installed by default."""
     def write(self, entry: SqlLogEntry) -> None:
         raise NotImplementedError
 
@@ -1042,6 +1046,8 @@ class TextDiagnosticSqlLogSink(DiagnosticSqlLogSink):
         self._writer = writer
 
     def write(self, entry: SqlLogEntry) -> None:
+        from .log_privacy import sql_log_projection
+        entry = sql_log_projection(entry)
         elapsed_us = int(entry.elapsed.total_seconds() * 1_000_000) if entry.elapsed else 0
         self._writer(
             f"[TeaQL SQL][{entry.operation.name.lower()}][{elapsed_us}us] "

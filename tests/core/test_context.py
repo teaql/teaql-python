@@ -38,8 +38,8 @@ def test_user_context_extensions():
     context.set_diagnostic_sql_log_sink(TextDiagnosticSqlLogSink(output.append))
     context.record_metadata_log(MockMetadata())
     assert len(context.sql_logs()) == 1
-    assert context.sql_logs()[0].debug_sql == "SELECT 1"
-    assert output[0].endswith("\nDebug SQL: SELECT 1")
+    assert context.sql_logs()[0].debug_sql == "[REDACTED SQL; NOT REPLAYABLE]"
+    assert output[0].endswith("\nDebug SQL: [REDACTED SQL; NOT REPLAYABLE]")
     assert "Parameterized SQL:" in output[0]
     
     # SQL logs
