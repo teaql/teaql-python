@@ -46,9 +46,10 @@ def test_bootstrap_audit_identity_survives_safe_projection():
     assert safe.category == "runtime-bootstrap"
 
 
-def test_app_audit_trace_redacts_target_id_without_changing_structured_id():
+@pytest.mark.parametrize("kind", list(MutationAuditKind))
+def test_app_audit_trace_redacts_target_id_without_changing_structured_id(kind):
     event = RawAuditEvent(
-        MutationAuditKind.UPDATED,
+        kind,
         "SchoolType",
         1001,
         (AuditFieldChange("name", "Primary", "Primary School"),),
