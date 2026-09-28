@@ -4,6 +4,7 @@ from copy import deepcopy
 from datetime import datetime
 import asyncio
 import hashlib
+import logging
 import time
 import threading
 from array import array
@@ -993,10 +994,14 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         await self.transport.execute_sql(CompiledQuery(idx_sql, []))
                 except Exception:
                     pass
-            except Exception as e:
-                # If creating table fails, it might be due to dialect unsupported features, just pass for now
-                print(f"Error creating table for entity {getattr(entity, '_name', entity)}: {e}")
-                pass
+            except Exception as error:
+                # Preserve the existing best-effort schema behavior, but never
+                # forward driver exception text to an uncontrolled log sink.
+                logging.getLogger("teaql.sql").warning(
+                    "Schema creation failed for entity %s (%s)",
+                    getattr(entity, '_name', type(entity).__name__),
+                    type(error).__name__,
+                )
         await self.transport.execute_sql(CompiledQuery(
             "CREATE TABLE IF NOT EXISTS teaql_id_space ("
             "type_name VARCHAR(255) NOT NULL PRIMARY KEY, "

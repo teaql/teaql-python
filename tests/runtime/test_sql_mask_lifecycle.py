@@ -127,6 +127,32 @@ async def test_failed_statement_logs_and_preserves_error(fixture, operation):
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('plaintext_debug', [False, True])
+async def test_schema_failure_does_not_print_driver_error(fixture, monkeypatch,
+                                                          caplog, capsys, plaintext_debug):
+    from teaql.runtime._schema_capability import SCHEMA_CAPABILITY
+
+    if plaintext_debug:
+        monkeypatch.setenv(PLAINTEXT_ENV, PLAINTEXT_ACK)
+
+    class SchemaFaultTransport(FaultTransport):
+        async def execute_sql(self, query):
+            if 'CREATE TABLE' in query.sql and 'teaql_id_space' not in query.sql:
+                raise RuntimeError('DRIVER-CANARY Riverside PASSWORD-CANARY')
+            return 0, None
+
+    context, provider, _, _ = fixture
+    executor = SqlDataServiceExecutor(SqliteDialect(), SchemaFaultTransport(), provider)
+    await executor._ensure_schema(context, SCHEMA_CAPABILITY)
+
+    printed = capsys.readouterr()
+    assert printed.out == printed.err == ''
+    assert 'Schema creation failed for entity Customer (RuntimeError)' in caplog.text
+    for secret in ('DRIVER-CANARY', 'Riverside', 'PASSWORD-CANARY'):
+        assert secret not in caplog.text
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('batches,fail,count', [(3,False,3),(0,False,0),(3,True,2),(1,True,0)])
 async def test_stream_completion_and_failure(fixture, batches, fail, count):
     context, provider, output, _ = fixture
