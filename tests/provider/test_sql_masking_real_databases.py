@@ -118,3 +118,39 @@ async def test_live_provider_keeps_values_and_masks_q_and_mutation(
         assert "PASSWORD-CANARY" not in logged
     finally:
         await transport.execute_sql(CompiledQuery(f"DROP TABLE IF EXISTS {table}", []))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("env_name", "transport_type"),
+    [
+        ("TEAQL_TEST_POSTGRES_URL", PostgresTransport),
+        ("TEAQL_TEST_MYSQL_URL", MysqlTransport),
+    ],
+)
+async def test_live_provider_transaction_commit_and_rollback(env_name, transport_type):
+    url = os.getenv(env_name)
+    if not url:
+        if os.getenv("TEAQL_REQUIRE_LIVE_DB", "").lower() == "true":
+            pytest.fail(f"{env_name} is required for live provider tests")
+        pytest.skip(f"{env_name} is not set")
+
+    table = f"teaql_tx_{uuid4().hex[:12]}"
+    transport = transport_type(url)
+    await transport.execute_sql(CompiledQuery(
+        f"CREATE TABLE {table} (id BIGINT PRIMARY KEY, display_name VARCHAR(100))", []))
+    try:
+        transaction = await transport.begin_sql()
+        await transaction.execute_sql(CompiledQuery(
+            f"INSERT INTO {table} (id, display_name) VALUES (1, 'rolled back')", []))
+        assert len(await transaction.fetch_all_sql(CompiledQuery(f"SELECT id FROM {table}", []))) == 1
+        await transaction.rollback_sql()
+        assert await transport.fetch_all_sql(CompiledQuery(f"SELECT id FROM {table}", [])) == []
+
+        transaction = await transport.begin_sql()
+        await transaction.execute_sql(CompiledQuery(
+            f"INSERT INTO {table} (id, display_name) VALUES (2, 'committed')", []))
+        await transaction.commit_sql()
+        assert len(await transport.fetch_all_sql(CompiledQuery(f"SELECT id FROM {table}", []))) == 1
+    finally:
+        await transport.execute_sql(CompiledQuery(f"DROP TABLE IF EXISTS {table}", []))

@@ -3,11 +3,11 @@ import asyncpg
 from decimal import Decimal
 from datetime import date, datetime, timezone
 from typing import List, Dict, Any, Optional, AsyncIterator
-from teaql.sql.executor import SqlTransport
+from teaql.sql.executor import SqlTransactionTransport, SqlTransactionTransportTx
 from teaql.sql.types import CompiledQuery
 from teaql.core.value import Value, DataType, Timestamp
 
-class PostgresTransport(SqlTransport):
+class PostgresTransport(SqlTransactionTransport):
     def __init__(self, db_url: str):
         self.db_url = db_url
 
@@ -88,3 +88,47 @@ class PostgresTransport(SqlTransport):
             return affected_rows, 0
         finally:
             await conn.close()
+
+    async def begin_sql(self) -> SqlTransactionTransportTx:
+        conn = await asyncpg.connect(self.db_url)
+        try:
+            transaction = conn.transaction()
+            await transaction.start()
+            return _PostgresTransaction(conn, transaction, self)
+        except BaseException:
+            await conn.close()
+            raise
+
+
+class _PostgresTransaction(SqlTransactionTransportTx):
+    def __init__(self, conn, transaction, owner: PostgresTransport):
+        self._conn = conn
+        self._transaction = transaction
+        self._owner = owner
+
+    async def fetch_all_sql(self, query: CompiledQuery) -> List[Dict[str, Any]]:
+        rows = await self._conn.fetch(query.sql_with_comment(), *self._owner._bind_values(query.params))
+        return [
+            {key: self._owner._decode_value(value) for key, value in row.items()}
+            for row in rows
+        ]
+
+    async def execute_sql(self, query: CompiledQuery) -> tuple[int, int]:
+        status = await self._conn.execute(query.sql_with_comment(), *self._owner._bind_values(query.params))
+        if status.startswith("INSERT "):
+            return int(status.split()[-1]), 0
+        if status.startswith(("UPDATE ", "DELETE ")):
+            return int(status.split()[-1]), 0
+        return 0, 0
+
+    async def commit_sql(self) -> None:
+        try:
+            await self._transaction.commit()
+        finally:
+            await self._conn.close()
+
+    async def rollback_sql(self) -> None:
+        try:
+            await self._transaction.rollback()
+        finally:
+            await self._conn.close()
