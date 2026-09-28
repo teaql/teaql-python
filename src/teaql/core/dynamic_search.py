@@ -17,8 +17,8 @@ def _reject_json_constant(_):
 
 
 def _warning(warning):
-    _LOG.warning('%s entity=%s clause=%s fieldPath=%s', warning['code'],
-                 warning['entity'], warning['clause'], warning['fieldPath'])
+    _LOG.warning('%s entity=%s clause=%s fieldPath=<omitted>', warning['code'],
+                 warning['entity'], warning['clause'])
 
 
 def normalize_dynamic_search(source, entity, models, warn=_warning, max_clauses=100):
