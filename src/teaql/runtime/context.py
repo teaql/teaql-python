@@ -707,7 +707,7 @@ class UserContext:
     def record_metadata_log(self, metadata: Any):
         self._record_metadata_log(metadata)
 
-    def _record_metadata_log(self, metadata: Any, *, intent_source=None):
+    def _record_metadata_log(self, metadata: Any, *, intent_source=None, intent_values=()):
         """Internal statement plumbing: source bindings never reach sinks/buffers."""
         op = SqlLogOperation.Select
         op_str = str(getattr(metadata, 'operation', '')).lower()
@@ -748,7 +748,7 @@ class UserContext:
             entry.result_summary = f"{entry.affected_rows} rows affected"
 
         from .log_privacy import sql_log_projection
-        entry = sql_log_projection(entry, _intent_source=intent_source)
+        entry = sql_log_projection(entry, _intent_source=intent_source, _intent_values=intent_values)
         logs = self.sql_logs()
         logs.append(entry)
         self._resources["sql_logs"] = logs

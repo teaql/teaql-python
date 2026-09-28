@@ -1,14 +1,15 @@
 import asyncio
+from datetime import datetime
 from types import SimpleNamespace
 
 import pytest
 
 from teaql.core.expr import Expr
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
-from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest, TraceNode
+from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand, MutationRequest, TraceNode
 from teaql.core.query import SelectQuery
 from teaql.core.value import DataType, Value
-from teaql.data_service import QueryRequest
+from teaql.data_service import DataServiceOperation, ExecutionMetadata, QueryRequest
 from teaql.provider.sqlite import SimpleSchemaProvider
 from teaql.provider.sqlite.dialect import SqliteDialect
 from teaql.runtime import RuntimeModule
@@ -341,6 +342,51 @@ async def test_generated_mutation_string_comment_is_preserved(fixture):
     assert entries[0].comment == mutation.comment
     assert entries[0].audit_reason == mutation.comment
     assert_log(fixture, 'success')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('operation', ['insert', 'update', 'delete', 'recover'])
+@pytest.mark.parametrize('failure', [False, True])
+async def test_sql_intent_scrubs_target_id_without_changing_bindings(fixture, operation, failure):
+    context, provider, output, entries = fixture
+    next(p for p in provider.get_entity('Customer').properties if p.name == 'id').log_policy('plain')
+    transport = FaultTransport(failure=RuntimeError('DRIVER-CANARY') if failure else None)
+    executor = DomainStatementExecutor(SqliteDialect(), transport, provider)
+    commands = {
+        'insert': InsertCommand('Customer').value('id', 1001).value('display_name', 'Riverside'),
+        'update': UpdateCommand('Customer', Value.I64(1001)).expected_version(1).value('display_name', 'Riverside'),
+        'delete': DeleteCommand('Customer', Value.I64(1001)).expected_version(1),
+        'recover': RecoverCommand('Customer', Value.I64(1001), -2),
+    }
+    command = commands[operation]
+    command.trace_chain = [TraceNode(comment='what: mutate target 1001')]
+    mutation = MutationRequest(command)
+    mutation.comment = 'what: mutate target 1001'
+    if failure:
+        with pytest.raises(TransportError):
+            await executor.mutate(context, mutation)
+    else:
+        await executor.mutate(context, mutation)
+    assert entries[0].audit_reason == 'what: mutate target [REDACTED]'
+    assert '1001' not in repr(entries[0].trace_path)
+    assert '1001' not in output[0].split('auditReason=', 1)[1].split('Debug SQL:', 1)[0]
+    assert any(getattr(value, 'val', value) == 1001 for value in transport.params)
+    assert mutation.comment == 'what: mutate target 1001'
+
+
+def test_short_target_id_does_not_redact_structural_row_count(fixture):
+    context, _, _, entries = fixture
+    now = datetime.now()
+    metadata = ExecutionMetadata(backend='sqlite', operation=DataServiceOperation.Update,
+        started_at=now, ended_at=now, parameterized_sql='UPDATE customer_data SET version = ? WHERE id = ?',
+        parameters=[Value.I64(2), Value.I64(1)], affected_rows=1,
+        audit_reason='what: update target 1', database_kind=SqliteDialect().kind(),
+        parameter_log_policies=['plain', 'plain'], sql_origin='generated')
+    context._record_metadata_log(metadata, intent_values=(Value.I64(1),))
+    assert entries[0].audit_reason == 'what: update target [REDACTED]'
+    assert entries[0].result_summary == '1 rows affected'
+    assert entries[0].params[1].val == 1
+    assert metadata.audit_reason == 'what: update target 1'
 
 
 class ReadbackTransaction(FaultTransport, SqlTransactionTransportTx):

@@ -117,7 +117,7 @@ def _is_masked(policy, allow):
     return policy in ('credential', 'unknown') or (not allow and policy != 'plain')
 
 
-def sql_log_projection(entry, *, _intent_source=None):
+def sql_log_projection(entry, *, _intent_source=None, _intent_values=()):
     """Source bindings are call-local runtime plumbing, never stored on a log entry."""
     allow = plaintext_enabled() and entry.log_mode != 'masked'
     prior = _projections.get(id(entry))
@@ -129,12 +129,12 @@ def sql_log_projection(entry, *, _intent_source=None):
         # Entries are mutable. Do not expose the cached safe alternative itself.
         if prior[3] is not None:
             return _remember_projection(deepcopy(prior[3]), False)
-    projected = _project_with_policy(entry, allow, _intent_source)
-    alternative = _project_with_policy(entry, False, _intent_source) if allow else None
+    projected = _project_with_policy(entry, allow, _intent_source, _intent_values)
+    alternative = _project_with_policy(entry, False, _intent_source, _intent_values) if allow else None
     return _remember_projection(projected, allow, alternative)
 
 
-def _project_with_policy(entry, allow, intent_source):
+def _project_with_policy(entry, allow, intent_source, intent_values):
     from teaql.sql.types import DatabaseKind, render_log_sql, _sql_literal
     from teaql.core.value import Value
     supplied = entry.parameter_log_policies
@@ -154,11 +154,12 @@ def _project_with_policy(entry, allow, intent_source):
         source_policies = _binding_policies(intent_source)
         secrets.extend(text for index, value in enumerate(intent_source.params)
                        if _is_masked(source_policies[index], allow) for text in value_strings(value))
+    intent_secrets = secrets + [text for value in intent_values for text in value_strings(value)]
     # A copied/changed debug record has lost its reliable private alternative.
     # Its inherited intent may mention values absent from its own SQL bindings.
     unknown_debug_intent = not allow and entry.log_mode == 'debug-plaintext' and intent_source is None
     def intent(value):
-        return scrub(value, secrets, hide_all=unknown_debug_intent)
+        return scrub(value, intent_secrets, hide_all=unknown_debug_intent)
     bare = re.sub(r'\$[0-9]+', '?', entry.sql)
     unsafe = ((not allow or credentials) and entry.sql_origin != 'generated' and
               bool(re.search(r"['\"`$]|--|/\*|\b\d+\b|:[A-Za-z_]", bare)))
@@ -189,6 +190,6 @@ def _project_with_policy(entry, allow, intent_source):
                         audit_reason=intent(entry.audit_reason),
                         result_summary=(f'{entry.result_count} rows returned' if entry.result_count is not None
                             else f'{entry.affected_rows} rows affected' if entry.affected_rows is not None
-                            else intent(entry.result_summary)),
+                            else scrub(entry.result_summary, secrets, hide_all=unknown_debug_intent)),
                         trace_path=intent(entry.trace_path))
     return projected

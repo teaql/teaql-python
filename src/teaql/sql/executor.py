@@ -211,10 +211,20 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         if context is not None:
             try:
                 source = getattr(request, '_log_intent_source', None) if query else None
-                if source is None:
+                target_id = None
+                if not query:
+                    target_id = getattr(request._data, 'id', None)
+                    if target_id is None:
+                        descriptor = self.schema_provider.get_entity(entity)
+                        id_property = next((prop for prop in descriptor.properties
+                            if getattr(prop, '_is_id', False) or getattr(prop, 'is_id_val', False)), None)
+                        if id_property is not None:
+                            target_id = getattr(request._data, 'values', {}).get(id_property.name)
+                if source is None and target_id is None:
                     context.record_metadata_log(metadata)
                 else:
-                    context._record_metadata_log(metadata, intent_source=source)
+                    context._record_metadata_log(metadata, intent_source=source,
+                        intent_values=() if target_id is None else (target_id,))
             except Exception:
                 # A broken diagnostic destination must not replace an in-flight
                 # driver failure, cancellation or generator close.
@@ -867,7 +877,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             affected_rows=None, result_count=len(rows) if rows is not None else None,
             trace_chain=[*write_metadata.trace_chain, TraceNode(kind='sql', name='readback', comment='readback')])
         try:
-            context._record_metadata_log(metadata, intent_source=source)
+            context._record_metadata_log(metadata, intent_source=source,
+                intent_values=tuple(readback.params[:1]))
         except BaseException:
             # An in-flight readback error must survive a diagnostic sink failure.
             pass
