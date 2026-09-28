@@ -263,6 +263,25 @@ async def test_broken_sink_cannot_replace_driver_failure(fixture, streaming):
 
 
 @pytest.mark.asyncio
+async def test_broken_sink_cannot_fail_successful_query(fixture):
+    context, provider, _, _ = fixture
+    attempts = []
+
+    def broken(entry):
+        attempts.append(entry)
+        raise RuntimeError('DIAGNOSTIC-SINK-CANARY')
+
+    context.set_diagnostic_sql_log_sink(SimpleNamespace(write=broken))
+    executor = DomainStatementExecutor(SqliteDialect(), FaultTransport(), provider)
+    result = await executor.query(context, request())
+
+    assert result is not None
+    assert len(attempts) == 1
+    assert len(context.sql_logs()) == 1
+    assert 'PASSWORD-CANARY' not in str(context.sql_logs()[0])
+
+
+@pytest.mark.asyncio
 async def test_query_cancellation_preserved(fixture):
     context, provider, _, _ = fixture
     failure = asyncio.CancelledError()

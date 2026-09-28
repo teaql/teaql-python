@@ -752,9 +752,7 @@ class UserContext:
         logs = self.sql_logs()
         logs.append(entry)
         self._resources["sql_logs"] = logs
-        sink = self.get_resource("diagnostic_sql_log_sink")
-        if sink is not None:
-            sink.write(entry)
+        self._write_diagnostic_sql_log(entry)
         buf = self.get_resource("UnifiedLogBuffer")
         if buf:
             buf.entries.append(UnifiedLogEntry(
@@ -803,9 +801,7 @@ class UserContext:
         logs = self.sql_logs()
         logs.append(entry)
         self._resources["sql_logs"] = logs
-        sink = self.get_resource("diagnostic_sql_log_sink")
-        if sink is not None:
-            sink.write(entry)
+        self._write_diagnostic_sql_log(entry)
         
         buf = self.get_resource("UnifiedLogBuffer")
         if buf:
@@ -815,6 +811,17 @@ class UserContext:
                 trace_chain=[],
                 payload=LogPayload.Sql(entry)
             ))
+
+    def _write_diagnostic_sql_log(self, entry: 'SqlLogEntry'):
+        sink = self.get_resource("diagnostic_sql_log_sink")
+        if sink is None:
+            return
+        try:
+            sink.write(entry)
+        except Exception:
+            # An optional diagnostic destination must not change SQL outcomes.
+            # Do not print the exception: custom sinks may include raw values.
+            pass
 
     def register_executor(self, executor: Any):
         self.insert_resource("executor", executor)
