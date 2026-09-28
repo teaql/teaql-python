@@ -43,6 +43,8 @@ async def test_live_provider_keeps_values_and_masks_q_and_mutation(
 ):
     url = os.getenv(env_name)
     if not url:
+        if os.getenv("TEAQL_REQUIRE_LIVE_DB", "").lower() == "true":
+            pytest.fail(f"{env_name} is required for live provider tests")
         pytest.skip(f"{env_name} is not set")
 
     table = f"teaql_mask_{uuid4().hex[:12]}"
