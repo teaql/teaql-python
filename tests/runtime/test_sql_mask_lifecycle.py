@@ -84,6 +84,26 @@ def request():
     return QueryRequest(query).comment('what: inspect customers').purpose('why: lifecycle test')
 
 
+@pytest.mark.asyncio
+async def test_old_generated_query_request_keeps_query_intent(fixture):
+    context, provider, output, entries = fixture
+    query = (SelectQuery('Customer').filter(Expr.eq('display_name', 'Riverside'))
+             .limit(5).comment('what: old generated request')
+             .purpose('why: preserve diagnostic intent'))
+    request = QueryRequest(query)
+    assert request._comment == 'what: old generated request'
+    assert request._purpose == 'why: preserve diagnostic intent'
+    assert QueryRequest(query, _comment='explicit what', _purpose='explicit why')._comment == 'explicit what'
+    assert QueryRequest(query, _comment='explicit what', _purpose='explicit why')._purpose == 'explicit why'
+
+    executor = DomainStatementExecutor(SqliteDialect(), FaultTransport(), provider)
+    await executor.query(context, request)
+    assert entries[0].comment == 'what: old generated request'
+    assert entries[0].purpose == 'why: preserve diagnostic intent'
+    assert 'what: old generated request' in output[0]
+    assert 'why: preserve diagnostic intent' in output[0]
+
+
 def assert_log(fixture, outcome, count=None, debug=False):
     context, _, output, entries = fixture
     assert len(entries) == 1
