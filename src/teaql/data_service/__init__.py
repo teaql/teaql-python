@@ -71,6 +71,11 @@ class ExecutionMetadata:
     audit_reason: Optional[str] = None
     backend_request_id: Optional[str] = None
     debug_query: Optional[str] = None
+    database_kind: Any = None
+    parameter_log_policies: Optional[List[str]] = None
+    sql_origin: Optional[str] = None
+    # Statement/cursor termination only, not transaction commit.
+    execution_outcome: Optional[str] = None
 
 
 @dataclass

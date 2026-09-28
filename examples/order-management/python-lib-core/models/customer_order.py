@@ -376,10 +376,12 @@ class CustomerOrder:
     def update_status_to_pending(self):
         self.status = 1001
         self._loaded_fields.add("status")
+        self._entity_root.set(self._teaql_entity_key(), "status", Value.from_any(self.status))
         return self
     def update_status_to_confirmed(self):
         self.status = 1002
         self._loaded_fields.add("status")
+        self._entity_root.set(self._teaql_entity_key(), "status", Value.from_any(self.status))
         return self
 
 

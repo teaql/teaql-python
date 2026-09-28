@@ -705,6 +705,10 @@ class UserContext:
         return self.get_resource("locale") or Locale.ENGLISH
 
     def record_metadata_log(self, metadata: Any):
+        self._record_metadata_log(metadata)
+
+    def _record_metadata_log(self, metadata: Any, *, intent_source=None):
+        """Internal statement plumbing: source bindings never reach sinks/buffers."""
         op = SqlLogOperation.Select
         op_str = str(getattr(metadata, 'operation', '')).lower()
         if 'insert' in op_str: op = SqlLogOperation.Insert
@@ -726,6 +730,10 @@ class UserContext:
             params=list(getattr(metadata, 'parameters', [])),
             debug_sql=getattr(metadata, 'debug_query', '') or '',
             pretty_sql=getattr(metadata, 'debug_query', '') or '',
+            database_kind=getattr(metadata, 'database_kind', None),
+            parameter_log_policies=getattr(metadata, 'parameter_log_policies', None),
+            sql_origin=getattr(metadata, 'sql_origin', None),
+            execution_outcome=getattr(metadata, 'execution_outcome', None),
             started_at=started_at,
             ended_at=ended_at,
             elapsed=ended_at - started_at,
@@ -740,7 +748,7 @@ class UserContext:
             entry.result_summary = f"{entry.affected_rows} rows affected"
 
         from .log_privacy import sql_log_projection
-        entry = sql_log_projection(entry)
+        entry = sql_log_projection(entry, _intent_source=intent_source)
         logs = self.sql_logs()
         logs.append(entry)
         self._resources["sql_logs"] = logs
@@ -760,7 +768,8 @@ class UserContext:
         if not self.sql_log_options().enabled_for(operation):
             return
             
-        debug_sql = getattr(query, 'debug_sql', lambda *args: "")() if hasattr(query, 'debug_sql') else getattr(query, 'sql', "")
+        # Projection renders only safe values. Never materialize plaintext first.
+        debug_sql = ''
         
         entry = SqlLogEntry(
             operation=operation,
@@ -772,6 +781,9 @@ class UserContext:
             params=getattr(query, 'params', []),
             debug_sql=debug_sql,
             pretty_sql=debug_sql,
+            database_kind=getattr(query, 'database_kind', None),
+            parameter_log_policies=getattr(query, 'parameter_log_policies', None),
+            sql_origin=getattr(query, 'sql_origin', None),
             started_at=started_at,
             ended_at=ended_at,
             elapsed=elapsed,
@@ -1035,6 +1047,13 @@ class SqlLogEntry:
     result_type: Optional[str]
     affected_rows: Optional[int]
     result_summary: str
+    database_kind: Any = None
+    parameter_log_policies: Optional[List[str]] = None
+    sql_origin: Optional[str] = None
+    masked_parameters: Optional[List[bool]] = None
+    log_mode: Optional[str] = None
+    omission_reason: Optional[str] = None
+    execution_outcome: Optional[str] = None
 
 class DiagnosticSqlLogSink:
     """Policy-projected SQL destination; the text sink is installed by default."""
@@ -1051,9 +1070,9 @@ class TextDiagnosticSqlLogSink(DiagnosticSqlLogSink):
         elapsed_us = int(entry.elapsed.total_seconds() * 1_000_000) if entry.elapsed else 0
         self._writer(
             f"[TeaQL SQL][{entry.operation.name.lower()}][{elapsed_us}us] "
-            f"{entry.result_summary} comment={entry.comment!r} purpose={entry.purpose!r} "
+            f"{entry.result_summary} outcome={entry.execution_outcome or 'unknown'} comment={entry.comment!r} purpose={entry.purpose!r} "
             f"auditReason={entry.audit_reason!r} tracePath={entry.trace_path!r}\n"
-            f"Parameterized SQL: {entry.sql} params={entry.params!r}\n"
+            f"SQL omission reason: {entry.omission_reason or 'none'}\n"
             f"Debug SQL: {entry.debug_sql}"
         )
 

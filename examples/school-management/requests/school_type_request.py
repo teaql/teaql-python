@@ -1,4 +1,4 @@
-from teaql.core.query import SelectQuery
+from teaql.core.query import RelationAggregate, SelectQuery
 from teaql.core.list import SmartList, TeaQLPage
 from teaql.runtime import EntityRoot
 from teaql.data_service import QueryRequest
@@ -10,7 +10,6 @@ from teaql.core.expr import (
 )
 from models.school_type import SchoolType
 from typing import Protocol
-from copy import deepcopy
 
 class QuerySelection(Protocol):
     query: SelectQuery
@@ -66,15 +65,11 @@ class SchoolTypeRequest:
         return self
 
     def with_deleted_rows(self):
-        self.query._filters = [
-            expression for expression in self.query._filters
-            if expression.get("field") != "version"
-        ]
+        self.query.with_deleted_rows()
         return self
 
     def deleted_rows_only(self):
-        self.with_deleted_rows()
-        self.query.and_filter(lte("version", -1))
+        self.query.deleted_rows_only()
         return self
 
     def select_self_fields(self):
@@ -106,15 +101,13 @@ class SchoolTypeRequest:
         self.query.relation_query("platform", child_request.query)
         return self
     def with_platform_matching(self, child_request):
-        child_query = deepcopy(child_request.query)
-        child_query.projection = ["id"]
-        self.query.and_filter(in_subquery(column("platform"), "Platform", child_query))
+        child_request.query.projection = ["id"]
+        self.query.and_filter(in_subquery(column("platform"), "Platform", child_request.query))
         return self
 
     def without_platform_matching(self, child_request):
-        child_query = deepcopy(child_request.query)
-        child_query.projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("platform"), "Platform", child_query))
+        child_request.query.projection = ["id"]
+        self.query.and_filter(not_in_subquery(column("platform"), "Platform", child_request.query))
         return self
 
     def have_platform(self):
@@ -456,91 +449,91 @@ class SchoolTypeRequest:
         return self.min_display_order_as("minOfDisplayOrder")
 
     def min_display_order_as(self, ret_name: str):
-        self.query.aggregate("min", "display_order", ret_name)
+        self.query.min("display_order", ret_name)
         return self
     def max_display_order(self):
         return self.max_display_order_as("maxOfDisplayOrder")
 
     def max_display_order_as(self, ret_name: str):
-        self.query.aggregate("max", "display_order", ret_name)
+        self.query.max("display_order", ret_name)
         return self
     def sum_display_order(self):
         return self.sum_display_order_as("sumOfDisplayOrder")
 
     def sum_display_order_as(self, ret_name: str):
-        self.query.aggregate("sum", "display_order", ret_name)
+        self.query.sum("display_order", ret_name)
         return self
     def avg_display_order(self):
         return self.avg_display_order_as("avgOfDisplayOrder")
 
     def avg_display_order_as(self, ret_name: str):
-        self.query.aggregate("avg", "display_order", ret_name)
+        self.query.avg("display_order", ret_name)
         return self
     def standardDeviation_display_order(self):
         return self.standardDeviation_display_order_as("standardDeviationOfDisplayOrder")
 
     def standardDeviation_display_order_as(self, ret_name: str):
-        self.query.aggregate("stddev", "display_order", ret_name)
+        self.query.standardDeviation("display_order", ret_name)
         return self
     def squareRootOfPopulationStandardDeviation_display_order(self):
         return self.squareRootOfPopulationStandardDeviation_display_order_as("squareRootOfPopulationStandardDeviationOfDisplayOrder")
 
     def squareRootOfPopulationStandardDeviation_display_order_as(self, ret_name: str):
-        self.query.aggregate("stddev_pop", "display_order", ret_name)
+        self.query.squareRootOfPopulationStandardDeviation("display_order", ret_name)
         return self
     def sampleVariance_display_order(self):
         return self.sampleVariance_display_order_as("sampleVarianceOfDisplayOrder")
 
     def sampleVariance_display_order_as(self, ret_name: str):
-        self.query.aggregate("var_samp", "display_order", ret_name)
+        self.query.sampleVariance("display_order", ret_name)
         return self
     def samplePopulationVariance_display_order(self):
         return self.samplePopulationVariance_display_order_as("samplePopulationVarianceOfDisplayOrder")
 
     def samplePopulationVariance_display_order_as(self, ret_name: str):
-        self.query.aggregate("var_pop", "display_order", ret_name)
+        self.query.samplePopulationVariance("display_order", ret_name)
         return self
     def group_by_platform(self):
         self.query.group_by("platform")
         return self
 
     def group_by_platform_as(self, ret_name: str):
-        self.query.group_by("platform") 
+        self.query.group_by("platform")
         return self
     def group_by_id(self):
         self.query.group_by("id")
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id") 
+        self.query.group_by("id")
         return self
     def group_by_name(self):
         self.query.group_by("name")
         return self
 
     def group_by_name_as(self, ret_name: str):
-        self.query.group_by("name") 
+        self.query.group_by("name")
         return self
     def group_by_code(self):
         self.query.group_by("code")
         return self
 
     def group_by_code_as(self, ret_name: str):
-        self.query.group_by("code") 
+        self.query.group_by("code")
         return self
     def group_by_display_order(self):
         self.query.group_by("display_order")
         return self
 
     def group_by_display_order_as(self, ret_name: str):
-        self.query.group_by("display_order") 
+        self.query.group_by("display_order")
         return self
     def group_by_version(self):
         self.query.group_by("version")
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version") 
+        self.query.group_by("version")
         return self
     def select_school_list(self):
         from requests.school_request import SchoolRequest
@@ -558,15 +551,13 @@ class SchoolTypeRequest:
         return self.without_school_list_matching(SchoolRequest())
 
     def with_school_list_matching(self, child_request):
-        child_query = deepcopy(child_request.query)
-        child_query.projection = ["school_type"]
-        self.query.and_filter(in_subquery(column("id"), "School", child_query))
+        child_request.query.projection = ["school_type"]
+        self.query.and_filter(in_subquery(column("id"), "School", child_request.query))
         return self
 
     def without_school_list_matching(self, child_request):
-        child_query = deepcopy(child_request.query)
-        child_query.projection = ["school_type"]
-        self.query.and_filter(not_in_subquery(column("id"), "School", child_query))
+        child_request.query.projection = ["school_type"]
+        self.query.and_filter(not_in_subquery(column("id"), "School", child_request.query))
         return self
     def count_schools(self):
         return self.count_schools_as("count_schools")
@@ -577,7 +568,9 @@ class SchoolTypeRequest:
 
     def count_schools_with(self, alias: str, child_request):
         child_request.query.count_field("id", alias)
-        self.query.relation_aggregate("school_list", alias, child_request.query, True)
+        self.query.relation_aggregates.append(
+            RelationAggregate("school_list", alias, child_request.query, True)
+        )
         return self
 
     def min_student_capacity_of_schools(self):
@@ -586,8 +579,10 @@ class SchoolTypeRequest:
             "min_student_capacity_of_schools", SchoolRequest())
 
     def min_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.aggregate("min", "student_capacity", "min_student_capacity")
-        self.query.relation_aggregate("school_list", alias, child_request.query, True)
+        child_request.query.min("student_capacity", "min_student_capacity")
+        self.query.relation_aggregates.append(
+            RelationAggregate("school_list", alias, child_request.query, True)
+        )
         return self
     def max_student_capacity_of_schools(self):
         from requests.school_request import SchoolRequest
@@ -595,8 +590,10 @@ class SchoolTypeRequest:
             "max_student_capacity_of_schools", SchoolRequest())
 
     def max_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.aggregate("max", "student_capacity", "max_student_capacity")
-        self.query.relation_aggregate("school_list", alias, child_request.query, True)
+        child_request.query.max("student_capacity", "max_student_capacity")
+        self.query.relation_aggregates.append(
+            RelationAggregate("school_list", alias, child_request.query, True)
+        )
         return self
     def sum_student_capacity_of_schools(self):
         from requests.school_request import SchoolRequest
@@ -604,8 +601,10 @@ class SchoolTypeRequest:
             "sum_student_capacity_of_schools", SchoolRequest())
 
     def sum_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.aggregate("sum", "student_capacity", "sum_student_capacity")
-        self.query.relation_aggregate("school_list", alias, child_request.query, True)
+        child_request.query.sum("student_capacity", "sum_student_capacity")
+        self.query.relation_aggregates.append(
+            RelationAggregate("school_list", alias, child_request.query, True)
+        )
         return self
     def avg_student_capacity_of_schools(self):
         from requests.school_request import SchoolRequest
@@ -613,8 +612,10 @@ class SchoolTypeRequest:
             "avg_student_capacity_of_schools", SchoolRequest())
 
     def avg_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.aggregate("avg", "student_capacity", "avg_student_capacity")
-        self.query.relation_aggregate("school_list", alias, child_request.query, True)
+        child_request.query.avg("student_capacity", "avg_student_capacity")
+        self.query.relation_aggregates.append(
+            RelationAggregate("school_list", alias, child_request.query, True)
+        )
         return self
     def standardDeviation_student_capacity_of_schools(self):
         from requests.school_request import SchoolRequest
@@ -622,8 +623,10 @@ class SchoolTypeRequest:
             "standardDeviation_student_capacity_of_schools", SchoolRequest())
 
     def standardDeviation_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.aggregate("stddev", "student_capacity", "standardDeviation_student_capacity")
-        self.query.relation_aggregate("school_list", alias, child_request.query, True)
+        child_request.query.standardDeviation("student_capacity", "standardDeviation_student_capacity")
+        self.query.relation_aggregates.append(
+            RelationAggregate("school_list", alias, child_request.query, True)
+        )
         return self
     def squareRootOfPopulationStandardDeviation_student_capacity_of_schools(self):
         from requests.school_request import SchoolRequest
@@ -631,8 +634,10 @@ class SchoolTypeRequest:
             "squareRootOfPopulationStandardDeviation_student_capacity_of_schools", SchoolRequest())
 
     def squareRootOfPopulationStandardDeviation_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.aggregate("stddev_pop", "student_capacity", "squareRootOfPopulationStandardDeviation_student_capacity")
-        self.query.relation_aggregate("school_list", alias, child_request.query, True)
+        child_request.query.squareRootOfPopulationStandardDeviation("student_capacity", "squareRootOfPopulationStandardDeviation_student_capacity")
+        self.query.relation_aggregates.append(
+            RelationAggregate("school_list", alias, child_request.query, True)
+        )
         return self
     def sampleVariance_student_capacity_of_schools(self):
         from requests.school_request import SchoolRequest
@@ -640,8 +645,10 @@ class SchoolTypeRequest:
             "sampleVariance_student_capacity_of_schools", SchoolRequest())
 
     def sampleVariance_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.aggregate("var_samp", "student_capacity", "sampleVariance_student_capacity")
-        self.query.relation_aggregate("school_list", alias, child_request.query, True)
+        child_request.query.sampleVariance("student_capacity", "sampleVariance_student_capacity")
+        self.query.relation_aggregates.append(
+            RelationAggregate("school_list", alias, child_request.query, True)
+        )
         return self
     def samplePopulationVariance_student_capacity_of_schools(self):
         from requests.school_request import SchoolRequest
@@ -649,8 +656,10 @@ class SchoolTypeRequest:
             "samplePopulationVariance_student_capacity_of_schools", SchoolRequest())
 
     def samplePopulationVariance_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.aggregate("var_pop", "student_capacity", "samplePopulationVariance_student_capacity")
-        self.query.relation_aggregate("school_list", alias, child_request.query, True)
+        child_request.query.samplePopulationVariance("student_capacity", "samplePopulationVariance_student_capacity")
+        self.query.relation_aggregates.append(
+            RelationAggregate("school_list", alias, child_request.query, True)
+        )
         return self
     def facet_by_platform_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
@@ -680,7 +689,7 @@ class ExecutableSchoolTypeRequest:
         if not self._purpose or not self._purpose.strip() or not self._comment or not self._comment.strip():
             raise Exception("Security audit failure: comment() and purpose() must be called before execute_for_rows()")
         service = context.require_resource("dataService")
-        req = QueryRequest(context.prepare_query(self.query))
+        req = QueryRequest(context.prepare_query(self.query), _comment=self._comment, _purpose=self._purpose)
         return await service.query(context, req)
 
     async def execute_for_rows(self, context):
@@ -702,21 +711,21 @@ class ExecutableSchoolTypeRequest:
         service = context.require_resource("dataService")
         alias = "__teaql_total"
         if authorized.id_set_pagination is not None:
-            row_result = await service.query(context, QueryRequest(authorized))
+            row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
             retained_count, accuracy = context.id_set_count()
             if accuracy == "EXACT":
                 total_count = retained_count
             else:
-                count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias)))
+                count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias), _comment=request._comment, _purpose=request._purpose))
                 if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
                     raise RuntimeError("dataService did not return an exact page count")
                 total_count = int(count_result.rows[0][alias])
         else:
-            count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias)))
+            count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias), _comment=request._comment, _purpose=request._purpose))
             if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
                 raise RuntimeError("dataService did not return an exact page count")
             total_count = int(count_result.rows[0][alias])
-            row_result = await service.query(context, QueryRequest(authorized))
+            row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
         query_root = EntityRoot()
         data = SmartList(SchoolType(_entity_root=query_root, **row) for row in row_result.rows)
         return TeaQLPage(data=data, total_count=total_count, offset=offset, limit=limit)
@@ -735,6 +744,6 @@ class ExecutableSchoolTypeRequest:
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
         query_root = EntityRoot()
-        async for chunk in service.query_stream(context, QueryRequest(request.query), chunk_size):
+        async for chunk in service.query_stream(context, QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose), chunk_size):
             for row in chunk.rows:
                 yield SchoolType(_entity_root=query_root, **row)

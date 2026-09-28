@@ -6,6 +6,13 @@ class PropertyDescriptor:
         self._is_id = False
         self._is_version = False
         self.nullable = True
+        self.log_policy_val = 'unknown'
+    def log_policy(self, policy):
+        """Trusted schema policy; incoming requests cannot override it."""
+        if policy not in ('plain', 'masked', 'credential', 'unknown'):
+            raise ValueError('invalid SQL parameter log policy')
+        self.log_policy_val = policy
+        return self
     def column_name(self, name): 
         self.column_name_val = name
         return self

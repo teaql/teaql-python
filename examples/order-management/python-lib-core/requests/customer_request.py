@@ -1,4 +1,4 @@
-from teaql.core.query import SelectQuery
+from teaql.core.query import RelationAggregate, SelectQuery
 from teaql.core.list import SmartList, TeaQLPage
 from teaql.runtime import EntityRoot
 from teaql.data_service import QueryRequest
@@ -65,15 +65,11 @@ class CustomerRequest:
         return self
 
     def with_deleted_rows(self):
-        self.query._filters = [
-            expression for expression in self.query._filters
-            if expression.get("field") != "version"
-        ]
+        self.query.with_deleted_rows()
         return self
 
     def deleted_rows_only(self):
-        self.with_deleted_rows()
-        self.query.and_filter(lte("version", -1))
+        self.query.deleted_rows_only()
         return self
 
     def select_self_fields(self):
@@ -110,12 +106,12 @@ class CustomerRequest:
         self.query.relation_query("commerce_platform", child_request.query)
         return self
     def with_commerce_platform_matching(self, child_request):
-        child_request.query._projection = ["id"]
+        child_request.query.projection = ["id"]
         self.query.and_filter(in_subquery(column("commerce_platform"), "CommercePlatform", child_request.query))
         return self
 
     def without_commerce_platform_matching(self, child_request):
-        child_request.query._projection = ["id"]
+        child_request.query.projection = ["id"]
         self.query.and_filter(not_in_subquery(column("commerce_platform"), "CommercePlatform", child_request.query))
         return self
 
@@ -512,49 +508,49 @@ class CustomerRequest:
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id") 
+        self.query.group_by("id")
         return self
     def group_by_name(self):
         self.query.group_by("name")
         return self
 
     def group_by_name_as(self, ret_name: str):
-        self.query.group_by("name") 
+        self.query.group_by("name")
         return self
     def group_by_email(self):
         self.query.group_by("email")
         return self
 
     def group_by_email_as(self, ret_name: str):
-        self.query.group_by("email") 
+        self.query.group_by("email")
         return self
     def group_by_commerce_platform(self):
         self.query.group_by("commerce_platform")
         return self
 
     def group_by_commerce_platform_as(self, ret_name: str):
-        self.query.group_by("commerce_platform") 
+        self.query.group_by("commerce_platform")
         return self
     def group_by_create_time(self):
         self.query.group_by("create_time")
         return self
 
     def group_by_create_time_as(self, ret_name: str):
-        self.query.group_by("create_time") 
+        self.query.group_by("create_time")
         return self
     def group_by_update_time(self):
         self.query.group_by("update_time")
         return self
 
     def group_by_update_time_as(self, ret_name: str):
-        self.query.group_by("update_time") 
+        self.query.group_by("update_time")
         return self
     def group_by_version(self):
         self.query.group_by("version")
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version") 
+        self.query.group_by("version")
         return self
     def select_customer_order_list(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -572,13 +568,13 @@ class CustomerRequest:
         return self.without_customer_order_list_matching(CustomerOrderRequest())
 
     def with_customer_order_list_matching(self, child_request):
+        child_request.query.projection = ["customer"]
         self.query.and_filter(in_subquery(column("id"), "CustomerOrder", child_request.query))
-        child_request.query._projection = ["customer"]
         return self
 
     def without_customer_order_list_matching(self, child_request):
+        child_request.query.projection = ["customer"]
         self.query.and_filter(not_in_subquery(column("id"), "CustomerOrder", child_request.query))
-        child_request.query._projection = ["customer"]
         return self
     def count_customer_orders(self):
         return self.count_customer_orders_as("count_customer_orders")
@@ -589,7 +585,9 @@ class CustomerRequest:
 
     def count_customer_orders_with(self, alias: str, child_request):
         child_request.query.count_field("id", alias)
-        self.query.relation_aggregate("customer_order_list", alias, child_request.query, True)
+        self.query.relation_aggregates.append(
+            RelationAggregate("customer_order_list", alias, child_request.query, True)
+        )
         return self
 
     def min_total_amount_of_customer_orders(self):
@@ -598,8 +596,10 @@ class CustomerRequest:
             "min_total_amount_of_customer_orders", CustomerOrderRequest())
 
     def min_total_amount_of_customer_orders_as(self, alias: str, child_request):
-        child_request.query.aggregate("min", "total_amount", "min_total_amount")
-        self.query.relation_aggregate("customer_order_list", alias, child_request.query, True)
+        child_request.query.min("total_amount", "min_total_amount")
+        self.query.relation_aggregates.append(
+            RelationAggregate("customer_order_list", alias, child_request.query, True)
+        )
         return self
     def max_total_amount_of_customer_orders(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -607,8 +607,10 @@ class CustomerRequest:
             "max_total_amount_of_customer_orders", CustomerOrderRequest())
 
     def max_total_amount_of_customer_orders_as(self, alias: str, child_request):
-        child_request.query.aggregate("max", "total_amount", "max_total_amount")
-        self.query.relation_aggregate("customer_order_list", alias, child_request.query, True)
+        child_request.query.max("total_amount", "max_total_amount")
+        self.query.relation_aggregates.append(
+            RelationAggregate("customer_order_list", alias, child_request.query, True)
+        )
         return self
     def sum_total_amount_of_customer_orders(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -616,8 +618,10 @@ class CustomerRequest:
             "sum_total_amount_of_customer_orders", CustomerOrderRequest())
 
     def sum_total_amount_of_customer_orders_as(self, alias: str, child_request):
-        child_request.query.aggregate("sum", "total_amount", "sum_total_amount")
-        self.query.relation_aggregate("customer_order_list", alias, child_request.query, True)
+        child_request.query.sum("total_amount", "sum_total_amount")
+        self.query.relation_aggregates.append(
+            RelationAggregate("customer_order_list", alias, child_request.query, True)
+        )
         return self
     def avg_total_amount_of_customer_orders(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -625,8 +629,10 @@ class CustomerRequest:
             "avg_total_amount_of_customer_orders", CustomerOrderRequest())
 
     def avg_total_amount_of_customer_orders_as(self, alias: str, child_request):
-        child_request.query.aggregate("avg", "total_amount", "avg_total_amount")
-        self.query.relation_aggregate("customer_order_list", alias, child_request.query, True)
+        child_request.query.avg("total_amount", "avg_total_amount")
+        self.query.relation_aggregates.append(
+            RelationAggregate("customer_order_list", alias, child_request.query, True)
+        )
         return self
     def standardDeviation_total_amount_of_customer_orders(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -634,8 +640,10 @@ class CustomerRequest:
             "standardDeviation_total_amount_of_customer_orders", CustomerOrderRequest())
 
     def standardDeviation_total_amount_of_customer_orders_as(self, alias: str, child_request):
-        child_request.query.aggregate("stddev", "total_amount", "standardDeviation_total_amount")
-        self.query.relation_aggregate("customer_order_list", alias, child_request.query, True)
+        child_request.query.standardDeviation("total_amount", "standardDeviation_total_amount")
+        self.query.relation_aggregates.append(
+            RelationAggregate("customer_order_list", alias, child_request.query, True)
+        )
         return self
     def squareRootOfPopulationStandardDeviation_total_amount_of_customer_orders(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -643,8 +651,10 @@ class CustomerRequest:
             "squareRootOfPopulationStandardDeviation_total_amount_of_customer_orders", CustomerOrderRequest())
 
     def squareRootOfPopulationStandardDeviation_total_amount_of_customer_orders_as(self, alias: str, child_request):
-        child_request.query.aggregate("stddev_pop", "total_amount", "squareRootOfPopulationStandardDeviation_total_amount")
-        self.query.relation_aggregate("customer_order_list", alias, child_request.query, True)
+        child_request.query.squareRootOfPopulationStandardDeviation("total_amount", "squareRootOfPopulationStandardDeviation_total_amount")
+        self.query.relation_aggregates.append(
+            RelationAggregate("customer_order_list", alias, child_request.query, True)
+        )
         return self
     def sampleVariance_total_amount_of_customer_orders(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -652,8 +662,10 @@ class CustomerRequest:
             "sampleVariance_total_amount_of_customer_orders", CustomerOrderRequest())
 
     def sampleVariance_total_amount_of_customer_orders_as(self, alias: str, child_request):
-        child_request.query.aggregate("var_samp", "total_amount", "sampleVariance_total_amount")
-        self.query.relation_aggregate("customer_order_list", alias, child_request.query, True)
+        child_request.query.sampleVariance("total_amount", "sampleVariance_total_amount")
+        self.query.relation_aggregates.append(
+            RelationAggregate("customer_order_list", alias, child_request.query, True)
+        )
         return self
     def samplePopulationVariance_total_amount_of_customer_orders(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -661,8 +673,10 @@ class CustomerRequest:
             "samplePopulationVariance_total_amount_of_customer_orders", CustomerOrderRequest())
 
     def samplePopulationVariance_total_amount_of_customer_orders_as(self, alias: str, child_request):
-        child_request.query.aggregate("var_pop", "total_amount", "samplePopulationVariance_total_amount")
-        self.query.relation_aggregate("customer_order_list", alias, child_request.query, True)
+        child_request.query.samplePopulationVariance("total_amount", "samplePopulationVariance_total_amount")
+        self.query.relation_aggregates.append(
+            RelationAggregate("customer_order_list", alias, child_request.query, True)
+        )
         return self
     def facet_by_commerce_platform_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
@@ -692,7 +706,7 @@ class ExecutableCustomerRequest:
         if not self._purpose or not self._purpose.strip() or not self._comment or not self._comment.strip():
             raise Exception("Security audit failure: comment() and purpose() must be called before execute_for_rows()")
         service = context.require_resource("dataService")
-        req = QueryRequest(context.prepare_query(self.query))
+        req = QueryRequest(context.prepare_query(self.query), _comment=self._comment, _purpose=self._purpose)
         return await service.query(context, req)
 
     async def execute_for_rows(self, context):
@@ -714,21 +728,21 @@ class ExecutableCustomerRequest:
         service = context.require_resource("dataService")
         alias = "__teaql_total"
         if authorized.id_set_pagination is not None:
-            row_result = await service.query(context, QueryRequest(authorized))
+            row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
             retained_count, accuracy = context.id_set_count()
             if accuracy == "EXACT":
                 total_count = retained_count
             else:
-                count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias)))
+                count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias), _comment=request._comment, _purpose=request._purpose))
                 if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
                     raise RuntimeError("dataService did not return an exact page count")
                 total_count = int(count_result.rows[0][alias])
         else:
-            count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias)))
+            count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias), _comment=request._comment, _purpose=request._purpose))
             if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
                 raise RuntimeError("dataService did not return an exact page count")
             total_count = int(count_result.rows[0][alias])
-            row_result = await service.query(context, QueryRequest(authorized))
+            row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
         query_root = EntityRoot()
         data = SmartList(Customer(_entity_root=query_root, **row) for row in row_result.rows)
         return TeaQLPage(data=data, total_count=total_count, offset=offset, limit=limit)
@@ -747,6 +761,6 @@ class ExecutableCustomerRequest:
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
         query_root = EntityRoot()
-        async for chunk in service.query_stream(context, QueryRequest(request.query), chunk_size):
+        async for chunk in service.query_stream(context, QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose), chunk_size):
             for row in chunk.rows:
                 yield Customer(_entity_root=query_root, **row)

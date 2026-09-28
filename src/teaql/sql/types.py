@@ -4,6 +4,7 @@ from typing import List, Optional
 from datetime import date, datetime, timezone
 from decimal import Decimal
 import json
+from contextlib import contextmanager
 from teaql.core.value import Value, DataType, Timestamp
 
 class DatabaseKind(Enum):
@@ -11,11 +12,39 @@ class DatabaseKind(Enum):
     Sqlite = auto()
     MySql = auto()
 
+class SQLBindings(list):
+    """Compiler-owned provenance; never supplied by incoming query payloads."""
+    def __init__(self):
+        super().__init__()
+        self.policies = []
+        self.current_policy = 'unknown'
+        self.trusted = True
+
+    def append(self, value, policy=None):
+        super().append(value)
+        self.policies.append(policy or self.current_policy)
+
+    @contextmanager
+    def policy(self, policy):
+        previous = self.current_policy
+        self.current_policy = policy or previous
+        try:
+            yield
+        finally:
+            self.current_policy = previous
+
 @dataclass
 class CompiledQuery:
     sql: str
     params: List[Value]
     comment: Optional[str] = None
+    parameter_log_policies: Optional[List[str]] = None
+    sql_origin: Optional[str] = None
+
+    def __post_init__(self):
+        if isinstance(self.params, SQLBindings):
+            self.parameter_log_policies = list(self.params.policies)
+            self.sql_origin = 'generated' if self.params.trusted else None
 
     def sql_with_comment(self) -> str:
         if self.comment:
@@ -28,7 +57,24 @@ class CompiledQuery:
             return _replace_numbered_placeholders(self.sql_with_comment(), self.params, dialect)
         return _replace_positional_placeholders(self.sql_with_comment(), self.params, dialect)
 
-def _replace_numbered_placeholders(sql: str, params: List[Value], dialect: DatabaseKind) -> str:
+def render_log_sql(sql, params, dialect, literal):
+    """Use the normal dialect scanner, with complete bind accounting for logs."""
+    if not sql.strip():
+        raise ValueError('Missing SQL template')
+    used = set()
+    def checked(index):
+        if index < 0 or index >= len(params):
+            raise ValueError('SQL bind count mismatch')
+        used.add(index)
+        return literal(index)
+    scanner = (_replace_numbered_placeholders if dialect == DatabaseKind.PostgreSql
+               else _replace_positional_placeholders)
+    rendered = scanner(sql, params, dialect, checked)
+    if len(used) != len(params):
+        raise ValueError('Unused SQL bindings')
+    return rendered
+
+def _replace_numbered_placeholders(sql: str, params: List[Value], dialect: DatabaseKind, literal=None) -> str:
     output, index, state = [], 0, "sql"
     while index < len(sql):
         char = sql[index]
@@ -56,16 +102,19 @@ def _replace_numbered_placeholders(sql: str, params: List[Value], dialect: Datab
             while end < len(sql) and sql[end].isdigit():
                 end += 1
             parameter_index = int(sql[index + 1:end]) - 1
-            output.append(_sql_literal(params[parameter_index], dialect)
+            output.append(literal(parameter_index) if literal else
+                          _sql_literal(params[parameter_index], dialect)
                           if 0 <= parameter_index < len(params) else sql[index:end])
             index = end
             continue
         else:
             output.append(char)
         index += 1
+    if literal and state not in ('sql', 'line'):
+        raise ValueError('Unclosed SQL token')
     return "".join(output)
 
-def _replace_positional_placeholders(sql: str, params: List[Value], dialect: DatabaseKind) -> str:
+def _replace_positional_placeholders(sql: str, params: List[Value], dialect: DatabaseKind, literal=None) -> str:
     output, index, parameter_index, state = [], 0, 0, "sql"
     while index < len(sql):
         char = sql[index]
@@ -76,6 +125,8 @@ def _replace_positional_placeholders(sql: str, params: List[Value], dialect: Dat
         elif state == "sql" and char == '"':
             output.append(char)
             state = "double_quote"
+        elif state == "sql" and char == '`':
+            output.append(char); state = "backtick"
         elif state == "sql" and char == "-" and next_char == "-":
             output.extend((char, next_char)); index += 1; state = "line_comment"
         elif state == "sql" and char == "/" and next_char == "*":
@@ -96,17 +147,23 @@ def _replace_positional_placeholders(sql: str, params: List[Value], dialect: Dat
         elif state == "line_comment":
             output.append(char)
             if char in "\r\n": state = "sql"
+        elif state == "backtick":
+            output.append(char)
+            if char == '`' and next_char == '`': output.append('`'); index += 1
+            elif char == '`': state = 'sql'
         elif state == "block_comment":
             output.append(char)
             if char == "*" and next_char == "/":
                 output.append("/"); index += 1; state = "sql"
-        elif (char == "?" or (dialect == DatabaseKind.MySql and char == "%" and next_char == "s")) and parameter_index < len(params):
-            output.append(_sql_literal(params[parameter_index], dialect))
+        elif (char == "?" or (dialect == DatabaseKind.MySql and char == "%" and next_char == "s")) and (literal or parameter_index < len(params)):
+            output.append(literal(parameter_index) if literal else _sql_literal(params[parameter_index], dialect))
             parameter_index += 1
             if char == "%": index += 1
         else:
             output.append(char)
         index += 1
+    if literal and state not in ('sql', 'line_comment'):
+        raise ValueError('Unclosed SQL token')
     return "".join(output)
 
 def _sql_literal(value: Value, dialect: DatabaseKind) -> str:

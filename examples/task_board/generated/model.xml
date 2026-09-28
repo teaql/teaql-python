@@ -1,0 +1,55 @@
+<root name="robot-kanban-service" org="doublechaintech" version="1.0.0" data_service="sqlite">
+    <platform
+        name="Robot System"
+        founded="createTime()"
+        user_email="string()"
+        _name="Platform"
+        _module="Task"
+        _module_key="task"
+    />
+
+    <task_status
+        id="id()"
+        name="string()"
+        code="string()"
+        color="string()"
+        display_order="number()"
+        progress="number()"
+        _features="status"
+        _identifier="code"
+        _constant="true"
+        platform="platform()"
+        _name="Task Status"
+        _module="Task"
+        _module_key="task"
+    >
+        <_value id="1001" name="Planned" code="PLANNED" color="#94A3B8" display_order="10" progress="0"/>
+        <_value id="1002" name="Ready" code="READY" color="#3B82F6" display_order="20" progress="25"/>
+        <_value id="1003" name="Executing" code="EXECUTING" color="#F59E0B" display_order="30" progress="50"/>
+        <_value id="1004" name="Verified" code="VERIFIED" color="#16A34A" display_order="40" progress="100"/>
+    </task_status>
+
+
+
+    <task
+        name="Task Name|[1,200]"
+        status="task_status()"
+        platform="platform()"
+        _features="custom"
+        _name="Task"
+        _module="Task"
+        _module_key="task"
+    />
+
+    <task_execution_log
+        task="task()"
+        action="string()"
+        detail="string()"
+        _audit_mask_fields="detail"
+        _audit_value_max_len="2048"
+        _features="custom"
+        _name="Task Execution Log"
+        _module="Task"
+        _module_key="task"
+    />
+</root>

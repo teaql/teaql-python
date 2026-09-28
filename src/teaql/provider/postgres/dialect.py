@@ -5,7 +5,7 @@ from teaql.core.meta import PropertyDescriptor
 
 class PostgresDialect(SqlDialect):
     def kind(self) -> DatabaseKind:
-        return DatabaseKind.Postgres
+        return DatabaseKind.PostgreSql
 
     def quote_ident(self, ident: str) -> str:
         return quote_identifier_if_needed(ident, '"')

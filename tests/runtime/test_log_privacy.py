@@ -54,7 +54,7 @@ def test_exact_opt_in_warns_and_preserves_noncredential_debug(monkeypatch, caplo
     from teaql.runtime.log_privacy import _warn_plaintext
     _warn_plaintext.cache_clear()
     monkeypatch.setenv(PLAINTEXT_ENV, PLAINTEXT_ACK)
-    raw = entry()
+    raw = replace(entry(), parameter_log_policies=['masked'])
     output = []
     TextDiagnosticSqlLogSink(output.append).write(raw)
     assert raw.params[0] in output[0]
@@ -86,7 +86,9 @@ def test_audit_field_policy_and_credential_override(monkeypatch, enabled):
         AuditFieldChange("password", "old-password-secret", "new-password-secret"),
     ), ("change new-password-secret",))
     safe = event.safe(["email"], None)
-    assert safe.fields[0].value == ("new-private-email" if enabled else REDACTED)
+    # #58 restores the existing business mask; credentials below remain fully hidden.
+    assert safe.fields[0].value == ("new-private-email" if enabled else "ne*************il")
+    assert safe.fields[0].masked == (not enabled)
     assert safe.fields[1].value == REDACTED
     assert "new-password-secret" not in repr(safe)
     assert event.changes[1].new_value == "new-password-secret"

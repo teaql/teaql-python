@@ -379,5 +379,5 @@ class School:
     def update_school_type_to_primary(self):
         self.schoolType = 1001
         self._loaded_fields.add("schoolType")
+        self._entity_root.set(self._teaql_entity_key(), "school_type", Value.from_any(self.schoolType))
         return self
-

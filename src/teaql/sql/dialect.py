@@ -15,7 +15,7 @@ from teaql.core.expr import (
 from teaql.core.value import Value, DataType
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
 from .types import (
-    DatabaseKind, CompiledQuery, SqlCompileError,
+    DatabaseKind, CompiledQuery, SQLBindings, SqlCompileError,
     UnknownEntityError, UnknownFieldError, EmptyInListError,
     MissingIdPropertyError, MissingVersionPropertyError,
     EmptyMutationError, InvalidRecoverVersionError,
@@ -116,12 +116,15 @@ class SqlDialect(ABC):
         return f"CREATE TABLE IF NOT EXISTS {self.quote_ident(table_name)} ({columns_str})"
 
     def compile_select(self, entity: EntityDescriptor, query: SelectQuery) -> CompiledQuery:
-        params: List[Value] = []
+        params = SQLBindings()
         sql = self.compile_select_sql(entity, query, params)
         query_comment = query.comment_text
         return CompiledQuery(sql=sql, params=params, comment=query_comment)
 
     def compile_select_sql(self, entity: EntityDescriptor, query: SelectQuery, params: List[Value]) -> str:
+        if isinstance(params, SQLBindings) and (query.raw_sql is not None or query.raw_sql_search_criteria
+                                               or query.raw_projections or query.dynamic_properties):
+            params.trusted = False
         if query.raw_sql is not None:
             return query.raw_sql
             
@@ -149,7 +152,7 @@ class SqlDialect(ABC):
             search_parts = []
             for prop in getattr(entity, 'properties', []):
                 if prop.property_type == DataType.Text:
-                    params.append(Value.Text(like_value))
+                    self.bind_field(params, Value.Text(like_value), entity, prop.name)
                     search_parts.append(f"{self.quote_ident(prop.column_name_val)} LIKE {self.placeholder(len(params))}")
             if search_parts:
                 where_parts.append("(" + " OR ".join(search_parts) + ")")
@@ -189,7 +192,7 @@ class SqlDialect(ABC):
     def compile_insert(self, entity: EntityDescriptor, command: InsertCommand) -> CompiledQuery:
         columns = []
         placeholders = []
-        params = []
+        params = SQLBindings()
         for prop in getattr(entity, 'properties', []):
             prop_name = getattr(prop, 'name', None)
             if prop_name in command.values:
@@ -198,7 +201,7 @@ class SqlDialect(ABC):
                 if val._data is None:
                     ptype = getattr(prop, 'property_type', None) or getattr(prop, 'data_type', DataType.Text)
                     val = Value.TypedNull(ptype)
-                params.append(val)
+                self.bind_field(params, val, entity, prop_name)
                 placeholders.append(self.placeholder(len(params)))
                 
         if not columns:
@@ -215,7 +218,7 @@ class SqlDialect(ABC):
             raise MissingIdPropertyError(entity._name)
             
         assignments = []
-        params = []
+        params = SQLBindings()
         for prop in getattr(entity, 'properties', []):
             if getattr(prop, '_is_id', False) or getattr(prop, 'is_id_val', False):
                 continue
@@ -228,24 +231,24 @@ class SqlDialect(ABC):
                 if val._data is None:
                     ptype = getattr(prop, 'property_type', None) or getattr(prop, 'data_type', DataType.Text)
                     val = Value.TypedNull(ptype)
-                params.append(val)
+                self.bind_field(params, val, entity, prop_name)
                 assignments.append(f"{self.quote_ident(prop.column_name_val)} = {self.placeholder(len(params))}")
         version_property = next((p for p in getattr(entity, 'properties', [])
                                  if getattr(p, '_is_version', False) or getattr(p, 'is_version_val', False)), None)
         if command.expected_version_val is not None:
             if not version_property:
                 raise MissingVersionPropertyError(entity._name)
-            params.append(Value.I64(command.expected_version_val + 1))
+            self.bind_field(params, Value.I64(command.expected_version_val + 1), entity, version_property.name)
             assignments.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
             
         if not assignments:
             raise EmptyMutationError("update")
             
-        params.append(command.id)
+        self.bind_field(params, command.id, entity, id_property.name)
         predicates = [f"{self.quote_ident(id_property.column_name_val)} = {self.placeholder(len(params))}"]
         
         if command.expected_version_val is not None:
-            params.append(Value.I64(command.expected_version_val))
+            self.bind_field(params, Value.I64(command.expected_version_val), entity, version_property.name)
             predicates.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
             
         table_name = getattr(entity, 'table_name_val', entity._name)
@@ -257,7 +260,7 @@ class SqlDialect(ABC):
         if not id_property:
             raise MissingIdPropertyError(entity._name)
             
-        params = []
+        params = SQLBindings()
         table_name = getattr(entity, 'table_name_val', entity._name)
         version_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_version_val', False) or getattr(p, '_is_version', False)), None)
         
@@ -265,27 +268,27 @@ class SqlDialect(ABC):
             if not version_property:
                 raise MissingVersionPropertyError(entity._name)
             if command.expected_version_val is not None:
-                params.append(Value.I64(-(command.expected_version_val + 1)))
+                self.bind_field(params, Value.I64(-(command.expected_version_val + 1)), entity, version_property.name)
             else:
-                params.append(Value.I64(-1))
+                self.bind_field(params, Value.I64(-1), entity, version_property.name)
                 
-            params.append(command.id)
+            self.bind_field(params, command.id, entity, id_property.name)
             predicates = [f"{self.quote_ident(id_property.column_name_val)} = {self.placeholder(len(params))}"]
             
             if command.expected_version_val is not None:
-                params.append(Value.I64(command.expected_version_val))
+                self.bind_field(params, Value.I64(command.expected_version_val), entity, version_property.name)
                 predicates.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
                 
             sql = f"UPDATE {self.quote_ident(table_name)} SET {self.quote_ident(version_property.column_name_val)} = {self.placeholder(1)} WHERE {' AND '.join(predicates)}"
             return CompiledQuery(sql=sql, params=params)
             
-        params.append(command.id)
+        self.bind_field(params, command.id, entity, id_property.name)
         predicates = [f"{self.quote_ident(id_property.column_name_val)} = {self.placeholder(len(params))}"]
         
         if command.expected_version_val is not None:
             if not version_property:
                 raise MissingVersionPropertyError(entity._name)
-            params.append(Value.I64(command.expected_version_val))
+            self.bind_field(params, Value.I64(command.expected_version_val), entity, version_property.name)
             predicates.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
             
         sql = f"DELETE FROM {self.quote_ident(table_name)} WHERE {' AND '.join(predicates)}"
@@ -303,11 +306,10 @@ class SqlDialect(ABC):
         if not version_property:
             raise MissingVersionPropertyError(entity._name)
             
-        params = [
-            Value.I64(-command.expected_version_val + 1),
-            command.id,
-            Value.I64(command.expected_version_val)
-        ]
+        params = SQLBindings()
+        self.bind_field(params, Value.I64(-command.expected_version_val + 1), entity, version_property.name)
+        self.bind_field(params, command.id, entity, id_property.name)
+        self.bind_field(params, Value.I64(command.expected_version_val), entity, version_property.name)
         
         table_name = getattr(entity, 'table_name_val', entity._name)
         sql = f"UPDATE {self.quote_ident(table_name)} SET {self.quote_ident(version_property.column_name_val)} = {self.placeholder(1)} WHERE {self.quote_ident(id_property.column_name_val)} = {self.placeholder(2)} AND {self.quote_ident(version_property.column_name_val)} = {self.placeholder(3)}"
@@ -396,7 +398,39 @@ class SqlDialect(ABC):
         else:
             return self.aggregate_projection(entity, query, params)
             
+    def field_log_policy(self, entity, field):
+        from teaql.runtime.log_privacy import credential_name
+        prop = entity.property_by_name(field)
+        if credential_name(field) or (prop and credential_name(prop.column_name_val)):
+            return 'credential'
+        if field in entity.audit_mask_fields_val:
+            return 'masked'
+        return getattr(prop, 'log_policy_val', 'unknown')
+
+    def bind_field(self, params, value, entity, field):
+        if isinstance(params, SQLBindings):
+            params.append(value, self.field_log_policy(entity, field))
+        else:
+            params.append(value)
+
+    def expression_log_policy(self, entity, expr):
+        def columns(node):
+            if isinstance(node, ColumnExpr): return [node.name]
+            if isinstance(node, FunctionExpr): return [name for arg in node.args for name in columns(arg)]
+            if isinstance(node, BinaryExpr): return columns(node.left) + columns(node.right)
+            if isinstance(node, BetweenExpr): return columns(node.expr) + columns(node.lower) + columns(node.upper)
+            return []
+        policies = [self.field_log_policy(entity, name) for name in columns(expr)]
+        # No field metadata means inherit the surrounding comparison, not plain.
+        return next((p for p in ('credential', 'unknown', 'masked', 'plain') if p in policies), None)
+
     def compile_expr(self, entity: EntityDescriptor, expr: Expr, params: List[Value]) -> str:
+        if isinstance(params, SQLBindings):
+            with params.policy(self.expression_log_policy(entity, expr)):
+                return self._compile_expr(entity, expr, params)
+        return self._compile_expr(entity, expr, params)
+
+    def _compile_expr(self, entity: EntityDescriptor, expr: Expr, params: List[Value]) -> str:
         if isinstance(expr, ColumnExpr):
             return self.column_sql(entity, expr.name)
         elif isinstance(expr, ValueExpr):

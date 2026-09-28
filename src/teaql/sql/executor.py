@@ -7,7 +7,7 @@ import hashlib
 import time
 import threading
 from array import array
-from dataclasses import fields, is_dataclass
+from dataclasses import fields, is_dataclass, replace
 from enum import Enum
 from teaql.data_service import (
     DataServiceExecutor, QueryExecutor, MutationExecutor,
@@ -31,6 +31,26 @@ from teaql.runtime.context import RetainedIdSet
 
 _id_set_build_locks = {}
 _id_set_build_locks_guard = threading.RLock()
+
+
+class _QueryWithLogIntent(QueryRequest):
+    """Invocation-local compiler plumbing, excluded from dataclass/wire fields."""
+    def __init__(self, query, trace_chain, comment, purpose, source):
+        super().__init__(query, trace_chain, comment, purpose)
+        self._log_intent_source = source
+
+
+def _intent_bindings(compiled, request):
+    # Resolve each source's policy before flattening: credential detection and
+    # malformed-policy handling depend on the original statement, not the child.
+    from teaql.runtime.log_privacy import _binding_policies
+    inherited = getattr(request, '_log_intent_source', None)
+    sources = [inherited, compiled] if inherited is not None else [compiled]
+    return CompiledQuery('', [deepcopy(value) for source in sources for value in source.params],
+                         parameter_log_policies=[policy for source in sources
+                                                 for policy in _binding_policies(source)],
+                         sql_origin='generated')
+
 
 def _canonical_id_set_value(value):
     if isinstance(value, Value):
@@ -160,6 +180,47 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             returning=False
         )
 
+    def _record_statement(self, context, request, compiled, started_at, operation,
+                          outcome, result_count=None, affected_rows=None):
+        """Project through context; never attach driver exceptions to diagnostics."""
+        query = operation == DataServiceOperation.Query
+        entity = request.query.entity if query else request._data.entity
+        comment = request._comment if query else getattr(request, 'comment', None)
+        if not query and callable(comment):
+            comment = comment()
+        provider = str(self.dialect.kind()).lower()
+        sql_operation = 'select' if query else operation.name.lower()
+        metadata = ExecutionMetadata(
+            backend=provider, operation=operation, started_at=started_at,
+            ended_at=datetime.now(), execution_outcome=outcome,
+            parameterized_sql=compiled.sql, parameters=list(compiled.params),
+            parameter_log_policies=compiled.parameter_log_policies,
+            sql_origin=compiled.sql_origin, database_kind=self.dialect.kind(), debug_query='',
+            result_count=result_count, affected_rows=affected_rows,
+            comment=comment, purpose=request._purpose if query else None,
+            audit_reason=None if query else comment,
+            trace_chain=[
+                TraceNode(kind='operation', name='query' if query else 'mutation', comment='query' if query else 'mutation'),
+                TraceNode(kind='request' if query else 'entity', name=entity, comment=entity),
+                *(request.trace_chain if query else request.trace_chain()),
+                TraceNode(kind='provider', name=provider, comment=provider),
+                TraceNode(kind='sql', name=sql_operation, comment=sql_operation),
+            ],
+        )
+        if context is not None:
+            try:
+                source = getattr(request, '_log_intent_source', None) if query else None
+                if source is None:
+                    context.record_metadata_log(metadata)
+                else:
+                    context._record_metadata_log(metadata, intent_source=source)
+            except Exception:
+                # A broken diagnostic destination must not replace an in-flight
+                # driver failure, cancellation or generator close.
+                if outcome == 'success':
+                    raise
+        return metadata
+
     async def query_stream(self, context, request: QueryRequest, chunk_size: int):
         if chunk_size <= 0:
             raise ValueError("chunk_size must be positive")
@@ -176,13 +237,40 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         compiled = self.dialect.compile_select(entity_desc, request.query)
         pending = None
         index = 0
-        async for rows in self.transport.stream_sql(compiled, chunk_size):
+        delivered = 0
+        started_at = datetime.now()
+        outcome = 'cancelled'
+        stream = self.transport.stream_sql(compiled, chunk_size)
+        try:
+            async for rows in stream:
+                if pending is not None:
+                    delivered += len(pending)
+                    yield StreamChunk(pending, index, False)
+                    index += 1
+                pending = rows
             if pending is not None:
-                yield StreamChunk(pending, index, False)
-                index += 1
-            pending = rows
-        if pending is not None:
-            yield StreamChunk(pending, index, True)
+                delivered += len(pending)
+                yield StreamChunk(pending, index, True)
+            outcome = 'success'
+        except (asyncio.CancelledError, GeneratorExit):
+            outcome = 'cancelled'
+            raise
+        except BaseException:
+            outcome = 'failure'
+            raise
+        finally:
+            try:
+                close = getattr(stream, 'aclose', None)
+                if close is not None:
+                    await close()
+            except BaseException:
+                if outcome == 'success':
+                    outcome = 'failure'
+                    raise
+                # Preserve the error/close already being propagated.
+            finally:
+                self._record_statement(context, request, compiled, started_at,
+                                       DataServiceOperation.Query, outcome, result_count=delivered)
 
     async def query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
         telemetry = context.runtime_telemetry() if context is not None else None
@@ -218,7 +306,10 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             if context is not None:
                 context.record_metadata_log(metadata)
             return QueryResult(rows=[], metadata=metadata)
-        request = QueryRequest(execution_query, request.trace_chain, request._comment, request._purpose)
+        source = getattr(request, '_log_intent_source', None)
+        request = (_QueryWithLogIntent(execution_query, request.trace_chain, request._comment,
+                                      request._purpose, source) if source is not None else
+                   QueryRequest(execution_query, request.trace_chain, request._comment, request._purpose))
         entity_desc = self.schema_provider.get_entity(request.query.entity)
         if not entity_desc and context:
             entities = context.get_resource("entities")
@@ -247,11 +338,19 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 }),
                 lambda: self.transport.fetch_all_sql(compiled),
             )
-        except Exception as e:
-            raise TransportError(e)
+        except BaseException as e:
+            self._record_statement(context, request, compiled, start, DataServiceOperation.Query,
+                                   'cancelled' if isinstance(e, asyncio.CancelledError) else 'failure')
+            if isinstance(e, Exception):
+                raise TransportError(e) from e
+            raise
+        metadata = self._record_statement(context, request, compiled, start,
+                                          DataServiceOperation.Query, 'success', result_count=len(rows))
 
-        await self._enhance_relations(context, rows, request)
-        await self._enhance_relation_aggregates(context, rows, request)
+        source = (_intent_bindings(compiled, request) if rows and
+                  (request.query.relations or request.query.relation_aggregates) else None)
+        await self._enhance_relations(context, rows, request, source)
+        await self._enhance_relation_aggregates(context, rows, request, source)
         if retained_order:
             by_id = {int(row["id"]): row for row in rows if row.get("id") is not None}
             rows = [by_id[entity_id] for entity_id in retained_order if entity_id in by_id]
@@ -295,31 +394,6 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             from teaql.core.list import SmartList
             facets[facet.name] = SmartList(facet_rows)
         
-        end = datetime.now()
-        
-        provider = str(self.dialect.kind()).lower()
-        trace_path = [
-            TraceNode(kind="operation", name="query", comment="query"),
-            TraceNode(kind="request", name=request.query.entity, comment=request.query.entity),
-            *request.trace_chain,
-            TraceNode(kind="provider", name=provider, comment=provider),
-            TraceNode(kind="sql", name="select", comment="select"),
-        ]
-        metadata = ExecutionMetadata(
-            backend=provider,
-            operation=DataServiceOperation.Query,
-            started_at=start,
-            ended_at=end,
-            parameterized_sql=compiled.sql_with_comment(),
-            parameters=list(compiled.params),
-            result_count=len(rows),
-            trace_chain=trace_path,
-            comment=request._comment,
-            purpose=request._purpose,
-            debug_query=compiled.debug_sql(self.dialect.kind())
-        )
-        if context is not None:
-            context.record_metadata_log(metadata)
         return QueryResult(
             rows=rows,
             metadata=metadata,
@@ -425,7 +499,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                  _canonical_id_set_value(normalized))
         return "teaql:id-set:v1:" + hashlib.sha256(repr(scope).encode("utf-8")).hexdigest()
 
-    async def _enhance_relations(self, context, parents: List[Dict[str, Any]], request: QueryRequest) -> None:
+    async def _enhance_relations(self, context, parents: List[Dict[str, Any]], request: QueryRequest,
+                                 intent_source=None) -> None:
         query = request.query
         if not parents or not query.relations:
             return
@@ -469,8 +544,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         child_trace = [*request.trace_chain, TraceNode(
                             kind="relation", name=f"{query.entity}.{load.name}",
                             comment=load.name)]
-                        children.extend((await self.query(context, QueryRequest(
-                            probe, child_trace, request._comment, request._purpose))).rows)
+                        children.extend((await self.query(context, _QueryWithLogIntent(
+                            probe, child_trace, request._comment, request._purpose, intent_source))).rows)
                     selected_plan = "bounded_probes"
                     probe_count = len(parent_ids)
                 else:
@@ -482,8 +557,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     child_trace = [*request.trace_chain, TraceNode(
                         kind="relation", name=f"{query.entity}.{load.name}",
                         comment=load.name)]
-                    children = (await self.query(context, QueryRequest(
-                        child_query, child_trace, request._comment, request._purpose))).rows
+                    children = (await self.query(context, _QueryWithLogIntent(
+                        child_query, child_trace, request._comment, request._purpose, intent_source))).rows
                     selected_plan = "window" if limited else "batch"
                     probe_count = 0
                 for child in children:
@@ -508,7 +583,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 relation_scope.failure(error)
                 raise
 
-    async def _enhance_relation_aggregates(self, context, parents: List[Dict[str, Any]], request: QueryRequest) -> None:
+    async def _enhance_relation_aggregates(self, context, parents: List[Dict[str, Any]], request: QueryRequest,
+                                          intent_source=None) -> None:
         query = request.query
         if not parents or not query.relation_aggregates:
             return
@@ -543,8 +619,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             child_trace = [*request.trace_chain, TraceNode(
                 kind="relation", name=f"{query.entity}.{aggregate.relation_name}",
                 comment=aggregate.relation_name)]
-            rows = (await self.query(context, QueryRequest(
-                child_query, child_trace, request._comment, request._purpose))).rows
+            rows = (await self.query(context, _QueryWithLogIntent(
+                child_query, child_trace, request._comment, request._purpose, intent_source))).rows
             child_desc = self.schema_provider.get_entity(relation.target_entity)
             foreign_property = child_desc.property_by_name(relation.foreign_key) if child_desc else None
             if foreign_property and foreign_property.column_name_val != relation.foreign_key:
@@ -602,8 +678,13 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 result = await executor._mutate(context, request)
                 await transaction.commit_sql()
                 return result
-            except Exception:
-                await transaction.rollback_sql()
+            except BaseException:
+                # CancelledError is not an Exception. Release the transaction
+                # on cancellation too, without replacing the original failure.
+                try:
+                    await transaction.rollback_sql()
+                except BaseException:
+                    pass
                 raise
 
         req_data = request._data
@@ -660,6 +741,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
 
         start = datetime.now()
         last_insert_id = None
+        operation = {'insert': DataServiceOperation.Insert, 'update': DataServiceOperation.Update,
+                     'delete': DataServiceOperation.Delete, 'recover': DataServiceOperation.Recover}[op]
         try:
             telemetry = context.runtime_telemetry() if context is not None else None
             affected_rows, last_insert_id = await observe_runtime_operation(
@@ -670,9 +753,14 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 }),
                 lambda: self.transport.execute_sql(compiled),
             )
-        except Exception as e:
-            raise TransportError(e)
-        end = datetime.now()
+        except BaseException as e:
+            self._record_statement(context, request, compiled, start, operation,
+                                   'cancelled' if isinstance(e, asyncio.CancelledError) else 'failure')
+            if isinstance(e, Exception):
+                raise TransportError(e) from e
+            raise
+        metadata = self._record_statement(context, request, compiled, start, operation,
+                                          'success', affected_rows=affected_rows)
 
         generated_values = {}
         if op == "insert" and last_insert_id:
@@ -710,47 +798,25 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             )
             table = self.dialect.quote_ident(entity_desc.table_name_val)
             id_column = self.dialect.quote_ident(id_prop.column_name_val)
-            persisted_rows = await self.transport.fetch_all_sql(
-                CompiledQuery(
-                    f"SELECT {columns} FROM {table} WHERE {id_column} = {self.dialect.placeholder(1)}",
-                    [Value.from_any(entity_id)],
-                )
+            readback = CompiledQuery(
+                f"SELECT {columns} FROM {table} WHERE {id_column} = {self.dialect.placeholder(1)}",
+                [Value.from_any(entity_id)],
+                parameter_log_policies=[self.dialect.field_log_policy(entity_desc, id_prop.name)],
+                sql_origin='generated',
             )
-            if not persisted_rows:
-                raise TransportError(RuntimeError(
-                    f"authoritative persisted row not found for {req_data.entity}"))
+            read_start = datetime.now()
+            persisted_rows = None
+            try:
+                persisted_rows = await self.transport.fetch_all_sql(readback)
+                if len(persisted_rows) != 1:
+                    raise TransportError(RuntimeError(
+                        f"expected one authoritative persisted row for {req_data.entity}, got {len(persisted_rows)}"))
+            except BaseException as error:
+                self._record_readback(context, readback, compiled, metadata, read_start,
+                                      persisted_rows, error)
+                raise
             persisted_record = persisted_rows[0]
 
-        provider = str(self.dialect.kind()).lower()
-        trace_path = [
-            TraceNode(kind="operation", name="mutation", comment="mutation"),
-            TraceNode(kind="entity", name=req_data.entity, comment=req_data.entity),
-            *request.trace_chain(),
-            TraceNode(kind="provider", name=provider, comment=provider),
-            TraceNode(kind="sql", name=op, comment=op),
-        ]
-        metadata = ExecutionMetadata(
-            backend=provider,
-            operation={
-                "insert": DataServiceOperation.Insert,
-                "update": DataServiceOperation.Update,
-                "delete": DataServiceOperation.Delete,
-                "recover": DataServiceOperation.Recover,
-            }[op],
-            started_at=start,
-            ended_at=end,
-            parameterized_sql=compiled.sql_with_comment(),
-            parameters=list(compiled.params),
-            affected_rows=affected_rows,
-            trace_chain=trace_path,
-            comment=(request.comment() if callable(getattr(request, "comment", None))
-                     else getattr(request, "comment", None)),
-            audit_reason=(request.comment() if callable(getattr(request, "comment", None))
-                          else getattr(request, "comment", None)),
-            debug_query=compiled.debug_sql(self.dialect.kind())
-        )
-        if context is not None:
-            context.record_metadata_log(metadata)
         if affected_rows > 0 and context is not None:
             from teaql.runtime.audit import AuditFieldChange, MutationAuditKind, RawAuditEvent
             if isinstance(req_data, InsertCommand):
@@ -785,6 +851,25 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             metadata=metadata,
             persisted_record=persisted_record,
         )
+
+    def _record_readback(self, context, readback, source, write_metadata, started_at, rows, error):
+        if context is None:
+            return
+        # A driver returning zero/multiple rows succeeded as SQL; validation of
+        # the authoritative snapshot is a separate business failure.
+        outcome = ('success' if rows is not None else 'cancelled'
+                   if isinstance(error, asyncio.CancelledError) else 'failure')
+        metadata = replace(write_metadata, operation=DataServiceOperation.Query,
+            started_at=started_at, ended_at=datetime.now(), execution_outcome=outcome,
+            parameterized_sql=readback.sql, parameters=list(readback.params),
+            parameter_log_policies=readback.parameter_log_policies, sql_origin=readback.sql_origin,
+            affected_rows=None, result_count=len(rows) if rows is not None else None,
+            trace_chain=[*write_metadata.trace_chain, TraceNode(kind='sql', name='readback', comment='readback')])
+        try:
+            context._record_metadata_log(metadata, intent_source=source)
+        except BaseException:
+            # An in-flight readback error must survive a diagnostic sink failure.
+            pass
 
     async def next_id(self, entity: str) -> int:
         await self.transport.execute_sql(CompiledQuery(

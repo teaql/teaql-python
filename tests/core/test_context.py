@@ -40,7 +40,9 @@ def test_user_context_extensions():
     assert len(context.sql_logs()) == 1
     assert context.sql_logs()[0].debug_sql == "[REDACTED SQL; NOT REPLAYABLE]"
     assert output[0].endswith("\nDebug SQL: [REDACTED SQL; NOT REPLAYABLE]")
-    assert "Parameterized SQL:" in output[0]
+    # #25/#58: text diagnostics show expanded SQL, not placeholders plus a list.
+    assert "Parameterized SQL:" not in output[0]
+    assert "SQL omission reason: unsupported-or-mismatched-bindings" in output[0]
     
     # SQL logs
     class MockQuery:

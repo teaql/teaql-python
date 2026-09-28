@@ -1,4 +1,4 @@
-from teaql.core.query import SelectQuery
+from teaql.core.query import RelationAggregate, SelectQuery
 from teaql.core.list import SmartList, TeaQLPage
 from teaql.runtime import EntityRoot
 from teaql.data_service import QueryRequest
@@ -65,15 +65,11 @@ class OrderSearchPresetRequest:
         return self
 
     def with_deleted_rows(self):
-        self.query._filters = [
-            expression for expression in self.query._filters
-            if expression.get("field") != "version"
-        ]
+        self.query.with_deleted_rows()
         return self
 
     def deleted_rows_only(self):
-        self.with_deleted_rows()
-        self.query.and_filter(lte("version", -1))
+        self.query.deleted_rows_only()
         return self
 
     def select_self_fields(self):
@@ -118,12 +114,12 @@ class OrderSearchPresetRequest:
         self.query.relation_query("commerce_platform", child_request.query)
         return self
     def with_commerce_platform_matching(self, child_request):
-        child_request.query._projection = ["id"]
+        child_request.query.projection = ["id"]
         self.query.and_filter(in_subquery(column("commerce_platform"), "CommercePlatform", child_request.query))
         return self
 
     def without_commerce_platform_matching(self, child_request):
-        child_request.query._projection = ["id"]
+        child_request.query.projection = ["id"]
         self.query.and_filter(not_in_subquery(column("commerce_platform"), "CommercePlatform", child_request.query))
         return self
 
@@ -678,63 +674,63 @@ class OrderSearchPresetRequest:
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id") 
+        self.query.group_by("id")
         return self
     def group_by_name(self):
         self.query.group_by("name")
         return self
 
     def group_by_name_as(self, ret_name: str):
-        self.query.group_by("name") 
+        self.query.group_by("name")
         return self
     def group_by_filter_json(self):
         self.query.group_by("filter_json")
         return self
 
     def group_by_filter_json_as(self, ret_name: str):
-        self.query.group_by("filter_json") 
+        self.query.group_by("filter_json")
         return self
     def group_by_request_id(self):
         self.query.group_by("request_id")
         return self
 
     def group_by_request_id_as(self, ret_name: str):
-        self.query.group_by("request_id") 
+        self.query.group_by("request_id")
         return self
     def group_by_owner_user_id(self):
         self.query.group_by("owner_user_id")
         return self
 
     def group_by_owner_user_id_as(self, ret_name: str):
-        self.query.group_by("owner_user_id") 
+        self.query.group_by("owner_user_id")
         return self
     def group_by_commerce_platform(self):
         self.query.group_by("commerce_platform")
         return self
 
     def group_by_commerce_platform_as(self, ret_name: str):
-        self.query.group_by("commerce_platform") 
+        self.query.group_by("commerce_platform")
         return self
     def group_by_create_time(self):
         self.query.group_by("create_time")
         return self
 
     def group_by_create_time_as(self, ret_name: str):
-        self.query.group_by("create_time") 
+        self.query.group_by("create_time")
         return self
     def group_by_update_time(self):
         self.query.group_by("update_time")
         return self
 
     def group_by_update_time_as(self, ret_name: str):
-        self.query.group_by("update_time") 
+        self.query.group_by("update_time")
         return self
     def group_by_version(self):
         self.query.group_by("version")
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version") 
+        self.query.group_by("version")
         return self
     def facet_by_commerce_platform_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
@@ -764,7 +760,7 @@ class ExecutableOrderSearchPresetRequest:
         if not self._purpose or not self._purpose.strip() or not self._comment or not self._comment.strip():
             raise Exception("Security audit failure: comment() and purpose() must be called before execute_for_rows()")
         service = context.require_resource("dataService")
-        req = QueryRequest(context.prepare_query(self.query))
+        req = QueryRequest(context.prepare_query(self.query), _comment=self._comment, _purpose=self._purpose)
         return await service.query(context, req)
 
     async def execute_for_rows(self, context):
@@ -786,21 +782,21 @@ class ExecutableOrderSearchPresetRequest:
         service = context.require_resource("dataService")
         alias = "__teaql_total"
         if authorized.id_set_pagination is not None:
-            row_result = await service.query(context, QueryRequest(authorized))
+            row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
             retained_count, accuracy = context.id_set_count()
             if accuracy == "EXACT":
                 total_count = retained_count
             else:
-                count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias)))
+                count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias), _comment=request._comment, _purpose=request._purpose))
                 if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
                     raise RuntimeError("dataService did not return an exact page count")
                 total_count = int(count_result.rows[0][alias])
         else:
-            count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias)))
+            count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias), _comment=request._comment, _purpose=request._purpose))
             if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
                 raise RuntimeError("dataService did not return an exact page count")
             total_count = int(count_result.rows[0][alias])
-            row_result = await service.query(context, QueryRequest(authorized))
+            row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
         query_root = EntityRoot()
         data = SmartList(OrderSearchPreset(_entity_root=query_root, **row) for row in row_result.rows)
         return TeaQLPage(data=data, total_count=total_count, offset=offset, limit=limit)
@@ -819,6 +815,6 @@ class ExecutableOrderSearchPresetRequest:
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
         query_root = EntityRoot()
-        async for chunk in service.query_stream(context, QueryRequest(request.query), chunk_size):
+        async for chunk in service.query_stream(context, QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose), chunk_size):
             for row in chunk.rows:
                 yield OrderSearchPreset(_entity_root=query_root, **row)
