@@ -46,6 +46,20 @@ def test_bootstrap_audit_identity_survives_safe_projection():
     assert safe.category == "runtime-bootstrap"
 
 
+def test_app_audit_trace_redacts_target_id_without_changing_structured_id():
+    event = RawAuditEvent(
+        MutationAuditKind.UPDATED,
+        "SchoolType",
+        1001,
+        (AuditFieldChange("name", "Primary", "Primary School"),),
+        ("rename SchoolType 1001",),
+    )
+    safe = event.safe([], None)
+    assert safe.entity_id == 1001
+    assert safe.trace_chain == ("rename SchoolType [REDACTED]",)
+    assert event.trace_chain == ("rename SchoolType 1001",)
+
+
 class RecordingTransaction:
     def __init__(self, events):
         self.events = events

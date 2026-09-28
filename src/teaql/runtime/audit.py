@@ -48,9 +48,10 @@ class RawAuditEvent:
             if truncated:
                 value = "*" * max_length if max_length <= 3 else value[:max_length - 3] + "..."
             fields.append(SafeAuditField(change.field, value, masked, truncated))
+        intent_values = secrets + value_strings(self.entity_id)
         return SafeAuditEvent(
-            self.kind, self.entity, self.entity_id, scrub(tuple(fields), secrets), scrub(self.trace_chain, secrets),
-            scrub(self.actor, secrets), self.category,
+            self.kind, self.entity, self.entity_id, scrub(tuple(fields), secrets), scrub(self.trace_chain, intent_values),
+            scrub(self.actor, intent_values), self.category,
         )
 
 
