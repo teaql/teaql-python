@@ -105,6 +105,24 @@ def test_compiled_postgres_kind_and_field_policy_reach_dialect_renderer():
     assert safe.omission_reason is None
 
 
+def test_legacy_missing_mask_metadata_overrides_old_plain_property_policy():
+    from teaql.provider.sqlite.dialect import SqliteDialect
+    entity = EntityDescriptor('Customer').table_name('customer_data')
+    entity.property(PropertyDescriptor('name', DataType.Text).log_policy('plain'))
+    query = SelectQuery('Customer').filter(Expr.eq('name', 'PRIVATE-CANARY')).limit(1)
+    dialect = SqliteDialect()
+    compiled = dialect.compile_select(entity, query)
+    assert compiled.parameter_log_policies == ['unknown']
+    safe = sql_log_projection(entry(compiled.sql, compiled.params,
+                                    sql_origin=compiled.sql_origin,
+                                    parameter_log_policies=compiled.parameter_log_policies))
+    assert 'PRIVATE-CANARY' not in repr(safe)
+    assert '[REDACTED]' in safe.debug_sql
+    entity.audit_mask_fields([])
+    declared = dialect.compile_select(entity, query)
+    assert declared.parameter_log_policies == ['plain']
+
+
 def test_mysql_log_renderer_uses_masks_and_skips_quoted_placeholders():
     safe = sql_log_projection(entry('SELECT `col%s`, %s, %s', ['Riverside', True],
                                    database_kind=DatabaseKind.MySql, sql_origin='generated',

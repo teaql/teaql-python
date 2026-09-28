@@ -403,6 +403,8 @@ class SqlDialect(ABC):
         prop = entity.property_by_name(field)
         if credential_name(field) or (prop and credential_name(prop.column_name_val)):
             return 'credential'
+        if not entity.audit_mask_fields_declared:
+            return 'unknown'
         if field in entity.audit_mask_fields_val:
             return 'masked'
         return getattr(prop, 'log_policy_val', 'unknown')

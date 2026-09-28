@@ -53,6 +53,7 @@ class EntityDescriptor:
         self.properties = []
         self.relations = []
         self.audit_mask_fields_val = []
+        self.audit_mask_fields_declared = False
         self.audit_value_max_len_val = None
     def table_name(self, name): 
         self.table_name_val = name
@@ -72,7 +73,8 @@ class EntityDescriptor:
         return next((prop for prop in self.properties if prop.name == name), None)
 
     def audit_mask_fields(self, fields):
-        self.audit_mask_fields_val = list(fields)
+        self.audit_mask_fields_val = list(fields) if fields is not None else []
+        self.audit_mask_fields_declared = fields is not None
         return self
 
     def audit_value_max_len(self, max_len):
