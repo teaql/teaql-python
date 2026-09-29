@@ -35,22 +35,23 @@ class RawAuditEvent:
         fields = []
         for change in self.changes:
             value = None if change.new_value is None else str(getattr(change.new_value, "val", change.new_value))
-            masked = (credential_name(change.field)
-                      or payload_has_credentials(change.new_value)
-                      or payload_has_credentials(change.old_value)
-                      or (change.field in mask_fields and not allow))
+            credential = (credential_name(change.field)
+                          or payload_has_credentials(change.new_value)
+                          or payload_has_credentials(change.old_value))
+            masked = credential or (change.field in mask_fields and not allow)
             if masked:
                 secrets.extend(value_strings(change.old_value))
                 secrets.extend(value_strings(change.new_value))
             if value is not None and masked:
-                value = REDACTED
+                value = REDACTED if credential else _mask(value)
             truncated = value is not None and max_length is not None and len(value) > max_length
             if truncated:
                 value = "*" * max_length if max_length <= 3 else value[:max_length - 3] + "..."
             fields.append(SafeAuditField(change.field, value, masked, truncated))
+        intent_values = secrets + value_strings(self.entity_id)
         return SafeAuditEvent(
-            self.kind, self.entity, self.entity_id, scrub(tuple(fields), secrets), scrub(self.trace_chain, secrets),
-            scrub(self.actor, secrets), self.category,
+            self.kind, self.entity, self.entity_id, scrub(tuple(fields), secrets), scrub(self.trace_chain, intent_values),
+            scrub(self.actor, intent_values), self.category,
         )
 
 
@@ -74,7 +75,8 @@ class SafeAuditEvent:
 
 
 def _mask(value: str) -> str:
-    if len(value) < 8:
+    # Unicode scalar length, ASCII digits: the same contract as Rust and Go.
+    if len(value) < 8 or (value.isascii() and value.isdigit()):
         return "*" * len(value)
     return value[:2] + "*" * (len(value) - 4) + value[-2:]
 

@@ -258,4 +258,3 @@ class WorkItem:
         self._loaded_fields.add("platform")
         self._entity_root.set(self._teaql_entity_key(), "platform", Value.from_any(self.platform))
         return self
-

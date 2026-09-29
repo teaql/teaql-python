@@ -1,5 +1,6 @@
 import asyncio
 from datetime import date
+import os
 from pathlib import Path
 import sys
 
@@ -50,7 +51,7 @@ async def verify_dynamic_search(context):
 
 
 async def main() -> None:
-    database = ROOT / ".local" / "school.sqlite"
+    database = Path(os.environ.get("TEAQL_SCHOOL_MANAGEMENT_DB", ROOT / ".local" / "school.sqlite"))
     database.parent.mkdir(parents=True, exist_ok=True)
     database.unlink(missing_ok=True)
     client = SQLiteTeaQLClient(str(database))

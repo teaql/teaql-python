@@ -1,4 +1,5 @@
 import asyncio
+import os
 from pathlib import Path
 import sys
 
@@ -12,9 +13,11 @@ from runtime_module import GENERATED_RUNTIME_MODULE
 from teaql.data_service import SQLiteTeaQLClient
 from teaql.core import EntityKey, EntityRoot
 from teaql.runtime import CheckException, UserContext
+from app.masking_lifecycle import verify_masking_lifecycle
 
 
 async def main() -> None:
+    await verify_masking_lifecycle()
     order_key = EntityKey("Order", 1)
     execution_key = EntityKey("InferenceExecution", 1)
     target_ledger = EntityRoot()
@@ -27,7 +30,7 @@ async def main() -> None:
     assert target_ledger.original_version(execution_key) == 9
     print("PASS Mutation ledger identity (same ID, different entity types keep versions 3/9)")
 
-    database = ROOT / ".local" / "conformance.sqlite"
+    database = Path(os.environ.get("TEAQL_CONFORMANCE_DB", ROOT / ".local" / "conformance.sqlite"))
     database.parent.mkdir(parents=True, exist_ok=True)
     database.unlink(missing_ok=True)
     client = SQLiteTeaQLClient(str(database))

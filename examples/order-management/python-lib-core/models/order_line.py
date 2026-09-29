@@ -342,4 +342,3 @@ class OrderLine:
         self._loaded_fields.add("commercePlatform")
         self._entity_root.set(self._teaql_entity_key(), "commerce_platform", Value.from_any(self.commercePlatform))
         return self
-

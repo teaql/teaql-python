@@ -1,0 +1,123 @@
+{
+    "schema": "teaql.i18n/v1",
+    "defaultLocale": "en",
+    "locales": {
+        "de": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "ko": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "pt": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "zh-TW": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "fil": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "en": {
+            "vocabulary": {
+                "property.platform.name": "Name",
+                "entity.task": "Task",
+                "property.taskStatus.progress": "Progress",
+                "entity.taskStatus": "Task Status",
+                "property.taskStatus.name": "Name",
+                "property.task.name": "Name",
+                "property.taskExecutionLog.action": "Action",
+                "entity.taskExecutionLog": "Task Execution Log",
+                "property.platform.founded": "Founded",
+                "property.taskStatus.color": "Color",
+                "property.taskExecutionLog.id": "Id",
+                "property.taskExecutionLog.version": "Version",
+                "property.taskStatus.id": "Id",
+                "entity.platform": "Platform",
+                "property.platform.id": "Id",
+                "property.taskStatus.code": "Code",
+                "property.task.id": "Id",
+                "property.taskStatus.displayOrder": "Display Order",
+                "property.taskExecutionLog.task": "Task",
+                "property.taskExecutionLog.detail": "Detail",
+                "property.platform.userEmail": "User Email",
+                "property.task.platform": "Platform",
+                "property.task.status": "Status",
+                "property.taskStatus.version": "Version",
+                "property.task.version": "Version",
+                "property.taskStatus.platform": "Platform",
+                "property.platform.version": "Version"
+            },
+            "messages": {
+            }
+        },
+        "fr": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "zh-CN": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "es": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "ar": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "vi": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "th": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "uk": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "ja": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        },
+        "id": {
+            "vocabulary": {
+            },
+            "messages": {
+            }
+        }
+    }
+}

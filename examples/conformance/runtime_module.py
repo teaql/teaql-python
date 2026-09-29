@@ -62,11 +62,13 @@ class _WorkItemChecker:
 
 
 _Platform_DESCRIPTOR = (EntityDescriptor("Platform")
-    .table_name("platform_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").required()).property(PropertyDescriptor("version", DataType.I64).column_name("version").is_version().required()).relation(RelationDescriptor("work_item_list", "WorkItem").local("id").foreign("platform").many())
+    .audit_mask_fields([])
+    .table_name("platform_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("work_item_list", "WorkItem").local("id").foreign("platform").many())
 )
 
 _WorkItem_DESCRIPTOR = (EntityDescriptor("WorkItem")
-    .table_name("work_item_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").is_id().required()).property(PropertyDescriptor("title", DataType.Text).column_name("title").required()).property(PropertyDescriptor("description", DataType.Text).column_name("description")).property(PropertyDescriptor("platform", DataType.I64).column_name("platform").required()).property(PropertyDescriptor("version", DataType.I64).column_name("version").is_version().required()).relation(RelationDescriptor("platform", "Platform").local("platform").foreign("id"))
+    .audit_mask_fields([])
+    .table_name("work_item_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("title", DataType.Text).column_name("title").log_policy("plain").required()).property(PropertyDescriptor("description", DataType.Text).column_name("description").log_policy("plain")).property(PropertyDescriptor("platform", DataType.I64).column_name("platform").log_policy("plain").required()).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("platform", "Platform").local("platform").foreign("id"))
 )
 
 async def _ensure_generated_bootstrap_once(context):

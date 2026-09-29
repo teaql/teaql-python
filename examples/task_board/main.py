@@ -1,159 +1,64 @@
+"""Current generated library + local runtime; no manual DDL or bootstrap writes."""
 import asyncio
-import aiosqlite
 import os
-import time
-from teaql.provider.sqlite import create_sqlite_service, SimpleSchemaProvider
-from teaql.core.meta import EntityDescriptor, PropertyDescriptor
-from teaql.core.value import DataType, Value, Timestamp
-from teaql.data_service import QueryRequest
-from teaql.runtime.context import UserContext
+from pathlib import Path
+import sys
+import tempfile
 
-from generated.models.platform import Platform
-from generated.models.task_status import TaskStatus
-from generated.models.task import Task
-from generated.models.task_execution_log import TaskExecutionLog
+sys.path.insert(0, str(Path(__file__).resolve().with_name("generated")))
 
-from generated.requests.task_request import TaskRequest
-from generated.requests.task_execution_log_request import TaskExecutionLogRequest
+from E import E
+from Q import Q
+from models.task import Task
+from models.task_execution_log import TaskExecutionLog
+from runtime_module import GENERATED_RUNTIME_MODULE
+from teaql.data_service import SQLiteTeaQLClient
+from teaql.runtime import UserContext
 
 
 async def main():
-    print("Setting up Schema Provider...")
-    provider = SimpleSchemaProvider()
+    database = os.environ.get("TEAQL_TASK_BOARD_DB")
+    if not database:
+        with tempfile.NamedTemporaryFile(prefix="teaql-task-board-", suffix=".db", delete=False) as file:
+            database = file.name
+    client = SQLiteTeaQLClient(database)
+    context = UserContext.new().install(GENERATED_RUNTIME_MODULE).insert_resource("dataService", client)
+    try:
+        await context.ensure_schema()
+        await context.ensure_schema()
+        task = Task(name="Build Robot Arm", platform=1).update_status_to_planned()
+        await task.audit_as("create demo robot task").save(context)
+        loaded = await (Q.tasks().with_id_is(task.id).limit(1)
+                        .select_status_with(Q.task_statuses().limit(1))
+                        .comment("load task and planned status").purpose("review complete task before editing")
+                        .execute_for_one(context))
+        assert E.task(loaded).name().eval() == "Build Robot Arm"
+        assert E.task(loaded).status().name().eval() == "Planned"
+        await loaded.update_name("Build Robot Arm V2").audit_as("rename demo robot task").save(context)
+        updated = await (Q.tasks().with_id_is(task.id).limit(1)
+                         .comment("read renamed task").purpose("verify persisted mutation")
+                         .execute_for_one(context))
+        assert updated.name == "Build Robot Arm V2"
+        page = await (Q.tasks().with_id_is(task.id)
+                      .comment("page renamed task").purpose("verify paginated task intent")
+                      .execute_for_page(context, 0, 1))
+        assert page.total_count == 1 and page.data[0].name == "Build Robot Arm V2"
+        streamed = []
+        async for row in (Q.tasks().with_id_is(task.id)
+                          .comment("stream renamed task").purpose("verify streamed task intent")
+                          .execute_for_stream(context, chunk_size=1)):
+            streamed.append(row)
+        assert len(streamed) == 1 and streamed[0].name == "Build Robot Arm V2"
+        entry = TaskExecutionLog(task=task.id, action="RENAME", detail="PRIVATE-TASK-DETAIL")
+        await entry.audit_as("record PRIVATE-TASK-DETAIL rename evidence").save(context)
+        rows = await (Q.task_execution_logs().with_id_is(entry.id).with_detail_is("PRIVATE-TASK-DETAIL").limit(1)
+                      .comment("read PRIVATE-TASK-DETAIL evidence").purpose("verify PRIVATE-TASK-DETAIL is persisted")
+                      .execute_for_list(context))
+        assert len(rows) == 1 and E.task_execution_log(rows[0]).detail().eval() == "PRIVATE-TASK-DETAIL"
+        print("PASS task board: governed Q/E/mutation and masked detail")
+    finally:
+        await client.close()
 
-    # 1. Platform
-    platform_entity = EntityDescriptor("Platform")\
-        .table_name("platform")\
-        .property(PropertyDescriptor("id", DataType.I64).is_id())\
-        .property(PropertyDescriptor("name", DataType.Text))\
-        .property(PropertyDescriptor("founded", DataType.Timestamp))\
-        .property(PropertyDescriptor("user_email", DataType.Text))\
-        .property(PropertyDescriptor("version", DataType.I64).is_version())
-    provider.register_entity(platform_entity)
-
-    # 2. TaskStatus
-    task_status_entity = EntityDescriptor("TaskStatus")\
-        .table_name("task_status")\
-        .property(PropertyDescriptor("id", DataType.I64).is_id())\
-        .property(PropertyDescriptor("name", DataType.Text))\
-        .property(PropertyDescriptor("code", DataType.Text))\
-        .property(PropertyDescriptor("color", DataType.Text))\
-        .property(PropertyDescriptor("displayOrder", DataType.I64))\
-        .property(PropertyDescriptor("progress", DataType.I64))\
-        .property(PropertyDescriptor("platform", DataType.I64))\
-        .property(PropertyDescriptor("version", DataType.I64).is_version())
-    provider.register_entity(task_status_entity)
-
-    # 3. Task
-    task_entity = EntityDescriptor("Task")\
-        .table_name("task")\
-        .property(PropertyDescriptor("id", DataType.I64).is_id())\
-        .property(PropertyDescriptor("name", DataType.Text))\
-        .property(PropertyDescriptor("status", DataType.I64))\
-        .property(PropertyDescriptor("platform", DataType.I64))\
-        .property(PropertyDescriptor("version", DataType.I64).is_version())
-    provider.register_entity(task_entity)
-
-    # 4. TaskExecutionLog
-    log_entity = EntityDescriptor("TaskExecutionLog")\
-        .table_name("task_execution_log")\
-        .property(PropertyDescriptor("id", DataType.I64).is_id())\
-        .property(PropertyDescriptor("task", DataType.I64))\
-        .property(PropertyDescriptor("action", DataType.Text))\
-        .property(PropertyDescriptor("detail", DataType.Text))\
-        .property(PropertyDescriptor("version", DataType.I64).is_version())
-    provider.register_entity(log_entity)
-
-    db_path = os.environ.get("TEAQL_TASK_BOARD_DB", "task_board.db")
-    print(f"Creating sqlite service at {db_path}...")
-    service = create_sqlite_service(db_path, provider)
-
-    print("Initializing Database Schema...")
-    context = UserContext.new()
-    for e in provider.entities.values():
-        context.register_entity(e)
-    
-    context.with_schema_provider(service)
-    await context.ensure_schema()
-
-    print("Performing CRUD operations...")
-
-    # CREATE Platform
-    print("Creating Platform...")
-    platform = Platform(
-        id=1,
-        name="Main Platform",
-        founded=Timestamp(int(time.time() * 1000)),
-        userEmail="admin@robot.com",
-        version=1
-    )
-    platform._action = "Create"
-    await platform.save(context, service)
-
-    # CREATE TaskStatus
-    print("Creating TaskStatus...")
-    status = TaskStatus(
-        id=1,
-        name="Planned",
-        code="PLANNED",
-        color="#94A3B8",
-        displayOrder=10,
-        progress=0,
-        platform=1,
-        version=1
-    )
-    status._action = "Create"
-    await status.save(context, service)
-
-    # CREATE Task
-    print("Creating Task...")
-    task = Task(
-        id=1,
-        name="Build Robot Arm",
-        status=1,
-        platform=1,
-        version=1
-    )
-    task._action = "Create"
-    await task.save(context, service)
-
-    # READ Task
-    print("Reading Tasks...")
-    task_req = TaskRequest()
-    res = await task_req.execute_for_list(context, service)
-    for row in res["data"]:
-        print("  - Task:", row)
-
-    # UPDATE Task
-    print("Updating Task...")
-    task.name = "Build Robot Leg"
-    task._action = "Update"
-    await task.save(context, service)
-
-    # Verify Update
-    res = await task_req.execute_for_list(context, service)
-    print("  - Updated Task:", res["data"][0])
-
-    # INSERT TaskExecutionLog
-    print("Inserting TaskExecutionLog...")
-    log = TaskExecutionLog(
-        id=1,
-        task=1,
-        action="Updated Task",
-        detail="Changed arm to leg",
-        version=1
-    )
-    log._action = "Create"
-    await log.save(context, service)
-
-    # QUERY Log
-    print("Reading Logs...")
-    log_req = TaskExecutionLogRequest()
-    res = await log_req.execute_for_list(context, service)
-    for row in res["data"]:
-        print("  - Log:", row)
-
-    print("Success!")
 
 if __name__ == "__main__":
     asyncio.run(main())

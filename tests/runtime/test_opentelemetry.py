@@ -1,3 +1,5 @@
+import pytest
+
 from opentelemetry.sdk.metrics import MeterProvider
 from opentelemetry.sdk.metrics.export import InMemoryMetricReader
 from opentelemetry.sdk.trace import TracerProvider
@@ -5,7 +7,9 @@ from opentelemetry.sdk.trace.export import SimpleSpanProcessor
 from opentelemetry.sdk.trace.export.in_memory_span_exporter import InMemorySpanExporter
 
 from teaql.runtime.opentelemetry import OpenTelemetryRuntimeTelemetry
-from teaql.runtime.telemetry import RuntimeOperation, start_runtime_operation
+from teaql.runtime.telemetry import (
+    RuntimeOperation, observe_runtime_operation_sync, start_runtime_operation,
+)
 
 
 def test_exports_safe_spans_and_metrics_through_official_sdk():
@@ -92,6 +96,56 @@ def test_delegates_explicit_application_owned_lifecycle():
     assert calls == ["flush", "shutdown"]
     tracer_provider.shutdown()
     meter_provider.shutdown()
+
+
+def test_failure_telemetry_does_not_export_driver_error_message():
+    class DriverCanaryError(Exception):
+        def __str__(self):
+            raise AssertionError("telemetry must not format the driver exception")
+
+    span_exporter = InMemorySpanExporter()
+    tracer_provider = TracerProvider()
+    tracer_provider.add_span_processor(SimpleSpanProcessor(span_exporter))
+    meter_provider = MeterProvider()
+    log_exporter = InMemoryLogRecordExporter()
+    logger_provider = LoggerProvider()
+    logger_provider.add_log_record_processor(SimpleLogRecordProcessor(log_exporter))
+    handler = LoggingHandler(logger_provider=logger_provider)
+    runtime_logger = logging.getLogger("teaql.runtime")
+    original_level = runtime_logger.level
+    runtime_logger.setLevel(logging.INFO)
+    runtime_logger.addHandler(handler)
+    telemetry = OpenTelemetryRuntimeTelemetry(
+        tracer_provider.get_tracer("io.teaql.runtime"),
+        meter_provider.get_meter("io.teaql.runtime"),
+    )
+    error = DriverCanaryError("SQL failed for password=OTEL-FAILURE-CANARY")
+
+    try:
+        with pytest.raises(DriverCanaryError) as caught:
+            observe_runtime_operation_sync(
+                telemetry, RuntimeOperation("provider", "sqlite.query"),
+                lambda: _raise(error),
+            )
+        assert caught.value is error
+        span = span_exporter.get_finished_spans()[0]
+        log = log_exporter.get_finished_logs()[0].log_record
+        assert span.attributes["teaql.error.type"] == "DriverCanaryError"
+        assert log.attributes["teaql.operation.outcome"] == "failure"
+        exported = repr((span.attributes, span.status, span.events,
+                         log.body, log.attributes))
+        assert "OTEL-FAILURE-CANARY" not in exported
+        assert "password=" not in exported
+    finally:
+        runtime_logger.removeHandler(handler)
+        runtime_logger.setLevel(original_level)
+        logger_provider.shutdown()
+        tracer_provider.shutdown()
+        meter_provider.shutdown()
+
+
+def _raise(error):
+    raise error
 import logging
 
 from opentelemetry.instrumentation.logging.handler import LoggingHandler

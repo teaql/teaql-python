@@ -25,6 +25,17 @@ def test_unknown_clauses_are_atomic_and_value_free():
     assert 'SECRET' not in json.dumps(recorded)
 
 
+def test_default_warning_log_omits_untrusted_path_but_keeps_structured_warning(caplog):
+    path = 'CLIENT_SECRET_FIELD_PATH_91'
+    with caplog.at_level('WARNING', logger='teaql.core.dynamic_search'):
+        _, warnings = normalize_dynamic_search({'filter': {path: 'SECRET_VALUE_99'}}, 'Order', MODELS)
+    assert warnings[0]['fieldPath'] == path
+    assert 'DYNAMIC_SEARCH_UNKNOWN_FIELD' in caplog.text
+    assert 'fieldPath=<omitted>' in caplog.text
+    assert path not in caplog.text
+    assert 'SECRET_VALUE_99' not in caplog.text
+
+
 @pytest.mark.parametrize('source', ['{', '[]', 'null', '{} {}', '{"tenant":1}', '{"hardLimit":1}',
                                     '{"filter":{"removed":NaN}}',
                                     {'filter': {'name': {'$invented': 1}}},

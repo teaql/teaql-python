@@ -3,11 +3,11 @@ import aiomysql
 from decimal import Decimal
 from datetime import date, datetime, timezone
 from typing import List, Dict, Any, Optional, AsyncIterator
-from teaql.sql.executor import SqlTransport
+from teaql.sql.executor import SqlTransactionTransport, SqlTransactionTransportTx
 from teaql.sql.types import CompiledQuery
 from teaql.core.value import Value, DataType, Timestamp
 
-class MysqlTransport(SqlTransport):
+class MysqlTransport(SqlTransactionTransport):
     def __init__(self, db_url: str):
         self.db_url = db_url
 
@@ -99,3 +99,48 @@ class MysqlTransport(SqlTransport):
                 return cur.rowcount, cur.lastrowid
         finally:
             conn.close()
+
+    async def begin_sql(self) -> SqlTransactionTransportTx:
+        user, password, host, port, db = self._parse_url()
+        conn = await aiomysql.connect(
+            host=host, port=port, user=user, password=password, db=db,
+            cursorclass=aiomysql.DictCursor, autocommit=False,
+        )
+        try:
+            await conn.begin()
+            return _MysqlTransaction(conn, self)
+        except BaseException:
+            conn.close()
+            raise
+
+
+class _MysqlTransaction(SqlTransactionTransportTx):
+    def __init__(self, conn, owner: MysqlTransport):
+        self._conn = conn
+        self._owner = owner
+
+    async def fetch_all_sql(self, query: CompiledQuery) -> List[Dict[str, Any]]:
+        async with self._conn.cursor() as cursor:
+            await cursor.execute(query.sql_with_comment(), self._owner._bind_values(query.params))
+            rows = await cursor.fetchall()
+            return [
+                {key: self._owner._decode_value(value) for key, value in row.items()}
+                for row in rows
+            ]
+
+    async def execute_sql(self, query: CompiledQuery) -> tuple[int, int]:
+        async with self._conn.cursor() as cursor:
+            await cursor.execute(query.sql_with_comment(), self._owner._bind_values(query.params))
+            return cursor.rowcount, cursor.lastrowid
+
+    async def commit_sql(self) -> None:
+        try:
+            await self._conn.commit()
+        finally:
+            self._conn.close()
+
+    async def rollback_sql(self) -> None:
+        try:
+            await self._conn.rollback()
+        finally:
+            self._conn.close()

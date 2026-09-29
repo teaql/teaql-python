@@ -1,4 +1,4 @@
-from teaql.core.query import SelectQuery
+from teaql.core.query import RelationAggregate, SelectQuery
 from teaql.core.list import SmartList, TeaQLPage
 from teaql.runtime import EntityRoot
 from teaql.data_service import QueryRequest
@@ -65,15 +65,11 @@ class OrderLineRequest:
         return self
 
     def with_deleted_rows(self):
-        self.query._filters = [
-            expression for expression in self.query._filters
-            if expression.get("field") != "version"
-        ]
+        self.query.with_deleted_rows()
         return self
 
     def deleted_rows_only(self):
-        self.with_deleted_rows()
-        self.query.and_filter(lte("version", -1))
+        self.query.deleted_rows_only()
         return self
 
     def select_self_fields(self):
@@ -120,12 +116,12 @@ class OrderLineRequest:
         self.query.relation_query("commerce_platform", child_request.query)
         return self
     def with_customer_order_matching(self, child_request):
-        child_request.query._projection = ["id"]
+        child_request.query.projection = ["id"]
         self.query.and_filter(in_subquery(column("customer_order"), "CustomerOrder", child_request.query))
         return self
 
     def without_customer_order_matching(self, child_request):
-        child_request.query._projection = ["id"]
+        child_request.query.projection = ["id"]
         self.query.and_filter(not_in_subquery(column("customer_order"), "CustomerOrder", child_request.query))
         return self
 
@@ -137,12 +133,12 @@ class OrderLineRequest:
         self.query.and_filter(is_null(column("customer_order")))
         return self
     def with_product_matching(self, child_request):
-        child_request.query._projection = ["id"]
+        child_request.query.projection = ["id"]
         self.query.and_filter(in_subquery(column("product"), "Product", child_request.query))
         return self
 
     def without_product_matching(self, child_request):
-        child_request.query._projection = ["id"]
+        child_request.query.projection = ["id"]
         self.query.and_filter(not_in_subquery(column("product"), "Product", child_request.query))
         return self
 
@@ -154,12 +150,12 @@ class OrderLineRequest:
         self.query.and_filter(is_null(column("product")))
         return self
     def with_commerce_platform_matching(self, child_request):
-        child_request.query._projection = ["id"]
+        child_request.query.projection = ["id"]
         self.query.and_filter(in_subquery(column("commerce_platform"), "CommercePlatform", child_request.query))
         return self
 
     def without_commerce_platform_matching(self, child_request):
-        child_request.query._projection = ["id"]
+        child_request.query.projection = ["id"]
         self.query.and_filter(not_in_subquery(column("commerce_platform"), "CommercePlatform", child_request.query))
         return self
 
@@ -565,112 +561,112 @@ class OrderLineRequest:
         return self.min_quantity_as("minOfQuantity")
 
     def min_quantity_as(self, ret_name: str):
-        self.query.aggregate("min", "quantity", ret_name)
+        self.query.min("quantity", ret_name)
         return self
     def max_quantity(self):
         return self.max_quantity_as("maxOfQuantity")
 
     def max_quantity_as(self, ret_name: str):
-        self.query.aggregate("max", "quantity", ret_name)
+        self.query.max("quantity", ret_name)
         return self
     def sum_quantity(self):
         return self.sum_quantity_as("sumOfQuantity")
 
     def sum_quantity_as(self, ret_name: str):
-        self.query.aggregate("sum", "quantity", ret_name)
+        self.query.sum("quantity", ret_name)
         return self
     def avg_quantity(self):
         return self.avg_quantity_as("avgOfQuantity")
 
     def avg_quantity_as(self, ret_name: str):
-        self.query.aggregate("avg", "quantity", ret_name)
+        self.query.avg("quantity", ret_name)
         return self
     def standardDeviation_quantity(self):
         return self.standardDeviation_quantity_as("standardDeviationOfQuantity")
 
     def standardDeviation_quantity_as(self, ret_name: str):
-        self.query.aggregate("stddev", "quantity", ret_name)
+        self.query.standardDeviation("quantity", ret_name)
         return self
     def squareRootOfPopulationStandardDeviation_quantity(self):
         return self.squareRootOfPopulationStandardDeviation_quantity_as("squareRootOfPopulationStandardDeviationOfQuantity")
 
     def squareRootOfPopulationStandardDeviation_quantity_as(self, ret_name: str):
-        self.query.aggregate("stddev_pop", "quantity", ret_name)
+        self.query.squareRootOfPopulationStandardDeviation("quantity", ret_name)
         return self
     def sampleVariance_quantity(self):
         return self.sampleVariance_quantity_as("sampleVarianceOfQuantity")
 
     def sampleVariance_quantity_as(self, ret_name: str):
-        self.query.aggregate("var_samp", "quantity", ret_name)
+        self.query.sampleVariance("quantity", ret_name)
         return self
     def samplePopulationVariance_quantity(self):
         return self.samplePopulationVariance_quantity_as("samplePopulationVarianceOfQuantity")
 
     def samplePopulationVariance_quantity_as(self, ret_name: str):
-        self.query.aggregate("var_pop", "quantity", ret_name)
+        self.query.samplePopulationVariance("quantity", ret_name)
         return self
     def group_by_id(self):
         self.query.group_by("id")
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id") 
+        self.query.group_by("id")
         return self
     def group_by_customer_order(self):
         self.query.group_by("customer_order")
         return self
 
     def group_by_customer_order_as(self, ret_name: str):
-        self.query.group_by("customer_order") 
+        self.query.group_by("customer_order")
         return self
     def group_by_product(self):
         self.query.group_by("product")
         return self
 
     def group_by_product_as(self, ret_name: str):
-        self.query.group_by("product") 
+        self.query.group_by("product")
         return self
     def group_by_product_name(self):
         self.query.group_by("product_name")
         return self
 
     def group_by_product_name_as(self, ret_name: str):
-        self.query.group_by("product_name") 
+        self.query.group_by("product_name")
         return self
     def group_by_sku(self):
         self.query.group_by("sku")
         return self
 
     def group_by_sku_as(self, ret_name: str):
-        self.query.group_by("sku") 
+        self.query.group_by("sku")
         return self
     def group_by_quantity(self):
         self.query.group_by("quantity")
         return self
 
     def group_by_quantity_as(self, ret_name: str):
-        self.query.group_by("quantity") 
+        self.query.group_by("quantity")
         return self
     def group_by_commerce_platform(self):
         self.query.group_by("commerce_platform")
         return self
 
     def group_by_commerce_platform_as(self, ret_name: str):
-        self.query.group_by("commerce_platform") 
+        self.query.group_by("commerce_platform")
         return self
     def group_by_create_time(self):
         self.query.group_by("create_time")
         return self
 
     def group_by_create_time_as(self, ret_name: str):
-        self.query.group_by("create_time") 
+        self.query.group_by("create_time")
         return self
     def group_by_version(self):
         self.query.group_by("version")
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version") 
+        self.query.group_by("version")
         return self
     def facet_by_customer_order_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
@@ -710,7 +706,7 @@ class ExecutableOrderLineRequest:
         if not self._purpose or not self._purpose.strip() or not self._comment or not self._comment.strip():
             raise Exception("Security audit failure: comment() and purpose() must be called before execute_for_rows()")
         service = context.require_resource("dataService")
-        req = QueryRequest(context.prepare_query(self.query))
+        req = QueryRequest(context.prepare_query(self.query), _comment=self._comment, _purpose=self._purpose)
         return await service.query(context, req)
 
     async def execute_for_rows(self, context):
@@ -732,21 +728,21 @@ class ExecutableOrderLineRequest:
         service = context.require_resource("dataService")
         alias = "__teaql_total"
         if authorized.id_set_pagination is not None:
-            row_result = await service.query(context, QueryRequest(authorized))
+            row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
             retained_count, accuracy = context.id_set_count()
             if accuracy == "EXACT":
                 total_count = retained_count
             else:
-                count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias)))
+                count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias), _comment=request._comment, _purpose=request._purpose))
                 if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
                     raise RuntimeError("dataService did not return an exact page count")
                 total_count = int(count_result.rows[0][alias])
         else:
-            count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias)))
+            count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias), _comment=request._comment, _purpose=request._purpose))
             if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
                 raise RuntimeError("dataService did not return an exact page count")
             total_count = int(count_result.rows[0][alias])
-            row_result = await service.query(context, QueryRequest(authorized))
+            row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
         query_root = EntityRoot()
         data = SmartList(OrderLine(_entity_root=query_root, **row) for row in row_result.rows)
         return TeaQLPage(data=data, total_count=total_count, offset=offset, limit=limit)
@@ -765,6 +761,6 @@ class ExecutableOrderLineRequest:
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
         query_root = EntityRoot()
-        async for chunk in service.query_stream(context, QueryRequest(request.query), chunk_size):
+        async for chunk in service.query_stream(context, QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose), chunk_size):
             for row in chunk.rows:
                 yield OrderLine(_entity_root=query_root, **row)

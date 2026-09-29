@@ -21,12 +21,16 @@ if rg -l 'include\s*=.*teaql\*' "$repo/examples" --glob pyproject.toml >/dev/nul
 fi
 
 PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
+PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/conformance" -p 'test_sql_log_intent.py' -v
 PYTHONPATH="$repo/examples/school-management:$repo/src" python -m app.main
+PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/school-management" -p 'test_sql_log_intent.py' -v
 order_management_tmp="$(mktemp -d)"
 task_board_tmp="$(mktemp -d)"
 trap 'rm -rf "$order_management_tmp" "$task_board_tmp"' EXIT
 TEAQL_ORDER_MANAGEMENT_DB="$order_management_tmp/order.db" \
   PYTHONPATH="$repo/examples/order-management/python-lib-core:$repo/src" \
   python "$repo/examples/order-management/python-app-console/app.py"
+PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/order-management" -p 'test_sql_log_intent.py' -v
 TEAQL_TASK_BOARD_DB="$task_board_tmp/task_board.db" PYTHONPATH="$repo/examples/task_board:$repo/src" python "$repo/examples/task_board/main.py"
+PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/task_board" -p 'test_task_board.py' -v
 echo "PASS: all Python examples"

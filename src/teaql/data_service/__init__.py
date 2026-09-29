@@ -32,6 +32,15 @@ class QueryRequest:
     _comment: Optional[str] = None
     _purpose: Optional[str] = None
 
+    def __post_init__(self) -> None:
+        # Older generated wrappers store intent on SelectQuery but construct
+        # QueryRequest(query) without forwarding it. Keep the explicit request
+        # values authoritative while preserving their diagnostic intent.
+        if self._comment is None:
+            self._comment = getattr(self.query, 'comment_text', None)
+        if self._purpose is None:
+            self._purpose = getattr(self.query, 'purpose_text', None)
+
     def comment(self, text: str) -> 'QueryRequest':
         if not text:
             raise ValueError("comment cannot be empty")
@@ -71,6 +80,11 @@ class ExecutionMetadata:
     audit_reason: Optional[str] = None
     backend_request_id: Optional[str] = None
     debug_query: Optional[str] = None
+    database_kind: Any = None
+    parameter_log_policies: Optional[List[str]] = None
+    sql_origin: Optional[str] = None
+    # Statement/cursor termination only, not transaction commit.
+    execution_outcome: Optional[str] = None
 
 
 @dataclass
