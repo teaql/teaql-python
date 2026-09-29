@@ -53,6 +53,13 @@ def _intent_bindings(compiled, request):
                          sql_origin='generated')
 
 
+class _NoopContextManager:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_value, traceback):
+        return False
+
 def _canonical_id_set_value(value):
     if isinstance(value, Value):
         return ("Value", str(value._type_hint), _canonical_id_set_value(value.val))
@@ -670,16 +677,23 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         entity = getattr(request._data, "entity", "unknown")
         kind = type(request._data).__name__.replace("Command", "").lower()
         if context is not None:
-            context.check_and_fix_mutation(request._data)
+            if not context.consume_mutation_checked(request._data):
+                context.check_and_fix_mutation(request._data)
         telemetry = context.runtime_telemetry() if context is not None else None
-        return await observe_runtime_operation(
-            telemetry,
-            RuntimeOperation("mutation", f"{entity}.{kind}", {
-                "teaql.entity.type": entity,
-                "teaql.mutation.kind": kind,
-            }),
-            lambda: self._mutate(context, request),
+        scope = (
+            context.mutation_policy_execution(request)
+            if context is not None
+            else _NoopContextManager()
         )
+        with scope:
+            return await observe_runtime_operation(
+                telemetry,
+                RuntimeOperation("mutation", f"{entity}.{kind}", {
+                    "teaql.entity.type": entity,
+                    "teaql.mutation.kind": kind,
+                }),
+                lambda: self._mutate(context, request),
+            )
 
     async def _mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
         if isinstance(self.transport, SqlTransactionTransport):
@@ -855,6 +869,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 tuple(request.trace_chain()),
                 context.user_identifier(),
                 context.get_resource("bootstrapCategory"),
+                context.current_mutation_governance(),
             ))
         return MutationResult(
             affected_rows=affected_rows,

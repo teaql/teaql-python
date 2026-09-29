@@ -65,6 +65,11 @@ The SDK's organizational architecture strictly mirrors the Rust version:
 *   **Facet Aggregation & Grouping**: Out-of-the-box support for multi-dimensional facet aggregations, group-bys, and hierarchical data processing.
 *   **Provider Support**: Highly extensible asynchronous database connectivity (integrating third-party async drivers like `aiosqlite` through a unified Transport layer).
 *   **Context & Logging Management**: Built-in support for lifecycle context passing, end-to-end tracing, and SQL execution log interception and dispatch.
+*   **Governed Mutation Policy**: An application-owned policy can review an
+    immutable whole-graph plan after Checker/Fix and before the first provider
+    mutation. Exact policy identity and approval state are retained with audit
+    evidence. Missing customer policy or approval emits stable warnings without
+    changing persistence semantics; an explicit denial fails closed.
 *   **TeaQL Federal Protocol Client**: `TeaQLFederalClient` and `TfpHttpProvider`
     execute governed canonical TFP v1 queries and audited mutations against a
     remote TeaQL endpoint such as Rust. Direct query execution returns
@@ -103,6 +108,26 @@ development-only acknowledgement are maintained in the canonical
 [opaque entity reference contract](https://github.com/teaql/teaql-conformance/blob/main/design/opaque-entity-references.md).
 Opaque tokens never replace the backend's authorization, tenant, ownership,
 role, or optimistic-version checks.
+
+### Mutation Policy installation
+
+Policy implementations are installed from trusted application startup through
+`UserContext`; request JSON cannot select or replace them. Built-in SQL and TFP
+providers enter the same governed boundary.
+
+```python
+context = (
+    UserContext.new()
+    .with_mutation_policy_registry(policy_registry)
+    .with_mutation_policy_approval_provider(approval_provider)
+    .with_mutation_governance_sink(warning_sink)
+)
+```
+
+Generated graph saves call `preflight_mutation(...)` for every operation before
+the first provider write. See the repeatable
+[`examples/mutation-policy`](examples/mutation-policy) example for allow,
+approval, audit propagation, and zero-write denial evidence.
 
 ---
 To run test validations and business logic simulations locally, simply run `pytest` in the project root.
