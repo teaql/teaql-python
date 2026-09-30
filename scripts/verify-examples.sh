@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(business-clock conformance mutation-policy order-management query-policy school-management task_board)
+expected=(business-clock conformance mutation-policy opaque-entity-reference order-management query-policy school-management task_board)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -27,6 +27,7 @@ PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/school-man
 PYTHONPATH="$repo/src" python "$repo/examples/mutation-policy/main.py"
 PYTHONPATH="$repo/src" python "$repo/examples/business-clock/main.py"
 PYTHONPATH="$repo/src" python "$repo/examples/query-policy/main.py"
+PYTHONPATH="$repo/src" python "$repo/examples/opaque-entity-reference/main.py"
 order_management_tmp="$(mktemp -d)"
 task_board_tmp="$(mktemp -d)"
 trap 'rm -rf "$order_management_tmp" "$task_board_tmp"' EXIT
