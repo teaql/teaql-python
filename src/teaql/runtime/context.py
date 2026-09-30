@@ -1,6 +1,7 @@
 from typing import Dict, Any, Optional, List, Callable, TypeVar
 import asyncio
 import contextvars
+from copy import deepcopy
 from dataclasses import dataclass
 from array import array
 from datetime import date, datetime
@@ -327,17 +328,43 @@ class UserContext:
         return res
 
     def prepare_query(self, query: Any) -> Any:
-        """Apply trusted request policy exactly once before execution."""
+        """Clone a query graph and apply trusted policy once to every query node."""
+        prepared_root = deepcopy(query)
         policy = self.get_resource("request_policy")
         if policy is None:
-            return query
-        if callable(policy):
-            prepared = policy(query)
-        elif hasattr(policy, "apply"):
-            prepared = policy.apply(query)
-        else:
+            return prepared_root
+
+        apply_policy = policy if callable(policy) else getattr(policy, "apply", None)
+        if apply_policy is None or not callable(apply_policy):
             raise TypeError("request_policy must be callable or expose apply(query)")
-        return query if prepared is None else prepared
+
+        prepared_nodes: Dict[int, Any] = {}
+
+        def prepare_node(node: Any) -> Any:
+            if node is None:
+                return None
+            existing = prepared_nodes.get(id(node))
+            if existing is not None:
+                return existing
+            replacement = apply_policy(node)
+            prepared = node if replacement is None else replacement
+            prepared_nodes[id(node)] = prepared
+            prepared_nodes[id(prepared)] = prepared
+
+            for relation in getattr(prepared, "relations", ()):
+                relation.query = prepare_node(relation.query)
+            for aggregate in getattr(prepared, "relation_aggregates", ()):
+                aggregate.query = prepare_node(aggregate.query)
+            for grouping in getattr(prepared, "object_group_bys", ()):
+                grouping.query = prepare_node(grouping.query)
+            for facet in getattr(prepared, "facets", ()):
+                facet.query = prepare_node(facet.query)
+            children = getattr(prepared, "child_enhancements", None)
+            if children is not None:
+                prepared.child_enhancements = [prepare_node(child) for child in children]
+            return prepared
+
+        return prepare_node(prepared_root)
 
     def set_user_identifier(self, identifier: str):
         self._user_identifier = identifier
