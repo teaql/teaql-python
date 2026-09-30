@@ -1,6 +1,7 @@
 import os
+from datetime import date, datetime, timezone
 import pytest
-from teaql.runtime import ContextEntityRef, ContextRootError, CheckException, CheckResult, RuntimeModule, UserContext, TeaqlRuntime, ServiceRuntimeFromEnv
+from teaql.runtime import ContextEntityRef, ContextRootError, CheckException, CheckResult, FixedBusinessClock, RuntimeModule, UserContext, TeaqlRuntime, ServiceRuntimeFromEnv
 from teaql.core.mutation import InsertCommand
 from teaql.runtime.audit import AuditFieldChange, MutationAuditKind, RawAuditEvent
 
@@ -184,7 +185,9 @@ async def test_graph_save_captures_one_fix_clock_for_all_nodes():
             observed.append(context.require_resource("fix_time"))
 
     provider = RecordingTransactionProvider(events)
+    expected = datetime(2026, 10, 1, 9, 30, 15, tzinfo=timezone.utc)
     context = (UserContext.new()
+               .with_business_clock(FixedBusinessClock(expected))
                .insert_resource("dataService", provider)
                .with_checker_registry(DummyCheckerRegistry(ClockChecker())))
 
@@ -195,8 +198,25 @@ async def test_graph_save_captures_one_fix_clock_for_all_nodes():
 
     await context.execute_graph_save(graph)
     assert len(observed) == 2 and observed[0] is observed[1]
+    assert observed[0] == expected
     assert context.get_resource("fix_time") is None
     assert events == ["begin", "commit"]
+
+
+def test_fixed_business_clock_drives_time_and_date():
+    expected = datetime(2026, 10, 1, 23, 45, 30, tzinfo=timezone.utc)
+    context = UserContext.new().with_business_clock(FixedBusinessClock(expected))
+
+    assert context.business_time() == expected
+    assert context.business_date() == date(2026, 10, 1)
+
+
+def test_system_business_clock_is_default():
+    before = datetime.now(timezone.utc)
+    actual = UserContext.new().business_time()
+    after = datetime.now(timezone.utc)
+
+    assert before <= actual <= after
 
 
 @pytest.mark.asyncio

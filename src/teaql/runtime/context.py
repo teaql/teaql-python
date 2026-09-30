@@ -3,6 +3,9 @@ import asyncio
 import contextvars
 from dataclasses import dataclass
 from array import array
+from datetime import date, datetime
+
+from .business_clock import BusinessClock, SystemBusinessClock
 
 
 TEntity = TypeVar("TEntity")
@@ -105,6 +108,7 @@ class UserContext:
         self._fix_evidence_current: List[FixEvidence] = []
         self._fix_evidence_last: List[FixEvidence] = []
         self._checked_mutations = set()
+        self._business_clock: BusinessClock = SystemBusinessClock()
         from .mutation_policy import MutationPolicyRuntimeState
         self._mutation_policy = MutationPolicyRuntimeState()
 
@@ -164,7 +168,7 @@ class UserContext:
             self._mutation_policy.begin_graph()
             self._graph_commit_actions = []
             self._graph_rollback_actions = []
-            self.insert_resource("fix_time", datetime.now())
+            self.insert_resource("fix_time", self.business_time())
             self.begin_fix_evidence()
             self.insert_resource("dataService", transaction)
             try:
@@ -585,10 +589,9 @@ class UserContext:
         record = getattr(mutation, "values", None)
         if not entity or record is None:
             return
-        from datetime import datetime
         owns_fix_time = self.get_resource("fix_time") is None
         if owns_fix_time:
-            self.insert_resource("fix_time", datetime.now())
+            self.insert_resource("fix_time", self.business_time())
             self.begin_fix_evidence()
         self.insert_resource("fix_operation", type(mutation).__name__.replace("Command", "").lower())
         try:
@@ -598,6 +601,20 @@ class UserContext:
                 self._resources.pop("fix_time", None)
                 self.finish_fix_evidence()
             self._resources.pop("fix_operation", None)
+
+    def with_business_clock(self, clock: BusinessClock) -> 'UserContext':
+        if clock is None or not callable(getattr(clock, "now", None)):
+            raise TypeError("business clock must provide now()")
+        self._business_clock = clock
+        return self
+
+    def business_time(self) -> datetime:
+        """Return the date-time used by business logic."""
+        return self._business_clock.now()
+
+    def business_date(self) -> date:
+        """Derive a date from the same context-owned business clock."""
+        return self.business_time().date()
 
     def mark_mutation_checked(self, mutation: Any) -> None:
         self._checked_mutations.add(id(mutation))
