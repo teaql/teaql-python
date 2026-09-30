@@ -12,6 +12,13 @@ from teaql.provider.tfp_client import (
     FederalMutation, FederalQuery, TeaQLFederalClient, TfpError, TfpHttpProvider,
     _reject_trusted_fields,
 )
+from teaql.runtime import (
+    DelegatingMutationPolicyRegistry,
+    MutationDecision,
+    MutationPolicyError,
+    MutationPolicyIdentity,
+    UserContext,
+)
 
 
 class RecordingTelemetry:
@@ -119,6 +126,45 @@ async def test_provider_adapts_core_query_and_mutation_without_broadening():
     mutation = await provider.mutate(None, MutationRequest.Update(command))
     assert mutation.affected_rows == 1
     assert payloads[1]["expectedVersion"] == 3
+
+
+@pytest.mark.asyncio
+async def test_provider_policy_denial_prevents_remote_mutation_request():
+    calls = 0
+
+    async def handler(_):
+        nonlocal calls
+        calls += 1
+        return httpx.Response(200, json={"affectedRows": 1})
+
+    class DenyAllPolicy:
+        identity = MutationPolicyIdentity(
+            "tfp-order-policy", "1", "sha256:tfp-order-policy-v1"
+        )
+
+        def review(self, context, plan):
+            assert plan.request_key == "CustomerOrder.saveGraph"
+            return MutationDecision.denied(
+                "REMOTE_MUTATION_DENIED", "remote mutation is disabled"
+            )
+
+    http = httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="https://tfp.test"
+    )
+    provider = TfpHttpProvider("https://tfp.test", client=http)
+    context = UserContext.new().with_mutation_policy_registry(
+        DelegatingMutationPolicyRegistry(lambda _: DenyAllPolicy())
+    )
+    command = (
+        UpdateCommand.new("CustomerOrder", 42)
+        .expected_version(3)
+        .value("status", "PAID")
+    )
+    command.trace_chain.append(TraceNode(comment="Mark paid"))
+
+    with pytest.raises(MutationPolicyError, match="REMOTE_MUTATION_DENIED"):
+        await provider.mutate(context, MutationRequest.Update(command))
+    assert calls == 0
 
 
 @pytest.mark.asyncio

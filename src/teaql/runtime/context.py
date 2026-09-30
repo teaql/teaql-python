@@ -105,6 +105,8 @@ class UserContext:
         self._fix_evidence_current: List[FixEvidence] = []
         self._fix_evidence_last: List[FixEvidence] = []
         self._checked_mutations = set()
+        from .mutation_policy import MutationPolicyRuntimeState
+        self._mutation_policy = MutationPolicyRuntimeState()
 
     def begin_fix_evidence(self):
         self._fix_evidence_current = []
@@ -159,6 +161,7 @@ class UserContext:
                 transaction = await begin()
             owner_token = self._graph_save_owner.set(object())
             self._graph_save_active = True
+            self._mutation_policy.begin_graph()
             self._graph_commit_actions = []
             self._graph_rollback_actions = []
             self.insert_resource("fix_time", datetime.now())
@@ -175,6 +178,7 @@ class UserContext:
                 raise
             else:
                 try:
+                    self._mutation_policy.ensure_graph_complete()
                     await self._finish_graph_transaction(transaction, "commit")
                 except BaseException:
                     try:
@@ -189,6 +193,7 @@ class UserContext:
             finally:
                 self.insert_resource("dataService", provider)
                 self._graph_save_active = False
+                self._mutation_policy.end_graph()
                 self._graph_commit_actions = []
                 self._graph_rollback_actions = []
                 self._resources.pop("fix_time", None)
@@ -638,6 +643,41 @@ class UserContext:
     def with_app_audit_event_sink(self, sink: Any) -> 'UserContext':
         self._app_audit_sink = sink
         return self
+
+    def with_mutation_policy_registry(self, registry: Any) -> 'UserContext':
+        if registry is None or not callable(getattr(registry, "resolve", None)):
+            raise TypeError("mutation policy registry must expose resolve(request_key)")
+        self._mutation_policy.registry = registry
+        return self
+
+    def with_mutation_policy_approval_provider(self, provider: Any) -> 'UserContext':
+        if provider is None or not callable(getattr(provider, "find_approval", None)):
+            raise TypeError(
+                "mutation policy approval provider must expose find_approval(identity)"
+            )
+        self._mutation_policy.approval_provider = provider
+        return self
+
+    def with_mutation_governance_sink(self, sink: Any) -> 'UserContext':
+        if sink is None or not callable(getattr(sink, "on_warning", None)):
+            raise TypeError("mutation governance sink must expose on_warning(context, event)")
+        self._mutation_policy.warning_sink = sink
+        return self
+
+    def current_mutation_governance(self):
+        return self._mutation_policy.current
+
+    def review_mutation_plan(self, plan: Any):
+        return self._mutation_policy.review(self, plan)
+
+    def preflight_mutation(self, mutation: Any) -> None:
+        """Check/fix and snapshot one operation for whole-graph policy review."""
+        self.check_and_fix_mutation(mutation)
+        self._mutation_policy.record_preflight(mutation)
+
+    def mutation_policy_execution(self, request: Any):
+        """Provider boundary scope; entered after validation and before mutation."""
+        return self._mutation_policy.enter_mutation(self, request)
 
     def with_sql_log_options(self, options: 'SqlLogOptions') -> 'UserContext':
         self.insert_resource("sql_log_options", options)

@@ -27,6 +27,7 @@ class RawAuditEvent:
     trace_chain: tuple[Any, ...] = field(default_factory=tuple)
     actor: Optional[str] = None
     category: Optional[str] = None
+    mutation_governance: Any = None
 
     def safe(self, mask_fields: List[str], max_length: Optional[int]) -> "SafeAuditEvent":
         from .log_privacy import REDACTED, credential_name, payload_has_credentials, plaintext_enabled, scrub, value_strings
@@ -51,7 +52,7 @@ class RawAuditEvent:
         intent_values = secrets + value_strings(self.entity_id)
         return SafeAuditEvent(
             self.kind, self.entity, self.entity_id, scrub(tuple(fields), secrets), scrub(self.trace_chain, intent_values),
-            scrub(self.actor, intent_values), self.category,
+            scrub(self.actor, intent_values), self.category, self.mutation_governance,
         )
 
 
@@ -72,6 +73,7 @@ class SafeAuditEvent:
     trace_chain: tuple[Any, ...] = field(default_factory=tuple)
     actor: Optional[str] = None
     category: Optional[str] = None
+    mutation_governance: Any = None
 
 
 def _mask(value: str) -> str:

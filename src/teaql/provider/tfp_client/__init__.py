@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from contextlib import nullcontext
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any, Awaitable, Callable, Dict, Mapping, Optional
@@ -164,27 +165,31 @@ class TfpHttpProvider(DataService):
         )
 
     async def mutate(self, context: Any, request: MutationRequest) -> MutationResult:
-        started_at = datetime.now()
-        federal = _mutation_request(request)
-        data = await self.federal_client.execute_mutation(federal)
-        records = data.get("data") or []
-        generated = records[0] if records else {}
-        affected = int(data.get("affectedRows", 0))
-        operation = {
-            "Create": DataServiceOperation.Insert,
-            "Update": DataServiceOperation.Update,
-            "Delete": DataServiceOperation.Delete,
-            "Recover": DataServiceOperation.Recover,
-        }[federal.action]
-        return MutationResult(
-            affected_rows=affected, generated_values=generated,
-            persisted_record=generated or None,
-            metadata=ExecutionMetadata(
-                backend="teaql-federal", operation=operation,
-                started_at=started_at, ended_at=datetime.now(), affected_rows=affected,
-                comment=federal.comment,
-            ),
-        )
+        if context is not None and not context.consume_mutation_checked(request._data):
+            context.check_and_fix_mutation(request._data)
+        scope = context.mutation_policy_execution(request) if context is not None else nullcontext()
+        with scope:
+            started_at = datetime.now()
+            federal = _mutation_request(request)
+            data = await self.federal_client.execute_mutation(federal)
+            records = data.get("data") or []
+            generated = records[0] if records else {}
+            affected = int(data.get("affectedRows", 0))
+            operation = {
+                "Create": DataServiceOperation.Insert,
+                "Update": DataServiceOperation.Update,
+                "Delete": DataServiceOperation.Delete,
+                "Recover": DataServiceOperation.Recover,
+            }[federal.action]
+            return MutationResult(
+                affected_rows=affected, generated_values=generated,
+                persisted_record=generated or None,
+                metadata=ExecutionMetadata(
+                    backend="teaql-federal", operation=operation,
+                    started_at=started_at, ended_at=datetime.now(), affected_rows=affected,
+                    comment=federal.comment,
+                ),
+            )
 
 
 def _federal_query_payload(query: FederalQuery) -> Dict[str, Any]:
