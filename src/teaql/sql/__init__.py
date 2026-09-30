@@ -11,6 +11,7 @@ from .executor import (
     SqlTransport, SqlExecutorError, CompileError, TransportError,
     SchemaProvider, SqlDataServiceExecutor
 )
+from .business_id import SqlBusinessIdAllocator
 
 __all__ = [
     "DatabaseKind", "CompiledQuery", "SqlCompileError",
@@ -21,5 +22,5 @@ __all__ = [
     "InvalidSubQueryOperatorError",
     "SqlDialect", "quote_identifier_if_needed",
     "SqlTransport", "SqlExecutorError", "CompileError", "TransportError",
-    "SchemaProvider", "SqlDataServiceExecutor"
+    "SchemaProvider", "SqlDataServiceExecutor", "SqlBusinessIdAllocator"
 ]

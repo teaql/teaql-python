@@ -536,6 +536,29 @@ class UserContext:
     def set_internal_id_generator(self, gen: Any):
         self.insert_resource("internal_id_generator", gen)
 
+    def with_business_id_profile_factory(self, factory: Any) -> 'UserContext':
+        if factory is None or not callable(getattr(factory, "create", None)):
+            raise TypeError("business ID profile factory must provide create()")
+        return self.insert_resource("business_id_profile_factory", factory)
+
+    def with_business_id_key_provider(self, provider: Any) -> 'UserContext':
+        if provider is None or not callable(getattr(provider, "current_key", None)):
+            raise TypeError("business ID key provider must provide current_key()")
+        return self.insert_resource("business_id_key_provider", provider)
+
+    def with_business_id_service(self, service: Any) -> 'UserContext':
+        if service is None or not callable(getattr(service, "ensure", None)):
+            raise TypeError("business ID service must provide ensure()")
+        return self.insert_resource("business_id_service", service)
+
+    async def ensure_business_id(
+        self, definition: Any, domain_root_key: str, aggregate_type: str, slot: Any
+    ) -> Any:
+        service = self.require_resource("business_id_service")
+        return await service.ensure(
+            self, definition, domain_root_key, aggregate_type, slot
+        )
+
     def with_schema_provider(self, provider: Any) -> 'UserContext':
         self.insert_resource("schema_provider", provider)
         return self

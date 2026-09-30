@@ -25,10 +25,21 @@ from .eval import LoadState, EvalResult
 from .safe_expression import SafeExpression
 from .xls import XlsWorkbook, XlsPage, XlsBlock, XlsBlockBuildContext
 from .business_id import (
+    BusinessIdAllocation,
+    BusinessIdAllocator,
+    BusinessIdDefinition,
     BusinessIdEncodingKey,
     BusinessIdError,
     BusinessIdErrorCode,
+    BusinessIdGenerationRequest,
+    BusinessIdKeyProvider,
+    BusinessIdPlan,
+    BusinessIdProfile,
+    BusinessIdProfileFactory,
+    BusinessIdService,
+    BusinessIdSlot,
     BusinessIdScope,
+    BusinessIdValue,
 )
 
 __all__ = [
@@ -45,8 +56,11 @@ __all__ = [
     "GraphNode",
     "EntityDescriptor", "PropertyDescriptor", "SmartList", "TeaQLPage",
     "LoadState", "EvalResult", "SafeExpression",
+    "BusinessIdAllocation", "BusinessIdAllocator", "BusinessIdDefinition",
     "BusinessIdEncodingKey", "BusinessIdError", "BusinessIdErrorCode",
-    "BusinessIdScope",
+    "BusinessIdGenerationRequest", "BusinessIdKeyProvider", "BusinessIdPlan",
+    "BusinessIdProfile", "BusinessIdProfileFactory", "BusinessIdService",
+    "BusinessIdSlot", "BusinessIdScope", "BusinessIdValue",
     "XlsWorkbook", "XlsPage", "XlsBlock", "XlsBlockBuildContext"
 ]
 import builtins

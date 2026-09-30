@@ -1032,6 +1032,12 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             "CREATE TABLE IF NOT EXISTS teaql_id_space ("
             "type_name VARCHAR(255) NOT NULL PRIMARY KEY, "
             "current_level BIGINT NOT NULL)", []))
+        await self.transport.execute_sql(CompiledQuery(
+            "CREATE TABLE IF NOT EXISTS teaql_business_id_space ("
+            "scope_key VARCHAR(512) NOT NULL PRIMARY KEY, "
+            "current_value BIGINT NOT NULL, "
+            "version BIGINT NOT NULL, "
+            "updated_at BIGINT NOT NULL)", []))
 
     async def begin(self, context: 'UserContext') -> 'teaql.data_service.Transaction':
         if not isinstance(self.transport, SqlTransactionTransport):
