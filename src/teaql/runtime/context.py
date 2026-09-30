@@ -4,9 +4,19 @@ import contextvars
 from copy import deepcopy
 from dataclasses import dataclass
 from array import array
-from datetime import date, datetime
+from datetime import date, datetime, timedelta, timezone
 
 from .business_clock import BusinessClock, SystemBusinessClock
+from .entity_reference import (
+    EntityReferenceClaims,
+    EntityReferenceCodec,
+    EntityReferenceTokenError,
+    decode_raw_entity_reference,
+    encode_raw_entity_reference,
+    raw_entity_references_enabled,
+    validate_decoded_reference,
+    validate_reference_request,
+)
 
 
 TEntity = TypeVar("TEntity")
@@ -110,6 +120,7 @@ class UserContext:
         self._fix_evidence_last: List[FixEvidence] = []
         self._checked_mutations = set()
         self._business_clock: BusinessClock = SystemBusinessClock()
+        self._entity_reference_codec: Optional[EntityReferenceCodec] = None
         from .mutation_policy import MutationPolicyRuntimeState
         self._mutation_policy = MutationPolicyRuntimeState()
 
@@ -150,6 +161,51 @@ class UserContext:
         if root.entity != expected_type:
             raise ContextRootError("type_mismatch", expected_type, root)
         return root
+
+    def with_entity_reference_codec(
+        self, codec: EntityReferenceCodec
+    ) -> 'UserContext':
+        if codec is None:
+            raise TypeError("entity reference codec is required")
+        self._entity_reference_codec = codec
+        return self
+
+    def encode_entity_reference(
+        self,
+        entity_type: str,
+        entity_id: int,
+        version: int,
+        purpose: str,
+        lifetime: timedelta,
+    ) -> str:
+        if self._entity_reference_codec is not None:
+            return self._entity_reference_codec.encode_entity_reference(
+                entity_type, entity_id, version, purpose, lifetime
+            )
+        if not raw_entity_references_enabled():
+            raise EntityReferenceTokenError("ENTITY_REFERENCE_CODEC_REQUIRED")
+        validate_reference_request(entity_type, entity_id, version, purpose, lifetime)
+        now = datetime.now(timezone.utc)
+        return encode_raw_entity_reference(
+            EntityReferenceClaims(
+                entity_type, entity_id, version, now, now + lifetime, purpose
+            )
+        )
+
+    def decode_entity_reference(
+        self, token: str, expected_entity_type: str, purpose: str
+    ) -> EntityReferenceClaims:
+        if self._entity_reference_codec is not None:
+            return self._entity_reference_codec.decode_entity_reference(
+                token, expected_entity_type, purpose
+            )
+        if not raw_entity_references_enabled():
+            raise EntityReferenceTokenError("ENTITY_REFERENCE_CODEC_REQUIRED")
+        claims = decode_raw_entity_reference(token)
+        validate_decoded_reference(
+            claims, datetime.now(timezone.utc), expected_entity_type, purpose
+        )
+        return claims
 
     async def execute_graph_save(self, work):
         """Run one generated entity graph in one provider transaction."""

@@ -37,7 +37,7 @@ and evidence-based verification as the generator and runtimes evolve.
 
 *   **Python**: 3.10+ (Recommended 3.12+)
 *   **Testing**: `pytest` 7.4+
-*   **Dependencies**: `pydantic` >= 2.0, `aiosqlite`, `aiomysql`, `asyncpg`
+*   **Dependencies**: `pydantic` >= 2.0, `aiosqlite`, `aiomysql`, `asyncpg`, `cryptography` >= 42
 
 ## 2. Tests Performed
 
@@ -96,18 +96,40 @@ non-empty comment/purpose and audited mutations retain their audit reason.
 Runtime logging should keep parameterized SQL and intent separate from any
 restricted value-bearing diagnostic output.
 
-Portable `UserContext` opaque entity references are not implemented in the
-Python runtime yet. Until that capability is added, applications must not
-invent a Python-specific token format or serialize internal ID/version pairs as
-if they were the TeaQL portable contract. A Python TFP client may carry an
-opaque token issued by a trusted Java, Rust, Go, or .NET backend, but it must
-not decode, rewrite, or mint that token.
+Python implements the portable `tqr1` tuple codec shared with Go and .NET. It
+encrypts and authenticates entity type, internal ID, optimistic version,
+issued/expiry time, and purpose with AES-256-GCM. Key rings permit rotation;
+encoding always uses the active key while decoding can accept retained keys.
 
-The planned wire format, fail-closed behavior, shared golden vector, and exact
+```python
+import os
+from datetime import timedelta
+from teaql.runtime import AeadEntityReferenceCodec, UserContext
+
+codec = AeadEntityReferenceCodec(2, {
+    1: bytes.fromhex(os.environ["TEAQL_ENTITY_REFERENCE_KEY_V1_HEX"]),
+    2: bytes.fromhex(os.environ["TEAQL_ENTITY_REFERENCE_KEY_V2_HEX"]),
+})
+context = UserContext().with_entity_reference_codec(codec)
+token = context.encode_entity_reference(
+    "OrderItem", 42, 7, "edit-order", timedelta(minutes=30)
+)
+claims = context.decode_entity_reference(token, "OrderItem", "edit-order")
+```
+
+Without a configured codec the runtime fails closed. Local debugging can use
+the canonical long `TEAQL_UNSAFE_RAW_ENTITY_REFERENCES` acknowledgement, which
+emits visibly distinct `tqr0` references. It must not be enabled in production.
+
+The wire format, fail-closed behavior, shared golden vector, and exact
 development-only acknowledgement are maintained in the canonical
 [opaque entity reference contract](https://github.com/teaql/teaql-conformance/blob/main/design/opaque-entity-references.md).
 Opaque tokens never replace the backend's authorization, tenant, ownership,
 role, or optimistic-version checks.
+
+The repeatable [`examples/opaque-entity-reference`](examples/opaque-entity-reference)
+example proves the exact cross-language golden vector and purpose-substitution
+rejection.
 
 ### Mutation Policy installation
 
