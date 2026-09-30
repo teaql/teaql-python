@@ -158,7 +158,9 @@ async def test_schema_failure_does_not_print_driver_error(fixture, monkeypatch,
 
     class SchemaFaultTransport(FaultTransport):
         async def execute_sql(self, query):
-            if 'CREATE TABLE' in query.sql and 'teaql_id_space' not in query.sql:
+            support_table = ('teaql_id_space' in query.sql
+                             or 'teaql_business_id_space' in query.sql)
+            if 'CREATE TABLE' in query.sql and not support_table:
                 raise RuntimeError('DRIVER-CANARY Riverside PASSWORD-CANARY')
             return 0, None
 

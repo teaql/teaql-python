@@ -70,9 +70,10 @@ The SDK's organizational architecture strictly mirrors the Rust version:
     mutation. Exact policy identity and approval state are retained with audit
     evidence. Missing customer policy or approval emits stable warnings without
     changing persistence semantics; an explicit denial fails closed.
-*   **Portable Business ID Encoding**: Core scope/key types and the runtime
-    `daily-permuted-v1` encoder execute the canonical cross-language golden
-    vectors without exposing the internal sequence.
+*   **Governed Business ID Lifecycle**: Core model contracts, a context-owned
+    profile/key/service boundary, retry-safe assignment, an in-memory allocator,
+    and explicit-schema durable SQLite allocation extend the portable
+    `daily-permuted-v1` encoder without exposing its internal sequence.
 *   **TeaQL Federal Protocol Client**: `TeaQLFederalClient` and `TfpHttpProvider`
     execute governed canonical TFP v1 queries and audited mutations against a
     remote TeaQL endpoint such as Rust. Direct query execution returns
@@ -150,9 +151,11 @@ key = BusinessIdEncodingKey(1, key_from_secret_manager)
 code = encode_business_id_permutation_v1(0, scope, key)
 ```
 
-Durable concurrent allocation, aggregate retry reuse, and typed lookup are
-separate lifecycle capabilities. Secret key material is application-owned and
-must not be placed in KSML or generated source.
+The retained [`examples/business-id`](examples/business-id) flow proves durable
+concurrent allocation infrastructure and aggregate retry reuse. Generated
+strongly typed fields and external lookup remain a separate generator
+capability. Secret key material is application-owned and must not be placed in
+KSML or generated source.
 
 ### Mutation Policy installation
 
