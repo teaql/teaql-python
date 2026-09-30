@@ -24,6 +24,12 @@ from .list import SmartList, TeaQLPage
 from .eval import LoadState, EvalResult
 from .safe_expression import SafeExpression
 from .xls import XlsWorkbook, XlsPage, XlsBlock, XlsBlockBuildContext
+from .business_id import (
+    BusinessIdEncodingKey,
+    BusinessIdError,
+    BusinessIdErrorCode,
+    BusinessIdScope,
+)
 
 __all__ = [
     "Value", "DataType", "Timestamp",
@@ -39,6 +45,8 @@ __all__ = [
     "GraphNode",
     "EntityDescriptor", "PropertyDescriptor", "SmartList", "TeaQLPage",
     "LoadState", "EvalResult", "SafeExpression",
+    "BusinessIdEncodingKey", "BusinessIdError", "BusinessIdErrorCode",
+    "BusinessIdScope",
     "XlsWorkbook", "XlsPage", "XlsBlock", "XlsBlockBuildContext"
 ]
 import builtins

@@ -70,6 +70,9 @@ The SDK's organizational architecture strictly mirrors the Rust version:
     mutation. Exact policy identity and approval state are retained with audit
     evidence. Missing customer policy or approval emits stable warnings without
     changing persistence semantics; an explicit denial fails closed.
+*   **Portable Business ID Encoding**: Core scope/key types and the runtime
+    `daily-permuted-v1` encoder execute the canonical cross-language golden
+    vectors without exposing the internal sequence.
 *   **TeaQL Federal Protocol Client**: `TeaQLFederalClient` and `TfpHttpProvider`
     execute governed canonical TFP v1 queries and audited mutations against a
     remote TeaQL endpoint such as Rust. Direct query execution returns
@@ -130,6 +133,26 @@ role, or optimistic-version checks.
 The repeatable [`examples/opaque-entity-reference`](examples/opaque-entity-reference)
 example proves the exact cross-language golden vector and purpose-substitution
 rejection.
+
+## Business ID V1 Foundation
+
+The pure runtime encoder maps a durable internal sequence into the canonical
+six-character, scope-specific Base36 code:
+
+```python
+from teaql.core import BusinessIdEncodingKey, BusinessIdScope
+from teaql.runtime import encode_business_id_permutation_v1
+
+scope = BusinessIdScope(
+    "tenant-a", "commerce_order", "order_number", "20260925"
+)
+key = BusinessIdEncodingKey(1, key_from_secret_manager)
+code = encode_business_id_permutation_v1(0, scope, key)
+```
+
+Durable concurrent allocation, aggregate retry reuse, and typed lookup are
+separate lifecycle capabilities. Secret key material is application-owned and
+must not be placed in KSML or generated source.
 
 ### Mutation Policy installation
 
