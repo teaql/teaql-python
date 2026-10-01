@@ -36,3 +36,5 @@ class Q:
     @staticmethod
     def task_execution_logs_minimal() -> TaskExecutionLogRequest:
         return TaskExecutionLogRequest(minimal=True)
+
+

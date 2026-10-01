@@ -3,7 +3,7 @@ from teaql.runtime import UserContext
 
 
 shared = SelectQuery("SchoolType").project("id")
-original = SelectQuery("School").project("id")
+original = SelectQuery("School").project("id").comment('govern school graph').purpose('verify query policy')
 original.relations.append(RelationLoad("schoolType", shared))
 original.facets.append(FacetRequest("types", "schoolType", shared))
 calls = []
@@ -27,7 +27,7 @@ assert "tenant_id" not in original.projection
 assert "tenant_id" not in shared.projection
 
 try:
-    context.prepare_query(SelectQuery("ForbiddenReport"))
+    context.prepare_query(SelectQuery("ForbiddenReport").comment('attempt forbidden report').purpose('verify denial'))
 except PermissionError as error:
     assert str(error) == "query policy denied ForbiddenReport"
 else:

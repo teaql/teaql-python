@@ -187,10 +187,10 @@ async def test_complete_graph_policy_audit_and_immutable_preflight():
         # original reviewed operation rather than the changed command.
         transaction = context.require_resource("dataService")
         await transaction.mutate(
-            context, MutationRequest(_insert("Order", 42, "DRAFT")))
-        return await transaction.mutate(context, MutationRequest(line))
+            context, MutationRequest(_insert("Order", 42, "DRAFT"), comment='what: runtime regression fixture'))
+        return await transaction.mutate(context, MutationRequest(line, comment='what: runtime regression fixture'))
 
-    await context.execute_graph_save(save_graph)
+    await context.execute_graph_save(save_graph, comment='what: runtime regression fixture')
     assert observed == {"count": 2, "name": "DRAFT"}
     assert provider.mutations == 2
     assert provider.commits == 1
@@ -222,10 +222,10 @@ async def test_denial_and_missing_preflight_leave_zero_provider_mutations():
         denied.preflight_mutation(order)
         denied.preflight_mutation(line)
         return await denied.require_resource("dataService").mutate(
-            denied, MutationRequest(order))
+            denied, MutationRequest(order, comment='what: runtime regression fixture'))
 
     with pytest.raises(MutationPolicyError, match="ORDER_DENIED"):
-        await denied.execute_graph_save(denied_graph)
+        await denied.execute_graph_save(denied_graph, comment='what: runtime regression fixture')
     assert denied_provider.begins == 1
     assert denied_provider.mutations == 0
     assert denied_provider.rollbacks == 1
@@ -238,7 +238,7 @@ async def test_denial_and_missing_preflight_leave_zero_provider_mutations():
     with pytest.raises(MutationPolicyError, match="complete graph preflight"):
         await missing.execute_graph_save(
             lambda: missing.require_resource("dataService").mutate(
-                missing, MutationRequest(_insert("Order", 44, "MISSING"))))
+                missing, MutationRequest(_insert("Order", 44, "MISSING"), comment='what: runtime regression fixture')), comment='what: runtime regression fixture')
     assert missing_provider.mutations == 0
     assert missing_provider.rollbacks == 1
 
@@ -254,11 +254,11 @@ async def test_generated_default_allows_legacy_graph_without_complete_preflight(
     async def legacy_graph():
         transaction = context.require_resource("dataService")
         await transaction.mutate(
-            context, MutationRequest(_insert("Order", 47, "FIRST")))
+            context, MutationRequest(_insert("Order", 47, "FIRST"), comment='what: runtime regression fixture'))
         await transaction.mutate(
-            context, MutationRequest(_insert("OrderLine", 102, "SECOND")))
+            context, MutationRequest(_insert("OrderLine", 102, "SECOND"), comment='what: runtime regression fixture'))
 
-    await context.execute_graph_save(legacy_graph)
+    await context.execute_graph_save(legacy_graph, comment='what: runtime regression fixture')
     assert provider.mutations == 2
     assert provider.commits == 1
     assert provider.rollbacks == 0
@@ -277,10 +277,10 @@ async def test_unplanned_and_incomplete_operations_fail_closed():
     async def unplanned_graph():
         unplanned.preflight_mutation(_insert("Order", 45, "PLANNED"))
         return await unplanned.require_resource("dataService").mutate(
-            unplanned, MutationRequest(_insert("Order", 45, "DIFFERENT")))
+            unplanned, MutationRequest(_insert("Order", 45, "DIFFERENT"), comment='what: runtime regression fixture'))
 
     with pytest.raises(MutationPolicyError, match="not present"):
-        await unplanned.execute_graph_save(unplanned_graph)
+        await unplanned.execute_graph_save(unplanned_graph, comment='what: runtime regression fixture')
     assert unplanned_provider.mutations == 0
     assert unplanned_provider.rollbacks == 1
 
@@ -296,10 +296,10 @@ async def test_unplanned_and_incomplete_operations_fail_closed():
         incomplete.preflight_mutation(first)
         incomplete.preflight_mutation(second)
         return await incomplete.require_resource("dataService").mutate(
-            incomplete, MutationRequest(first))
+            incomplete, MutationRequest(first, comment='what: runtime regression fixture'))
 
     with pytest.raises(MutationPolicyError, match="were not executed"):
-        await incomplete.execute_graph_save(incomplete_graph)
+        await incomplete.execute_graph_save(incomplete_graph, comment='what: runtime regression fixture')
     assert incomplete_provider.mutations == 1
     assert incomplete_provider.commits == 0
     assert incomplete_provider.rollbacks == 1
@@ -320,9 +320,9 @@ async def test_warning_sink_failure_is_fail_open():
     async def graph():
         context.preflight_mutation(order)
         return await context.require_resource("dataService").mutate(
-            context, MutationRequest(order))
+            context, MutationRequest(order, comment='what: runtime regression fixture'))
 
-    await context.execute_graph_save(graph)
+    await context.execute_graph_save(graph, comment='what: runtime regression fixture')
     assert warnings.events[0].warning_code == MISSING_APPROVAL
     assert provider.mutations == 1
     assert provider.commits == 1

@@ -28,3 +28,4 @@ class Q:
     def schools_minimal() -> SchoolRequest:
         return SchoolRequest(minimal=True)
 
+

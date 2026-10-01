@@ -132,9 +132,9 @@ async def save(context, *commands):
         for command in commands:
             context.preflight_mutation(command)
         for command in commands:
-            await transaction.mutate(context, MutationRequest(command))
+            await transaction.mutate(context, MutationRequest(command, comment='what: runtime regression fixture'))
 
-    await context.execute_graph_save(graph)
+    await context.execute_graph_save(graph, comment='what: runtime regression fixture')
 
 
 async def main():

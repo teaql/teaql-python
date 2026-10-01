@@ -28,10 +28,10 @@ def test_mutation_request_trace_and_comment_accessors():
         values={},
         trace_chain=trace_chain.copy()
     )
-    req_insert = MutationRequest.Insert(insert_cmd)
+    req_insert = MutationRequest.Insert(insert_cmd, comment='what: runtime regression fixture')
     assert len(req_insert.trace_chain()) == 2
     assert req_insert.trace_chain()[1] == trace2
-    assert req_insert.comment() == "Create Profile"
+    assert req_insert.comment() == 'what: runtime regression fixture'
 
     # Test Update
     update_cmd = CoreUpdateCommand(
@@ -42,9 +42,9 @@ def test_mutation_request_trace_and_comment_accessors():
         old_values=None,
         trace_chain=trace_chain.copy()
     )
-    req_update = MutationRequest.Update(update_cmd)
+    req_update = MutationRequest.Update(update_cmd, comment='what: runtime regression fixture')
     assert len(req_update.trace_chain()) == 2
-    assert req_update.comment() == "Create Profile"
+    assert req_update.comment() == 'what: runtime regression fixture'
 
     # Test Delete
     delete_cmd = CoreDeleteCommand(
@@ -54,9 +54,9 @@ def test_mutation_request_trace_and_comment_accessors():
         soft_delete=True,
         trace_chain=trace_chain.copy()
     )
-    req_delete = MutationRequest.Delete(delete_cmd)
+    req_delete = MutationRequest.Delete(delete_cmd, comment='what: runtime regression fixture')
     assert len(req_delete.trace_chain()) == 2
-    assert req_delete.comment() == "Create Profile"
+    assert req_delete.comment() == 'what: runtime regression fixture'
 
     # Test Recover
     recover_cmd = CoreRecoverCommand(
@@ -65,14 +65,14 @@ def test_mutation_request_trace_and_comment_accessors():
         expected_version_val=1,
         trace_chain=trace_chain.copy()
     )
-    req_recover = MutationRequest.Recover(recover_cmd)
+    req_recover = MutationRequest.Recover(recover_cmd, comment='what: runtime regression fixture')
     assert len(req_recover.trace_chain()) == 2
-    assert req_recover.comment() == "Create Profile"
+    assert req_recover.comment() == 'what: runtime regression fixture'
 
     # Test Batch
-    req_batch = MutationRequest.Batch([req_insert, req_update])
+    req_batch = MutationRequest.Batch([req_insert, req_update], comment='what: runtime regression fixture')
     assert len(req_batch.trace_chain()) == 0
-    assert req_batch.comment() is None
+    assert req_batch.comment() == 'what: runtime regression fixture'
 
     # Test empty trace chain
     insert_empty = CoreInsertCommand(
@@ -80,8 +80,8 @@ def test_mutation_request_trace_and_comment_accessors():
         values={},
         trace_chain=[]
     )
-    req_insert_empty = MutationRequest.Insert(insert_empty)
-    assert req_insert_empty.comment() is None
+    req_insert_empty = MutationRequest.Insert(insert_empty, comment='what: runtime regression fixture')
+    assert req_insert_empty.comment() == 'what: runtime regression fixture'
 
 def test_data_service_capabilities_default():
     caps = DataServiceCapabilities()
@@ -96,8 +96,8 @@ def test_data_service_capabilities_default():
 def test_query_request_coverage():
     from teaql.data_service import QueryRequest
     from teaql.core.query import SelectQuery
-    q = QueryRequest(SelectQuery.new("User"))
-    q.comment("c").purpose("p")
+    q = QueryRequest(SelectQuery.new("User"), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior')
+    q = q.comment("c").purpose("p")
     assert q._comment == "c"
     assert q._purpose == "p"
     
@@ -110,7 +110,7 @@ def test_query_request_coverage():
 def test_aliases():
     from teaql.data_service import InsertCommand, UpdateCommand, DeleteCommand, RecoverCommand
     from teaql.core.mutation import InsertCommand as CoreInsertCommand
-    assert InsertCommand(CoreInsertCommand.new("A")) is not None
-    assert UpdateCommand(None) is not None
-    assert DeleteCommand(None) is not None
-    assert RecoverCommand(None) is not None
+    assert InsertCommand(CoreInsertCommand.new("A"), comment='create alias fixture') is not None
+    assert UpdateCommand(None, comment='update alias fixture') is not None
+    assert DeleteCommand(None, comment='delete alias fixture') is not None
+    assert RecoverCommand(None, comment='recover alias fixture') is not None

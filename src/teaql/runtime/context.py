@@ -207,8 +207,10 @@ class UserContext:
         )
         return claims
 
-    async def execute_graph_save(self, work):
+    async def execute_graph_save(self, work, *, comment=None):
         """Run one generated entity graph in one provider transaction."""
+        from teaql.core.request_intent import MutationIntent
+        intent = MutationIntent(comment)
         if self._graph_save_owner.get() is not None:
             return await work()
         async with self._graph_save_lock:
@@ -222,7 +224,7 @@ class UserContext:
                 transaction = await begin()
             owner_token = self._graph_save_owner.set(object())
             self._graph_save_active = True
-            self._mutation_policy.begin_graph()
+            self._mutation_policy.begin_graph(intent.comment)
             self._graph_commit_actions = []
             self._graph_rollback_actions = []
             self.insert_resource("fix_time", self.business_time())
@@ -385,6 +387,8 @@ class UserContext:
 
     def prepare_query(self, query: Any) -> Any:
         """Clone a query graph and apply trusted policy once to every query node."""
+        from teaql.core.request_intent import QueryIntent
+        intent = QueryIntent.from_query(query)
         prepared_root = deepcopy(query)
         policy = self.get_resource("request_policy")
         if policy is None:
@@ -420,7 +424,17 @@ class UserContext:
                 prepared.child_enhancements = [prepare_node(child) for child in children]
             return prepared
 
-        return prepare_node(prepared_root)
+        result = prepare_node(prepared_root)
+        result.comment_text = intent.comment
+        result.purpose_text = intent.purpose
+        return result
+
+    def prepare_query_request(self, request):
+        request.validate()
+        query = deepcopy(request.query)
+        query.comment_text = request.intent.comment
+        query.purpose_text = request.intent.purpose
+        return request.with_query(self.prepare_query(query))
 
     def set_user_identifier(self, identifier: str):
         self._user_identifier = identifier

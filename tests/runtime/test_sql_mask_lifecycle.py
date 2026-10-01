@@ -82,7 +82,7 @@ def request():
     query = (SelectQuery('Customer').filter(Expr.eq('display_name', 'Riverside'))
              .and_filter(Expr.eq('public_address', '1 Runtime Road'))
              .and_filter(Expr.eq('password_hash', 'PASSWORD-CANARY')).limit(5))
-    return QueryRequest(query).comment('what: inspect customers').purpose('why: lifecycle test')
+    return QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior').comment('what: inspect customers').purpose('why: lifecycle test')
 
 
 @pytest.mark.asyncio
@@ -137,7 +137,7 @@ async def test_failed_statement_logs_and_preserves_error(fixture, operation):
             }
             cmd = commands[operation]
             cmd.trace_chain = [TraceNode(comment='what: lifecycle mutation')]
-            await executor.mutate(context, MutationRequest(cmd))
+            await executor.mutate(context, MutationRequest(cmd, comment='what: runtime regression fixture'))
     assert caught.value.error is failure
     assert_log(fixture, 'failure')
     assert entries[0].affected_rows is None
@@ -327,7 +327,7 @@ async def test_cancelled_mutation_rolls_back_transaction(fixture):
     cmd = DeleteCommand('Customer', Value.I64(1)).expected_version(1)
     cmd.trace_chain = [TraceNode(comment='what: cancel mutation')]
     with pytest.raises(asyncio.CancelledError) as caught:
-        await executor.mutate(context, MutationRequest(cmd))
+        await executor.mutate(context, MutationRequest(cmd, comment='what: runtime regression fixture'))
     assert caught.value is failure
     assert tx.rolled_back and not tx.committed
     assert_log(fixture, 'cancelled')
@@ -338,11 +338,10 @@ async def test_generated_mutation_string_comment_is_preserved(fixture):
     context, provider, _, entries = fixture
     executor = DomainStatementExecutor(SqliteDialect(), FaultTransport(), provider)
     command = InsertCommand('Customer').value('display_name', 'Riverside')
-    mutation = MutationRequest(command)
-    mutation.comment = 'what: generated audited save'
+    mutation = MutationRequest(command, comment='what: generated audited save')
     await executor.mutate(context, mutation)
-    assert entries[0].comment == mutation.comment
-    assert entries[0].audit_reason == mutation.comment
+    assert entries[0].comment == mutation.comment()
+    assert entries[0].audit_reason == mutation.comment()
     assert_log(fixture, 'success')
 
 
@@ -362,8 +361,7 @@ async def test_sql_intent_scrubs_target_id_without_changing_bindings(fixture, op
     }
     command = commands[operation]
     command.trace_chain = [TraceNode(comment='what: mutate target 1001')]
-    mutation = MutationRequest(command)
-    mutation.comment = 'what: mutate target 1001'
+    mutation = MutationRequest(command, comment='what: mutate target 1001')
     if failure:
         with pytest.raises(TransportError):
             await executor.mutate(context, mutation)
@@ -373,7 +371,7 @@ async def test_sql_intent_scrubs_target_id_without_changing_bindings(fixture, op
     assert '1001' not in repr(entries[0].trace_path)
     assert '1001' not in output[0].split('auditReason=', 1)[1].split('Debug SQL:', 1)[0]
     assert any(getattr(value, 'val', value) == 1001 for value in transport.params)
-    assert mutation.comment == 'what: mutate target 1001'
+    assert mutation.comment() == 'what: mutate target 1001'
 
 
 def test_short_target_id_does_not_redact_structural_row_count(fixture):
@@ -419,7 +417,7 @@ def readback_request():
     command = (UpdateCommand('Customer', Value.I64(1)).expected_version(1)
                .value('display_name', 'Riverside').value('password_hash', 'PASSWORD-CANARY'))
     command.trace_chain = [TraceNode(comment='what: update Riverside PASSWORD-CANARY')]
-    return MutationRequest(command)
+    return MutationRequest(command, comment='what: update Riverside PASSWORD-CANARY')
 
 
 @pytest.mark.asyncio
@@ -527,7 +525,7 @@ async def test_partial_transaction_keeps_prior_write_and_stops_after_readback(fi
         await service.mutate(context, readback_request())
         await service.mutate(context, readback_request())
     with pytest.raises(RuntimeError) as caught:
-        await context.execute_graph_save(work)
+        await context.execute_graph_save(work, comment='what: runtime regression fixture')
     assert caught.value is failure
     assert [entry.execution_outcome for entry in entries] == ['success','success','failure']
     assert tx.writes == tx.reads == 2 and tx.rollbacks == 1 and tx.commits == 0

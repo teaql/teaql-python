@@ -8,12 +8,60 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 from Q import Q
+from E import E
 from models.platform import Platform
 from models.school_type import SchoolType
 from runtime_module import GENERATED_RUNTIME_MODULE
 from teaql.data_service import SQLiteTeaQLClient
 from teaql.runtime import UserContext
 from teaql.core.dynamic_search import normalize_dynamic_search
+from teaql.core import RequestIntentError
+from teaql.runtime.context import SqlLogOptions
+
+
+async def verify_request_intent(context, client):
+    calls = []
+    context.with_sql_log_options(SqlLogOptions.disabled())
+    context.with_request_policy(lambda _: calls.append('policy'))
+    original_allocator = client.next_id
+    async def counted_allocator(entity):
+        calls.append('id allocator')
+        return await original_allocator(entity)
+    client.next_id = counted_allocator
+    try:
+        executions = [
+            (Q.schools().purpose('render schools').execute_for_list(context), 'REQUEST_COMMENT_REQUIRED'),
+            (Q.schools().comment('load schools').purpose('\u0085').execute_for_rows(context), 'QUERY_PURPOSE_REQUIRED'),
+            (Q.schools().purpose('render page').execute_for_page(context, 0, 10), 'REQUEST_COMMENT_REQUIRED'),
+        ]
+        for execution, code in executions:
+            try:
+                await execution
+                raise AssertionError('missing generated request gate')
+            except RequestIntentError as error:
+                assert error.code == code
+        try:
+            async for _ in Q.schools().purpose('stream schools').execute_for_stream(context):
+                raise AssertionError('stream must not open')
+        except RequestIntentError as error:
+            assert error.code == 'REQUEST_COMMENT_REQUIRED'
+        entity = Q.schools().comment('prepare unsaved school').purpose('verify save gate').new_entity(context)
+        for reason in (None, '\u0085'):
+            try:
+                if reason is not None:
+                    entity.audit_as(reason)
+                await entity.save(context)
+                raise AssertionError('missing generated mutation gate')
+            except RequestIntentError as error:
+                assert error.code == 'REQUEST_COMMENT_REQUIRED'
+        assert calls == [], calls
+        assert entity.id is None
+    finally:
+        client.next_id = original_allocator
+        context.clear_request_policy()
+        context.with_sql_log_options(SqlLogOptions.all())
+    assert len(await Q.schools().comment('verify rejected writes').purpose('check empty table').execute_for_list(context)) == 0
+    print('PASS Python generated request intent: list/rows/page/stream/save reject before policy and ID allocation with logs off')
 
 
 async def verify_dynamic_search(context):
@@ -59,6 +107,7 @@ async def main() -> None:
                .insert_resource("dataService", client))
     await context.ensure_schema()
     await context.ensure_schema()
+    await verify_request_intent(context, client)
     platform = await (Q.platforms().with_id_is(1)
         .comment("Load the generated domain root")
         .purpose("Verify idempotent schema bootstrap").execute_for_one(context))
@@ -121,6 +170,8 @@ async def main() -> None:
     assert loaded.platform.baseUrl == "https://campus.example.com"
     assert loaded.schoolType.code == "PRIMARY"
     assert loaded.schoolType.displayOrder == 1
+    assert E.school(loaded).school_type().code().eval() == 'PRIMARY'
+    assert E.school(loaded).platform().name().eval() == 'Deployment Campus'
 
     query_cases = [
         ("string equality", Q.schools().with_name_is("Riverside Primary School"), 1),

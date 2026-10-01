@@ -104,7 +104,7 @@ async def test_derived_relation_intent(tmp_path, monkeypatch, shape, debug, fail
         query.relation('orders')
     else:
         query.relation_query('orders', child)
-    request = (QueryRequest(query).comment('what: load Riverside PASSWORD-CANARY Lakeside graph')
+    request = (QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior').comment('what: load Riverside PASSWORD-CANARY Lakeside graph')
                .purpose('why: verify inherited intent'))
     if failure:
         with pytest.raises(TransportError) as caught:
@@ -145,6 +145,6 @@ async def test_derived_relation_intent(tmp_path, monkeypatch, shape, debug, fail
     monkeypatch.delenv(PLAINTEXT_ENV, raising=False)
     assert 'Riverside' not in repr(sql_log_projection(entry))
     transport.failing_table = None
-    await service.query(context, QueryRequest(SelectQuery('Customer').limit(1))
+    await service.query(context, QueryRequest(SelectQuery('Customer').limit(1), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior')
                         .comment('what: independent Riverside').purpose('why: source isolation'))
     assert logs[-1].comment == 'what: independent Riverside'

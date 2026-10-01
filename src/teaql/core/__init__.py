@@ -18,6 +18,7 @@ from .mutation import (
     BatchInsertCommand, BatchUpdateCommand, MutationRequest
 )
 from .graph import GraphNode
+from .request_intent import QueryIntent, MutationIntent, RequestIntentError
 
 from .meta import EntityDescriptor, PropertyDescriptor
 from .list import SmartList, TeaQLPage
@@ -43,6 +44,7 @@ from .business_id import (
 )
 
 __all__ = [
+    "QueryIntent", "MutationIntent", "RequestIntentError",
     "Value", "DataType", "Timestamp",
     "BaseEntityData", "EntityKey", "EntityChangeSet", "EntityRoot",
     "Expr", "ExprBuilder", "BinaryOp", "ExprFunction",

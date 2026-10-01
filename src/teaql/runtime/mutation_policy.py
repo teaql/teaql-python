@@ -244,12 +244,14 @@ class MutationPolicyRuntimeState:
     def current(self) -> Optional[MutationGovernanceSnapshot]:
         return self._active.get()
 
-    def begin_graph(self) -> None:
+    def begin_graph(self, audit_reason: str) -> None:
+        from teaql.core.request_intent import MutationIntent
+        intent = MutationIntent(audit_reason)
         self._graph_active = True
         self._graph_reviewed = False
         self._preflight.clear()
         self._root_entity = None
-        self._audit_reason = None
+        self._audit_reason = intent.comment
         self._remaining.clear()
         self._active.set(None)
 
@@ -273,10 +275,10 @@ class MutationPolicyRuntimeState:
         if not operations:
             raise MutationPolicyError("mutation preflight must contain an operation")
         self._root_entity = self._root_entity or operations[0].entity
-        self._audit_reason = self._audit_reason or _comment_from_data(command)
         self._preflight.extend(operations)
 
     def enter_mutation(self, context: Any, request: MutationRequest):
+        request.validate()
         operations = _operations_from_data(request._data)
         if not operations:
             raise MutationPolicyError("mutation request must contain an operation")
@@ -287,7 +289,7 @@ class MutationPolicyRuntimeState:
         # remains fail-closed.
         if self._graph_active and self.registry is None and not self._preflight:
             plan = self._build_plan(
-                context, operations[0].entity, _request_comment(request), tuple(operations)
+                context, operations[0].entity, self._audit_reason, tuple(operations)
             )
             token = self._active.set(self.review(context, plan))
             return _ResetScope(self._active, token)
@@ -300,7 +302,7 @@ class MutationPolicyRuntimeState:
                     )
                 planned = tuple(self._preflight or operations)
                 root = self._root_entity or planned[0].entity
-                reason = self._audit_reason or _request_comment(request)
+                reason = self._audit_reason
                 snapshot = self.review(context, self._build_plan(context, root, reason, planned))
                 self._active.set(snapshot)
                 self._remaining = Counter(_operation_signature(item) for item in planned)

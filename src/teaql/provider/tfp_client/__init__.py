@@ -151,6 +151,7 @@ class TfpHttpProvider(DataService):
         return DataServiceCapabilities(query=True, mutation=True)
 
     async def query(self, context: Any, request: QueryRequest) -> QueryResult:
+        request.validate()
         started_at = datetime.now()
         federal = _query_request(request)
         rows = await self.federal_client.execute_query(federal)
@@ -161,10 +162,12 @@ class TfpHttpProvider(DataService):
                 backend="teaql-federal", operation=DataServiceOperation.Query,
                 started_at=started_at, ended_at=datetime.now(), result_count=len(rows),
                 comment=federal.comment,
+                purpose=federal.purpose,
             ),
         )
 
     async def mutate(self, context: Any, request: MutationRequest) -> MutationResult:
+        request.validate()
         if context is not None and not context.consume_mutation_checked(request._data):
             context.check_and_fix_mutation(request._data)
         scope = context.mutation_policy_execution(request) if context is not None else nullcontext()
@@ -188,15 +191,14 @@ class TfpHttpProvider(DataService):
                     backend="teaql-federal", operation=operation,
                     started_at=started_at, ended_at=datetime.now(), affected_rows=affected,
                     comment=federal.comment,
+                    audit_reason=federal.comment,
                 ),
             )
 
 
 def _federal_query_payload(query: FederalQuery) -> Dict[str, Any]:
-    if not query.comment or not query.comment.strip():
-        raise TfpError("TFP_INVALID_REQUEST", "commentText is required")
-    if not query.purpose or not query.purpose.strip():
-        raise TfpError("TFP_POLICY_VIOLATION", "purposeText is required")
+    from teaql.core.request_intent import QueryIntent
+    intent = QueryIntent(query.comment, query.purpose)
     if query.limit is not None and query.limit < 1:
         raise TfpError("TFP_INVALID_REQUEST", "limitValue must be positive")
     if query.offset is not None and query.offset < 0:
@@ -207,8 +209,8 @@ def _federal_query_payload(query: FederalQuery) -> Dict[str, Any]:
         "selectItems": query.select_items,
         "groupByItems": query.group_by_items,
         "aggregateItems": query.aggregate_items,
-        "commentText": query.comment.strip(),
-        "purposeText": query.purpose.strip(),
+        "commentText": intent.comment,
+        "purposeText": intent.purpose,
     }
     if query.filter_condition is not None:
         payload["filterCondition"] = query.filter_condition
@@ -221,13 +223,13 @@ def _federal_query_payload(query: FederalQuery) -> Dict[str, Any]:
 
 
 def _federal_mutation_payload(mutation: FederalMutation) -> Dict[str, Any]:
+    from teaql.core.request_intent import MutationIntent
+    intent = MutationIntent(mutation.comment)
     if mutation.action not in {"Create", "Update", "Delete", "Recover"}:
         raise TfpError("TFP_INVALID_REQUEST", f"unsupported mutation action: {mutation.action}")
-    if not mutation.comment or not mutation.comment.strip():
-        raise TfpError("TFP_AUDIT_REASON_REQUIRED", "mutation audit reason is required")
     payload: Dict[str, Any] = {
         "entity": mutation.entity, "action": mutation.action,
-        "payload": _json_value(mutation.payload), "comment": mutation.comment.strip(),
+        "payload": _json_value(mutation.payload), "comment": intent.comment,
     }
     if mutation.id is not None:
         payload["id"] = _json_value(mutation.id)
@@ -256,7 +258,7 @@ def _query_request(request: QueryRequest) -> FederalQuery:
         select_items=list(query.projection), group_by_items=list(query.group_by_items),
         aggregate_items=[{"function": item.function.name, "field": item.field, "alias": item.alias}
                          for item in query.aggregates],
-        comment=request._comment or query.comment_text,
+        comment=request.intent.comment,
         purpose=request._purpose,
     )
 

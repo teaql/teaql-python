@@ -1,8 +1,10 @@
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
+from teaql.core import MutationIntent
 from teaql.core.value import Value
 from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
 import itertools
 from models.commerce_platform import CommercePlatform
+
 
 class Product:
     _teaql_temporary_ids = itertools.count(1)
@@ -42,13 +44,21 @@ class Product:
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
         self.id = kwargs.get("id")
+
         self.name = kwargs.get("name")
+
         self.sku = kwargs.get("sku")
+
         self.imageUrl = kwargs.get("imageUrl")
+
         self.commercePlatform = kwargs.get("commercePlatform")
+
         self.createTime = kwargs.get("createTime")
+
         self.updateTime = kwargs.get("updateTime")
+
         self.version = kwargs.get("version")
+
         if isinstance(self.commercePlatform, dict):
             self.commercePlatform = CommercePlatform(**self.commercePlatform)
         self._order_line_list = kwargs.get("order_line_list", [])
@@ -85,13 +95,45 @@ class Product:
         return self
 
     def audit_as(self, comment: str):
-        if not isinstance(comment, str) or not comment.strip():
-            raise ValueError("Security audit failure: audit_as() requires a non-empty reason")
+        MutationIntent(comment)
         self._comment = comment
         return self
 
     async def save(self, context):
-        return await context.execute_graph_save(lambda: self._teaql_preflight_and_save(context))
+        intent = MutationIntent(self._comment)
+        # Reserve stable internal IDs before the transaction and before policy
+        # review. A relation to a new parent must have the same identity in the
+        # reviewed graph plan and in the commands eventually sent to SQL.
+        await self._teaql_reserve_graph_ids(context, set())
+        await self._teaql_ensure_business_ids(context)
+        return await context.execute_graph_save(lambda: self._teaql_preflight_and_save(context), comment=intent.comment)
+
+    async def _teaql_ensure_business_ids(self, context):
+        if self._action != "Create":
+            return
+
+    async def _teaql_reserve_graph_ids(self, context, visited):
+        object_identity = id(self)
+        if object_identity in visited:
+            return
+        visited.add(object_identity)
+        if self._action == "Create" and getattr(self, "id", None) is None:
+            service = context.require_resource("dataService")
+            allocator = getattr(service, "next_id", None)
+            if not callable(allocator):
+                raise RuntimeError(
+                    "Configured dataService does not support stable ID reservation"
+                )
+            old_key = self._teaql_entity_key()
+            self.id = int(await allocator("Product"))
+            self._loaded_fields.add("id")
+            self._ledger_id = self.id
+            new_key = self._teaql_entity_key()
+            self._entity_root.rekey(old_key, new_key)
+            self._entity_root.set(new_key, "id", Value.I64(self.id))
+        for child in self._order_line_list:
+            child._teaql_attach_root(self._entity_root)
+            await child._teaql_reserve_graph_ids(context, visited)
 
     async def _teaql_preflight_and_save(self, context):
         self._teaql_preflight_graph(context)
@@ -101,20 +143,32 @@ class Product:
         payload = {}
         if "id" in self._loaded_fields:
             payload["id"] = Value.I64(self.id)
+
         if "name" in self._loaded_fields:
             payload["name"] = Value.Text(self.name)
+
         if "sku" in self._loaded_fields:
             payload["sku"] = Value.Text(self.sku)
+
         if "imageUrl" in self._loaded_fields:
             payload["image_url"] = Value.Text(self.imageUrl)
+
         if "commercePlatform" in self._loaded_fields:
-            payload["commerce_platform"] = Value.Object(self.commercePlatform)
+            reference = self.commercePlatform
+            reference_id = getattr(reference, "id", reference)
+            payload["commerce_platform"] = (Value.Object(reference)
+                if reference is not None and hasattr(reference, "id") and reference_id is None
+                else Value.I64(reference_id))
+
         if "createTime" in self._loaded_fields:
             payload["create_time"] = Value.DateTime(self.createTime)
+
         if "updateTime" in self._loaded_fields:
             payload["update_time"] = Value.DateTime(self.updateTime)
+
         if "version" in self._loaded_fields:
             payload["version"] = Value.I64(self.version)
+
         action = self._action
         if action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
@@ -130,8 +184,7 @@ class Product:
         return action, cmd
 
     def _teaql_preflight_graph(self, context):
-        if not self._comment or not self._comment.strip():
-            raise Exception("Security audit failure: audit_as() must be called before save()")
+        MutationIntent(self._comment)
         if self._action == "Update":
             if "id" not in self._loaded_fields:
                 raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
@@ -151,16 +204,14 @@ class Product:
                 raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
         _action, cmd = self._teaql_build_command()
         try:
-            context.check_and_fix_mutation(cmd)
+            context.preflight_mutation(cmd)
         finally:
             for field, value in getattr(cmd, "values", {}).items():
                 if field not in ("id", "version"):
                     self._entity_root.set(self._teaql_entity_key(), field, value)
         for index, child in enumerate(self._order_line_list):
             child._teaql_attach_root(self._entity_root)
-            setattr(child, "product", self)
-            child._loaded_fields.add("product")
-            child._entity_root.set(child._teaql_entity_key(), "product", Value.Object(self))
+            child.update_product(self)
             child.audit_as(self._comment)
             try:
                 child._teaql_preflight_graph(context)
@@ -172,16 +223,13 @@ class Product:
                 ]) from error
 
     async def _teaql_save_within_graph(self, context):
-        if not self._comment or not self._comment.strip():
-            raise Exception("Security audit failure: audit_as() must be called before save()")
+        intent = MutationIntent(self._comment)
 
         self._teaql_attach_root(self._entity_root)
         action, cmd = self._teaql_build_command()
 
 
-        req = MutationRequest(cmd)
-        if self._comment:
-            req.comment = self._comment
+        req = MutationRequest(cmd, comment=intent.comment)
 
         try:
             context.check_and_fix_mutation(cmd)

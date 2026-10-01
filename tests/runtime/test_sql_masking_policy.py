@@ -220,12 +220,12 @@ async def test_sqlite_crud_routes_compiler_policies_before_every_sink(tmp_path):
     context.set_diagnostic_sql_log_sink(SimpleNamespace(write=capture))
     async def mutate(command):
         command.trace_chain = [TraceNode(comment='what: verify mutation log policy')]
-        return await service.mutate(context, MutationRequest(command))
+        return await service.mutate(context, MutationRequest(command, comment='what: runtime regression fixture'))
     await mutate(InsertCommand('Customer').value('id', 1).value('version', 1)
                  .value('display_name', 'Riverside').value('active', True))
     query = SelectQuery('Customer').filter(Expr.new_and(
         Expr.eq('display_name', 'Riverside'), Expr.eq('active', True))).limit(1)
-    rows = (await service.query(context, QueryRequest(query)
+    rows = (await service.query(context, QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior')
             .comment('what: read Riverside').purpose('why: check field policy'))).rows
     assert rows[0]['display_name'] == 'Riverside'
     assert entries[-1].parameter_log_policies == ['masked', 'plain']

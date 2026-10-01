@@ -150,11 +150,11 @@ async def test_graph_save_uses_one_transaction_and_retains_rollback_order():
         async def nested_save():
             context.after_graph_rollback(lambda: events.append("child rollback"))
 
-        await context.execute_graph_save(nested_save)
+        await context.execute_graph_save(nested_save, comment='what: runtime regression fixture')
         raise RuntimeError("injected graph failure")
 
     with pytest.raises(RuntimeError, match="injected graph failure"):
-        await context.execute_graph_save(failing_graph)
+        await context.execute_graph_save(failing_graph, comment='what: runtime regression fixture')
 
     assert events == ["begin", "rollback", "child rollback", "parent rollback"]
     assert context.require_resource("dataService") is provider
@@ -170,7 +170,7 @@ async def test_graph_save_runs_commit_actions_only_after_provider_commit():
         context.after_graph_commit(lambda: events.append("ledger clear"))
         return "saved"
 
-    assert await context.execute_graph_save(successful_graph) == "saved"
+    assert await context.execute_graph_save(successful_graph, comment='what: runtime regression fixture') == "saved"
     assert events == ["begin", "commit", "ledger clear"]
     assert context.require_resource("dataService") is provider
 
@@ -196,7 +196,7 @@ async def test_graph_save_captures_one_fix_clock_for_all_nodes():
         await __import__("asyncio").sleep(0.005)
         context.check_and_fix_mutation(InsertCommand.new("Dummy"))
 
-    await context.execute_graph_save(graph)
+    await context.execute_graph_save(graph, comment='what: runtime regression fixture')
     assert len(observed) == 2 and observed[0] is observed[1]
     assert observed[0] == expected
     assert context.get_resource("fix_time") is None
@@ -230,7 +230,7 @@ async def test_independent_concurrent_graph_saves_do_not_join_transaction():
             events.append(f"{name}:start")
             await __import__("asyncio").sleep(delay)
             events.append(f"{name}:end")
-        await context.execute_graph_save(graph)
+        await context.execute_graph_save(graph, comment='what: runtime regression fixture')
 
     await __import__("asyncio").gather(save("first", 0.01), save("second", 0))
     assert events == [

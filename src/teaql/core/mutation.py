@@ -2,6 +2,7 @@ from enum import Enum, auto
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
 from .value import Value
+from .request_intent import MutationIntent
 
 @dataclass
 class TraceNode:
@@ -113,38 +114,46 @@ class MutationKind(Enum):
     BATCH = auto()
 
 class MutationRequest:
-    def __init__(self, data: Any):
+    __slots__ = ('_data', '__intent')
+
+    def __init__(self, data: Any, comment: Optional[str] = None):
+        self.__intent = MutationIntent(comment)
         self._data = data
+
+    @property
+    def intent(self) -> MutationIntent:
+        return self.__intent
+
+    def validate(self) -> None:
+        MutationIntent(getattr(getattr(self, '_MutationRequest__intent', None), 'comment', None))
+
+    def with_root_intent(self, intent: MutationIntent) -> 'MutationRequest':
+        return MutationRequest(self._data, comment=intent.comment)
 
     def trace_chain(self) -> List[TraceNode]:
         if isinstance(self._data, list):
             return []
         return getattr(self._data, 'trace_chain', [])
 
-    def comment(self) -> Optional[str]:
-        if isinstance(self._data, list):
-            return None
-        traces = self.trace_chain()
-        if traces:
-            return traces[-1].comment
-        return None
+    def comment(self) -> str:
+        return self.intent.comment
 
     @classmethod
-    def Insert(cls, cmd: InsertCommand) -> 'MutationRequest':
-        return cls(cmd)
+    def Insert(cls, cmd: InsertCommand, comment: Optional[str] = None) -> 'MutationRequest':
+        return cls(cmd, comment)
 
     @classmethod
-    def Update(cls, cmd: UpdateCommand) -> 'MutationRequest':
-        return cls(cmd)
+    def Update(cls, cmd: UpdateCommand, comment: Optional[str] = None) -> 'MutationRequest':
+        return cls(cmd, comment)
 
     @classmethod
-    def Delete(cls, cmd: DeleteCommand) -> 'MutationRequest':
-        return cls(cmd)
+    def Delete(cls, cmd: DeleteCommand, comment: Optional[str] = None) -> 'MutationRequest':
+        return cls(cmd, comment)
 
     @classmethod
-    def Recover(cls, cmd: RecoverCommand) -> 'MutationRequest':
-        return cls(cmd)
+    def Recover(cls, cmd: RecoverCommand, comment: Optional[str] = None) -> 'MutationRequest':
+        return cls(cmd, comment)
         
     @classmethod
-    def Batch(cls, cmds: List['MutationRequest']) -> 'MutationRequest':
-        return cls(cmds)
+    def Batch(cls, cmds: List['MutationRequest'], comment: Optional[str] = None) -> 'MutationRequest':
+        return cls(cmds, comment)

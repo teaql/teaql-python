@@ -240,6 +240,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         return metadata
 
     async def query_stream(self, context, request: QueryRequest, chunk_size: int):
+        request.validate()
         if chunk_size <= 0:
             raise ValueError("chunk_size must be positive")
         if (request.query.relations or request.query.child_enhancements
@@ -291,6 +292,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                                        DataServiceOperation.Query, outcome, result_count=delivered)
 
     async def query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
+        request.validate()
         telemetry = context.runtime_telemetry() if context is not None else None
         return await observe_runtime_operation(
             telemetry,
@@ -302,6 +304,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         )
 
     async def _query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
+        request.validate()
         self._sync_generated_schema(context)
         request.query.prepare_for_list()
         execution_query, retained_order, retained_empty = await self._prepare_id_set_page(context, request.query)
@@ -384,7 +387,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             membership_query.aggregates = [Aggregate(
                 AggregateFunction.Count, "id", "__teaql_facet_count")]
             membership_query.group_by_items = [facet.relation_name]
-            membership_result = await self._query(context, QueryRequest(membership_query))
+            membership_result = await self._query(context, request.with_query(membership_query))
             counts = {
                 str(row[facet.relation_name]): int(row["__teaql_facet_count"])
                 for row in membership_result.rows
@@ -399,7 +402,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             ]
             nested_query.aggregates = []
             nested_query.group_by_items = []
-            nested_result = await self._query(context, QueryRequest(nested_query))
+            nested_result = await self._query(context, request.with_query(nested_query))
             facet_rows = []
             for row in nested_result.rows:
                 count = counts.get(str(row.get("id")), 0)
@@ -673,12 +676,20 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             parent[aggregate.alias] = value
 
     async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
+        request.validate()
         self._sync_generated_schema(context)
         entity = getattr(request._data, "entity", "unknown")
         kind = type(request._data).__name__.replace("Command", "").lower()
         if context is not None:
-            if not context.consume_mutation_checked(request._data):
-                context.check_and_fix_mutation(request._data)
+            def check(data):
+                if isinstance(data, MutationRequest):
+                    check(data._data)
+                elif isinstance(data, list):
+                    for child in data:
+                        check(child)
+                elif not context.consume_mutation_checked(data):
+                    context.check_and_fix_mutation(data)
+            check(request._data)
         telemetry = context.runtime_telemetry() if context is not None else None
         scope = (
             context.mutation_policy_execution(request)
@@ -696,6 +707,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             )
 
     async def _mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
+        request.validate()
         if isinstance(self.transport, SqlTransactionTransport):
             transaction = await self.transport.begin_sql()
             executor = SqlDataServiceExecutor(self.dialect, transaction, self.schema_provider)
@@ -713,6 +725,19 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 raise
 
         req_data = request._data
+        if isinstance(req_data, list):
+            start = datetime.now()
+            results = []
+            for child in req_data:
+                child_request = (child.with_root_intent(request.intent)
+                    if isinstance(child, MutationRequest) else
+                    MutationRequest(child, comment=request.intent.comment))
+                results.append(await self._mutate(context, child_request))
+            affected = sum(result.affected_rows for result in results)
+            return MutationResult(affected, {}, ExecutionMetadata(
+                backend=str(self.dialect.kind()).lower(), operation=DataServiceOperation.Batch,
+                started_at=start, ended_at=datetime.now(), affected_rows=affected,
+                comment=request.intent.comment, audit_reason=request.intent.comment))
         entity_desc = self.schema_provider.get_entity(req_data.entity)
         if not entity_desc and context:
             entities = context.get_resource("entities")
@@ -886,6 +911,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         outcome = ('success' if rows is not None else 'cancelled'
                    if isinstance(error, asyncio.CancelledError) else 'failure')
         metadata = replace(write_metadata, operation=DataServiceOperation.Query,
+            purpose='verify the persisted mutation result',
             started_at=started_at, ended_at=datetime.now(), execution_outcome=outcome,
             parameterized_sql=readback.sql, parameters=list(readback.params),
             parameter_log_policies=readback.parameter_log_policies, sql_origin=readback.sql_origin,
