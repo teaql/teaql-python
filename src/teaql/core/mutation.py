@@ -1,6 +1,7 @@
 from enum import Enum, auto
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
+from copy import deepcopy
 from .value import Value
 from .request_intent import MutationIntent
 
@@ -114,11 +115,25 @@ class MutationKind(Enum):
     BATCH = auto()
 
 class MutationRequest:
-    __slots__ = ('_data', '__intent')
+    __slots__ = ('_data', '__intent', '__mutation_lineage')
 
     def __init__(self, data: Any, comment: Optional[str] = None):
         self.__intent = MutationIntent(comment)
         self._data = data
+        self.__mutation_lineage = ()
+
+    @property
+    def mutation_lineage(self) -> tuple[TraceNode, ...]:
+        """Detached business lineage, never the physical SQL trace path."""
+        return deepcopy(self.__mutation_lineage)
+
+    def with_mutation_lineage(self, chain) -> 'MutationRequest':
+        nodes = tuple(chain)
+        if any(not isinstance(node, TraceNode) or node.kind != 'auditReason' for node in nodes):
+            raise TypeError('mutation lineage must contain typed AuditReason nodes')
+        result = MutationRequest(self._data, comment=self.intent.comment)
+        result.__mutation_lineage = deepcopy(nodes)
+        return result
 
     @property
     def intent(self) -> MutationIntent:
@@ -130,7 +145,7 @@ class MutationRequest:
             raise TypeError('MutationRequest trace must contain typed TraceNode values')
 
     def with_root_intent(self, intent: MutationIntent) -> 'MutationRequest':
-        return MutationRequest(self._data, comment=intent.comment)
+        return MutationRequest(self._data, comment=intent.comment).with_mutation_lineage(self.mutation_lineage)
 
     def trace_chain(self) -> List[TraceNode]:
         if isinstance(self._data, list):

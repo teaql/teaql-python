@@ -168,3 +168,64 @@ async def test_unexecuted_aggregate_provenance_does_not_modify_query_builders(tm
     assert result.rows == [] and len(entries) == len(transport.reads) == 1
     assert request.query == before and child.slice is None
     assert child.relations[0].query.slice is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('rollback', [False, True])
+async def test_explicit_transaction_audit_waits_for_commit_and_rollback_discards(tmp_path, rollback):
+    context, service, transport, entries = await fixture(tmp_path)
+    audits = []
+    context.with_app_audit_event_sink(SimpleNamespace(on_safe_event=lambda context, event: audits.append(event)))
+    transaction = await service.begin(context)
+    command = InsertCommand.new('Payment').value('name', 'new payment').value('parent_id', 1)
+    await transaction.mutate(context, MutationRequest(command, comment='authorize transaction payment'))
+    assert audits == []
+    if rollback:
+        await transaction.rollback(context)
+    else:
+        await transaction.commit(context)
+        assert len(audits) == 1
+        assert audits[0].trace_chain[0].comment == 'authorize transaction payment'
+        assert audits[0].trace_chain[0].entity_id == 2
+    async with aiosqlite.connect(transport.db_path) as database:
+        cursor = await database.execute('SELECT COUNT(*) FROM payment_data')
+        assert (await cursor.fetchone())[0] == (1 if rollback else 2)
+    assert context._audit_journal is None
+
+
+@pytest.mark.asyncio
+async def test_automatic_batch_readback_failure_discards_prior_successful_audits(tmp_path):
+    context, service, transport, entries = await fixture(tmp_path)
+    audits = []
+    context.with_app_audit_event_sink(SimpleNamespace(on_safe_event=lambda context, event: audits.append(event)))
+    transport.fail_table = 'paymentattempt_data'
+    first = InsertCommand.new('Payment').value('name', 'first payment').value('parent_id', 1)
+    second = InsertCommand.new('PaymentAttempt').value('name', 'second attempt').value('parent_id', 1)
+    batch = MutationRequest.Batch([first, second], comment='authorize atomic payment batch')
+    with pytest.raises(RuntimeError) as caught:
+        await service.mutate(context, batch)
+    assert caught.value is transport.failure
+    assert audits == []
+    assert [entry.execution_outcome for entry in entries] == ['success', 'success', 'failure']
+    async with aiosqlite.connect(transport.db_path) as database:
+        for table in ('payment_data', 'paymentattempt_data'):
+            cursor = await database.execute(f'SELECT COUNT(*) FROM {table}')
+            assert (await cursor.fetchone())[0] == 1
+    assert context._audit_journal is None
+
+
+@pytest.mark.asyncio
+async def test_automatic_transaction_sink_failure_reports_committed_and_does_not_rollback(tmp_path):
+    context, service, transport, entries = await fixture(tmp_path)
+    calls = []
+    def unavailable(context, event):
+        calls.append(event)
+        raise RuntimeError('postcommit audit unavailable')
+    context.with_app_audit_event_sink(SimpleNamespace(on_safe_event=unavailable))
+    command = InsertCommand.new('Payment').value('name', 'committed payment').value('parent_id', 1)
+    with pytest.raises(RuntimeError) as caught:
+        await service.mutate(context, MutationRequest(command, comment='create committed payment'))
+    assert caught.value.committed is True and len(calls) == 1
+    async with aiosqlite.connect(transport.db_path) as database:
+        cursor = await database.execute('SELECT COUNT(*) FROM payment_data')
+        assert (await cursor.fetchone())[0] == 2

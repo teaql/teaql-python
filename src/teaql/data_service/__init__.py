@@ -101,6 +101,7 @@ class ExecutionMetadata:
     affected_rows: Optional[int] = None
     result_count: Optional[int] = None
     trace_chain: List[TraceNode] = field(default_factory=list)
+    mutation_lineage: tuple[TraceNode, ...] = field(default_factory=tuple)
     comment: Optional[str] = None
     purpose: Optional[str] = None
     audit_reason: Optional[str] = None

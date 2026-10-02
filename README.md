@@ -107,12 +107,36 @@ safe projection. The existing mask algorithm, expanded SQL and execution values
 are unchanged; provenance is not stored on Context or exposed in log entries.
 This additional compilation has not been performance benchmarked.
 
-This is local-source and native-provider evidence, not complete Trace Chain.
-Immutable graph parent scopes, typed ledger replacement, per-item batch lineage,
-commit-only graph audit, generated six-entity Q/E/Mutation acceptance, same-database
-replay, real concurrent graph isolation, complete entry-point/privacy coverage
-and immutable internal Registry replay remain open. Successful readback diagnostic
-coverage also needs alignment. No released-package parity is claimed.
+Graph saves now use an explicit invocation-owned `GraphMutationSession` and an
+immutable persistent parent scope. The original Context's data service is never
+swapped; child saves receive the session and their parent scope explicitly.
+Unannotated children inherit, local reasons append once, and deletion creates its
+scope before execution. The typed ledger can store an owned complete replacement
+chain. Five shared graph fixtures verify fifteen per-entity expectations; these
+helper tests are separate from generated traversal evidence.
+
+[The generated Trace Chain example](examples/trace-chain/) drives six mutations
+through actual Q/E/save APIs and SQLite, observing request lineage, SQL metadata
+and safe audits after commit. It also verifies three query relation levels,
+concurrent independent saves in one Context, write/readback failure rollback,
+and missing root intent before transaction access. Its verifier executes twice
+on one SQLite file without cleanup and checks all generated-library hashes.
+All ten example groups and the source suite pass twice locally (424 tests and
+eight explicit external-provider skips per source run).
+
+SQL transactions queue owned audit snapshots until commit, including explicit
+transactions and automatic batches. Rollback discards them. A completion failure
+is reported with `GraphCommittedError.committed == True`; all remaining audit
+deliveries and graph cleanup callbacks are still attempted, with no postcommit
+rollback. Reentrant independent root saves fail instead of silently joining.
+The private generated save implementation has changed; old generated libraries
+must be regenerated, while public `audit_as(...).save(context)` stays unchanged.
+
+This is local-source/generated-consumer evidence, not complete Trace Chain.
+Prepared-batch grouping, generated ledger overrides, complete entry-point and
+inherited mutation privacy coverage, successful readback diagnostic alignment,
+live PostgreSQL/MySQL graph acceptance, and immutable internal Registry replay
+remain open. No released-package parity is claimed.
 
 ```bash
 PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q

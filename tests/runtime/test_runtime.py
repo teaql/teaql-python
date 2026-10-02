@@ -143,14 +143,15 @@ async def test_graph_save_uses_one_transaction_and_retains_rollback_order():
     provider = RecordingTransactionProvider(events)
     context = UserContext.new().insert_resource("dataService", provider)
 
-    async def failing_graph():
-        assert context.require_resource("dataService") is provider.transaction
-        context.after_graph_rollback(lambda: events.append("parent rollback"))
+    async def failing_graph(graph):
+        assert context.require_resource("dataService") is provider
+        assert graph.context.require_resource("dataService") is provider.transaction
+        graph.after_rollback(lambda: events.append("parent rollback"))
 
-        async def nested_save():
-            context.after_graph_rollback(lambda: events.append("child rollback"))
+        async def child_work(graph):
+            graph.after_rollback(lambda: events.append("child rollback"))
 
-        await context.execute_graph_save(nested_save, comment='what: runtime regression fixture')
+        await child_work(graph)
         raise RuntimeError("injected graph failure")
 
     with pytest.raises(RuntimeError, match="injected graph failure"):
@@ -166,8 +167,8 @@ async def test_graph_save_runs_commit_actions_only_after_provider_commit():
     provider = RecordingTransactionProvider(events)
     context = UserContext.new().insert_resource("dataService", provider)
 
-    async def successful_graph():
-        context.after_graph_commit(lambda: events.append("ledger clear"))
+    async def successful_graph(graph):
+        graph.after_commit(lambda: events.append("ledger clear"))
         return "saved"
 
     assert await context.execute_graph_save(successful_graph, comment='what: runtime regression fixture') == "saved"
@@ -191,10 +192,10 @@ async def test_graph_save_captures_one_fix_clock_for_all_nodes():
                .insert_resource("dataService", provider)
                .with_checker_registry(DummyCheckerRegistry(ClockChecker())))
 
-    async def graph():
-        context.check_and_fix_mutation(InsertCommand.new("Dummy"))
+    async def graph(session):
+        session.context.check_and_fix_mutation(InsertCommand.new("Dummy"))
         await __import__("asyncio").sleep(0.005)
-        context.check_and_fix_mutation(InsertCommand.new("Dummy"))
+        session.context.check_and_fix_mutation(InsertCommand.new("Dummy"))
 
     await context.execute_graph_save(graph, comment='what: runtime regression fixture')
     assert len(observed) == 2 and observed[0] is observed[1]
@@ -226,7 +227,7 @@ async def test_independent_concurrent_graph_saves_do_not_join_transaction():
     context = UserContext.new().insert_resource("dataService", provider)
 
     async def save(name, delay):
-        async def graph():
+        async def graph(session):
             events.append(f"{name}:start")
             await __import__("asyncio").sleep(delay)
             events.append(f"{name}:end")

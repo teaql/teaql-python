@@ -46,11 +46,11 @@ async def verify_masking_lifecycle():
             entries.append(entry)
             sink.write(entry)
         context.set_diagnostic_sql_log_sink(SimpleNamespace(write=capture))
-        async def insert(entity_id, target=None):
+        async def insert(entity_id, target=None, request_context=None):
             command = (InsertCommand('MaskCustomer').value('id', entity_id).value('version', 1)
                        .value('display_name', 'Riverside'))
             command.trace_chain = [TraceNode(comment='what: seed Riverside lifecycle fixture')]
-            return await (target or service).mutate(context, MutationRequest(command, comment='what: seed Riverside lifecycle fixture'))
+            return await (target or service).mutate(request_context or context, MutationRequest(command, comment='what: seed Riverside lifecycle fixture'))
         try:
             for entity_id in [1, 2, 3]:
                 await insert(entity_id)
@@ -100,11 +100,10 @@ async def verify_masking_lifecycle():
 
             context.insert_resource('dataService', service)
             entries.clear()
-            async def partial_graph():
-                target = context.require_resource('dataService')
-                await insert(30, target)
-                await insert(777, target)
-                await insert(31, target)
+            async def partial_graph(graph):
+                await insert(30, graph.transaction, graph.context)
+                await insert(777, graph.transaction, graph.context)
+                await insert(31, graph.transaction, graph.context)
             try:
                 await context.execute_graph_save(partial_graph, comment='what: runtime regression fixture')
                 raise AssertionError('partial graph unexpectedly committed')

@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from copy import deepcopy
 from threading import RLock
 from typing import Dict, Optional, Any, Iterable, Mapping, Set, Tuple
 from .value import Value
@@ -57,6 +58,20 @@ class EntityRoot:
         self._original_versions: Dict[EntityKey, int] = {}
         self._new_keys: Set[EntityKey] = set()
         self._deleted_keys: Set[EntityKey] = set()
+        self._trace_chains: Dict[EntityKey, tuple] = {}
+
+    def set_trace_chain(self, key: EntityKey, chain) -> None:
+        """Store a complete per-entity replacement, not an appended fragment."""
+        from .mutation import TraceNode
+        nodes = tuple(chain)
+        if any(not isinstance(node, TraceNode) or node.kind != 'auditReason' for node in nodes):
+            raise TypeError('ledger lineage must contain typed AuditReason nodes')
+        with self._lock:
+            self._trace_chains[key] = deepcopy(nodes)
+
+    def trace_chain(self, key: EntityKey) -> tuple:
+        with self._lock:
+            return deepcopy(self._trace_chains.get(key, ()))
 
     def push_change_set(self) -> None:
         with self._lock:
@@ -115,6 +130,7 @@ class EntityRoot:
             self._change_sets[-1] = EntityChangeSet()
             self._new_keys.clear()
             self._deleted_keys.clear()
+            self._trace_chains.clear()
 
     def merge_from(self, other: 'EntityRoot') -> None:
         if other is self:
@@ -124,6 +140,7 @@ class EntityRoot:
             self._original_versions.update(other._original_versions)
             self._new_keys.update(other._new_keys)
             self._deleted_keys.update(other._deleted_keys)
+            self._trace_chains.update(deepcopy(other._trace_chains))
 
     def rekey(self, old_key: EntityKey, new_key: EntityKey) -> None:
         with self._lock:
@@ -137,6 +154,12 @@ class EntityRoot:
             if old_key in self._deleted_keys:
                 self._deleted_keys.remove(old_key)
                 self._deleted_keys.add(new_key)
+            if old_key in self._trace_chains:
+                self._trace_chains[new_key] = self._trace_chains.pop(old_key)
+            for chain in self._trace_chains.values():
+                for node in chain:
+                    if (node.name or node.entity_type, node.entity_id) == (old_key.entity, old_key.id):
+                        node.entity_id = new_key.id
 
     def clear_entity(self, key: EntityKey) -> None:
         with self._lock:
@@ -144,6 +167,7 @@ class EntityRoot:
                 change_set.clear_entity(key)
             self._new_keys.discard(key)
             self._deleted_keys.discard(key)
+            self._trace_chains.pop(key, None)
 
 class BaseEntityData:
     def __init__(self, id: int = 0, version: int = 0, dynamic: Optional[Dict[str, Value]] = None):

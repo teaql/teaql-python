@@ -191,5 +191,6 @@ def _project_with_policy(entry, allow, intent_source, intent_values):
                         result_summary=(f'{entry.result_count} rows returned' if entry.result_count is not None
                             else f'{entry.affected_rows} rows affected' if entry.affected_rows is not None
                             else scrub(entry.result_summary, secrets, hide_all=unknown_debug_intent)),
-                        trace_path=intent(entry.trace_path))
+                        trace_path=intent(entry.trace_path),
+                        mutation_lineage=intent(entry.mutation_lineage))
     return projected

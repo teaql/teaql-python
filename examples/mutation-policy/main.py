@@ -127,8 +127,9 @@ def context_for(provider, audit):
 
 
 async def save(context, *commands):
-    async def graph():
-        transaction = context.require_resource("dataService")
+    async def graph(session):
+        context = session.context
+        transaction = session.transaction
         for command in commands:
             context.preflight_mutation(command)
         for command in commands:

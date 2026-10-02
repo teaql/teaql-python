@@ -244,6 +244,16 @@ class MutationPolicyRuntimeState:
     def current(self) -> Optional[MutationGovernanceSnapshot]:
         return self._active.get()
 
+    def for_invocation(self) -> 'MutationPolicyRuntimeState':
+        """Share configuration/warning dedup, never a graph's mutable plan."""
+        state = MutationPolicyRuntimeState()
+        state.registry = self.registry
+        state.approval_provider = self.approval_provider
+        state.warning_sink = self.warning_sink
+        state._emitted_warnings = self._emitted_warnings
+        state._warning_lock = self._warning_lock
+        return state
+
     def begin_graph(self, audit_reason: str) -> None:
         from teaql.core.request_intent import MutationIntent
         intent = MutationIntent(audit_reason)

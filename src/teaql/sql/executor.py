@@ -252,10 +252,14 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                             TraceNode(kind='purpose', name=request.origin_entity, comment=request._purpose),
                             *request.trace_chain]
         else:
-            chain = request.trace_chain()
+            chain = [*request.mutation_lineage, *request.trace_chain()]
             root = next((trace_name(node) for node in chain if trace_name(node).strip()), entity)
+            target_id = getattr(request._data, 'id', None)
+            if target_id is None:
+                target_id = getattr(request._data, 'values', {}).get('id')
+            target_id = getattr(target_id, 'val', target_id)
             trace_source = [TraceNode(kind='auditReason', name=root, comment=comment),
-                            *chain, TraceNode(kind='entity', name=entity)]
+                            *chain, TraceNode(kind='entity', name=entity, entity_id=target_id)]
         metadata = ExecutionMetadata(
             backend=provider, operation=operation, started_at=started_at,
             ended_at=datetime.now(), execution_outcome=outcome,
@@ -266,6 +270,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             comment=comment, purpose=request._purpose if query else None,
             audit_reason=None if query else comment,
             trace_chain=canonical_sql_trace_path(trace_source, provider, sql_operation),
+            mutation_lineage=() if query else request.mutation_lineage,
         )
         if context is not None:
             try:
@@ -728,6 +733,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
 
     async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
         request.validate()
+        if context is not None:
+            context._require_mutation_invocation()
         self._sync_generated_schema(context)
         entity = getattr(request._data, "entity", "unknown")
         kind = type(request._data).__name__.replace("Command", "").lower()
@@ -762,11 +769,14 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         if isinstance(self.transport, SqlTransactionTransport):
             transaction = await self.transport.begin_sql()
             executor = SqlDataServiceExecutor(self.dialect, transaction, self.schema_provider)
+            from teaql.runtime.audit import _CommittedAuditJournal
+            journal = _CommittedAuditJournal(context) if context is not None else None
             try:
-                result = await executor._mutate(context, request)
+                result = await executor._mutate(journal.context if journal else context, request)
                 await transaction.commit_sql()
-                return result
             except BaseException:
+                if journal:
+                    journal.discard()
                 # CancelledError is not an Exception. Release the transaction
                 # on cancellation too, without replacing the original failure.
                 try:
@@ -774,6 +784,10 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 except BaseException:
                     pass
                 raise
+            else:
+                if journal:
+                    await journal.committed()
+                return result
 
         req_data = request._data
         if isinstance(req_data, list):
@@ -821,6 +835,14 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             ), None)
             if version_prop is not None and version_prop.name not in req_data.values:
                 req_data.values[version_prop.name] = Value.from_any(1)
+
+        if not request.mutation_lineage:
+            target_id = getattr(req_data, 'id', None)
+            if target_id is None and id_prop is not None:
+                target_id = getattr(req_data, 'values', {}).get(id_prop.name)
+            request = request.with_mutation_lineage((TraceNode(
+                kind='auditReason', name=req_data.entity, entity_type=req_data.entity,
+                entity_id=getattr(target_id, 'val', target_id), comment=request.comment()),))
             
         try:
             if isinstance(req_data, InsertCommand):
@@ -942,7 +964,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 req_data.entity,
                 entity_id,
                 changes,
-                tuple(request.trace_chain()),
+                request.mutation_lineage,
                 context.user_identifier(),
                 context.get_resource("bootstrapCategory"),
                 context.current_mutation_governance(),
@@ -1127,6 +1149,9 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
         self.dialect = dialect
         self.transport = transport
         self.schema_provider = schema_provider
+        self._audit_journal = None
+        self._audit_owner = None
+        self._completed = False
 
     def capabilities(self) -> DataServiceCapabilities:
         return DataServiceCapabilities(
@@ -1144,6 +1169,21 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
         return await executor.query(context, request)
 
     async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
+        request.validate()
+        if self._completed:
+            raise RuntimeError('SQL transaction is already completed')
+        if context is not None:
+            context._require_mutation_invocation()
+            if context._graph_session is None:
+                if self._audit_journal is None:
+                    from teaql.runtime.audit import _CommittedAuditJournal
+                    self._audit_journal = _CommittedAuditJournal(context)
+                    self._audit_owner = context
+                    self._audit_journal.context._mutation_policy = context._mutation_policy.for_invocation()
+                    self._audit_journal.context._checked_mutations = set()
+                elif self._audit_owner is not context:
+                    raise RuntimeError('SQL transaction audit owner cannot change')
+                context = self._audit_journal.context
         executor = SqlDataServiceExecutor(self.dialect, self.transport, self.schema_provider)
         return await executor.mutate(context, request)
 
@@ -1156,7 +1196,15 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
         await executor.ensure_id_floor(entity, floor)
 
     async def commit(self, context: 'UserContext') -> None:
+        if self._completed:
+            raise RuntimeError('SQL transaction is already completed')
         await self.transport.commit_sql()
+        self._completed = True
+        if self._audit_journal:
+            await self._audit_journal.committed()
 
     async def rollback(self, context: 'UserContext') -> None:
+        if self._audit_journal:
+            self._audit_journal.discard()
+        self._completed = True
         await self.transport.rollback_sql()

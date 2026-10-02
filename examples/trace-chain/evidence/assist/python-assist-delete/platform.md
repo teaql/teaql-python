@@ -1,0 +1,67 @@
+<!-- ephemeral -->
+
+# Python Assist — Delete `Platform`
+
+Load the current row and its original optimistic version. Delete is audited,
+version-aware soft deletion; never reconstruct an entity from client-supplied
+ID/version or issue physical-delete SQL.
+
+```python
+from Q import Q
+
+async def delete_platform(context, entity_id) -> bool:
+    entity = await (Q.platforms()
+        .with_id_is(entity_id)
+
+        .comment("what: load current Platform for deletion")
+        .purpose("why: preserve original version for optimistic locking")
+        .execute_for_one(context))
+    if entity is None:
+        return False
+
+    await (entity.mark_for_deletion()
+        .audit_as("Delete Platform for the requested business operation")
+        .save(context))
+    return True
+```
+
+Compile the source unchanged. Prove retained negative-version persistence,
+normal-query hiding, `deleted_rows_only()` visibility, stale-copy rejection,
+not-found false, audit enforcement, and absence of physical-delete APIs.
+
+---
+
+## TeaQL seven-language assist contract
+
+Apply the verified Rust semantic ceiling while using only the exact PYTHON generated and
+runtime APIs. Discover APIs through the generated application AGENTS.md and progressive
+model-aware Assist. Do not inspect generated domain-library source.
+
+- Do not create plurals by appending `s` or `es`; use the centralized generated plural.
+- Human and non-human entities use different generated predicate vocabularies. Preserve
+  forms such as “who are active” and “whose email is”; never infer them from English.
+- Configure filters, projection, paging, and other query options before `purpose(...)`.
+  Comment may appear anywhere in the chain. Purpose enters the executable stage; execution
+  requires both values, but comment does not have to immediately precede purpose.
+- Every execute/list/stream and every save accepts exactly one context argument:
+  `UserContext`. Name that argument `context`, never `runtime`; data services and global
+  policy are injected when the context is built. Reserve `runtime` for process-level
+  runtime ownership, provider/pool setup, and module assembly.
+- Tenant, merchant, identity, permissions, request policy, purpose policy, hard limit,
+  and continuous-page cursor policy come only from trusted context, never dynamic JSON or TFP.
+- If the required operation is absent after current entity/action and required field
+  Assist, stop that path and report MISSING_ASSIST. Do not guess an API or search the
+  generated library as a fallback.
+- Create each application-owned source file once. After its first compile attempt,
+  repair only the smallest block identified by the exact compiler or test diagnostic.
+  Preserve unrelated code; do not rewrite the complete file as an error-recovery loop.
+- Before a repair that would replace more than 25% of an existing application file,
+  stop and report LARGE_REWRITE_REQUEST with the file, exact diagnostic, reason, and
+  estimated scope. Initial creation and model-driven regeneration are not repairs.
+
+Capability: `delete`.
+
+- Load the tenant-scoped current entity and use the generated hard-delete or
+  domain-specific soft-delete API; do not invent a deletion method.
+- Require an audit reason and optimistic version. Test missing audit and stale
+  version as explicit failures.

@@ -777,7 +777,11 @@ async def test_successful_mutation_emits_raw_and_independently_masked_app_audit(
 
     assert result.affected_rows == 1
     assert len(raw.events) == 1 and raw.events[0].changes[1].new_value.val == "Alice Example"
-    assert raw.events[0].trace_chain[0].comment == "approved change"
+    assert raw.events[0].trace_chain[0].comment == "what: runtime regression fixture"
+    assert len(raw.events[0].trace_chain) == 1
+    assert raw.events[0].trace_chain[0].entity_id == 1
+    # Legacy command trace text is not the request-owned root audit reason.
+    assert command.trace_chain[0].comment == "approved change"
     assert len(app.events) == 1
     name_field = next(field for field in app.events[0].fields if field.field == "name")
     assert name_field.masked and name_field.value != "Alice Example"

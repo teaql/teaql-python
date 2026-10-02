@@ -88,3 +88,43 @@ async def deliver(sink: Any, method: str, context: Any, event: Any) -> None:
     result = callback(context, event)
     if isawaitable(result):
         await result
+
+
+class _CommittedAuditJournal:
+    """Private journal owned by one SQL transaction, never by shared Context."""
+
+    def __init__(self, context):
+        from copy import copy
+        self._events = []
+        self._active = True
+        view = copy(context)
+        context._resources.setdefault('sql_logs', [])
+        view._resources = dict(context._resources)
+        view._audit_journal = self
+        self.context = view
+
+    def require_active(self):
+        if not self._active:
+            raise RuntimeError('SQL audit transaction is no longer writable')
+
+    def queue(self, event, safe_event):
+        from copy import deepcopy
+        self.require_active()
+        self._events.append((deepcopy(event), deepcopy(safe_event)))
+
+    def discard(self):
+        self._active = False
+        self._events.clear()
+
+    async def committed(self):
+        self._active = False
+        failures = []
+        for event, safe in self._events:
+            try:
+                await self.context._deliver_audit_event(event, safe)
+            except BaseException as error:
+                failures.append(error)
+        self._events.clear()
+        if failures:
+            from .graph_session import GraphCommittedError
+            raise GraphCommittedError(failures)

@@ -518,12 +518,13 @@ async def test_partial_transaction_keeps_prior_write_and_stops_after_readback(fi
             return tx
     context.insert_resource('dataService', SqlDataServiceExecutor(SqliteDialect(), Transport(), provider))
     failure = RuntimeError('SECOND-READBACK-FAILURE')
-    async def work():
-        service = context.require_resource('dataService')
-        await service.mutate(context, readback_request())
+    async def work(graph):
+        local = graph.context
+        service = local.require_resource('dataService')
+        await service.mutate(local, readback_request())
         tx.failure = failure
-        await service.mutate(context, readback_request())
-        await service.mutate(context, readback_request())
+        await service.mutate(local, readback_request())
+        await service.mutate(local, readback_request())
     with pytest.raises(RuntimeError) as caught:
         await context.execute_graph_save(work, comment='what: runtime regression fixture')
     assert caught.value is failure

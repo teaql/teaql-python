@@ -78,18 +78,14 @@ class Platform:
 
     async def save(self, context):
         intent = MutationIntent(self._comment)
-        # Reserve stable internal IDs before the transaction and before policy
-        # review. A relation to a new parent must have the same identity in the
-        # reviewed graph plan and in the commands eventually sent to SQL.
-        await self._teaql_reserve_graph_ids(context, set())
-        await self._teaql_ensure_business_ids(context)
-        return await context.execute_graph_save(lambda: self._teaql_preflight_and_save(context), comment=intent.comment)
+        return await context.execute_graph_save(self._teaql_preflight_and_save, comment=intent.comment)
 
     async def _teaql_ensure_business_ids(self, context):
         if self._action != "Create":
             return
 
-    async def _teaql_reserve_graph_ids(self, context, visited):
+    async def _teaql_reserve_graph_ids(self, graph, visited):
+        context = graph.context
         object_identity = id(self)
         if object_identity in visited:
             return
@@ -102,19 +98,29 @@ class Platform:
                     "Configured dataService does not support stable ID reservation"
                 )
             old_key = self._teaql_entity_key()
+            old_loaded = set(self._loaded_fields)
             self.id = int(await allocator("Platform"))
             self._loaded_fields.add("id")
             self._ledger_id = self.id
             new_key = self._teaql_entity_key()
             self._entity_root.rekey(old_key, new_key)
             self._entity_root.set(new_key, "id", Value.I64(self.id))
+            def rollback_reservation():
+                self.id = None
+                self._ledger_id = old_key.id
+                self._loaded_fields = old_loaded
+                self._entity_root.rekey(new_key, old_key)
+                self._entity_root.set(old_key, "id", Value.from_any(None))
+            graph.after_rollback(rollback_reservation)
+        await self._teaql_ensure_business_ids(context)
         for child in self._work_item_list:
             child._teaql_attach_root(self._entity_root)
-            await child._teaql_reserve_graph_ids(context, visited)
+            await child._teaql_reserve_graph_ids(graph, visited)
 
-    async def _teaql_preflight_and_save(self, context):
-        self._teaql_preflight_graph(context)
-        return await self._teaql_save_within_graph(context)
+    async def _teaql_preflight_and_save(self, graph):
+        await self._teaql_reserve_graph_ids(graph, set())
+        self._teaql_preflight_graph(graph)
+        return await self._teaql_save_within_graph(graph)
 
     def _teaql_build_command(self):
         payload = {}
@@ -141,8 +147,8 @@ class Platform:
             cmd = DeleteCommand("Platform", Value.from_any(getattr(self, "id", None)), getattr(self, "version", None))
         return action, cmd
 
-    def _teaql_preflight_graph(self, context):
-        MutationIntent(self._comment)
+    def _teaql_preflight_graph(self, graph):
+        context = graph.context
         if self._action == "Update":
             if "id" not in self._loaded_fields:
                 raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
@@ -160,9 +166,8 @@ class Platform:
         for index, child in enumerate(self._work_item_list):
             child._teaql_attach_root(self._entity_root)
             child.update_platform(self)
-            child.audit_as(self._comment)
             try:
-                child._teaql_preflight_graph(context)
+                child._teaql_preflight_graph(graph)
             except CheckException as error:
                 prefix = ObjectLocation().property("work_item_list").index(index)
                 raise CheckException([
@@ -170,14 +175,15 @@ class Platform:
                     for v in error.violations
                 ]) from error
 
-    async def _teaql_save_within_graph(self, context):
-        intent = MutationIntent(self._comment)
+    async def _teaql_save_within_graph(self, graph, parent_scope=None):
+        context = graph.context
+        scope = graph.scope(self._teaql_entity_key(), parent_scope, self._comment)
 
         self._teaql_attach_root(self._entity_root)
         action, cmd = self._teaql_build_command()
 
 
-        req = MutationRequest(cmd, comment=intent.comment)
+        req = graph.request(cmd, scope, self._entity_root, self._teaql_entity_key())
 
         try:
             context.check_and_fix_mutation(cmd)
@@ -228,7 +234,7 @@ class Platform:
             self._loaded_fields = rollback_loaded_fields
             if old_key != new_key:
                 self._entity_root.rekey(new_key, old_key)
-        context.after_graph_rollback(rollback_entity)
+        graph.after_rollback(rollback_entity)
         if action != "Delete":
             self._action = "Update"
 
@@ -239,9 +245,8 @@ class Platform:
                 for index, child in enumerate(children):
                     child._teaql_attach_root(self._entity_root)
                     getattr(child, updater)(self)
-                    child.audit_as(self._comment)
                     try:
-                        await child._teaql_save_within_graph(context)
+                        await child._teaql_save_within_graph(graph, scope)
                     except CheckException as error:
                         prefix = ObjectLocation().property(relation_name).index(index)
                         raise CheckException([
@@ -258,7 +263,7 @@ class Platform:
             self._entity_root.clear_entity(new_key)
             if getattr(self, "version", None) is not None:
                 self._entity_root.set_original_version(new_key, int(self.version))
-        context.after_graph_commit(commit_entity)
+        graph.after_commit(commit_entity)
         return self
 
     def update_id(self, value):
