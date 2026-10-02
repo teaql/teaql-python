@@ -771,7 +771,8 @@ async def test_successful_mutation_emits_raw_and_independently_masked_app_audit(
     raw, app = RawSink(), AppSink()
     context = RuntimeModule.new().entity(entity).audit_event_sink(raw).into_context().with_app_audit_event_sink(app)
     command = InsertCommand("User", {"id": Value.I64(1), "name": Value.Text("Alice Example"), "version": Value.I64(1)})
-    command.trace_chain.append(type("Trace", (), {"comment": "approved change"})())
+    command.trace_chain.append(TraceNode(kind='auditReason', entity_type='User',
+                                       entity_id=1, comment='approved change'))
     result = await service.mutate(context, MutationRequest(command, comment='what: runtime regression fixture'))
 
     assert result.affected_rows == 1
@@ -857,7 +858,10 @@ async def test_nested_relation_limit_is_applied_per_parent(temp_db):
     assert relation_entries
     assert [node.kind for node in relation_entries[0].trace_path] == [
         "operation", "request", "relation", "provider", "sql"]
-    assert relation_entries[0].trace_path[2].name == "Order.lines"
+    assert relation_entries[0].trace_path[2].name == "lines"
+    assert relation_entries[0].trace_path[2].comment == "Order.lines"
+    assert relation_entries[0].trace_path[0].name == "Order"
+    assert relation_entries[0].trace_path[1].name == "Order"
     probe_ids = relation_ids(result.rows)
 
     queries.clear()

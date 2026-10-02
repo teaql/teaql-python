@@ -134,6 +134,7 @@ async def test_derived_relation_intent(tmp_path, monkeypatch, shape, debug, fail
         assert 'Riverside' not in repr(logs) + '\n'.join(output)
         if shape == 'nested':
             assert 'Lakeside' not in entry.comment
+            assert 'Lakeside' not in repr(logs) + '\n'.join(output) + repr(context.sql_logs())
     assert len(entry.params) == len(transport.reads[-1].params)
     assert 'PASSWORD-CANARY' in [v.val for v in transport.reads[0].params]
     if shape == 'batch':

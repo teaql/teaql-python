@@ -22,7 +22,7 @@ configure those separately. This setting does not erase older plaintext files.
 Restrict access and retention when using plaintext diagnostics, then unset the
 variable and restart processes when troubleshooting is complete.
 
-TeaQL Python SDK is a runtime engine and toolkit for building data-driven business applications. It provides seamless integration with the TeaQL ecosystem, fully aligned with the `teaql-rs` baseline.
+TeaQL Python SDK is a runtime engine and toolkit for building data-driven business applications. It uses `teaql-rs` as the cross-language design baseline; verified coverage and remaining gaps are tracked in [conformance](https://github.com/teaql/teaql-conformance).
 
 ## Recommended Agent Harness
 
@@ -41,8 +41,8 @@ and evidence-based verification as the generator and runtimes evolve.
 
 ## 2. Tests Performed
 
-After rigorous AST semantic analysis and manual verification, this SDK has successfully passed the following tests:
-*   ✅ **100% API Signature and Logic Parity**: Scanned with Tree-Sitter and implemented all internal methods and logic to match the Rust baseline.
+The SDK includes tests in the following areas. These suites do not establish complete Rust parity or acceptance of every external provider:
+*   **Cross-language contracts**: Shared fixtures and integration tests verify individual portable behaviors; unresolved coverage stays explicit in conformance.
 *   ✅ **`teaql.core` Core Tests**: Extensively tested attribute extraction, safe nullability checks, and relationship building for `Value`, `GraphNode`, `Entity`, `Mutation`, `Query`, `Expr`, and `SafeExpression`.
 *   ✅ **`teaql.runtime` Runtime Tests**: Verified the context propagation of `UserContext` and the complete lifecycle hooking for `record_sql_log` and `record_metadata_log`.
 *   ✅ **`teaql.sql` / `teaql.data_service` Tests**: Tested the SQL AST compilation engine and the underlying command dispatch mechanism.
@@ -90,6 +90,34 @@ orders = await client.execute_query(FederalQuery(
     purpose="Render operations queue",
 ))
 await client.aclose()
+```
+
+## Trace Chain Local Source Status
+
+Query and Mutation Requests own their required non-blank intent independently
+of logging. Physical SQL paths use the Rust canonical algorithm, with twelve
+byte-identical frozen vectors, owned query origins and qualified relation frames.
+Native SQLite tests observe three real relation levels without inserting expected
+frames, including a deepest-query failure. A successful write and a failed
+authoritative readback keep separate canonical paths and statement outcomes;
+the failed transaction rolls back.
+
+Parent query diagnostics include declared descendant binding provenance before
+safe projection. The existing mask algorithm, expanded SQL and execution values
+are unchanged; provenance is not stored on Context or exposed in log entries.
+This additional compilation has not been performance benchmarked.
+
+This is local-source and native-provider evidence, not complete Trace Chain.
+Immutable graph parent scopes, typed ledger replacement, per-item batch lineage,
+commit-only graph audit, generated six-entity Q/E/Mutation acceptance, same-database
+replay, real concurrent graph isolation, complete entry-point/privacy coverage
+and immutable internal Registry replay remain open. Successful readback diagnostic
+coverage also needs alignment. No released-package parity is claimed.
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q
+PYTHONDONTWRITEBYTECODE=1 bash scripts/verify-examples.sh
+# Repeat both commands without source changes.
 ```
 
 ## Security Foundation Status

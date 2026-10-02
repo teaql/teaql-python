@@ -27,6 +27,7 @@ from teaql.core.expr import (
 )
 from teaql.core.query import Aggregate, AggregateFunction, SelectQuery
 from teaql.core.value import Value
+from teaql.core.trace import canonical_sql_trace_path, physical_readback_path, trace_name
 from teaql.runtime.telemetry import RuntimeOperation, observe_runtime_operation, start_runtime_operation
 from teaql.runtime.context import RetainedIdSet
 
@@ -36,8 +37,8 @@ _id_set_build_locks_guard = threading.RLock()
 
 class _QueryWithLogIntent(QueryRequest):
     """Invocation-local compiler plumbing, excluded from dataclass/wire fields."""
-    def __init__(self, query, trace_chain, comment, purpose, source):
-        super().__init__(query, trace_chain, comment, purpose)
+    def __init__(self, query, trace_chain, comment, purpose, source, origin_entity=None):
+        super().__init__(query, trace_chain, comment, purpose, _origin_entity=origin_entity)
         self._log_intent_source = source
 
 
@@ -132,6 +133,54 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         self.transport = transport
         self.schema_provider = schema_provider
 
+    def _backend_name(self) -> str:
+        kind = self.dialect.kind()
+        name = getattr(kind, 'name', str(kind)).lower()
+        return 'postgres' if name == 'postgresql' else name
+
+    def _query_intent_bindings(self, compiled, request):
+        """Capture declared descendant bindings before any physical parent log.
+
+        Compile copies only for policy provenance: no SQL, list preparation,
+        query-builder mutation or Context-owned redaction state.
+        """
+        from teaql.runtime.log_privacy import _binding_policies
+        source = _intent_bindings(compiled, request)
+        pending = [(request.query, request.query.entity)]
+        visited = set()
+        while pending:
+            query, entity = pending.pop()
+            key = (id(query), entity)
+            if key in visited:
+                continue
+            visited.add(key)
+            descriptor = self.schema_provider.get_entity(entity)
+            children = []
+            for relation in query.relations:
+                model = descriptor.relation_by_name(relation.name) if descriptor else None
+                if relation.query is not None and model is not None:
+                    children.append((relation.query, model.target_entity))
+            for aggregate in query.relation_aggregates:
+                model = descriptor.relation_by_name(aggregate.relation_name) if descriptor else None
+                if model is not None:
+                    children.append((aggregate.query, model.target_entity))
+            for facet in query.facets:
+                children.append((facet.query, facet.query.entity))
+            for child, entity in children:
+                if (id(child), entity) in visited:
+                    continue
+                child_descriptor = self.schema_provider.get_entity(entity)
+                if child_descriptor is None:
+                    continue  # execution still owns missing-schema diagnostics
+                candidate = deepcopy(child)
+                candidate.entity = entity
+                self._resolve_subquery_entities(candidate.filter_expr)
+                bindings = self.dialect.compile_select(child_descriptor, candidate)
+                source.params.extend(deepcopy(bindings.params))
+                source.parameter_log_policies.extend(_binding_policies(bindings))
+                pending.append((child, entity))
+        return source
+
     def _sync_generated_schema(self, context: 'UserContext') -> None:
         register = getattr(self.schema_provider, "register_entity", None)
         if callable(register) and context is not None:
@@ -196,8 +245,17 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         comment = request._comment if query else getattr(request, 'comment', None)
         if not query and callable(comment):
             comment = comment()
-        provider = str(self.dialect.kind()).lower()
+        provider = self._backend_name()
         sql_operation = 'select' if query else operation.name.lower()
+        if query:
+            trace_source = [TraceNode(kind='comment', name=request.origin_entity, comment=comment),
+                            TraceNode(kind='purpose', name=request.origin_entity, comment=request._purpose),
+                            *request.trace_chain]
+        else:
+            chain = request.trace_chain()
+            root = next((trace_name(node) for node in chain if trace_name(node).strip()), entity)
+            trace_source = [TraceNode(kind='auditReason', name=root, comment=comment),
+                            *chain, TraceNode(kind='entity', name=entity)]
         metadata = ExecutionMetadata(
             backend=provider, operation=operation, started_at=started_at,
             ended_at=datetime.now(), execution_outcome=outcome,
@@ -207,13 +265,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             result_count=result_count, affected_rows=affected_rows,
             comment=comment, purpose=request._purpose if query else None,
             audit_reason=None if query else comment,
-            trace_chain=[
-                TraceNode(kind='operation', name='query' if query else 'mutation', comment='query' if query else 'mutation'),
-                TraceNode(kind='request' if query else 'entity', name=entity, comment=entity),
-                *(request.trace_chain if query else request.trace_chain()),
-                TraceNode(kind='provider', name=provider, comment=provider),
-                TraceNode(kind='sql', name=sql_operation, comment=sql_operation),
-            ],
+            trace_chain=canonical_sql_trace_path(trace_source, provider, sql_operation),
         )
         if context is not None:
             try:
@@ -310,18 +362,13 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         execution_query, retained_order, retained_empty = await self._prepare_id_set_page(context, request.query)
         if retained_empty:
             now = datetime.now()
-            provider = str(self.dialect.kind()).lower()
+            provider = self._backend_name()
             metadata = ExecutionMetadata(
                 backend=provider, operation=DataServiceOperation.Query,
                 started_at=now, ended_at=now, result_count=0,
-                trace_chain=[
-                    TraceNode(kind="operation", name="query", comment="query"),
-                    TraceNode(kind="request", name=request.query.entity,
-                              comment=request.query.entity),
-                    *request.trace_chain,
-                    TraceNode(kind="provider", name=provider, comment=provider),
-                    TraceNode(kind="sql", name="select", comment="select"),
-                ],
+                trace_chain=canonical_sql_trace_path(
+                    [TraceNode(kind='comment', name=request.origin_entity, comment=request._comment),
+                     *request.trace_chain], provider, 'select'),
                 comment=request._comment, purpose=request._purpose,
             )
             if context is not None:
@@ -329,8 +376,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             return QueryResult(rows=[], metadata=metadata)
         source = getattr(request, '_log_intent_source', None)
         request = (_QueryWithLogIntent(execution_query, request.trace_chain, request._comment,
-                                      request._purpose, source) if source is not None else
-                   QueryRequest(execution_query, request.trace_chain, request._comment, request._purpose))
+                                      request._purpose, source, request.origin_entity) if source is not None else
+                   request.with_query(execution_query))
         entity_desc = self.schema_provider.get_entity(request.query.entity)
         if not entity_desc and context:
             entities = context.get_resource("entities")
@@ -347,6 +394,9 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             compiled = self.dialect.compile_select(entity_desc, request.query)
         except SqlCompileError as e:
             raise CompileError(e)
+
+        source = self._query_intent_bindings(compiled, request)
+        request._log_intent_source = source
             
         start = datetime.now()
         try:
@@ -368,8 +418,6 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         metadata = self._record_statement(context, request, compiled, start,
                                           DataServiceOperation.Query, 'success', result_count=len(rows))
 
-        source = (_intent_bindings(compiled, request) if rows and
-                  (request.query.relations or request.query.relation_aggregates) else None)
         await self._enhance_relations(context, rows, request, source)
         await self._enhance_relation_aggregates(context, rows, request, source)
         if retained_order:
@@ -563,10 +611,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                             ColumnExpr(relation.foreign_key), BinaryOp.Eq,
                             ValueExpr(Value.from_any(parent_id))))
                         child_trace = [*request.trace_chain, TraceNode(
-                            kind="relation", name=f"{query.entity}.{load.name}",
-                            comment=load.name)]
+                            kind="relation", name=load.name,
+                            comment=f"{query.entity}.{load.name}")]
                         children.extend((await self.query(context, _QueryWithLogIntent(
-                            probe, child_trace, request._comment, request._purpose, intent_source))).rows)
+                            probe, child_trace, request._comment, request._purpose, intent_source,
+                            request.origin_entity))).rows)
                     selected_plan = "bounded_probes"
                     probe_count = len(parent_ids)
                 else:
@@ -576,10 +625,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     if limited:
                         child_query.partition_by_field(relation.foreign_key)
                     child_trace = [*request.trace_chain, TraceNode(
-                        kind="relation", name=f"{query.entity}.{load.name}",
-                        comment=load.name)]
+                        kind="relation", name=load.name,
+                        comment=f"{query.entity}.{load.name}")]
                     children = (await self.query(context, _QueryWithLogIntent(
-                        child_query, child_trace, request._comment, request._purpose, intent_source))).rows
+                        child_query, child_trace, request._comment, request._purpose, intent_source,
+                        request.origin_entity))).rows
                     selected_plan = "window" if limited else "batch"
                     probe_count = 0
                 for child in children:
@@ -638,10 +688,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             child_query.and_filter(BinaryExpr(
                 ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
             child_trace = [*request.trace_chain, TraceNode(
-                kind="relation", name=f"{query.entity}.{aggregate.relation_name}",
-                comment=aggregate.relation_name)]
+                kind="relation", name=aggregate.relation_name,
+                comment=f"{query.entity}.{aggregate.relation_name}")]
             rows = (await self.query(context, _QueryWithLogIntent(
-                child_query, child_trace, request._comment, request._purpose, intent_source))).rows
+                child_query, child_trace, request._comment, request._purpose, intent_source,
+                request.origin_entity))).rows
             child_desc = self.schema_provider.get_entity(relation.target_entity)
             foreign_property = child_desc.property_by_name(relation.foreign_key) if child_desc else None
             if foreign_property and foreign_property.column_name_val != relation.foreign_key:
@@ -735,7 +786,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 results.append(await self._mutate(context, child_request))
             affected = sum(result.affected_rows for result in results)
             return MutationResult(affected, {}, ExecutionMetadata(
-                backend=str(self.dialect.kind()).lower(), operation=DataServiceOperation.Batch,
+                backend=self._backend_name(), operation=DataServiceOperation.Batch,
                 started_at=start, ended_at=datetime.now(), affected_rows=affected,
                 comment=request.intent.comment, audit_reason=request.intent.comment))
         entity_desc = self.schema_provider.get_entity(req_data.entity)
@@ -916,7 +967,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             parameterized_sql=readback.sql, parameters=list(readback.params),
             parameter_log_policies=readback.parameter_log_policies, sql_origin=readback.sql_origin,
             affected_rows=None, result_count=len(rows) if rows is not None else None,
-            trace_chain=[*write_metadata.trace_chain, TraceNode(kind='sql', name='readback', comment='readback')])
+            trace_chain=physical_readback_path(write_metadata.trace_chain))
         try:
             context._record_metadata_log(metadata, intent_source=source,
                 intent_values=tuple(readback.params[:1]))

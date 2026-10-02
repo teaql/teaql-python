@@ -28,13 +28,15 @@ class DataServiceCapabilities:
 
 
 class QueryRequest:
-    __slots__ = ('query', 'trace_chain', '__intent', '_log_intent_source')
+    __slots__ = ('query', 'trace_chain', '__intent', '__origin_entity', '_log_intent_source')
     _UNSET = object()
 
-    def __init__(self, query: SelectQuery, trace_chain=None, _comment=_UNSET, _purpose=_UNSET):
+    def __init__(self, query: SelectQuery, trace_chain=None, _comment=_UNSET, _purpose=_UNSET,
+                 *, _origin_entity=None):
         comment = getattr(query, 'comment_text', None) if _comment is self._UNSET else _comment
         purpose = getattr(query, 'purpose_text', None) if _purpose is self._UNSET else _purpose
         self.__intent = QueryIntent(comment, purpose)
+        self.__origin_entity = query.entity if _origin_entity is None else _origin_entity
         self.query = deepcopy(query)
         self.query.comment_text = self.intent.comment
         self.query.purpose_text = self.intent.purpose
@@ -43,6 +45,10 @@ class QueryRequest:
     @property
     def intent(self) -> QueryIntent:
         return self.__intent
+
+    @property
+    def origin_entity(self) -> str:
+        return self.__origin_entity
 
     @property
     def _comment(self) -> str:
@@ -55,18 +61,23 @@ class QueryRequest:
     def validate(self) -> None:
         intent = getattr(self, '_QueryRequest__intent', None)
         QueryIntent(getattr(intent, 'comment', None), getattr(intent, 'purpose', None))
+        if any(not isinstance(node, TraceNode) for node in self.trace_chain):
+            raise TypeError('QueryRequest trace must contain typed TraceNode values')
 
     def with_query(self, query: SelectQuery) -> 'QueryRequest':
-        result = QueryRequest(query, self.trace_chain, self._comment, self._purpose)
+        result = QueryRequest(query, self.trace_chain, self._comment, self._purpose,
+                              _origin_entity=self.origin_entity)
         if hasattr(self, '_log_intent_source'):
             result._log_intent_source = self._log_intent_source
         return result
 
     def comment(self, text: str) -> 'QueryRequest':
-        return QueryRequest(self.query, self.trace_chain, text, self._purpose)
+        return QueryRequest(self.query, self.trace_chain, text, self._purpose,
+                            _origin_entity=self.origin_entity)
 
     def purpose(self, text: str) -> 'QueryRequest':
-        return QueryRequest(self.query, self.trace_chain, self._comment, text)
+        return QueryRequest(self.query, self.trace_chain, self._comment, text,
+                            _origin_entity=self.origin_entity)
 
 
 class DataServiceOperation(Enum):
