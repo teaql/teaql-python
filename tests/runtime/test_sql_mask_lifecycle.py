@@ -309,6 +309,37 @@ async def test_consumer_athrow_closes_stream(fixture):
 
 
 @pytest.mark.asyncio
+async def test_stream_owns_request_before_delayed_consumption(fixture):
+    context, provider, _, entries = fixture
+    transport = FaultTransport(3)
+    supplied = request()
+    supplied.trace_chain.append(TraceNode(kind='relation', name='original', comment='Customer.original'))
+    original_params = ['Riverside', '1 Runtime Road', 'PASSWORD-CANARY']
+    stream = SqlDataServiceExecutor(SqliteDialect(), transport, provider).query_stream(context, supplied, 1)
+    supplied.query.filter(Expr.eq('public_address', 'LATE-BUILDER-CANARY'))
+    supplied.trace_chain.clear()
+    chunks = [chunk async for chunk in stream]
+    assert len(chunks) == 3 and transport.closed
+    assert [getattr(value, 'val', value) for value in transport.params] == original_params
+    assert any(node.name == 'original' for node in entries[0].trace_path)
+    assert 'LATE-BUILDER-CANARY' not in repr(context.sql_logs())
+
+
+@pytest.mark.asyncio
+async def test_live_stream_path_cannot_be_rewritten_before_close(fixture):
+    context, provider, _, entries = fixture
+    transport = FaultTransport(3)
+    supplied = request()
+    supplied.trace_chain.append(TraceNode(kind='relation', name='original', comment='Customer.original'))
+    stream = SqlDataServiceExecutor(SqliteDialect(), transport, provider).query_stream(context, supplied, 1)
+    await anext(stream)
+    supplied.trace_chain[:] = [TraceNode(kind='relation', name='late', comment='Customer.late')]
+    await stream.aclose()
+    assert transport.closed and entries[0].execution_outcome == 'cancelled'
+    assert [node.name for node in entries[0].trace_path if node.kind == 'relation'] == ['original']
+
+
+@pytest.mark.asyncio
 async def test_cancelled_mutation_rolls_back_transaction(fixture):
     context, provider, _, _ = fixture
     failure = asyncio.CancelledError()

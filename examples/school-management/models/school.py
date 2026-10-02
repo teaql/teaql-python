@@ -384,6 +384,12 @@ class School:
                     ]) from error
 
     def update_id(self, value):
+        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
+            raise ValueError("id must be a positive integer")
+        old_key = self._teaql_entity_key()
+        new_key = EntityKey(old_key.entity, value)
+        self._entity_root.rekey(old_key, new_key)
+        self._ledger_id = value
         self.id = value
         self._loaded_fields.add("id")
         self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))

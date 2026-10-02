@@ -147,6 +147,16 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         from teaql.runtime.log_privacy import _binding_policies
         source = _intent_bindings(compiled, request)
         pending = [(request.query, request.query.entity)]
+        for original in getattr(request, '_log_intent_queries', ()):
+            descriptor = self.schema_provider.get_entity(original.entity)
+            if descriptor is None:
+                continue
+            candidate = deepcopy(original)
+            self._resolve_subquery_entities(candidate.filter_expr)
+            bindings = self.dialect.compile_select(descriptor, candidate)
+            source.params.extend(deepcopy(bindings.params))
+            source.parameter_log_policies.extend(_binding_policies(bindings))
+            pending.append((original, original.entity))
         visited = set()
         while pending:
             query, entity = pending.pop()
@@ -296,10 +306,15 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     raise
         return metadata
 
-    async def query_stream(self, context, request: QueryRequest, chunk_size: int):
+    def query_stream(self, context, request: QueryRequest, chunk_size: int):
+        """Own the request at cursor creation; opening the driver stays lazy."""
         request.validate()
         if chunk_size <= 0:
             raise ValueError("chunk_size must be positive")
+        owned = request.with_query(request.query)
+        return self._query_stream(context, owned, chunk_size)
+
+    async def _query_stream(self, context, request: QueryRequest, chunk_size: int):
         if (request.query.relations or request.query.child_enhancements
                 or request.query.object_group_bys or request.query.facets):
             raise ValueError(
@@ -311,6 +326,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             raise CompileError(SqlCompileError(f"unknown entity: {request.query.entity}"))
         self._resolve_subquery_entities(request.query.filter_expr)
         compiled = self.dialect.compile_select(entity_desc, request.query)
+        request._log_intent_source = self._query_intent_bindings(compiled, request)
         pending = None
         index = 0
         delivered = 0
@@ -362,6 +378,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
 
     async def _query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
         request.validate()
+        request = request.with_query(request.query)
         self._sync_generated_schema(context)
         request.query.prepare_for_list()
         execution_query, retained_order, retained_empty = await self._prepare_id_set_page(context, request.query)

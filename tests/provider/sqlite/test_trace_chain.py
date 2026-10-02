@@ -171,6 +171,50 @@ async def test_unexecuted_aggregate_provenance_does_not_modify_query_builders(tm
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('remove_in_policy', [False, True])
+@pytest.mark.parametrize('fail', [False, True])
+async def test_exact_count_retains_privacy_of_removed_relations_without_ambient_state(tmp_path, remove_in_policy, fail):
+    context, service, transport, entries = await fixture(tmp_path)
+    service.schema_provider.get_entity('CustomerOrder').audit_mask_fields([])
+    service.schema_provider.get_entity('CustomerOrder').property_by_name('name').log_policy('plain')
+    service.schema_provider.get_entity('Payment').audit_mask_fields(['name'])
+    private = 'CHILD-COUNT-PRIVACY-CANARY'
+    original = QueryRequest(SelectQuery('CustomerOrder').project('id').limit(1)
+        .relation_query('children', SelectQuery('Payment').filter(Expr.eq('name', private)).limit(1)),
+        _comment='count graph mentioning ' + private,
+        _purpose='inspect total for ' + private)
+    if remove_in_policy:
+        def discard_relation(query):
+            query.relations = []
+            return query
+        context.with_request_policy(discard_relation)
+    prepared = context.prepare_query_request(original)
+    counted = prepared.with_query(prepared.query.for_exact_count('__total')).comment(
+        original.intent.comment).purpose(original.intent.purpose)
+    if fail:
+        transport.fail_table = 'customerorder_data'
+        with pytest.raises(TransportError) as caught:
+            await service.query(context, counted)
+        assert caught.value.error is transport.failure
+        transport.fail_table = None
+    else:
+        result = await service.query(context, counted)
+        assert result.rows == [{'__total': 1}]
+    assert len(transport.reads) == len(entries) == 1
+    assert 'COUNT(' in transport.reads[0].sql.upper()
+    assert 'payment_data' not in transport.reads[0].sql
+    assert entries[0].comment == 'count graph mentioning [REDACTED]'
+    assert entries[0].purpose == 'inspect total for [REDACTED]'
+    assert entries[0].execution_outcome == ('failure' if fail else 'success')
+    assert private not in repr(context.sql_logs())
+    assert original.intent.comment.endswith(private) and len(original.query.relations) == 1
+    await service.query(context, QueryRequest(SelectQuery('CustomerOrder')
+        .filter(Expr.eq('name', private)).limit(1),
+        _comment='independent query mentioning ' + private, _purpose='no inherited privacy'))
+    assert entries[-1].comment.endswith(private)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('rollback', [False, True])
 async def test_explicit_transaction_audit_waits_for_commit_and_rollback_discards(tmp_path, rollback):
     context, service, transport, entries = await fixture(tmp_path)

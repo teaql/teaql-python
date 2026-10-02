@@ -747,25 +747,25 @@ class ExecutablePlatformRequest:
         intent = QueryIntent(request._comment, request._purpose)
         query = deepcopy(request.query)
         query.offset(offset).limit(limit)
-        authorized = context.prepare_query_request(QueryRequest(query, _comment=intent.comment, _purpose=intent.purpose)).query
+        authorized = context.prepare_query_request(QueryRequest(query, _comment=intent.comment, _purpose=intent.purpose))
         service = context.require_resource("dataService")
         alias = "__teaql_total"
-        if authorized.id_set_pagination is not None:
-            row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
+        if authorized.query.id_set_pagination is not None:
+            row_result = await service.query(context, authorized)
             retained_count, accuracy = context.id_set_count()
             if accuracy == "EXACT":
                 total_count = retained_count
             else:
-                count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias), _comment=request._comment, _purpose=request._purpose))
+                count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
                 if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
                     raise RuntimeError("dataService did not return an exact page count")
                 total_count = int(count_result.rows[0][alias])
         else:
-            count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias), _comment=request._comment, _purpose=request._purpose))
+            count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
             if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
                 raise RuntimeError("dataService did not return an exact page count")
             total_count = int(count_result.rows[0][alias])
-            row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
+            row_result = await service.query(context, authorized)
         data = SmartList(Platform(**row) for row in row_result.rows)
         return TeaQLPage(data=data, total_count=total_count, offset=offset, limit=limit)
 
@@ -775,7 +775,7 @@ class ExecutablePlatformRequest:
         entities = await ExecutablePlatformRequest(request).execute_for_list(context)
         return entities[0] if entities else None
 
-    async def execute_for_stream(self, context, chunk_size: int = 1000):
+    def execute_for_stream(self, context, chunk_size: int = 1000):
         """Yield entity chunks lazily from the provider cursor."""
         request = self._request
         req = QueryRequest(request.query, _comment=request._comment, _purpose=request._purpose)
@@ -783,6 +783,14 @@ class ExecutablePlatformRequest:
         service = context.require_resource("dataService")
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
-        async for chunk in service.query_stream(context, req, chunk_size):
-            for row in chunk.rows:
-                yield Platform(**row)
+        stream = service.query_stream(context, req, chunk_size)
+        async def entities():
+            try:
+                async for chunk in stream:
+                    for row in chunk.rows:
+                        yield Platform(**row)
+            finally:
+                close = getattr(stream, "aclose", None)
+                if close is not None:
+                    await close()
+        return entities()

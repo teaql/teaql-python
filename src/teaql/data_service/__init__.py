@@ -28,7 +28,8 @@ class DataServiceCapabilities:
 
 
 class QueryRequest:
-    __slots__ = ('query', 'trace_chain', '__intent', '__origin_entity', '_log_intent_source')
+    __slots__ = ('query', 'trace_chain', '__intent', '__origin_entity',
+                 '_log_intent_source', '_log_intent_queries')
     _UNSET = object()
 
     def __init__(self, query: SelectQuery, trace_chain=None, _comment=_UNSET, _purpose=_UNSET,
@@ -68,16 +69,25 @@ class QueryRequest:
         result = QueryRequest(query, self.trace_chain, self._comment, self._purpose,
                               _origin_entity=self.origin_entity)
         if hasattr(self, '_log_intent_source'):
-            result._log_intent_source = self._log_intent_source
+            result._log_intent_source = deepcopy(self._log_intent_source)
+        # Derived work may drop a relation/projection whose private values are
+        # still mentioned by the originating intent. Retain owned source graphs
+        # solely for compiler classification, never on Context or log payloads.
+        result._log_intent_queries = (*deepcopy(getattr(self, '_log_intent_queries', ())),
+                                      deepcopy(self.query))
         return result
 
     def comment(self, text: str) -> 'QueryRequest':
-        return QueryRequest(self.query, self.trace_chain, text, self._purpose,
-                            _origin_entity=self.origin_entity)
+        result = self.with_query(self.query)
+        result.__intent = QueryIntent(text, self._purpose)
+        result.query.comment_text = result.intent.comment
+        return result
 
     def purpose(self, text: str) -> 'QueryRequest':
-        return QueryRequest(self.query, self.trace_chain, self._comment, text,
-                            _origin_entity=self.origin_entity)
+        result = self.with_query(self.query)
+        result.__intent = QueryIntent(self._comment, text)
+        result.query.purpose_text = result.intent.purpose
+        return result
 
 
 class DataServiceOperation(Enum):
