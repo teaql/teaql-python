@@ -165,8 +165,10 @@ async def main():
     await order.audit_as('prepare complete graph').save(context)
     assert E.payment(payment).id().eval() == E.customer_order(order).id().eval(), 'fixture must exercise equal IDs of different types'
     order.update_description('Submitted trace example')
-    payment.audit_as('authorize payment')
-    shipment.audit_as('dispatch shipment')
+    item.update_name('Verified available item')
+    payment.update_reference_code(label + '-payment-authorized').audit_as('authorize payment')
+    attempt.update_reference_code(label + '-attempt-authorized')
+    shipment.update_reference_code(label + '-shipment-dispatched').audit_as('dispatch shipment')
     removed.mark_for_deletion().audit_as('remove unavailable item')
     reset(service, sink, context)
     await order.audit_as('submit order').save(context)
@@ -203,7 +205,7 @@ async def main():
         .select_payment_with(Q.payments().limit(1).select_customer_order_with(
             Q.customer_orders().limit(1).select_platform_with(Q.platforms().limit(1))))
         .limit(1).comment('what: inspect three relation levels').purpose('why: retain root query intent').execute_for_one(context))
-    assert E.payment_attempt(deep).reference_code().eval() == label + '-attempt'
+    assert E.payment_attempt(deep).reference_code().eval() == label + '-attempt-authorized'
     entries = context.sql_logs()
     assert len(entries) == 4
     for depth, entry in enumerate(entries):

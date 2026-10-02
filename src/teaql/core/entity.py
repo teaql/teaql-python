@@ -111,7 +111,20 @@ class EntityRoot:
 
     def set_original_version(self, key: EntityKey, version: int) -> None:
         with self._lock:
+            self._validate_version(key, version)
             self._original_versions[key] = version
+
+    def accept_committed_version(self, key: EntityKey, version: int) -> None:
+        """Advance authoritative state only after this key's changes clear."""
+        with self._lock:
+            if self.has_pending(key):
+                raise ValueError('ENTITY_PENDING_CHANGES: clear committed changes before accepting a version')
+            self._original_versions[key] = version
+
+    def has_pending(self, key: EntityKey) -> bool:
+        with self._lock:
+            return (key in self._new_keys or key in self._deleted_keys or
+                    any(key in change_set._changes for change_set in self._change_sets))
 
     def original_version(self, key: EntityKey) -> Optional[int]:
         with self._lock:
@@ -135,15 +148,56 @@ class EntityRoot:
     def merge_from(self, other: 'EntityRoot') -> None:
         if other is self:
             return
-        with self._lock, other._lock:
-            self._change_sets[-1].merge_from(other._change_sets[-1])
-            self._original_versions.update(other._original_versions)
-            self._new_keys.update(other._new_keys)
-            self._deleted_keys.update(other._deleted_keys)
-            self._trace_chains.update(deepcopy(other._trace_chains))
+        # Release the source lock before acquiring the target: opposing imports
+        # must not hold both graph locks in opposite order.
+        with other._lock:
+            keys = (set(other._original_versions) | other._new_keys | other._deleted_keys |
+                    set(other._trace_chains) | set(other._change_sets[-1]._changes))
+            entries = [other._snapshot(key) for key in keys]
+        with self._lock:
+            for key, _, version, _, _, _ in entries:
+                self._validate_version(key, version)
+            for entry in entries:
+                self._import(entry)
+
+    def merge_entity_from(self, other: 'EntityRoot', key: EntityKey) -> None:
+        """Copy one reached typed key without draining its source graph."""
+        if other is self:
+            return
+        entry = other._snapshot(key)
+        with self._lock:
+            self._validate_version(key, entry[2])
+            self._import(entry)
+
+    def _snapshot(self, key):
+        with self._lock:
+            return (key, dict(self._change_sets[-1]._changes.get(key, {})),
+                    self._original_versions.get(key), key in self._new_keys,
+                    key in self._deleted_keys, deepcopy(self._trace_chains.get(key)))
+
+    def _validate_version(self, key, incoming):
+        original = self._original_versions.get(key)
+        if incoming is not None and original is not None and incoming != original:
+            raise ValueError(f'ENTITY_VERSION_CONFLICT: {key.entity} has loaded versions {original} and {incoming}')
+
+    def _import(self, entry):
+        key, values, version, added, removed, trace = entry
+        for field, value in values.items():
+            self._change_sets[-1].set(key, field, value)
+        if version is not None:
+            self._original_versions[key] = version
+        if added:
+            self._new_keys.add(key)
+        if removed:
+            self.mark_as_deleted(key)
+        if trace is not None:
+            self._trace_chains[key] = trace
 
     def rekey(self, old_key: EntityKey, new_key: EntityKey) -> None:
+        if old_key == new_key:
+            return
         with self._lock:
+            self._validate_version(new_key, self._original_versions.get(old_key))
             for change_set in self._change_sets:
                 change_set.rekey(old_key, new_key)
             if old_key in self._original_versions:

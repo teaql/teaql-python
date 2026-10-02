@@ -55,13 +55,13 @@ class Platform:
         if self._task_status_list:
             from models.task_status import TaskStatus
             self._task_status_list = [
-                item if isinstance(item, TaskStatus) else TaskStatus(**item)
+                item if isinstance(item, TaskStatus) else TaskStatus(_entity_root=self._entity_root, **item)
                 for item in self._task_status_list
             ]
         if self._task_list:
             from models.task import Task
             self._task_list = [
-                item if isinstance(item, Task) else Task(**item)
+                item if isinstance(item, Task) else Task(_entity_root=self._entity_root, **item)
                 for item in self._task_list
             ]
         self._ledger_id = getattr(self, "id", None)
@@ -77,8 +77,9 @@ class Platform:
         return EntityKey("Platform", self._ledger_id)
 
     def _teaql_attach_root(self, root):
-        if self._entity_root is not root:
-            root.merge_from(self._entity_root)
+        key = self._teaql_entity_key()
+        if self._entity_root is not root and self._entity_root.has_pending(key):
+            root.merge_entity_from(self._entity_root, key)
             self._entity_root = root
         for child in self._task_status_list:
             child._teaql_attach_root(root)
@@ -168,36 +169,43 @@ class Platform:
         if action == "Create":
             cmd = InsertCommand("Platform", payload)
         elif action == "Update":
-            cmd = UpdateCommand("Platform", Value.from_any(getattr(self, "id", None)), getattr(self, "version", None))
+            original_version = self._entity_root.original_version(self._teaql_entity_key())
+            cmd = UpdateCommand("Platform", Value.from_any(getattr(self, "id", None)),
+                original_version if original_version is not None else getattr(self, "version", None))
             for key, value in payload.items():
                 if key not in ("id", "version"): cmd.value(key, value)
         else:
-            cmd = DeleteCommand("Platform", Value.from_any(getattr(self, "id", None)), getattr(self, "version", None))
+            original_version = self._entity_root.original_version(self._teaql_entity_key())
+            cmd = DeleteCommand("Platform", Value.from_any(getattr(self, "id", None)),
+                original_version if original_version is not None else getattr(self, "version", None))
         return action, cmd
 
     def _teaql_preflight_graph(self, graph):
         context = graph.context
-        if self._action == "Update":
-            if "id" not in self._loaded_fields:
-                raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
-            if "name" not in self._loaded_fields:
-                raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity")])
-            if "founded" not in self._loaded_fields:
-                raise CheckException([CheckResult("invalid_type", ObjectLocation().property("founded"), message="Mutation requires a fully loaded entity")])
-            if "userEmail" not in self._loaded_fields:
-                raise CheckException([CheckResult("invalid_type", ObjectLocation().property("user_email"), message="Mutation requires a fully loaded entity")])
-            if "version" not in self._loaded_fields:
-                raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
-        _action, cmd = self._teaql_build_command()
-        try:
-            context.preflight_mutation(cmd)
-        finally:
-            for field, value in getattr(cmd, "values", {}).items():
-                if field not in ("id", "version"):
-                    self._entity_root.set(self._teaql_entity_key(), field, value)
+        if self._action != "Update" or self._entity_root.has_pending(self._teaql_entity_key()):
+            if self._action == "Update":
+                if "id" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
+                if "name" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity")])
+                if "founded" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("founded"), message="Mutation requires a fully loaded entity")])
+                if "userEmail" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("user_email"), message="Mutation requires a fully loaded entity")])
+                if "version" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
+            _action, cmd = self._teaql_build_command()
+            try:
+                context.preflight_mutation(cmd)
+            finally:
+                for field, value in getattr(cmd, "values", {}).items():
+                    if field not in ("id", "version"):
+                        self._entity_root.set(self._teaql_entity_key(), field, value)
         for index, child in enumerate(self._task_status_list):
             child._teaql_attach_root(self._entity_root)
-            child.update_platform(self)
+            current = getattr(child, "platform", None)
+            if getattr(current, "id", current) != self.id:
+                child.update_platform(self)
             try:
                 child._teaql_preflight_graph(graph)
             except CheckException as error:
@@ -208,7 +216,9 @@ class Platform:
                 ]) from error
         for index, child in enumerate(self._task_list):
             child._teaql_attach_root(self._entity_root)
-            child.update_platform(self)
+            current = getattr(child, "platform", None)
+            if getattr(current, "id", current) != self.id:
+                child.update_platform(self)
             try:
                 child._teaql_preflight_graph(graph)
             except CheckException as error:
@@ -221,6 +231,10 @@ class Platform:
     async def _teaql_save_within_graph(self, graph, parent_scope=None):
         context = graph.context
         scope = graph.scope(self._teaql_entity_key(), parent_scope, self._comment)
+
+        if self._action == "Update" and not self._entity_root.has_pending(self._teaql_entity_key()):
+            await self._teaql_save_children(graph, scope)
+            return self
 
         self._teaql_attach_root(self._entity_root)
         action, cmd = self._teaql_build_command()
@@ -293,34 +307,33 @@ class Platform:
         if action != "Delete":
             self._action = "Update"
 
-        cascade_relations = []
-        cascade_relations.append(("task_status_list", self._task_status_list, "update_platform"))
-        cascade_relations.append(("task_list", self._task_list, "update_platform"))
         if action != "Delete":
-            for relation_name, children, updater in cascade_relations:
-                for index, child in enumerate(children):
-                    child._teaql_attach_root(self._entity_root)
-                    getattr(child, updater)(self)
-                    try:
-                        await child._teaql_save_within_graph(graph, scope)
-                    except CheckException as error:
-                        prefix = ObjectLocation().property(relation_name).index(index)
-                        raise CheckException([
-                            CheckResult(
-                                violation.rule_id,
-                                violation.location.prefixed_by(prefix),
-                                violation.input_value,
-                                violation.system_value,
-                                violation.message,
-                            )
-                            for violation in error.violations
-                        ]) from error
+            await self._teaql_save_children(graph, scope)
         def commit_entity():
             self._entity_root.clear_entity(new_key)
             if getattr(self, "version", None) is not None:
-                self._entity_root.set_original_version(new_key, int(self.version))
+                self._entity_root.accept_committed_version(new_key, int(self.version))
         graph.after_commit(commit_entity)
         return self
+
+    async def _teaql_save_children(self, graph, scope):
+        cascade_relations = []
+        cascade_relations.append(("task_status_list", self._task_status_list, "update_platform", "platform"))
+        cascade_relations.append(("task_list", self._task_list, "update_platform", "platform"))
+        for relation_name, children, updater, member in cascade_relations:
+            for index, child in enumerate(children):
+                child._teaql_attach_root(self._entity_root)
+                current = getattr(child, member, None)
+                if getattr(current, "id", current) != self.id:
+                    getattr(child, updater)(self)
+                try:
+                    await child._teaql_save_within_graph(graph, scope)
+                except CheckException as error:
+                    prefix = ObjectLocation().property(relation_name).index(index)
+                    raise CheckException([
+                        CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message)
+                        for v in error.violations
+                    ]) from error
 
     def update_id(self, value):
         self.id = value

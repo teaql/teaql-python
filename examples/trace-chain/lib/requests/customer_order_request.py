@@ -1,6 +1,5 @@
 from teaql.core.query import RelationAggregate, SelectQuery
 from teaql.core.list import SmartList, TeaQLPage
-from teaql.runtime import EntityRoot
 from teaql.data_service import QueryRequest
 from teaql.core import QueryIntent
 from copy import deepcopy
@@ -579,9 +578,8 @@ class ExecutableCustomerOrderRequest:
 
     async def execute_for_list(self, context) -> SmartList[CustomerOrder]:
         result = await self.execute_for_result(context)
-        query_root = EntityRoot()
         return SmartList(
-            (CustomerOrder(_entity_root=query_root, **row) for row in result.rows),
+            (CustomerOrder(**row) for row in result.rows),
             facets=result.facets)
 
     async def execute_for_page(self, context, offset: int, limit: int) -> TeaQLPage[CustomerOrder]:
@@ -608,8 +606,7 @@ class ExecutableCustomerOrderRequest:
                 raise RuntimeError("dataService did not return an exact page count")
             total_count = int(count_result.rows[0][alias])
             row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
-        query_root = EntityRoot()
-        data = SmartList(CustomerOrder(_entity_root=query_root, **row) for row in row_result.rows)
+        data = SmartList(CustomerOrder(**row) for row in row_result.rows)
         return TeaQLPage(data=data, total_count=total_count, offset=offset, limit=limit)
 
     async def execute_for_one(self, context):
@@ -626,7 +623,6 @@ class ExecutableCustomerOrderRequest:
         service = context.require_resource("dataService")
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
-        query_root = EntityRoot()
         async for chunk in service.query_stream(context, req, chunk_size):
             for row in chunk.rows:
-                yield CustomerOrder(_entity_root=query_root, **row)
+                yield CustomerOrder(**row)

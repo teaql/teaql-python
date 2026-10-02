@@ -6,13 +6,26 @@ if [[ -z "${TEAQL_TRACE_CHAIN_DB:-}" ]]; then
   trace_test_directory="$(mktemp -d)"
   export TEAQL_TRACE_CHAIN_DB="$trace_test_directory/trace-chain.sqlite"
 fi
+if [[ -z "${TEAQL_TRACE_CHAIN_SHARED_DB:-}" ]]; then
+  ownership_directory="$(mktemp -d -t teaql-python-shared.XXXXXX)"
+  export TEAQL_TRACE_CHAIN_SHARED_DB="$ownership_directory/shared.sqlite"
+fi
+if [[ "$TEAQL_TRACE_CHAIN_SHARED_DB" == "$TEAQL_TRACE_CHAIN_DB" ]]; then
+  echo 'FAIL: normative and ownership fixtures require separate databases' >&2
+  exit 1
+fi
 export PYTHONDONTWRITEBYTECODE=1
 export PYTHONPATH="$example/lib:$repo/src${PYTHONPATH:+:$PYTHONPATH}"
 snapshot="$(mktemp)"
-(cd "$example/lib" && find . -type f ! -path '*/__pycache__/*' -print0 | sort -z | xargs -0 sha256sum) > "$snapshot"
+(cd "$example/lib" && rg --files --hidden -g '!**/__pycache__/**' | LC_ALL=C sort | xargs -d '\n' sha256sum) > "$snapshot"
 for attempt in first second; do
   echo "Run $attempt on $TEAQL_TRACE_CHAIN_DB without cleanup"
   python "$example/main.py"
+  echo "Ownership $attempt on $TEAQL_TRACE_CHAIN_SHARED_DB without cleanup"
+  run_log="$(mktemp -t teaql-python-shared.XXXXXX.log)"
+  env -u TEAQL_TRACE_CHAIN_SCENARIO TEAQL_TRACE_CHAIN_DB="$TEAQL_TRACE_CHAIN_SHARED_DB" \
+    python "$example/shared_reference.py" | tee "$run_log"
+  rg -Fq 'PASS: Python shared ownership 4 scenarios' "$run_log"
 done
 (cd "$example/lib" && sha256sum --check "$snapshot")
 echo "PASS: two runs on the same database; generated library hashes unchanged"

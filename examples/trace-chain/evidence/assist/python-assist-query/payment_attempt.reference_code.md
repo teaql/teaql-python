@@ -9,12 +9,15 @@ Type: `string`
 | Capability | Generated API |
 | --- | --- |
 | Select | `select_reference_code()` |
-| Equality/set | `with_reference_code_is(value)`, `with_reference_code_is_not(value)`, `with_reference_code_in(values)`, `with_reference_code_not_in(values)` |
+| Equality/set | `with_reference_code_is(value)`, `with_reference_code_is_not(value)`, `with_reference_code_in(*values)`, `with_reference_code_not_in(*values)` |
 | Comparison | `with_reference_code_greater_than(value)`, `with_reference_code_greater_than_or_equal_to(value)`, `with_reference_code_less_than(value)`, `with_reference_code_less_than_or_equal_to(value)`, `with_reference_code_between(lower, upper)` |
 | Null state | `with_reference_code_is_known()`, `with_reference_code_is_unknown()` |
 | String | `with_reference_code_containing(value)`, `with_reference_code_not_containing(value)`, `with_reference_code_starting_with(value)`, `with_reference_code_ending_with(value)`, `with_reference_code_sounding_like(value)` |
 | Order | `order_by_reference_code_ascending()`, `order_by_reference_code_descending()` |
 | Group | `group_by_reference_code()`, `group_by_reference_code_as(alias)` |
+Set predicates accept positional values. Pass separate arguments, for example
+`with_reference_code_in(first, second)`, or unpack a sequence with
+`with_reference_code_in(*values)`. Do not pass a list as one argument.
 Execution requires `comment(...)`, `purpose(...)`, and exactly one `context`.
 
 ---

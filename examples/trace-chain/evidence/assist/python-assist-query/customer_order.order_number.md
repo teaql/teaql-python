@@ -1,23 +1,23 @@
 <!-- ephemeral -->
 
-# Python Query Field Assist — `payment.reference_code`
+# Python Query Field Assist — `customer_order.order_number`
 
-KSML entity: `Payment`  
-KSML field: `reference_code`  
+KSML entity: `Customer Order`  
+KSML field: `order_number`  
 Type: `string`
 
 | Capability | Generated API |
 | --- | --- |
-| Select | `select_reference_code()` |
-| Equality/set | `with_reference_code_is(value)`, `with_reference_code_is_not(value)`, `with_reference_code_in(*values)`, `with_reference_code_not_in(*values)` |
-| Comparison | `with_reference_code_greater_than(value)`, `with_reference_code_greater_than_or_equal_to(value)`, `with_reference_code_less_than(value)`, `with_reference_code_less_than_or_equal_to(value)`, `with_reference_code_between(lower, upper)` |
-| Null state | `with_reference_code_is_known()`, `with_reference_code_is_unknown()` |
-| String | `with_reference_code_containing(value)`, `with_reference_code_not_containing(value)`, `with_reference_code_starting_with(value)`, `with_reference_code_ending_with(value)`, `with_reference_code_sounding_like(value)` |
-| Order | `order_by_reference_code_ascending()`, `order_by_reference_code_descending()` |
-| Group | `group_by_reference_code()`, `group_by_reference_code_as(alias)` |
+| Select | `select_order_number()` |
+| Equality/set | `with_order_number_is(value)`, `with_order_number_is_not(value)`, `with_order_number_in(*values)`, `with_order_number_not_in(*values)` |
+| Comparison | `with_order_number_greater_than(value)`, `with_order_number_greater_than_or_equal_to(value)`, `with_order_number_less_than(value)`, `with_order_number_less_than_or_equal_to(value)`, `with_order_number_between(lower, upper)` |
+| Null state | `with_order_number_is_known()`, `with_order_number_is_unknown()` |
+| String | `with_order_number_containing(value)`, `with_order_number_not_containing(value)`, `with_order_number_starting_with(value)`, `with_order_number_ending_with(value)`, `with_order_number_sounding_like(value)` |
+| Order | `order_by_order_number_ascending()`, `order_by_order_number_descending()` |
+| Group | `group_by_order_number()`, `group_by_order_number_as(alias)` |
 Set predicates accept positional values. Pass separate arguments, for example
-`with_reference_code_in(first, second)`, or unpack a sequence with
-`with_reference_code_in(*values)`. Do not pass a list as one argument.
+`with_order_number_in(first, second)`, or unpack a sequence with
+`with_order_number_in(*values)`. Do not pass a list as one argument.
 Execution requires `comment(...)`, `purpose(...)`, and exactly one `context`.
 
 ---
