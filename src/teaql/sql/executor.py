@@ -819,7 +819,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             return MutationResult(affected, {}, ExecutionMetadata(
                 backend=self._backend_name(), operation=DataServiceOperation.Batch,
                 started_at=start, ended_at=datetime.now(), affected_rows=affected,
-                comment=request.intent.comment, audit_reason=request.intent.comment))
+                comment=request.intent.comment, audit_reason=request.intent.comment,
+                statements=tuple(result.metadata for result in results)))
         entity_desc = self.schema_provider.get_entity(req_data.entity)
         if not entity_desc and context:
             entities = context.get_resource("entities")
@@ -956,6 +957,9 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                                       persisted_rows, error)
                 raise
             persisted_record = persisted_rows[0]
+            read_metadata = self._record_readback(context, readback, compiled, metadata,
+                                                  read_start, persisted_rows, None)
+            metadata = replace(metadata, statements=(metadata, read_metadata))
 
         if affected_rows > 0 and context is not None:
             from teaql.runtime.audit import AuditFieldChange, MutationAuditKind, RawAuditEvent
@@ -994,8 +998,6 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         )
 
     def _record_readback(self, context, readback, source, write_metadata, started_at, rows, error):
-        if context is None:
-            return
         # A driver returning zero/multiple rows succeeded as SQL; validation of
         # the authoritative snapshot is a separate business failure.
         outcome = ('success' if rows is not None else 'cancelled'
@@ -1007,12 +1009,15 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             parameter_log_policies=readback.parameter_log_policies, sql_origin=readback.sql_origin,
             affected_rows=None, result_count=len(rows) if rows is not None else None,
             trace_chain=physical_readback_path(write_metadata.trace_chain))
+        if context is None:
+            return metadata
         try:
             context._record_metadata_log(metadata, intent_source=source,
                 intent_values=tuple(readback.params[:1]))
         except BaseException:
             # An in-flight readback error must survive a diagnostic sink failure.
             pass
+        return metadata
 
     async def next_id(self, entity: str) -> int:
         await self.transport.execute_sql(CompiledQuery(

@@ -122,6 +122,9 @@ class ExecutionMetadata:
     sql_origin: Optional[str] = None
     # Statement/cursor termination only, not transaction commit.
     execution_outcome: Optional[str] = None
+    # Logical mutation summaries own ordered physical children. Batch summaries
+    # retain per-item grouping; leaves are empty and never point to a summary.
+    statements: tuple['ExecutionMetadata', ...] = field(default_factory=tuple)
 
 
 @dataclass

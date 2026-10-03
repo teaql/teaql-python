@@ -474,7 +474,11 @@ async def test_readback_independent_diagnostic(fixture, explicit, mode):
             assert tx.commits == 0
             await target.commit(context)
         assert tx.commits == 1 and tx.rollbacks == 0
-        assert len(entries) == 1
+        assert len(entries) == 2
+        assert len(result.metadata.statements) == 2
+        assert entries[1].execution_outcome == 'success'
+        assert entries[1].result_count == 1
+        assert entries[1].trace_path[1].kind == 'request'
     else:
         with pytest.raises(BaseException) as caught:
             await target.mutate(context, readback_request())
@@ -559,6 +563,7 @@ async def test_partial_transaction_keeps_prior_write_and_stops_after_readback(fi
     with pytest.raises(RuntimeError) as caught:
         await context.execute_graph_save(work, comment='what: runtime regression fixture')
     assert caught.value is failure
-    assert [entry.execution_outcome for entry in entries] == ['success','success','failure']
+    assert [entry.execution_outcome for entry in entries] == ['success','success','success','failure']
+    assert [entry.trace_path[-1].name for entry in entries] == ['update','select','update','select']
     assert tx.writes == tx.reads == 2 and tx.rollbacks == 1 and tx.commits == 0
     assert 'Riverside' not in repr(context.sql_logs())

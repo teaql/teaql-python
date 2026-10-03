@@ -90,6 +90,82 @@ def three_levels():
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('with_context', [False, True])
+async def test_successful_readback_retains_ordered_physical_metadata(tmp_path, with_context):
+    from teaql.data_service import DataServiceOperation
+    context, service, transport, entries = await fixture(tmp_path)
+    request = MutationRequest(
+        InsertCommand.new('Payment').value('name', 'new payment').value('parent_id', 1),
+        comment='persist payment and verify its authoritative snapshot')
+    result = await service.mutate(context if with_context else None, request)
+    assert result.affected_rows == result.metadata.affected_rows == 1
+    assert result.metadata.operation == DataServiceOperation.Insert
+    assert result.persisted_record['name'] == 'new payment'
+    assert len(result.metadata.statements) == 2
+    write, read = result.metadata.statements
+    assert write.operation == DataServiceOperation.Insert
+    assert read.operation == DataServiceOperation.Query
+    assert write.statements == read.statements == ()
+    assert write.affected_rows == 1 and read.affected_rows is None
+    assert read.result_count == 1 and read.execution_outcome == 'success'
+    assert read.comment == write.comment == request.comment()
+    assert read.audit_reason == write.audit_reason == request.comment()
+    assert read.mutation_lineage == write.mutation_lineage
+    assert read.purpose == 'verify the persisted mutation result'
+    assert [node.kind for node in read.trace_chain] == ['operation', 'request', 'provider', 'sql']
+    assert [node.name for node in read.trace_chain] == ['Payment', 'Payment', 'sqlite', 'select']
+    assert read.trace_chain[0].comment == 'query'
+    assert len(entries) == (2 if with_context else 0)
+    if with_context:
+        assert [entry.execution_outcome for entry in entries] == ['success', 'success']
+        assert len(context.sql_logs()) == 2
+
+
+@pytest.mark.asyncio
+async def test_batch_keeps_each_write_readback_pair(tmp_path):
+    from teaql.data_service import DataServiceOperation
+    context, service, transport, entries = await fixture(tmp_path)
+    result = await service.mutate(context, MutationRequest.Batch([
+        InsertCommand.new('Payment').value('name', 'batch payment').value('parent_id', 1),
+        InsertCommand.new('PaymentAttempt').value('name', 'batch attempt').value('parent_id', 1),
+    ], comment='persist atomic payment batch'))
+    assert result.affected_rows == result.metadata.affected_rows == 2
+    assert result.metadata.operation == DataServiceOperation.Batch
+    assert len(result.metadata.statements) == 2
+    for item in result.metadata.statements:
+        assert item.operation == DataServiceOperation.Insert
+        assert [part.operation for part in item.statements] == [
+            DataServiceOperation.Insert, DataServiceOperation.Query]
+    assert len(entries) == 4
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('mode', ['no-match', 'hard-delete'])
+async def test_no_synthetic_readback_when_none_executed(tmp_path, mode):
+    from teaql.core.mutation import UpdateCommand, DeleteCommand
+    context, service, transport, entries = await fixture(tmp_path)
+    command = (UpdateCommand.new('Payment', 99999).expected_version(1).value('name', 'missing')
+               if mode == 'no-match' else DeleteCommand.new('Payment', 1).hard_delete())
+    result = await service.mutate(context, MutationRequest(command, comment='verify physical work only'))
+    assert result.affected_rows == (0 if mode == 'no-match' else 1)
+    assert result.persisted_record is None and result.metadata.statements == ()
+    assert len(entries) == 1
+    assert transport.reads == []
+
+
+@pytest.mark.asyncio
+async def test_query_log_switch_does_not_remove_physical_readback_result(tmp_path):
+    context, service, transport, entries = await fixture(tmp_path)
+    context.enable_mutation_sql_log()
+    result = await service.mutate(context, MutationRequest(
+        InsertCommand.new('Payment').value('name', 'log switch payment').value('parent_id', 1),
+        comment='persist despite query log switch'))
+    assert len(result.metadata.statements) == 2
+    assert len(entries) == 1 and not entries[0].operation.is_select()
+    assert len(context.sql_logs()) == 1
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('failure', [False, True])
 async def test_three_real_relation_levels_keep_origin_and_qualified_frames(tmp_path, failure):
     context, service, transport, entries = await fixture(tmp_path)
@@ -132,7 +208,8 @@ async def test_successful_write_and_failed_readback_have_separate_canonical_path
     assert write.execution_outcome == 'success' and read.execution_outcome == 'failure'
     assert write.audit_reason == read.audit_reason == request.comment()
     for entry, operation in ((write, 'insert'), (read, 'select')):
-        assert [node.kind for node in entry.trace_path] == ['operation', 'entity', 'provider', 'sql']
+        assert [node.kind for node in entry.trace_path] == [
+            'operation', 'request' if operation == 'select' else 'entity', 'provider', 'sql']
         assert entry.trace_path[0].name == 'Payment'
         assert entry.trace_path[-1].name == operation
     async with aiosqlite.connect(transport.db_path) as database:
@@ -250,7 +327,8 @@ async def test_automatic_batch_readback_failure_discards_prior_successful_audits
         await service.mutate(context, batch)
     assert caught.value is transport.failure
     assert audits == []
-    assert [entry.execution_outcome for entry in entries] == ['success', 'success', 'failure']
+    assert [entry.execution_outcome for entry in entries] == ['success', 'success', 'success', 'failure']
+    assert [entry.trace_path[-1].name for entry in entries] == ['insert', 'select', 'insert', 'select']
     async with aiosqlite.connect(transport.db_path) as database:
         for table in ('payment_data', 'paymentattempt_data'):
             cursor = await database.execute(f'SELECT COUNT(*) FROM {table}')

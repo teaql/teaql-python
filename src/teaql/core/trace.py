@@ -44,6 +44,18 @@ def trace_intent(source: Iterable[TraceNode]) -> dict[str, Optional[str]]:
 
 
 def physical_readback_path(write_path: Iterable[TraceNode]) -> List[TraceNode]:
-    """Retain originating mutation route, replace its sole physical SQL leaf."""
-    return [replace(node, name='select', comment='') if _kind(node) == 'sql'
-            else deepcopy(node) for node in write_path]
+    """A real SELECT keeps its mutation origin but uses a query request frame."""
+    nodes = list(write_path)
+    root = next((trace_name(node) for node in nodes if _kind(node) == 'operation'), 'unknown')
+    result = []
+    for node in nodes:
+        kind = _kind(node)
+        if kind == 'operation':
+            result.append(replace(node, comment='query'))
+        elif kind == 'entity':
+            result.append(TraceNode(kind='request', name=root))
+        elif kind == 'sql':
+            result.append(replace(node, name='select', comment=''))
+        else:
+            result.append(deepcopy(node))
+    return result

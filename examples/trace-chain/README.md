@@ -26,6 +26,17 @@ retained soft deletion, three relation levels with inherited query intent, two
 concurrent graph saves in one Context, failed mutation, and failed authoritative
 readback. Failures retain SQL evidence and emit no committed audits.
 
+Successful mutations also retain their actually executed readback SELECTs. The
+six-item mutation verifies six writes followed individually by six readbacks,
+with six committed audit events, not twelve. Logical mutation metadata preserves
+its operation and affected-row count; ordered `statements` contain the write and
+readback leaves. Readback paths use `Operation(CustomerOrder, query)` and
+`Request(CustomerOrder)` even for a PaymentAttempt, while typed target identity
+and branch responsibility stay in the mutation lineage. Diagnostic SELECT
+switches do not erase the physical result metadata. Native tests cover no-Context
+results, grouped batches, zero affected rows, hard deletes and masked readback
+intent. These checks do not establish whole-graph sibling-value privacy.
+
 Four additional ownership cases use generated Q/E/save: two independent loaded
 roots share the same provider-returned Platform record without sharing mutable
 ledgers; adoption imports only a reached changed child; a clean ancestor emits

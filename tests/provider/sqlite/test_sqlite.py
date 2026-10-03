@@ -675,12 +675,13 @@ async def test_structured_sql_evidence_is_parameterized_and_filterable(temp_db, 
     await service.query(context, request)
 
     entries = context.sql_logs()
-    assert len(entries) == 2
+    assert len(entries) == 3  # INSERT, authoritative readback, explicit query
     assert all(entry.sql and secret not in entry.sql for entry in entries)
     assert all(entry.params for entry in entries)
     assert any(entry.result_count is not None for entry in entries)
     assert any(entry.affected_rows is not None for entry in entries)
-    select_entry = next(entry for entry in entries if entry.operation.is_select())
+    select_entry = entries[-1]
+    assert select_entry.operation.is_select()
     assert select_entry.comment == "what: load governed users"
     assert select_entry.purpose == "why: verify trace inheritance"
     assert [node.kind for node in select_entry.trace_path] == [
@@ -691,7 +692,8 @@ async def test_structured_sql_evidence_is_parameterized_and_filterable(temp_db, 
     await service.mutate(context, MutationRequest(InsertCommand("User", {
         "id": Value.I64(2), "name": Value.Text("ignored"), "version": Value.I64(1)
     }), comment='what: runtime regression fixture'))
-    assert context.sql_logs() == []
+    assert len(context.sql_logs()) == 1
+    assert context.sql_logs()[0].operation.is_select()  # the real readback
     context.enable_mutation_sql_log()
     await service.query(context, QueryRequest(SelectQuery("User"), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
     assert context.sql_logs() == []

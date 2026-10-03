@@ -109,7 +109,8 @@ async def verify_masking_lifecycle():
                 raise AssertionError('partial graph unexpectedly committed')
             except TransportError:
                 pass
-            assert [entry.execution_outcome for entry in entries] == ['success','success','success']
+            assert [entry.execution_outcome for entry in entries] == ['success','success','success','success']
+            assert [entry.trace_path[-1].name for entry in entries] == ['insert','select','insert','select']
             assert entries[-1].result_count == 0
             assert not await service.transport.fetch_all_sql(CompiledQuery(
                 'SELECT id FROM mask_customer_data WHERE id IN (30,31,777)', []))

@@ -94,7 +94,13 @@ async def load(context, entity_id):
 
 
 def assert_writes(service, sink, context, count):
-    sql = [entry for entry in context.sql_logs() if entry.mutation_lineage]
+    sql = [entry for entry in context.sql_logs() if entry.mutation_lineage and not entry.operation.is_select()]
+    readbacks = [entry for entry in context.sql_logs() if entry.mutation_lineage and entry.operation.is_select()]
+    assert len(readbacks) == count
+    for write, read in zip(sql, readbacks):
+        assert read.mutation_lineage == write.mutation_lineage
+        assert read.trace_path[1].kind == 'request'
+        assert read.trace_path[1].name == 'CustomerOrder'
     assert len(service.requests) == len(sink.events) == len(sql) == count, 'only reached changed entities emit commands'
     for request, entry, event in zip(service.requests, sql, sink.events):
         entity, identity, lineage = request

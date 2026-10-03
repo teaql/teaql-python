@@ -238,4 +238,6 @@ async def test_sqlite_crud_routes_compiler_policies_before_every_sink(tmp_path):
     assert 'LIMIT 1' in logs and '1 rows returned' in logs
     assert 'Parameterized SQL:' not in logs and 'REDACTED SQL' not in logs
     assert 'Riverside' not in repr(context.sql_logs())
-    assert len(entries) == 4
+    assert len(entries) == 7
+    assert [entry.trace_path[-1].name for entry in entries] == [
+        'insert', 'select', 'select', 'update', 'select', 'delete', 'select']

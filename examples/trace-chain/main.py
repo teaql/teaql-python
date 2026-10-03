@@ -183,7 +183,24 @@ async def main():
         assert record.trace_chain[0].name == 'CustomerOrder'
         assert [node.kind for node in record.trace_chain] == ['operation', 'entity', 'provider', 'sql']
         assert all(node.kind == 'auditReason' for node in record.mutation_lineage)
-    assert len([entry for entry in context.sql_logs() if entry.mutation_lineage]) == 6
+        assert len(record.statements) == 2
+        write, read = record.statements
+        assert not write.statements and not read.statements
+        assert read.comment == write.comment == 'submit order'
+        assert read.mutation_lineage == write.mutation_lineage == record.mutation_lineage
+        assert read.result_count == 1 and read.affected_rows is None
+        assert read.execution_outcome == 'success'
+        assert [node.kind for node in read.trace_chain] == ['operation', 'request', 'provider', 'sql']
+        assert [node.name for node in read.trace_chain] == ['CustomerOrder', 'CustomerOrder', 'sqlite', 'select']
+        assert read.trace_chain[0].comment == 'query'
+    physical = [entry for entry in context.sql_logs() if entry.mutation_lineage]
+    assert len(physical) == 12
+    for index, record in enumerate(service.results):
+        write, read = physical[index * 2:index * 2 + 2]
+        assert write.trace_path[-1].name == record.trace_chain[-1].name
+        assert read.trace_path[-1].name == 'select'
+        assert read.mutation_lineage == write.mutation_lineage
+    print('PASS: six writes plus six successful readbacks; root request paths; no duplicate SQL facts')
     print('PASS: normative six items; assigned typed identity; branch/deletion reasons; request/SQL/audit boundaries')
 
     loaded = await (Q.customer_orders().with_id_is(E.customer_order(order).id().eval())

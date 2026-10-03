@@ -44,6 +44,22 @@ def test_derived_query_origin_is_owned_and_survives_intent_changes():
         derived.origin_entity = 'Shipment'
 
 
+def test_readback_path_keeps_origin_not_child_and_does_not_mutate_write():
+    from copy import deepcopy
+    from teaql.core.trace import physical_readback_path
+    source = canonical_sql_trace_path([
+        TraceNode(kind='auditReason', name='CustomerOrder', entity_id=7, comment='submit'),
+        TraceNode(kind='entity', name='PaymentAttempt', entity_id=7),
+    ], 'sqlite', 'update')
+    before = deepcopy(source)
+    read = physical_readback_path(source)
+    assert [(n.kind, n.name, n.comment) for n in read] == [
+        ('operation', 'CustomerOrder', 'query'), ('request', 'CustomerOrder', ''),
+        ('provider', 'sqlite', ''), ('sql', 'select', '')]
+    read[0].name = 'consumer change'
+    assert source == before
+
+
 @pytest.mark.parametrize('kind', ['query', 'mutation'])
 def test_untyped_trace_is_rejected_without_echoing_payload(kind):
     from teaql.core.mutation import InsertCommand, MutationRequest
