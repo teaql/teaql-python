@@ -102,11 +102,14 @@ async def test_graph_root_is_required_before_begin_even_with_a_valid_child():
 
 
 @pytest.mark.asyncio
-async def test_direct_provider_gates_before_checker_schema_and_stream_with_logs_off():
+@pytest.mark.parametrize('logging', [False, True])
+async def test_direct_provider_gates_before_checker_schema_and_stream(logging):
     from teaql.runtime import UserContext
     from teaql.runtime.context import SqlLogOptions
     from teaql.sql.executor import SqlDataServiceExecutor
-    context = UserContext().with_sql_log_options(SqlLogOptions.disabled())
+    context = UserContext()
+    if not logging:
+        context.with_sql_log_options(SqlLogOptions.disabled())
     calls = []
     context.check_and_fix_mutation = lambda _: calls.append('checker')
     context.with_request_policy(lambda _: calls.append('policy'))
@@ -116,15 +119,22 @@ async def test_direct_provider_gates_before_checker_schema_and_stream_with_logs_
     query.query = SelectQuery('MissingTable')
     mutation = object.__new__(MutationRequest)
     mutation._data = InsertCommand('MissingTable').value('secret', 'PAYLOAD-CANARY')
-    for execute in [provider.query(context, query), provider.mutate(context, mutation)]:
+    def diagnostic(error, kind):
+        assert error.code == 'REQUEST_COMMENT_REQUIRED'
+        assert error.field == 'comment'
+        assert error.request_kind == kind
+        assert 'PAYLOAD-CANARY' not in str(error)
+    for execute, kind in [(provider.query(context, query), 'query'), (provider.mutate(context, mutation), 'mutation')]:
         with pytest.raises(RequestIntentError) as caught:
             await execute
-        assert 'PAYLOAD-CANARY' not in str(caught.value)
-    with pytest.raises(RequestIntentError):
+        diagnostic(caught.value, kind)
+    with pytest.raises(RequestIntentError) as caught:
         await context.prepare_query_request(query)
-    with pytest.raises(RequestIntentError):
+    diagnostic(caught.value, 'query')
+    with pytest.raises(RequestIntentError) as caught:
         async for _ in provider.query_stream(context, query, 10):
             raise AssertionError('stream must not open')
+    diagnostic(caught.value, 'query')
     assert calls == []
 
 
