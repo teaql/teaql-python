@@ -683,7 +683,12 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 child_trace = [*request.trace_chain, TraceNode(
                     kind="relation", name=load.name,
                     comment=f"{query.entity}.{load.name}")]
-                if use_probes:
+                if not parent_ids:
+                    # Missing/NULL local keys have no relation membership.
+                    # Do not compile IN [] or accidentally load orphan rows.
+                    children, child_keys = [], []
+                    selected_plan, probe_count = "empty", 0
+                elif use_probes:
                     children = []
                     child_keys = []
                     for parent_id in parent_ids:

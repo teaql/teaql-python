@@ -214,6 +214,50 @@ async def test_nested_facet_intent_privacy_survives_failure_and_next_request(tmp
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('missing_key', [False, True])
+@pytest.mark.parametrize('probes', [False, True])
+async def test_loaded_relation_facets_do_not_count_orphans_for_absent_parent_key(tmp_path, missing_key, probes):
+    context, service, transport, entries = await fixture(tmp_path)
+    service.schema_provider.get_entity('Payment').relation(
+        RelationDescriptor('attempts_by_owner', 'PaymentAttempt').many()
+            .local('parent_id').foreign('parent_id'))
+    # A separate, non-null facet key ensures an incorrectly matched orphan
+    # would contribute a visible count, rather than a discarded NULL group.
+    service.schema_provider.get_entity('PaymentAttempt').relation(
+        RelationDescriptor('category', 'CustomerOrder').local('version').foreign('id'))
+    for entity, name in [('Payment', 'parent without owner'), ('PaymentAttempt', 'orphan attempt')]:
+        await service.mutate(context, MutationRequest(
+            InsertCommand.new(entity).value('name', name), comment='seed absent relation key'))
+    attempts = (SelectQuery('PaymentAttempt').project('id', 'parent_id').limit(10)
+        .top_n_probe_parent_threshold(10 if probes else 0)
+        .facet_by('categories', 'category',
+                  SelectQuery('CustomerOrder').project('id').limit(10).count('attempt_count')))
+    query = (SelectQuery('Payment').project('id').limit(10).order_asc('id')
+             .relation_query('attempts_by_owner', attempts))
+    if not missing_key:
+        query.project('parent_id')
+    entries.clear()
+    transport.reads.clear()
+    result = await service.query(context, QueryRequest(query, _comment='inspect absent parent keys',
+        _purpose='orphan rows never belong to a missing relation'))
+    assert [row['id'] for row in result.rows] == [1, 2]
+    if missing_key:
+        assert all('parent_id' not in row for row in result.rows)
+    else:
+        assert [row['parent_id'] for row in result.rows] == [1, None]
+    for index, row in enumerate(result.rows):
+        related = row['attempts_by_owner']
+        expected_count = int(index == 0 and not missing_key)
+        assert [child['id'] for child in related] == ([1] if expected_count else [])
+        assert [(facet['id'], facet['attempt_count']) for facet in related.facet('categories')] == [
+            (1, expected_count)]
+    assert len(transport.reads) == (5 if missing_key else 6)
+    assert sum('COUNT(' in statement.sql.upper() for statement in transport.reads) == 2
+    assert all(entry.trace_path[0].name == 'Payment' for entry in entries)
+    assert all(entry.execution_outcome == 'success' for entry in entries)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('with_context', [False, True])
 async def test_successful_readback_retains_ordered_physical_metadata(tmp_path, with_context):
     from teaql.data_service import DataServiceOperation
