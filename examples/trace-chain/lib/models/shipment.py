@@ -1,5 +1,5 @@
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
-from teaql.core.entity import _LoadedScalarSnapshot
+from teaql.core.entity import _LoadedScalarSnapshot, _QueryProjectionSnapshot
 from teaql.core import MutationIntent
 from teaql.core.value import Value
 from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
@@ -33,6 +33,12 @@ class Shipment:
             kwargs["referenceCode"] = kwargs.pop("reference_code")
         if "version" in kwargs and "version" not in kwargs:
             kwargs["version"] = kwargs.pop("version")
+        self._teaql_query_projections = _QueryProjectionSnapshot(kwargs, (
+            "id", "id",
+            "customerOrder", "customer_order",
+            "referenceCode", "reference_code",
+            "version", "version",
+        ))
         self._action = "Update" if kwargs.get("id") else "Create"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
@@ -56,6 +62,13 @@ class Shipment:
             self._entity_root.set_original_version(key, int(self.version))
         self._teaql_loaded_snapshot = _LoadedScalarSnapshot(
             self._teaql_scalar_payload() if self._action == "Update" else {})
+
+    def query_projection(self, alias):
+        """Read a query-only alias; raises KeyError when it was not returned."""
+        return self._teaql_query_projections.get(alias)
+
+    def has_query_projection(self, alias):
+        return self._teaql_query_projections.contains(alias)
 
     def _teaql_entity_key(self):
         return EntityKey("Shipment", self._ledger_id)

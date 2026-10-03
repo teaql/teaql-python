@@ -132,6 +132,16 @@ rollback. Reentrant independent root saves fail instead of silently joining.
 The private generated save implementation has changed; old generated libraries
 must be regenerated, while public `audit_as(...).save(context)` stays unchanged.
 
+The aggregate follow-up adds runtime-owned query projection snapshots and generated
+`query_projection(alias)` / `has_query_projection(alias)` accessors. Missing aliases
+raise `KeyError`; zero and null are present values. Projections are owned snapshots,
+not writable model fields, live calculations or part of a mutation payload. The
+generated example covers root/nested counts, original Trace Chain ancestry,
+masked descendant intent, logging on/off, provider failure recovery and saving
+only a modeled field. An alias named `save` cannot replace the save method.
+Regenerate libraries to acquire this projection API; related aggregate streaming
+remains unsupported and rejects before provider I/O.
+
 This is local-source/generated-consumer evidence, not complete Trace Chain.
 Prepared-batch grouping, generated ledger overrides, complete entry-point and
 inherited mutation privacy coverage, successful readback diagnostic alignment,

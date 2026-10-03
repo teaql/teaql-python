@@ -23,6 +23,16 @@ if [[ "$TEAQL_TRACE_CHAIN_SHARED_DB" == "$TEAQL_TRACE_CHAIN_DB" ]]; then
   exit 1
 fi
 export PYTHONDONTWRITEBYTECODE=1
+if [[ -z "${TEAQL_TRACE_CHAIN_AGGREGATE_DB:-}" ]]; then
+  aggregate_directory="$(mktemp -d -t teaql-python-aggregate.XXXXXX)"
+  export TEAQL_TRACE_CHAIN_AGGREGATE_DB="$aggregate_directory/aggregate.sqlite"
+fi
+for other_db in "$TEAQL_TRACE_CHAIN_DB" "$TEAQL_TRACE_CHAIN_SHARED_DB" "$TEAQL_TRACE_CHAIN_PAGE_STREAM_DB"; do
+  if [[ "$TEAQL_TRACE_CHAIN_AGGREGATE_DB" == "$other_db" ]]; then
+    echo 'FAIL: aggregate fixture requires its own retained database' >&2
+    exit 1
+  fi
+done
 export PYTHONPATH="$example/lib:$repo/src${PYTHONPATH:+:$PYTHONPATH}"
 snapshot="$(mktemp)"
 (cd "$example/lib" && rg --files --hidden -g '!**/__pycache__/**' | LC_ALL=C sort | xargs -d '\n' sha256sum) > "$snapshot"
@@ -41,6 +51,8 @@ for attempt in first second; do
   rg -Fq 'PASS: Python shared ownership 4 scenarios' "$run_log"
   echo "Page/stream $attempt on $TEAQL_TRACE_CHAIN_PAGE_STREAM_DB without cleanup"
   python "$example/page_stream.py"
+  echo "Aggregate $attempt on $TEAQL_TRACE_CHAIN_AGGREGATE_DB without cleanup"
+  python "$example/relation_aggregate.py"
 done
 (cd "$example/lib" && sha256sum --check "$snapshot")
 echo "PASS: two runs on the same database; generated library hashes unchanged"

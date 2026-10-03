@@ -9,6 +9,12 @@ Child entity: `payment`
 | Capability | Generated API |
 | --- | --- |
 | Select | `.select_payment_list()`, `.select_payment_list_with(child_request)` |
+| Related count | `.count_payments_as(alias)` |
+| Filtered related count | `.count_payments_with(alias, child_request)` |
+| Read related count | `entity.query_projection(alias)`; missing raises `KeyError` |
+| Check projection presence | `entity.has_query_projection(alias)`; null and zero remain present |
+
+Related counts are query-only projections, not modeled fields or mutation setters. Use a dedicated child request for the aggregate; do not reuse it as a row selection. An alias has no generated E accessor; use E for modeled fields and loaded relations. List and nested loaded entities carry projections; scalar-only streaming rejects relation aggregates. Choose aliases that do not collide with model fields or relations. Projection reads never perform database I/O and returned mutable values are isolated copies.
 
 Reverse relations are model-derived and never perform an implicit database query. Select the relation explicitly before expression access. Apply query methods before the executable purpose stage, then execute with exactly one trusted context.
 

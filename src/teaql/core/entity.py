@@ -29,6 +29,22 @@ class _LoadedScalarSnapshot:
         return self.select(name for name in self.__values if name not in ('id', 'version'))
 
 
+class _QueryProjectionSnapshot:
+    """Owned query-only aliases; never entity attributes or mutation payloads."""
+
+    def __init__(self, values, modeled_names):
+        excluded = frozenset(modeled_names)
+        self.__values = {name: deepcopy(value) for name, value in values.items()
+                         if name not in excluded}
+
+    def contains(self, alias):
+        return alias in self.__values
+
+    def get(self, alias):
+        # Missing is not zero/None. Return an owned value, not a writable alias.
+        return deepcopy(self.__values[alias])
+
+
 class EntityChangeSet:
     """Final pending field values grouped by stable entity identity."""
 
