@@ -399,15 +399,8 @@ class SqlDialect(ABC):
             return self.aggregate_projection(entity, query, params)
             
     def field_log_policy(self, entity, field):
-        from teaql.runtime.log_privacy import credential_name
-        prop = entity.property_by_name(field)
-        if credential_name(field) or (prop and credential_name(prop.column_name_val)):
-            return 'credential'
-        if not entity.audit_mask_fields_declared:
-            return 'unknown'
-        if field in entity.audit_mask_fields_val:
-            return 'masked'
-        return getattr(prop, 'log_policy_val', 'unknown')
+        from teaql.runtime.log_privacy import field_log_policy
+        return field_log_policy(entity, field)
 
     def bind_field(self, params, value, entity, field):
         if isinstance(params, SQLBindings):

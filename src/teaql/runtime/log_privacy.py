@@ -5,7 +5,7 @@ import os
 import re
 import weakref
 from copy import deepcopy
-from dataclasses import fields, is_dataclass, replace
+from dataclasses import dataclass, fields, is_dataclass, replace
 from functools import lru_cache
 
 PLAINTEXT_ENV = "TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS"
@@ -117,7 +117,52 @@ def _is_masked(policy, allow):
     return policy in ('credential', 'unknown') or (not allow and policy != 'plain')
 
 
-def sql_log_projection(entry, *, _intent_source=None, _intent_values=()):
+def field_log_policy(entity, name):
+    """One classification for SQL binds and invocation-owned intent snapshots."""
+    prop = entity.property_by_name(name) if entity else None
+    if credential_name(name) or (prop and credential_name(prop.column_name_val)):
+        return 'credential'
+    if entity is None or not entity.audit_mask_fields_declared:
+        return 'unknown'
+    if name in entity.audit_mask_fields_val:
+        return 'masked'
+    return getattr(prop, 'log_policy_val', 'unknown')
+
+
+@dataclass(frozen=True, repr=False)
+class _MutationIntentPrivacy:
+    # Immutable strings only, no caller-owned Value/map references. This object
+    # belongs to a native invocation or graph session, never to shared Context.
+    bindings: tuple = ()
+
+    def merge(self, other):
+        return _MutationIntentPrivacy(self.bindings + other.bindings)
+
+    def secrets(self, allow):
+        return [text for policy, text in self.bindings if _is_masked(policy, allow)]
+
+    @classmethod
+    def capture(cls, data, resolve_entity):
+        from teaql.core.mutation import MutationRequest
+        if isinstance(data, MutationRequest):
+            data = data._data
+        if isinstance(data, list):
+            result = cls()
+            for child in data:
+                result = result.merge(cls.capture(child, resolve_entity))
+            return result
+        descriptor = resolve_entity(data.entity)
+        bindings = []
+        for values in (getattr(data, 'values', {}), getattr(data, 'old_values', None) or {}):
+            for name, value in values.items():
+                policy = ('credential' if payload_has_credentials(value)
+                          else field_log_policy(descriptor, name))
+                bindings.extend((policy, text) for text in value_strings(value))
+        bindings.extend(('unknown', text) for text in value_strings(getattr(data, 'id', None)))
+        return cls(tuple(bindings))
+
+
+def sql_log_projection(entry, *, _intent_source=None, _intent_values=(), _intent_privacy=None):
     """Source bindings are call-local runtime plumbing, never stored on a log entry."""
     allow = plaintext_enabled() and entry.log_mode != 'masked'
     prior = _projections.get(id(entry))
@@ -129,12 +174,12 @@ def sql_log_projection(entry, *, _intent_source=None, _intent_values=()):
         # Entries are mutable. Do not expose the cached safe alternative itself.
         if prior[3] is not None:
             return _remember_projection(deepcopy(prior[3]), False)
-    projected = _project_with_policy(entry, allow, _intent_source, _intent_values)
-    alternative = _project_with_policy(entry, False, _intent_source, _intent_values) if allow else None
+    projected = _project_with_policy(entry, allow, _intent_source, _intent_values, _intent_privacy)
+    alternative = _project_with_policy(entry, False, _intent_source, _intent_values, _intent_privacy) if allow else None
     return _remember_projection(projected, allow, alternative)
 
 
-def _project_with_policy(entry, allow, intent_source, intent_values):
+def _project_with_policy(entry, allow, intent_source, intent_values, intent_privacy=None):
     from teaql.sql.types import DatabaseKind, render_log_sql, _sql_literal
     from teaql.core.value import Value
     supplied = entry.parameter_log_policies
@@ -155,6 +200,8 @@ def _project_with_policy(entry, allow, intent_source, intent_values):
         secrets.extend(text for index, value in enumerate(intent_source.params)
                        if _is_masked(source_policies[index], allow) for text in value_strings(value))
     intent_secrets = secrets + [text for value in intent_values for text in value_strings(value)]
+    if intent_privacy is not None:
+        intent_secrets.extend(intent_privacy.secrets(allow))
     # A copied/changed debug record has lost its reliable private alternative.
     # Its inherited intent may mention values absent from its own SQL bindings.
     unknown_debug_intent = not allow and entry.log_mode == 'debug-plaintext' and intent_source is None

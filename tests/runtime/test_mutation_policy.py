@@ -65,13 +65,15 @@ class RecordingTransaction:
     def __init__(self, owner):
         self.owner = owner
         self.executor = object.__new__(SqlDataServiceExecutor)
+        from teaql.provider.sqlite import SimpleSchemaProvider
+        self.executor.schema_provider = SimpleSchemaProvider()
         self.executor._sync_generated_schema = lambda context: None
         self.executor._mutate = self._mutate
 
     async def mutate(self, context, request):
         return await self.executor.mutate(context, request)
 
-    async def _mutate(self, context, request):
+    async def _mutate(self, context, request, privacy=None):
         self.owner.mutations += 1
         command = request._data
         await context.send_audit_event(RawAuditEvent(

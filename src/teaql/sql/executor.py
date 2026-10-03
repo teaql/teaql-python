@@ -248,7 +248,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         )
 
     def _record_statement(self, context, request, compiled, started_at, operation,
-                          outcome, result_count=None, affected_rows=None):
+                          outcome, result_count=None, affected_rows=None, intent_privacy=None):
         """Project through context; never attach driver exceptions to diagnostics."""
         query = operation == DataServiceOperation.Query
         entity = request.query.entity if query else request._data.entity
@@ -294,11 +294,12 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                             if getattr(prop, '_is_id', False) or getattr(prop, 'is_id_val', False)), None)
                         if id_property is not None:
                             target_id = getattr(request._data, 'values', {}).get(id_property.name)
-                if source is None and target_id is None:
+                if source is None and target_id is None and intent_privacy is None:
                     context.record_metadata_log(metadata)
                 else:
                     context._record_metadata_log(metadata, intent_source=source,
-                        intent_values=() if target_id is None else (target_id,))
+                        intent_values=() if target_id is None else (target_id,),
+                        intent_privacy=intent_privacy)
             except Exception:
                 # A broken diagnostic destination must not replace an in-flight
                 # driver failure, cancellation or generator close.
@@ -772,16 +773,23 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             else _NoopContextManager()
         )
         with scope:
+            from teaql.runtime.log_privacy import _MutationIntentPrivacy
+            def descriptor(name):
+                return self.schema_provider.get_entity(name) or (context.entity(name) if context else None)
+            privacy = _MutationIntentPrivacy.capture(request, descriptor)
+            session = getattr(context, '_graph_session', None)
+            if session is not None:
+                privacy = session._intent_privacy.merge(privacy)
             return await observe_runtime_operation(
                 telemetry,
                 RuntimeOperation("mutation", f"{entity}.{kind}", {
                     "teaql.entity.type": entity,
                     "teaql.mutation.kind": kind,
                 }),
-                lambda: self._mutate(context, request),
+                lambda: self._mutate(context, request, privacy),
             )
 
-    async def _mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
+    async def _mutate(self, context: 'UserContext', request: MutationRequest, privacy=None) -> MutationResult:
         request.validate()
         if isinstance(self.transport, SqlTransactionTransport):
             transaction = await self.transport.begin_sql()
@@ -789,7 +797,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             from teaql.runtime.audit import _CommittedAuditJournal
             journal = _CommittedAuditJournal(context) if context is not None else None
             try:
-                result = await executor._mutate(journal.context if journal else context, request)
+                result = await executor._mutate(journal.context if journal else context, request, privacy)
                 await transaction.commit_sql()
             except BaseException:
                 if journal:
@@ -814,7 +822,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 child_request = (child.with_root_intent(request.intent)
                     if isinstance(child, MutationRequest) else
                     MutationRequest(child, comment=request.intent.comment))
-                results.append(await self._mutate(context, child_request))
+                results.append(await self._mutate(context, child_request, privacy))
             affected = sum(result.affected_rows for result in results)
             return MutationResult(affected, {}, ExecutionMetadata(
                 backend=self._backend_name(), operation=DataServiceOperation.Batch,
@@ -896,12 +904,13 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             )
         except BaseException as e:
             self._record_statement(context, request, compiled, start, operation,
-                                   'cancelled' if isinstance(e, asyncio.CancelledError) else 'failure')
+                                   'cancelled' if isinstance(e, asyncio.CancelledError) else 'failure',
+                                   intent_privacy=privacy)
             if isinstance(e, Exception):
                 raise TransportError(e) from e
             raise
         metadata = self._record_statement(context, request, compiled, start, operation,
-                                          'success', affected_rows=affected_rows)
+                                          'success', affected_rows=affected_rows, intent_privacy=privacy)
 
         generated_values = {}
         if op == "insert" and last_insert_id:
@@ -954,11 +963,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         f"expected one authoritative persisted row for {req_data.entity}, got {len(persisted_rows)}"))
             except BaseException as error:
                 self._record_readback(context, readback, compiled, metadata, read_start,
-                                      persisted_rows, error)
+                                      persisted_rows, error, privacy)
                 raise
             persisted_record = persisted_rows[0]
             read_metadata = self._record_readback(context, readback, compiled, metadata,
-                                                  read_start, persisted_rows, None)
+                                                  read_start, persisted_rows, None, privacy)
             metadata = replace(metadata, statements=(metadata, read_metadata))
 
         if affected_rows > 0 and context is not None:
@@ -989,6 +998,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 context.user_identifier(),
                 context.get_resource("bootstrapCategory"),
                 context.current_mutation_governance(),
+                _intent_privacy=privacy,
             ))
         return MutationResult(
             affected_rows=affected_rows,
@@ -997,7 +1007,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             persisted_record=persisted_record,
         )
 
-    def _record_readback(self, context, readback, source, write_metadata, started_at, rows, error):
+    def _record_readback(self, context, readback, source, write_metadata, started_at, rows, error, privacy=None):
         # A driver returning zero/multiple rows succeeded as SQL; validation of
         # the authoritative snapshot is a separate business failure.
         outcome = ('success' if rows is not None else 'cancelled'
@@ -1013,7 +1023,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             return metadata
         try:
             context._record_metadata_log(metadata, intent_source=source,
-                intent_values=tuple(readback.params[:1]))
+                intent_values=tuple(readback.params[:1]), intent_privacy=privacy)
         except BaseException:
             # An in-flight readback error must survive a diagnostic sink failure.
             pass

@@ -813,6 +813,11 @@ class UserContext:
         """Check/fix and snapshot one operation for whole-graph policy review."""
         self.check_and_fix_mutation(mutation)
         self._mutation_policy.record_preflight(mutation)
+        if self._graph_session is not None:
+            from .log_privacy import _MutationIntentPrivacy
+            session = self._graph_session
+            session._intent_privacy = session._intent_privacy.merge(
+                _MutationIntentPrivacy.capture(mutation, self.entity))
 
     def mutation_policy_execution(self, request: Any):
         """Provider boundary scope; entered after validation and before mutation."""
@@ -897,7 +902,7 @@ class UserContext:
     def record_metadata_log(self, metadata: Any):
         self._record_metadata_log(metadata)
 
-    def _record_metadata_log(self, metadata: Any, *, intent_source=None, intent_values=()):
+    def _record_metadata_log(self, metadata: Any, *, intent_source=None, intent_values=(), intent_privacy=None):
         """Internal statement plumbing: source bindings never reach sinks/buffers."""
         op = SqlLogOperation.Select
         op_str = str(getattr(metadata, 'operation', '')).lower()
@@ -939,7 +944,8 @@ class UserContext:
             entry.result_summary = f"{entry.affected_rows} rows affected"
 
         from .log_privacy import sql_log_projection
-        entry = sql_log_projection(entry, _intent_source=intent_source, _intent_values=intent_values)
+        entry = sql_log_projection(entry, _intent_source=intent_source, _intent_values=intent_values,
+                                   _intent_privacy=intent_privacy)
         logs = self.sql_logs()
         logs.append(entry)
         self._resources["sql_logs"] = logs

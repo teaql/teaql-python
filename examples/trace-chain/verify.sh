@@ -29,6 +29,8 @@ snapshot="$(mktemp)"
 for attempt in first second; do
   echo "Run $attempt on $TEAQL_TRACE_CHAIN_DB without cleanup"
   python "$example/main.py"
+  echo "Mutation privacy $attempt on $TEAQL_TRACE_CHAIN_DB without cleanup"
+  python "$example/mutation_privacy.py"
   echo "Ownership $attempt on $TEAQL_TRACE_CHAIN_SHARED_DB without cleanup"
   run_log="$(mktemp -t teaql-python-shared.XXXXXX.log)"
   env -u TEAQL_TRACE_CHAIN_SCENARIO TEAQL_TRACE_CHAIN_DB="$TEAQL_TRACE_CHAIN_SHARED_DB" \

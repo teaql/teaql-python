@@ -20,6 +20,8 @@ class GraphCommittedError(RuntimeError):
 
 class GraphMutationSession:
     def __init__(self, context, transaction, intent: MutationIntent):
+        from .log_privacy import _MutationIntentPrivacy
+        self._intent_privacy = _MutationIntentPrivacy()
         self.intent = intent
         self.transaction = transaction
         self._owner = object()
@@ -108,6 +110,8 @@ class GraphMutationSession:
         return tuple(failures)
 
     def close(self):
+        from .log_privacy import _MutationIntentPrivacy
+        self._intent_privacy = _MutationIntentPrivacy()
         self._active = False
         self.context._mutation_policy.end_graph()
         self.context.finish_fix_evidence()

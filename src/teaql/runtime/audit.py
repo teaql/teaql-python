@@ -28,6 +28,7 @@ class RawAuditEvent:
     actor: Optional[str] = None
     category: Optional[str] = None
     mutation_governance: Any = None
+    _intent_privacy: Any = field(default=None, repr=False, compare=False)
 
     def safe(self, mask_fields: List[str], max_length: Optional[int]) -> "SafeAuditEvent":
         from .log_privacy import REDACTED, credential_name, payload_has_credentials, plaintext_enabled, scrub, value_strings
@@ -50,6 +51,8 @@ class RawAuditEvent:
                 value = "*" * max_length if max_length <= 3 else value[:max_length - 3] + "..."
             fields.append(SafeAuditField(change.field, value, masked, truncated))
         intent_values = secrets + value_strings(self.entity_id)
+        if self._intent_privacy is not None:
+            intent_values.extend(self._intent_privacy.secrets(allow))
         return SafeAuditEvent(
             self.kind, self.entity, self.entity_id, scrub(tuple(fields), secrets), scrub(self.trace_chain, intent_values),
             scrub(self.actor, intent_values), self.category, self.mutation_governance,

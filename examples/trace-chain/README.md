@@ -12,7 +12,7 @@ cd /path/to/teaql-python
 bash examples/trace-chain/verify.sh
 ```
 
-The verifier uses this repository's runtime source and executes all three suites
+The verifier uses this repository's runtime source and executes all four suites
 twice without cleanup, then checks the generated library hashes. The normative
 graph and ownership fixtures require separate SQLite files because their graph
 sizes differ. Set `TEAQL_TRACE_CHAIN_DB` and `TEAQL_TRACE_CHAIN_SHARED_DB` to retain
@@ -35,7 +35,18 @@ readback leaves. Readback paths use `Operation(CustomerOrder, query)` and
 and branch responsibility stay in the mutation lineage. Diagnostic SELECT
 switches do not erase the physical result metadata. Native tests cover no-Context
 results, grouped batches, zero affected rows, hard deletes and masked readback
-intent. These checks do not establish whole-graph sibling-value privacy.
+intent.
+
+The mutation privacy suite configures Payment.reference_code as sensitive and
+creates/updates a three-entity graph using generated Q/E/save. Root and sibling
+write/readback intent plus committed safe audit must hide the future child's new
+and old values. Alphabetic canaries avoid false positives from numeric identity
+redaction. Generated E verifies original stored values and versions; the next
+independent query proves there is no ambient privacy on shared Context. Original
+scalar snapshot ownership is implemented in the runtime; generation supplies
+loaded scalar data and advances the snapshot only after successful commit.
+Native tests additionally cover batch/graph rollback, readback cancellation,
+concurrent native batches, debug opt-in, credentials and safe reprojection.
 
 Four additional ownership cases use generated Q/E/save: two independent loaded
 roots share the same provider-returned Platform record without sharing mutable

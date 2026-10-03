@@ -15,6 +15,16 @@ class EntityKey:
             raise ValueError("entity type is required")
 
 
+class _LoadedScalarSnapshot:
+    """Generated plumbing: owned original scalars, not a mutable graph ledger."""
+
+    def __init__(self, values):
+        self.__values = deepcopy(values)
+
+    def select(self, fields):
+        return {name: deepcopy(self.__values[name]) for name in fields if name in self.__values}
+
+
 class EntityChangeSet:
     """Final pending field values grouped by stable entity identity."""
 

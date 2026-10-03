@@ -166,6 +166,111 @@ async def test_query_log_switch_does_not_remove_physical_readback_result(tmp_pat
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('graph', [False, True])
+@pytest.mark.parametrize('failure', [None, 'read-error', 'cancelled'])
+async def test_future_child_values_cannot_escape_root_intent(tmp_path, graph, failure):
+    import asyncio
+    from teaql.core.mutation import UpdateCommand
+    from teaql.core.value import Value
+    context, service, transport, entries = await fixture(tmp_path)
+    context.entity('Payment').audit_mask_fields(['name'])
+    service.schema_provider.get_entity('Payment').audit_mask_fields(['name'])
+    audits = []
+    context.with_app_audit_event_sink(SimpleNamespace(on_safe_event=lambda _, event: audits.append(event)))
+    secret, old = 'PRIVATE-FUTURE-CHILD-VALUE', 'PRIVATE-OLD-CHILD-VALUE'
+    comment = f'authorize graph containing {secret} replacing {old}'
+    root = InsertCommand.new('CustomerOrder').value('name', 'public root')
+    child = UpdateCommand.new('Payment', 1).expected_version(1).value('name', secret)
+    child.old_values = {'name': Value.from_any(old)}
+    async with aiosqlite.connect(transport.db_path) as database:
+        await database.execute('UPDATE payment_data SET name=? WHERE id=1', (old,))
+        await database.commit()
+    if failure:
+        transport.fail_table = 'payment_data'
+        if failure == 'cancelled':
+            transport.failure = asyncio.CancelledError()
+    async def execute():
+        if graph:
+            context.insert_resource('dataService', service)
+            async def work(session):
+                for command in (root, child):
+                    session.context.preflight_mutation(command)
+                for command in (root, child):
+                    await session.transaction.mutate(session.context, MutationRequest(command, comment=comment))
+            await context.execute_graph_save(work, comment=comment)
+        else:
+            await service.mutate(context, MutationRequest.Batch([root, child], comment=comment))
+    if failure:
+        with pytest.raises(type(transport.failure)) as caught:
+            await execute()
+        assert caught.value is transport.failure
+    else:
+        await execute()
+    assert len(entries) == 4 and len(audits) == (0 if failure else 2)
+    assert entries[-1].execution_outcome == (
+        'cancelled' if failure == 'cancelled' else 'failure' if failure else 'success')
+    for value in (secret, old):
+        assert value not in repr(entries)
+        assert value not in repr(context.sql_logs())
+        assert value not in repr(audits)
+    async with aiosqlite.connect(transport.db_path) as database:
+        row = await (await database.execute('SELECT name, version FROM payment_data WHERE id=1')).fetchone()
+        assert row == ((old, 1) if failure else (secret, 2))
+    await service.query(context, QueryRequest(SelectQuery('CustomerOrder').limit(1),
+        _comment=f'independent {secret} {old}', _purpose='verify privacy does not outlive its invocation'))
+    assert secret in entries[-1].comment and old in entries[-1].comment
+
+
+@pytest.mark.asyncio
+async def test_concurrent_native_batches_own_distinct_privacy(tmp_path):
+    import asyncio
+    context, service, transport, entries = await fixture(tmp_path)
+    context.configure_audit_policy('Payment', ['name'])
+    secrets = ['FIRST-PRIVATE-PAYMENT', 'SECOND-PRIVATE-PAYMENT']
+    groups = ['alpha', 'beta']
+    async def save(index):
+        own, other = secrets[index], secrets[1 - index]
+        return await service.mutate(context, MutationRequest.Batch([
+            InsertCommand.new('CustomerOrder').value('name', f'public root {index}'),
+            InsertCommand.new('Payment').value('name', own).value('parent_id', 1),
+        ], comment=f'group-{groups[index]} protects {own} unrelated {other}'))
+    results = await asyncio.gather(save(0), save(1))
+    assert all(result.affected_rows == 2 for result in results)
+    assert len(entries) == 8
+    for index in range(2):
+        own_logs = [entry for entry in entries if entry.comment.startswith(f'group-{groups[index]}')]
+        assert len(own_logs) == 4
+        assert all(secrets[index] not in entry.comment and secrets[1-index] in entry.comment for entry in own_logs)
+
+
+@pytest.mark.asyncio
+async def test_inherited_debug_opt_in_keeps_credentials_hidden_and_can_reproject(tmp_path, monkeypatch):
+    from teaql.runtime.log_privacy import PLAINTEXT_ENV, PLAINTEXT_ACK, sql_log_projection
+    context, service, transport, entries = await fixture(tmp_path)
+    descriptor = context.entity('Payment')
+    descriptor.audit_mask_fields(['name'])
+    descriptor.property(PropertyDescriptor('password_hash', DataType.Text))
+    async with aiosqlite.connect(transport.db_path) as database:
+        await database.execute('ALTER TABLE payment_data ADD COLUMN password_hash TEXT')
+        await database.commit()
+    audits = []
+    context.with_app_audit_event_sink(SimpleNamespace(on_safe_event=lambda _, event: audits.append(event)))
+    business, credential = 'DEBUG-BUSINESS-CANARY', 'CREDENTIAL-NEVER-PUBLIC'
+    monkeypatch.setenv(PLAINTEXT_ENV, PLAINTEXT_ACK)
+    await service.mutate(context, MutationRequest.Batch([
+        InsertCommand.new('CustomerOrder').value('name', 'root'),
+        InsertCommand.new('Payment').value('name', business).value('password_hash', credential).value('parent_id', 1),
+    ], comment=f'authorize {business} with {credential}'))
+    assert len(entries) == 4 and len(audits) == 2
+    assert all(business in entry.comment and 'EXPLICIT OPT-IN' in entry.debug_sql for entry in entries)
+    assert credential not in repr(entries) + repr(audits)
+    monkeypatch.delenv(PLAINTEXT_ENV)
+    for entry in entries:
+        safe = sql_log_projection(entry)
+        assert business not in repr(safe) and credential not in repr(safe)
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('failure', [False, True])
 async def test_three_real_relation_levels_keep_origin_and_qualified_frames(tmp_path, failure):
     context, service, transport, entries = await fixture(tmp_path)
