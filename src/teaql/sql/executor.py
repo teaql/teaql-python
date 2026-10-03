@@ -37,9 +37,25 @@ _id_set_build_locks_guard = threading.RLock()
 
 class _QueryWithLogIntent(QueryRequest):
     """Invocation-local compiler plumbing, excluded from dataclass/wire fields."""
-    def __init__(self, query, trace_chain, comment, purpose, source, origin_entity=None):
+    def __init__(self, query, trace_chain, comment, purpose, source, origin_entity=None, assembly=None):
         super().__init__(query, trace_chain, comment, purpose, _origin_entity=origin_entity)
         self._log_intent_source = source
+        self._relation_assembly = assembly
+
+
+class _RelationAssembly:
+    """One derived load owns scalar keys; never attach them to result records."""
+    def __init__(self, field):
+        self.field = field
+        self.keys = {}
+
+    def capture(self, rows):
+        self.keys = {id(row): row.get(self.field) for row in rows}
+
+    def key(self, row):
+        # Hydration mutates these same row dictionaries. Reordering (ID-set
+        # paging) is fine, but a replacement must not silently drop membership.
+        return self.keys[id(row)]
 
 
 def _intent_bindings(compiled, request):
@@ -379,6 +395,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
 
     async def _query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
         request.validate()
+        assembly = getattr(request, '_relation_assembly', None)
         request = request.with_query(request.query)
         self._sync_generated_schema(context)
         request.query.prepare_for_list()
@@ -441,10 +458,17 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         metadata = self._record_statement(context, request, compiled, start,
                                           DataServiceOperation.Query, 'success', result_count=len(rows))
 
+        if assembly is not None:
+            assembly.capture(rows)
+        # All local identities are captured before aggregate aliases or sibling
+        # hydration can replace record fields.
+        parent_keys = {relation.local_key: [row.get(relation.local_key) for row in rows]
+                       for load in request.query.relations
+                       if (relation := entity_desc.relation_by_name(load.name)) is not None}
         # Forward hydration may replace a scalar membership key with an object.
         # Compute related aggregates while those keys still identify their rows.
         await self._enhance_relation_aggregates(context, rows, request, source)
-        await self._enhance_relations(context, rows, request, source)
+        await self._enhance_relations(context, rows, request, source, parent_keys)
         if retained_order:
             by_id = {int(row["id"]): row for row in rows if row.get("id") is not None}
             rows = [by_id[entity_id] for entity_id in retained_order if entity_id in by_id]
@@ -593,19 +617,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                  _canonical_id_set_value(normalized))
         return "teaql:id-set:v1:" + hashlib.sha256(repr(scope).encode("utf-8")).hexdigest()
 
-    @staticmethod
-    def _relation_key(row, descriptor, field):
-        value = row.get(field)
-        # A selected forward relation can occupy its scalar storage field. Read
-        # the declared target key, never guess that every referenced key is id.
-        relation = descriptor.relation_by_name(field) if descriptor else None
-        if (isinstance(value, dict) and relation is not None
-                and not relation.is_many and relation.local_key == field):
-            return value.get(relation.foreign_key)
-        return value
-
     async def _enhance_relations(self, context, parents: List[Dict[str, Any]], request: QueryRequest,
-                                 intent_source=None) -> None:
+                                 intent_source, parent_keys) -> None:
         query = request.query
         if not parents or not query.relations:
             return
@@ -624,8 +637,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 relation = parent_desc.relation_by_name(load.name)
                 if relation is None:
                     raise CompileError(SqlCompileError(f"missing relation: {query.entity}.{load.name}"))
-                parent_ids = [self._relation_key(row, parent_desc, relation.local_key)
-                              for row in parents if relation.local_key in row]
+                local_keys = parent_keys[relation.local_key]
+                parent_ids = [key for key in local_keys if key is not None]
                 child_query = deepcopy(load.query) if load.query is not None else SelectQuery(relation.target_entity)
                 child_query.entity = relation.target_entity
                 if relation.foreign_key not in child_query.projection:
@@ -641,6 +654,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 )
                 if use_probes:
                     children = []
+                    child_keys = []
                     for parent_id in parent_ids:
                         probe = deepcopy(child_query)
                         probe.partition_by = None
@@ -650,9 +664,12 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         child_trace = [*request.trace_chain, TraceNode(
                             kind="relation", name=load.name,
                             comment=f"{query.entity}.{load.name}")]
-                        children.extend((await self.query(context, _QueryWithLogIntent(
+                        assembly = _RelationAssembly(relation.foreign_key)
+                        loaded = (await self.query(context, _QueryWithLogIntent(
                             probe, child_trace, request._comment, request._purpose, intent_source,
-                            request.origin_entity))).rows)
+                            request.origin_entity, assembly))).rows
+                        children.extend(loaded)
+                        child_keys.extend(assembly.key(row) for row in loaded)
                     selected_plan = "bounded_probes"
                     probe_count = len(parent_ids)
                 else:
@@ -664,19 +681,20 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     child_trace = [*request.trace_chain, TraceNode(
                         kind="relation", name=load.name,
                         comment=f"{query.entity}.{load.name}")]
+                    assembly = _RelationAssembly(relation.foreign_key)
                     children = (await self.query(context, _QueryWithLogIntent(
                         child_query, child_trace, request._comment, request._purpose, intent_source,
-                        request.origin_entity))).rows
+                        request.origin_entity, assembly))).rows
+                    child_keys = [assembly.key(row) for row in children]
                     selected_plan = "window" if limited else "batch"
                     probe_count = 0
                 for child in children:
                     child.pop("__teaql_partition_rank", None)
                 buckets: Dict[Any, List[Dict[str, Any]]] = {}
-                child_desc = self.schema_provider.get_entity(relation.target_entity)
-                for child in children:
-                    buckets.setdefault(self._relation_key(child, child_desc, relation.foreign_key), []).append(child)
-                for parent in parents:
-                    related = buckets.get(self._relation_key(parent, parent_desc, relation.local_key), [])
+                for key, child in zip(child_keys, children):
+                    buckets.setdefault(key, []).append(child)
+                for key, parent in zip(local_keys, parents):
+                    related = buckets.get(key, [])
                     parent[load.name] = related if relation.is_many else (related[0] if related else None)
                 relation_scope.success({
                     "teaql.result.cardinality": len(children),

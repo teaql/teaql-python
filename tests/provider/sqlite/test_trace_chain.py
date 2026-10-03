@@ -361,12 +361,14 @@ async def test_unexecuted_aggregate_provenance_does_not_modify_query_builders(tm
 @pytest.mark.asyncio
 @pytest.mark.parametrize('nested', [False, True])
 @pytest.mark.parametrize('logging', [False, True])
-async def test_loaded_forward_key_remains_usable_by_relation_aggregate(tmp_path, nested, logging):
+@pytest.mark.parametrize('reference', ['visible', 'filtered', 'filtered_with_sibling'])
+async def test_loaded_forward_key_remains_usable_by_relation_aggregate(tmp_path, nested, logging, reference):
     from teaql.core.query import RelationAggregate
     from teaql.core.mutation import UpdateCommand
     context, service, transport, entries = await fixture(tmp_path)
     descriptor = service.schema_provider.get_entity('Payment')
     descriptor.relation(RelationDescriptor('parent_id', 'CustomerOrder').local('parent_id').foreign('id'))
+    descriptor.relation(RelationDescriptor('parent_again', 'CustomerOrder').local('parent_id').foreign('id'))
     service.schema_provider.get_entity('CustomerOrder').audit_mask_fields(['name'])
     secret = 'PRIVATE-AGGREGATE-PARENT'
     await service.mutate(context, MutationRequest(UpdateCommand.new('CustomerOrder', 1)
@@ -376,8 +378,13 @@ async def test_loaded_forward_key_remains_usable_by_relation_aggregate(tmp_path,
     transport.reads.clear()
     if not logging:
         context.disable_select_sql_log()
+    forward = SelectQuery('CustomerOrder').project('id', 'name').limit(1)
+    if reference != 'visible':
+        forward.filter(Expr.eq('name', 'not-visible'))
     child = (SelectQuery('Payment').project('id', 'parent_id').limit(1)
-             .relation_query('parent_id', SelectQuery('CustomerOrder').project('id', 'name').limit(1)))
+             .relation_query('parent_id', forward))
+    if reference == 'filtered_with_sibling':
+        child.relation_query('parent_again', SelectQuery('CustomerOrder').project('id', 'name').limit(1))
     child.relation_aggregates.append(RelationAggregate('parent_id', 'parent_count',
         SelectQuery('CustomerOrder').filter(Expr.eq('name', secret)).count('n'), True))
     query = (SelectQuery('CustomerOrder').project('id').limit(1).relation_query('children', child)
@@ -386,8 +393,13 @@ async def test_loaded_forward_key_remains_usable_by_relation_aggregate(tmp_path,
                                                      _purpose='verify composed aggregate ancestry'))
     row = result.rows[0]['children'][0] if nested else result.rows[0]
     assert row['parent_count'] == 1
-    assert row['parent_id']['name'] == secret
-    assert len(transport.reads) == (4 if nested else 3)
+    if reference == 'visible':
+        assert row['parent_id']['name'] == secret
+    else:
+        assert row['parent_id'] is None
+    if reference == 'filtered_with_sibling':
+        assert row['parent_again']['name'] == secret
+    assert len(transport.reads) == (4 if nested else 3) + (reference == 'filtered_with_sibling')
     if logging:
         assert len(entries) == len(transport.reads)
         assert all(secret not in entry.comment for entry in entries)
@@ -418,13 +430,16 @@ async def test_scalar_stream_rejects_relation_aggregate_before_provider(tmp_path
     assert transport.streams == [] and transport.reads == [] and entries == []
 
 
-def test_hydrated_relation_key_uses_declared_target_not_assumed_id():
-    descriptor = EntityDescriptor('Stock')
-    descriptor.relation(RelationDescriptor('sku', 'Product').local('sku').foreign('code'))
-    row = {'sku': {'id': 999, 'code': 'SKU-A'}}
-    assert SqlDataServiceExecutor._relation_key(row, descriptor, 'sku') == 'SKU-A'
-    assert row == {'sku': {'id': 999, 'code': 'SKU-A'}}
-    assert SqlDataServiceExecutor._relation_key({'sku': 'SKU-A'}, descriptor, 'sku') == 'SKU-A'
+def test_relation_assembly_keeps_original_text_key_after_hydration_or_filtering():
+    from teaql.sql.executor import _RelationAssembly
+    row = {'sku': 'SKU-A'}
+    capture = _RelationAssembly('sku')
+    capture.capture([row])
+    row['sku'] = {'id': 999, 'code': 'SKU-A'}
+    assert capture.key(row) == 'SKU-A'
+    row['sku'] = None
+    assert capture.key(row) == 'SKU-A'
+    assert row == {'sku': None}
 
 
 @pytest.mark.asyncio

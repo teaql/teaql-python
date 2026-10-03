@@ -142,6 +142,13 @@ only a modeled field. An alias named `save` cannot replace the save method.
 Regenerate libraries to acquire this projection API; related aggregate streaming
 remains unsupported and rejects before provider I/O.
 
+Relation attachment retains original scalar keys in invocation-local runtime
+state. It does not infer membership from hydrated objects: a forward reference
+filtered to `None` must not remove its child from a separately loaded parent
+list, and a later sibling can still load using the same FK. Keys are not added
+to returned records or mutation payloads. Native SQLite cases exercise these
+boundaries with related counts, nested ancestry and logging both on and off.
+
 This is local-source/generated-consumer evidence, not complete Trace Chain.
 Prepared-batch grouping, generated ledger overrides, complete entry-point and
 inherited mutation privacy coverage, successful readback diagnostic alignment,
