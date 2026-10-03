@@ -1,4 +1,6 @@
 """Native SQLite observations; no expected trace frames are supplied to requests."""
+import asyncio
+import re
 from types import SimpleNamespace
 
 import aiosqlite
@@ -274,6 +276,75 @@ async def test_inherited_debug_opt_in_keeps_credentials_hidden_and_can_reproject
     for entry in entries:
         safe = sql_log_projection(entry)
         assert business not in repr(safe) and credential not in repr(safe)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+async def test_two_live_query_graphs_keep_independent_intent(tmp_path, monkeypatch, logging):
+    context, service, transport, entries = await fixture(tmp_path)
+    if not logging:
+        context.disable_select_sql_log()
+    entered, release = asyncio.Event(), asyncio.Event()
+    roots = 0
+    metadata = []
+    fetch = transport.fetch_all_sql
+    record = context._record_metadata_log
+
+    async def pause_real_roots(compiled):
+        nonlocal roots
+        rows = await fetch(compiled)
+        if re.search(r'\bFROM\s+customerorder_data\b', compiled.sql.replace('"', ''), re.IGNORECASE):
+            roots += 1
+            if roots == 2:
+                entered.set()
+            await release.wait()
+        return rows
+
+    def observe(actual, **kwargs):
+        # Observe the runtime's physical-statement metadata unchanged, including
+        # when the diagnostic sink is disabled. Do not supply expected frames.
+        metadata.append(actual)
+        record(actual, **kwargs)
+
+    monkeypatch.setattr(transport, 'fetch_all_sql', pause_real_roots)
+    monkeypatch.setattr(context, '_record_metadata_log', observe)
+    requests = [QueryRequest(three_levels(), _comment=f'load {label} graph',
+                             _purpose=f'render {label} graph') for label in ('alpha', 'beta')]
+    pending = [asyncio.create_task(service.query(context, request)) for request in requests]
+    ready = asyncio.create_task(entered.wait())
+    try:
+        done, _ = await asyncio.wait([ready, *pending], timeout=5,
+                                     return_when=asyncio.FIRST_COMPLETED)
+        assert ready in done, 'both root SQL calls must overlap before either query finishes'
+        assert roots == 2 and not any(task.done() for task in pending)
+        assert metadata == entries == []
+        assert [request.intent.comment for request in requests] == ['load alpha graph', 'load beta graph']
+        release.set()
+        results = await asyncio.wait_for(asyncio.gather(*pending), timeout=5)
+        assert all(result.rows[0]['children'][0]['children'][0]['children'][0]['id'] == 1
+                   for result in results)
+        assert len(transport.reads) == len(metadata) == 8
+        assert len(entries) == (8 if logging else 0)
+        for observed, path_attr in [(metadata, 'trace_chain'), (entries, 'trace_path')]:
+            for label in ('alpha', 'beta'):
+                own = [entry for entry in observed if entry.comment == f'load {label} graph']
+                assert len(own) == (4 if observed is metadata or logging else 0)
+                for depth, entry in enumerate(own):
+                    assert entry.purpose == f'render {label} graph'
+                    assert entry.execution_outcome == 'success'
+                    nodes = getattr(entry, path_attr)
+                    assert [(node.kind, node.name) for node in nodes] == [
+                        ('operation', 'CustomerOrder'), ('request', 'CustomerOrder'),
+                        *[('relation', 'children')] * depth,
+                        ('provider', 'sqlite'), ('sql', 'select')]
+                    assert [node.comment for node in nodes[2:-2]] == [
+                        'CustomerOrder.children', 'Payment.children', 'PaymentAttempt.children'][:depth]
+    finally:
+        release.set()
+        for task in [ready, *pending]:
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(ready, *pending, return_exceptions=True)
 
 
 @pytest.mark.asyncio
