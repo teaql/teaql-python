@@ -473,50 +473,71 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             by_id = {int(row["id"]): row for row in rows if row.get("id") is not None}
             rows = [by_id[entity_id] for entity_id in retained_order if entity_id in by_id]
 
+        facets = await self._query_facets(context, request, entity_desc)
+        return QueryResult(rows=rows, metadata=metadata, facets=facets)
+
+    async def _query_facets(self, context, request, entity_desc):
+        """Count the current membership, then traverse each owned Facet selection."""
+        from teaql.core.list import SmartList
         facets = {}
         for facet in getattr(request.query, 'facets', []):
+            relation = entity_desc.relation_by_name(facet.relation_name)
+            # Legacy numeric partitions still work, but only model metadata can
+            # identify a relationship or add a logical traversal to the trace.
+            member_field = relation.local_key if relation else facet.relation_name
+            target_field = relation.foreign_key if relation else 'id'
+            if relation and relation.target_entity != facet.query.entity:
+                raise CompileError(SqlCompileError(
+                    f'facet target differs from relation: {request.query.entity}.{facet.relation_name}'))
             membership_query = deepcopy(request.query)
             membership_query.facets = []
             membership_query.relations = []
+            membership_query.relation_aggregates = []
+            membership_query.child_enhancements = []
+            membership_query.object_group_bys = []
+            membership_query.dynamic_properties = []
+            membership_query.raw_projections = []
             membership_query.order_by_items = []
             membership_query.slice = None
+            membership_query.partition_by = None
             membership_query.projection = []
+            membership_query.expr_projection = []
             membership_query.aggregates = [Aggregate(
                 AggregateFunction.Count, "id", "__teaql_facet_count")]
-            membership_query.group_by_items = [facet.relation_name]
+            membership_query.group_by_items = [member_field]
             membership_result = await self._query(context, request.with_query(membership_query))
+            member_property = entity_desc.property_by_name(member_field)
+            member_column = member_property.column_name_val if member_property else member_field
             counts = {
-                str(row[facet.relation_name]): int(row["__teaql_facet_count"])
+                str(row[member_column]): int(row["__teaql_facet_count"])
                 for row in membership_result.rows
-                if row.get(facet.relation_name) is not None
+                if row.get(member_column) is not None
             }
 
             nested_query = deepcopy(facet.query)
-            nested_query.facets = []
             count_aliases = [
                 aggregate.alias for aggregate in nested_query.aggregates
                 if aggregate.function == AggregateFunction.Count
             ]
             nested_query.aggregates = []
             nested_query.group_by_items = []
-            nested_result = await self._query(context, request.with_query(nested_query))
+            nested_request = request.with_query(nested_query)
+            if relation:
+                nested_request.trace_chain.append(TraceNode(
+                    kind='relation', name=facet.relation_name,
+                    comment=f'{request.query.entity}.{facet.relation_name}'))
+            nested_result = await self._query(context, nested_request)
             facet_rows = []
             for row in nested_result.rows:
-                count = counts.get(str(row.get("id")), 0)
+                count = counts.get(str(row.get(target_field)), 0)
                 if not facet.include_all_facets and count == 0:
                     continue
                 decorated = dict(row)
                 for alias in count_aliases or ["count"]:
                     decorated[alias] = count
                 facet_rows.append(decorated)
-            from teaql.core.list import SmartList
-            facets[facet.name] = SmartList(facet_rows)
-        
-        return QueryResult(
-            rows=rows,
-            metadata=metadata,
-            facets=facets
-        )
+            facets[facet.name] = SmartList(facet_rows, facets=nested_result.facets)
+        return facets
 
     async def _prepare_id_set_page(self, context, query: SelectQuery):
         options = getattr(query, "id_set_pagination", None)
@@ -641,6 +662,13 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 parent_ids = [key for key in local_keys if key is not None]
                 child_query = deepcopy(load.query) if load.query is not None else SelectQuery(relation.target_entity)
                 child_query.entity = relation.target_entity
+                # A batched relation SELECT can serve several parents, but its
+                # Facet counts belong to each parent's full filtered membership.
+                # Preserve the finite selection tree while deferring that work
+                # until scalar parent keys have been used to assemble the rows.
+                relation_facets = child_query.facets if relation.is_many else []
+                if relation_facets:
+                    child_query.facets = []
                 if relation.foreign_key not in child_query.projection:
                     child_query.projection.append(relation.foreign_key)
                 limited = child_query.slice is not None and child_query.slice.limit is not None
@@ -652,6 +680,9 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     provider_policy == "always_probe" and threshold is None
                     or threshold is not None and threshold > 0 and len(parent_ids) <= threshold
                 )
+                child_trace = [*request.trace_chain, TraceNode(
+                    kind="relation", name=load.name,
+                    comment=f"{query.entity}.{load.name}")]
                 if use_probes:
                     children = []
                     child_keys = []
@@ -661,9 +692,6 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         probe.and_filter(BinaryExpr(
                             ColumnExpr(relation.foreign_key), BinaryOp.Eq,
                             ValueExpr(Value.from_any(parent_id))))
-                        child_trace = [*request.trace_chain, TraceNode(
-                            kind="relation", name=load.name,
-                            comment=f"{query.entity}.{load.name}")]
                         assembly = _RelationAssembly(relation.foreign_key)
                         loaded = (await self.query(context, _QueryWithLogIntent(
                             probe, child_trace, request._comment, request._purpose, intent_source,
@@ -678,9 +706,6 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
                     if limited:
                         child_query.partition_by_field(relation.foreign_key)
-                    child_trace = [*request.trace_chain, TraceNode(
-                        kind="relation", name=load.name,
-                        comment=f"{query.entity}.{load.name}")]
                     assembly = _RelationAssembly(relation.foreign_key)
                     children = (await self.query(context, _QueryWithLogIntent(
                         child_query, child_trace, request._comment, request._purpose, intent_source,
@@ -695,6 +720,19 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     buckets.setdefault(key, []).append(child)
                 for key, parent in zip(local_keys, parents):
                     related = buckets.get(key, [])
+                    if relation_facets:
+                        from teaql.core.list import SmartList
+                        per_parent = deepcopy(child_query)
+                        per_parent.facets = deepcopy(relation_facets)
+                        per_parent.and_filter(BinaryExpr(
+                            ColumnExpr(relation.foreign_key), BinaryOp.Eq,
+                            ValueExpr(Value.from_any(key))))
+                        facet_request = _QueryWithLogIntent(
+                            per_parent, child_trace, request._comment, request._purpose,
+                            intent_source, request.origin_entity)
+                        child_desc = self.schema_provider.get_entity(relation.target_entity)
+                        related = SmartList(related, facets=await self._query_facets(
+                            context, facet_request, child_desc))
                     parent[load.name] = related if relation.is_many else (related[0] if related else None)
                 relation_scope.success({
                     "teaql.result.cardinality": len(children),

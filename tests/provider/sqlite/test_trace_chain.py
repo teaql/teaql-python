@@ -97,6 +97,122 @@ def three_levels():
                     .relation_query('children', SelectQuery('Shipment').project('id').limit(1)))))
 
 
+def assert_facet_paths(entries, origin, routes, comment='inspect native facets'):
+    assert len(entries) == len(routes)
+    for entry, route in zip(entries, routes):
+        assert entry.comment == comment
+        assert entry.purpose == 'verify original facet ancestry'
+        assert entry.execution_outcome == 'success'
+        assert [(node.kind, node.name, node.comment) for node in entry.trace_path] == [
+            ('operation', origin, 'query'), ('request', origin, ''),
+            *[('relation', name, detail) for name, detail in route],
+            ('provider', 'sqlite', ''), ('sql', 'select', '')]
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('relation_name', ['parent_id', 'owner'])
+async def test_nested_facets_keep_original_route_and_nested_materialization(tmp_path, relation_name):
+    context, service, transport, entries = await fixture(tmp_path)
+    for owner, target in [('PaymentAttempt', 'Payment'), ('Payment', 'CustomerOrder')]:
+        service.schema_provider.get_entity(owner).relation(
+            RelationDescriptor(relation_name, target).local('parent_id').foreign('id'))
+    orders = SelectQuery('CustomerOrder').project('id').limit(10).count('order_count')
+    payments = (SelectQuery('Payment').project('id', 'parent_id').limit(10).count('attempt_count')
+                .facet_by('orders', relation_name, orders))
+    query = (SelectQuery('PaymentAttempt').project('id', 'parent_id').limit(10)
+             .facet_by('payments', relation_name, payments))
+    result = await service.query(context, QueryRequest(query, _comment='inspect native facets',
+        _purpose='verify original facet ancestry'))
+    payment_route = [(relation_name, 'PaymentAttempt.' + relation_name)]
+    order_route = [*payment_route, (relation_name, 'Payment.' + relation_name)]
+    assert len(transport.reads) == 5, 'the nested Facet must actually count and materialize'
+    assert_facet_paths(entries, 'PaymentAttempt', [[], [], payment_route, payment_route, order_route])
+    assert [(row['id'], row['attempt_count']) for row in result.facets['payments']] == [(1, 1)]
+    assert [(row['id'], row['order_count']) for row in
+            result.facets['payments'].facet('orders')] == [(1, 1)]
+    assert query.facets[0].query.facets[0].name == 'orders', 'execution changed the caller Facet tree'
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+@pytest.mark.parametrize('probes', [False, True])
+async def test_loaded_relation_facets_keep_parent_counts_and_empty_results(tmp_path, logging, probes):
+    context, service, transport, entries = await fixture(tmp_path)
+    service.schema_provider.get_entity('PaymentAttempt').relation(
+        RelationDescriptor('parent_id', 'Payment').local('parent_id').foreign('id'))
+    for entity, name, parent in [('Payment', 'empty payment', 1), ('PaymentAttempt', 'second attempt', 1)]:
+        await service.mutate(context, MutationRequest(
+            InsertCommand.new(entity).value('name', name).value('parent_id', parent), comment='seed facet counts'))
+    entries.clear()
+    transport.reads.clear()
+    if not logging:
+        context.disable_sql_log()
+    attempts = (SelectQuery('PaymentAttempt').project('id', 'parent_id').limit(1)
+        .facet_by('payments', 'parent_id', SelectQuery('Payment').project('id').limit(10).count('attempt_count')))
+    attempts.top_n_probe_parent_threshold(10 if probes else 0)
+    query = SelectQuery('Payment').project('id').limit(10).relation_query('children', attempts)
+    result = await service.query(context, QueryRequest(query, _comment='inspect native facets',
+        _purpose='verify original facet ancestry'))
+    assert [row['id'] for row in result.rows] == [1, 2]
+    first, empty = [row['children'] for row in result.rows]
+    assert [row['id'] for row in first] == [1] and empty == []
+    assert hasattr(first, 'facet') and hasattr(empty, 'facet'), 'loaded lists must retain their Facet results'
+    assert [(row['id'], row['attempt_count']) for row in first.facet('payments')] == [(1, 2), (2, 0)]
+    assert [(row['id'], row['attempt_count']) for row in empty.facet('payments')] == [(1, 0), (2, 0)]
+    assert first.facets is not empty.facets
+    child_route = [('children', 'Payment.children')]
+    facet_route = [*child_route, ('parent_id', 'PaymentAttempt.parent_id')]
+    # One relation load (or two bounded probes), then count/materialize once per parent.
+    routes = [[], *([child_route] * (2 if probes else 1)),
+              child_route, facet_route, child_route, facet_route]
+    assert len(transport.reads) == len(routes)
+    if logging:
+        assert_facet_paths(entries, 'Payment', routes)
+    else:
+        assert entries == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('failure', [False, True])
+async def test_nested_facet_intent_privacy_survives_failure_and_next_request(tmp_path, failure):
+    from teaql.core.mutation import UpdateCommand
+    context, service, transport, entries = await fixture(tmp_path)
+    secret = 'PRIVATE-NESTED-FACET'
+    service.schema_provider.get_entity('CustomerOrder').audit_mask_fields(['name'])
+    await service.mutate(context, MutationRequest(UpdateCommand.new('CustomerOrder', 1)
+        .expected_version(1).value('name', secret), comment='seed private facet value'))
+    for owner, target in [('PaymentAttempt', 'Payment'), ('Payment', 'CustomerOrder')]:
+        service.schema_provider.get_entity(owner).relation(
+            RelationDescriptor('owner', target).local('parent_id').foreign('id'))
+    nested = (SelectQuery('Payment').project('id', 'parent_id').limit(10)
+        .facet_by('orders', 'owner', SelectQuery('CustomerOrder').project('id', 'name')
+                  .filter(Expr.eq('name', secret)).limit(10)))
+    query = SelectQuery('PaymentAttempt').project('id').limit(10).facet_by('payments', 'owner', nested)
+    request = QueryRequest(query, _comment='inspect ' + secret, _purpose='verify facet privacy')
+    entries.clear()
+    transport.reads.clear()
+    if failure:
+        transport.fail_table = 'customerorder_data'
+        with pytest.raises(TransportError):
+            await service.query(context, request)
+    else:
+        result = await service.query(context, request)
+        assert result.facets['payments'].facet('orders')[0]['name'] == secret
+    assert len(transport.reads) == len(entries) == 5
+    assert all(secret not in repr(entry) for entry in entries)
+    assert all(entry.trace_path[0].name == 'PaymentAttempt' for entry in entries)
+    assert [(node.name, node.comment) for node in entries[-1].trace_path if node.kind == 'relation'] == [
+        ('owner', 'PaymentAttempt.owner'), ('owner', 'Payment.owner')]
+    assert entries[-1].execution_outcome == ('failure' if failure else 'success')
+    assert request.intent.comment == 'inspect ' + secret
+    assert [value.val for value in transport.reads[-1].params] == [secret], 'diagnostic masking changed a database binding'
+    transport.fail_table = None
+    await service.query(context, QueryRequest(SelectQuery('CustomerOrder').project('id').limit(1),
+        _comment='independent ' + secret, _purpose='verify no inherited Facet privacy'))
+    assert entries[-1].comment == 'independent ' + secret
+    assert len(entries[-1].trace_path) == 4
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize('with_context', [False, True])
 async def test_successful_readback_retains_ordered_physical_metadata(tmp_path, with_context):
