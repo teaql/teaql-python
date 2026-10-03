@@ -21,6 +21,7 @@ class RecordingTransport(SqliteTransport):
     def __init__(self, path):
         super().__init__(path)
         self.reads = []
+        self.streams = []
         self.fail_table = None
         self.failure = RuntimeError('synthetic readback failure')
 
@@ -29,6 +30,11 @@ class RecordingTransport(SqliteTransport):
         if self.fail_table and self.fail_table in compiled.sql:
             raise self.failure
         return await super().fetch_all_sql(compiled)
+
+    async def stream_sql(self, compiled, chunk_size):
+        self.streams.append(compiled)
+        async for chunk in super().stream_sql(compiled, chunk_size):
+            yield chunk
 
     async def begin_sql(self):
         transaction = await super().begin_sql()
@@ -350,6 +356,75 @@ async def test_unexecuted_aggregate_provenance_does_not_modify_query_builders(tm
     assert result.rows == [] and len(entries) == len(transport.reads) == 1
     assert request.query == before and child.slice is None
     assert child.relations[0].query.slice is None
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('nested', [False, True])
+@pytest.mark.parametrize('logging', [False, True])
+async def test_loaded_forward_key_remains_usable_by_relation_aggregate(tmp_path, nested, logging):
+    from teaql.core.query import RelationAggregate
+    from teaql.core.mutation import UpdateCommand
+    context, service, transport, entries = await fixture(tmp_path)
+    descriptor = service.schema_provider.get_entity('Payment')
+    descriptor.relation(RelationDescriptor('parent_id', 'CustomerOrder').local('parent_id').foreign('id'))
+    service.schema_provider.get_entity('CustomerOrder').audit_mask_fields(['name'])
+    secret = 'PRIVATE-AGGREGATE-PARENT'
+    await service.mutate(context, MutationRequest(UpdateCommand.new('CustomerOrder', 1)
+        .expected_version(1).value('name', secret), comment='prepare private relation fixture'))
+    entries.clear()
+    context.clear_sql_logs()
+    transport.reads.clear()
+    if not logging:
+        context.disable_select_sql_log()
+    child = (SelectQuery('Payment').project('id', 'parent_id').limit(1)
+             .relation_query('parent_id', SelectQuery('CustomerOrder').project('id', 'name').limit(1)))
+    child.relation_aggregates.append(RelationAggregate('parent_id', 'parent_count',
+        SelectQuery('CustomerOrder').filter(Expr.eq('name', secret)).count('n'), True))
+    query = (SelectQuery('CustomerOrder').project('id').limit(1).relation_query('children', child)
+             if nested else child)
+    result = await service.query(context, QueryRequest(query, _comment='inspect ' + secret,
+                                                     _purpose='verify composed aggregate ancestry'))
+    row = result.rows[0]['children'][0] if nested else result.rows[0]
+    assert row['parent_count'] == 1
+    assert row['parent_id']['name'] == secret
+    assert len(transport.reads) == (4 if nested else 3)
+    if logging:
+        assert len(entries) == len(transport.reads)
+        assert all(secret not in entry.comment for entry in entries)
+        assert all(entry.purpose == 'verify composed aggregate ancestry' for entry in entries)
+        expected_root = 'CustomerOrder' if nested else 'Payment'
+        assert all(entry.trace_path[0].name == expected_root for entry in entries)
+        aggregate = next(entry for entry in entries if 'COUNT(' in entry.sql.upper())
+        assert [node.name for node in aggregate.trace_path if node.kind == 'relation'] == (
+            ['children', 'parent_id'] if nested else ['parent_id'])
+    else:
+        assert entries == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+async def test_scalar_stream_rejects_relation_aggregate_before_provider(tmp_path, logging):
+    from teaql.core.query import RelationAggregate
+    context, service, transport, entries = await fixture(tmp_path)
+    if not logging:
+        context.disable_select_sql_log()
+    query = SelectQuery('CustomerOrder').project('id').limit(1)
+    query.relation_aggregates.append(RelationAggregate('children', 'child_count', SelectQuery('Payment').count('n'), True))
+    stream = service.query_stream(context, QueryRequest(query, _comment='stream child counts',
+                                                       _purpose='reject unsupported enhancement'), 1)
+    with pytest.raises(ValueError, match='streaming relation or aggregate enhancement is not supported'):
+        async for _ in stream:
+            pytest.fail('unsupported aggregate stream must not yield incomplete rows')
+    assert transport.streams == [] and transport.reads == [] and entries == []
+
+
+def test_hydrated_relation_key_uses_declared_target_not_assumed_id():
+    descriptor = EntityDescriptor('Stock')
+    descriptor.relation(RelationDescriptor('sku', 'Product').local('sku').foreign('code'))
+    row = {'sku': {'id': 999, 'code': 'SKU-A'}}
+    assert SqlDataServiceExecutor._relation_key(row, descriptor, 'sku') == 'SKU-A'
+    assert row == {'sku': {'id': 999, 'code': 'SKU-A'}}
+    assert SqlDataServiceExecutor._relation_key({'sku': 'SKU-A'}, descriptor, 'sku') == 'SKU-A'
 
 
 @pytest.mark.asyncio

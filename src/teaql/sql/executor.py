@@ -316,7 +316,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         return self._query_stream(context, owned, chunk_size)
 
     async def _query_stream(self, context, request: QueryRequest, chunk_size: int):
-        if (request.query.relations or request.query.child_enhancements
+        if (request.query.relations or request.query.relation_aggregates or request.query.child_enhancements
                 or request.query.object_group_bys or request.query.facets):
             raise ValueError(
                 "streaming relation or aggregate enhancement is not supported; "
@@ -441,8 +441,10 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         metadata = self._record_statement(context, request, compiled, start,
                                           DataServiceOperation.Query, 'success', result_count=len(rows))
 
-        await self._enhance_relations(context, rows, request, source)
+        # Forward hydration may replace a scalar membership key with an object.
+        # Compute related aggregates while those keys still identify their rows.
         await self._enhance_relation_aggregates(context, rows, request, source)
+        await self._enhance_relations(context, rows, request, source)
         if retained_order:
             by_id = {int(row["id"]): row for row in rows if row.get("id") is not None}
             rows = [by_id[entity_id] for entity_id in retained_order if entity_id in by_id]
@@ -591,6 +593,17 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                  _canonical_id_set_value(normalized))
         return "teaql:id-set:v1:" + hashlib.sha256(repr(scope).encode("utf-8")).hexdigest()
 
+    @staticmethod
+    def _relation_key(row, descriptor, field):
+        value = row.get(field)
+        # A selected forward relation can occupy its scalar storage field. Read
+        # the declared target key, never guess that every referenced key is id.
+        relation = descriptor.relation_by_name(field) if descriptor else None
+        if (isinstance(value, dict) and relation is not None
+                and not relation.is_many and relation.local_key == field):
+            return value.get(relation.foreign_key)
+        return value
+
     async def _enhance_relations(self, context, parents: List[Dict[str, Any]], request: QueryRequest,
                                  intent_source=None) -> None:
         query = request.query
@@ -611,7 +624,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 relation = parent_desc.relation_by_name(load.name)
                 if relation is None:
                     raise CompileError(SqlCompileError(f"missing relation: {query.entity}.{load.name}"))
-                parent_ids = [row[relation.local_key] for row in parents if relation.local_key in row]
+                parent_ids = [self._relation_key(row, parent_desc, relation.local_key)
+                              for row in parents if relation.local_key in row]
                 child_query = deepcopy(load.query) if load.query is not None else SelectQuery(relation.target_entity)
                 child_query.entity = relation.target_entity
                 if relation.foreign_key not in child_query.projection:
@@ -658,10 +672,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 for child in children:
                     child.pop("__teaql_partition_rank", None)
                 buckets: Dict[Any, List[Dict[str, Any]]] = {}
+                child_desc = self.schema_provider.get_entity(relation.target_entity)
                 for child in children:
-                    buckets.setdefault(child.get(relation.foreign_key), []).append(child)
+                    buckets.setdefault(self._relation_key(child, child_desc, relation.foreign_key), []).append(child)
                 for parent in parents:
-                    related = buckets.get(parent.get(relation.local_key), [])
+                    related = buckets.get(self._relation_key(parent, parent_desc, relation.local_key), [])
                     parent[load.name] = related if relation.is_many else (related[0] if related else None)
                 relation_scope.success({
                     "teaql.result.cardinality": len(children),

@@ -80,6 +80,11 @@ iterators immediately; successful exhaustion and early cancellation retain
 distinct outcomes/cardinalities. Streamed rows own independent ledgers; saving
 one row does not write or clear another row's pending changes. Relation hydration
 is not supported by scalar streaming; use list or page for relation graphs.
+This rejection includes related aggregate enhancements and occurs before opening
+a provider cursor, even with SQL logging disabled. Native SQLite trace tests also
+cover loading and aggregating the same forward relation, nested scalar-key
+recovery and aggregate failure/privacy. These native tests do not yet constitute
+generated Q/E acceptance of related aggregates in this example.
 
 `PAGE_STREAM_OBSERVED` records actual SQL, policy-reviewed operations, commands,
 optimistic versions and safe audits. Native tests additionally cover COUNT
