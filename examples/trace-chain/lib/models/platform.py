@@ -153,11 +153,12 @@ class Platform:
                 original_version if original_version is not None else getattr(self, "version", None))
             for key, value in payload.items():
                 if key not in ("id", "version"): cmd.value(key, value)
-            cmd.old_values = self._teaql_loaded_snapshot.select(payload)
         else:
             original_version = self._entity_root.original_version(self._teaql_entity_key())
             cmd = DeleteCommand("Platform", Value.from_any(getattr(self, "id", None)),
                 original_version if original_version is not None else getattr(self, "version", None))
+        if action != "Create":
+            cmd.old_values = self._teaql_loaded_snapshot.business_values()
         return action, cmd
 
     def _teaql_preflight_graph(self, graph):

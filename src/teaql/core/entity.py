@@ -24,6 +24,10 @@ class _LoadedScalarSnapshot:
     def select(self, fields):
         return {name: deepcopy(self.__values[name]) for name in fields if name in self.__values}
 
+    def business_values(self):
+        """Private provenance includes unchanged loaded scalars, never structural version/ID."""
+        return self.select(name for name in self.__values if name not in ('id', 'version'))
+
 
 class EntityChangeSet:
     """Final pending field values grouped by stable entity identity."""

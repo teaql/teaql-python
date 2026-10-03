@@ -61,6 +61,49 @@ async def main():
         assert secret in context.sql_logs()[-1].comment and old in context.sql_logs()[-1].comment
         print(f'PASS: Python generated mutation privacy {phase}; 3 writes/3 reads/3 audits; independent next request')
 
+    # Deletion binds identity/version, not the private business scalar. Its
+    # loaded original must still protect the whole graph's audit prose.
+    root = await Q.customer_orders().with_id_is(E.customer_order(root).id().eval()).limit(1).select_payment_list_with(
+        Q.payments().limit(2)).comment('reload deletion graph').purpose('retain loaded private scalars').execute_for_one(context)
+    payment = root.payment_list()[0]
+    payment_id = E.payment(payment).id().eval()
+    root.update_description('delete the private payment')
+    payment.mark_for_deletion()
+    reset(service, sink, context)
+    reason = f'delete payment {secret}'
+    await root.audit_as(reason).save(context)
+    assert len(service.requests) == len(sink.events) == 2
+    assert len(context.sql_logs()) == 4
+    assert secret not in repr(context.sql_logs()), 'loaded delete value leaked into SQL intent'
+    assert secret not in repr(sink.events), 'loaded delete value leaked into committed audit'
+    assert all(metadata.comment == reason for metadata in service.results)
+    missing = await Q.payments().with_id_is(payment_id).limit(1).comment('verify deleted payment').purpose(
+        'prove soft delete hides the row').execute_for_one(context)
+    assert missing is None
+    await Q.customer_orders().with_id_is(E.customer_order(root).id().eval()).limit(1).comment(
+        f'independent {secret}').purpose('ensure delete privacy stays invocation-local').execute_for_one(context)
+    assert secret in context.sql_logs()[-1].comment
+    print('PASS: Python generated loaded delete privacy; 2 writes/2 reads/2 audits; independent next request')
+
+    # Changing one field must not lose privacy for another loaded scalar.
+    context.configure_audit_policy('CustomerOrder', ['description'])
+    private_description = 'PRIVATE-DESCRIPTION-' + alphabetic_nonce()
+    root.update_description(private_description)
+    await root.audit_as('prepare unchanged scalar privacy').save(context)
+    root = await Q.customer_orders().with_id_is(E.customer_order(root).id().eval()).limit(1).comment(
+        'load all order fields').purpose('retain an unchanged private description').execute_for_one(context)
+    root.update_order_number(label + '-revised')
+    reset(service, sink, context)
+    await root.audit_as(f'renumber {private_description}').save(context)
+    assert len(service.requests) == len(sink.events) == 1
+    assert private_description not in repr(context.sql_logs()), 'unchanged loaded scalar leaked into SQL intent'
+    assert private_description not in repr(sink.events), 'unchanged loaded scalar leaked into audit'
+    reloaded = await Q.customer_orders().with_id_is(E.customer_order(root).id().eval()).limit(1).comment(
+        'verify unchanged description').purpose('prove provenance did not alter business values').execute_for_one(context)
+    assert E.customer_order(reloaded).description().eval() == private_description
+    assert E.customer_order(reloaded).order_number().eval() == label + '-revised'
+    print('PASS: Python generated unchanged scalar privacy; 1 write/1 read/1 audit')
+
 
 if __name__ == '__main__':
     asyncio.run(main())

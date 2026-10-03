@@ -1,4 +1,5 @@
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
+from teaql.core.entity import _LoadedScalarSnapshot
 from teaql.core import MutationIntent
 from teaql.core.value import Value
 from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
@@ -74,6 +75,8 @@ class OrderStatus:
             self._entity_root.mark_as_new(key)
         elif getattr(self, "version", None) is not None:
             self._entity_root.set_original_version(key, int(self.version))
+        self._teaql_loaded_snapshot = _LoadedScalarSnapshot(
+            self._teaql_scalar_payload() if self._action == "Update" else {})
 
     def _teaql_entity_key(self):
         return EntityKey("OrderStatus", self._ledger_id)
@@ -142,7 +145,7 @@ class OrderStatus:
         self._teaql_preflight_graph(graph)
         return await self._teaql_save_within_graph(graph)
 
-    def _teaql_build_command(self):
+    def _teaql_scalar_payload(self):
         payload = {}
         if "id" in self._loaded_fields:
             payload["id"] = Value.I64(self.id)
@@ -169,6 +172,10 @@ class OrderStatus:
         if "version" in self._loaded_fields:
             payload["version"] = Value.I64(self.version)
 
+        return payload
+
+    def _teaql_build_command(self):
+        payload = self._teaql_scalar_payload()
         action = self._action
         if action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
@@ -185,6 +192,8 @@ class OrderStatus:
             original_version = self._entity_root.original_version(self._teaql_entity_key())
             cmd = DeleteCommand("OrderStatus", Value.from_any(getattr(self, "id", None)),
                 original_version if original_version is not None else getattr(self, "version", None))
+        if action != "Create":
+            cmd.old_values = self._teaql_loaded_snapshot.business_values()
         return action, cmd
 
     def _teaql_preflight_graph(self, graph):
@@ -301,6 +310,7 @@ class OrderStatus:
         elif "version" in persisted:
             self.version = persisted["version"]
             self._loaded_fields.add("version")
+        committed_snapshot = _LoadedScalarSnapshot(self._teaql_scalar_payload())
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -320,6 +330,7 @@ class OrderStatus:
         if action != "Delete":
             await self._teaql_save_children(graph, scope)
         def commit_entity():
+            self._teaql_loaded_snapshot = committed_snapshot
             self._entity_root.clear_entity(new_key)
             if getattr(self, "version", None) is not None:
                 self._entity_root.accept_committed_version(new_key, int(self.version))

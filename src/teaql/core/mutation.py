@@ -79,6 +79,7 @@ class DeleteCommand:
     expected_version_val: Optional[int] = None
     soft_delete: bool = True
     trace_chain: List[TraceNode] = field(default_factory=list)
+    old_values: Optional[Dict[str, Value]] = field(default=None, repr=False)
 
     @classmethod
     def new(cls, entity: str, id_val: Any) -> 'DeleteCommand':
@@ -98,6 +99,7 @@ class RecoverCommand:
     id: Value
     expected_version_val: int
     trace_chain: List[TraceNode] = field(default_factory=list)
+    old_values: Optional[Dict[str, Value]] = field(default=None, repr=False)
 
     @classmethod
     def new(cls, entity: str, id_val: Any, expected_version: int) -> 'RecoverCommand':

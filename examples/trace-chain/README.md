@@ -45,6 +45,12 @@ redaction. Generated E verifies original stored values and versions; the next
 independent query proves there is no ambient privacy on shared Context. Original
 scalar snapshot ownership is implemented in the runtime; generation supplies
 loaded scalar data and advances the snapshot only after successful commit.
+Loaded deletion and updates of another field also retain private old scalar
+provenance, including unchanged business fields but excluding structural ID and
+version. The generated command passes this detached snapshot without adding
+fields to SQL writes. These cases require regeneration with the matching local
+runtime. Native RecoverCommand capture is tested separately; this example does
+not claim an end-to-end generated recovery flow.
 Native tests additionally cover batch/graph rollback, readback cancellation,
 concurrent native batches, debug opt-in, credentials and safe reprojection.
 
