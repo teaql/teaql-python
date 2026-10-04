@@ -69,7 +69,11 @@ for attempt in first second; do
   rg -q '^66 passed in ' "$like_log"
   echo "PASS: native LIKE privacy $attempt; evidence $like_log"
   echo "Run $attempt on $TEAQL_TRACE_CHAIN_DB without cleanup"
-  python "$example/main.py"
+  main_log="$(mktemp -t teaql-python-main.XXXXXX.log)"
+  timeout --kill-after=5s 60s python "$example/main.py" | tee "$main_log"
+  rg -Fxq 'PASS: identity controls reject duplicate, missing and equal-ID type collapse' "$main_log"
+  [[ "$(rg -c '^GRAPH IDENTITY EVIDENCE ' "$main_log")" == 1 ]]
+  rg -Fxq 'PASS: generated library unchanged; all trace example checks passed' "$main_log"
   echo "Mutation privacy $attempt on $TEAQL_TRACE_CHAIN_DB without cleanup"
   privacy_log="$(mktemp -t teaql-python-privacy.XXXXXX.log)"
   python "$example/mutation_privacy.py" | tee "$privacy_log"

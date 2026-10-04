@@ -58,6 +58,18 @@ switches do not erase the physical result metadata. Native tests cover no-Contex
 results, grouped batches, zero affected rows, hard deletes and masked readback
 intent.
 
+The six-item fixture also checks exact `(entity type, ID)` lists before creating
+lineage dictionaries, so duplicate rows cannot disappear during comparison.
+CustomerOrder and Payment deliberately share a numeric ID. Creation, the
+update/deletion save, and each concurrent independent graph must retain all six
+distinct typed targets in commands, command-bound physical SQL and committed
+safe audit. SQL paths themselves do not carry IDs: each actual write/readback
+pair is bound to the observed provider command, with its target entity frame,
+operation, successful outcome and row counts checked. The normative save emits
+one `GRAPH IDENTITY EVIDENCE` record. Three negative controls reject duplicate,
+missing and equal-ID type-collapsed targets; the verifier requires their marker
+and the complete example marker on both retained-database runs.
+
 The mutation privacy suite configures Payment.reference_code as sensitive and
 creates/updates a three-entity graph using generated Q/E/save. Root and sibling
 write/readback intent plus committed safe audit must hide the future child's new

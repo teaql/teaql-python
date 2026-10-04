@@ -1,5 +1,6 @@
 """Generated Q/E/Mutation traversal observed at three real SQLite boundaries."""
 import asyncio
+import json
 import os
 import uuid
 
@@ -9,6 +10,7 @@ from runtime_module import GENERATED_RUNTIME_MODULE
 from teaql.provider.sqlite import create_sqlite_service
 from teaql.runtime import UserContext, DelegatingMutationPolicyRegistry
 from teaql.core.request_intent import RequestIntentError
+from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand
 from teaql.sql.executor import TransportError
 
 
@@ -20,12 +22,81 @@ def scalar(value):
     return getattr(value, 'val', value)
 
 
+def graph_identities(graph):
+    order, item, payment, attempt, shipment, removed = graph
+    return [
+        ('CustomerOrder', E.customer_order(order).id().eval()),
+        ('OrderItem', E.order_item(item).id().eval()),
+        ('Payment', E.payment(payment).id().eval()),
+        ('PaymentAttempt', E.payment_attempt(attempt).id().eval()),
+        ('Shipment', E.shipment(shipment).id().eval()),
+        ('OrderItem', E.order_item(removed).id().eval()),
+    ]
+
+
+def check_identities(expected, actual, boundary):
+    # Check lists before making dictionaries: duplicate rows must not disappear.
+    assert len(expected) == len(actual) == 6, boundary + ': six identities required'
+    for entity, identity in [*expected, *actual]:
+        assert isinstance(entity, str) and entity, boundary + ': entity type required'
+        assert type(identity) is int and 0 < identity <= 2**64 - 1, boundary + ': positive u64 ID required'
+    assert len(set(expected)) == 6, boundary + ': duplicate expected identity'
+    assert len(set(actual)) == 6, boundary + ': duplicate identity'
+    assert set(actual) == set(expected), boundary + ': missing or unexpected identity'
+
+
+def identity_controls():
+    expected = [('CustomerOrder', 1), ('OrderItem', 1), ('Payment', 1),
+                ('PaymentAttempt', 1), ('Shipment', 1), ('OrderItem', 2)]
+    check_identities(expected, expected, 'positive control')
+    controls = [expected[:-1] + [expected[1]], expected[:-1],
+                [('CustomerOrder' if entity == 'Payment' else entity, identity)
+                 for entity, identity in expected]]
+    for actual in controls:
+        try:
+            check_identities(expected, actual, 'negative control')
+        except AssertionError:
+            pass
+        else:
+            raise AssertionError('identity negative control was accepted')
+    print('PASS: identity controls reject duplicate, missing and equal-ID type collapse')
+
+
+def physical_identities(service, context):
+    """Bind actual ordered SQL facts to independently observed provider commands.
+
+    Canonical SQL paths deliberately do not contain IDs. Readback paths name
+    the operation root, not the target. Neither responsibility chain is a key.
+    """
+    physical = [entry for entry in context.sql_logs() if entry.mutation_lineage]
+    assert len(service.requests) == len(service.results) == len(service.actions)
+    assert len(physical) == 2 * len(service.requests)
+    identities = []
+    for index, ((entity, identity, nodes), record, action) in enumerate(
+            zip(service.requests, service.results, service.actions)):
+        write, read = physical[index * 2:index * 2 + 2]
+        assert len(record.statements) == 2
+        assert record.affected_rows == write.affected_rows == 1
+        assert write.execution_outcome == read.execution_outcome == 'success'
+        assert read.result_count == 1 and read.affected_rows is None
+        assert [node.kind for node in write.trace_path] == ['operation', 'entity', 'provider', 'sql']
+        assert write.trace_path[1].name == entity
+        assert write.trace_path[-1].name == action and read.trace_path[-1].name == 'select'
+        assert write.trace_path == record.statements[0].trace_chain
+        assert read.trace_path == record.statements[1].trace_chain
+        assert chain(write.mutation_lineage) == chain(read.mutation_lineage) == nodes
+        assert write.comment == read.comment == record.comment
+        identities.append((entity, identity))
+    return identities
+
+
 class ObservedService:
     """Transparent observer, not a replacement planner or provider."""
     def __init__(self, service):
         self.service = service
         self.requests = []
         self.results = []
+        self.actions = []
         self.finishes = []
         self.begins = 0
         self.fault = None
@@ -57,6 +128,8 @@ class ObservedTransaction:
         command = request._data
         identity = scalar(getattr(command, 'id', None) or command.values.get('id'))
         self.owner.requests.append((command.entity, identity, chain(request.mutation_lineage)))
+        self.owner.actions.append({InsertCommand: 'insert', UpdateCommand: 'update',
+                                   DeleteCommand: 'delete'}[type(command)])
         result = await self.transaction.mutate(context, request)
         self.owner.results.append(result.metadata)
         return result
@@ -118,6 +191,7 @@ def expected_graph(graph, reason):
 def reset(service, sink, context):
     service.requests.clear()
     service.results.clear()
+    service.actions.clear()
     service.finishes.clear()
     service.begins = 0
     sink.events.clear()
@@ -125,6 +199,7 @@ def reset(service, sink, context):
 
 
 async def main():
+    identity_controls()
     path = os.environ['TEAQL_TRACE_CHAIN_DB']
     label = 'TRACE-' + uuid.uuid4().hex[:16]
     context = UserContext.new().install(GENERATED_RUNTIME_MODULE)
@@ -162,7 +237,12 @@ async def main():
 
     graph = make_graph(context, platform, label)
     order, item, payment, attempt, shipment, removed = graph
+    reset(service, sink, context)
     await order.audit_as('prepare complete graph').save(context)
+    created = graph_identities(graph)
+    check_identities(created, [(entity, identity) for entity, identity, _ in service.requests], 'created commands')
+    check_identities(created, physical_identities(service, context), 'created physical SQL')
+    check_identities(created, [(event.entity, scalar(event.entity_id)) for event in sink.events], 'created audit')
     assert E.payment(payment).id().eval() == E.customer_order(order).id().eval(), 'fixture must exercise equal IDs of different types'
     order.update_description('Submitted trace example')
     item.update_name('Verified available item')
@@ -172,6 +252,18 @@ async def main():
     removed.mark_for_deletion().audit_as('remove unavailable item')
     reset(service, sink, context)
     await order.audit_as('submit order').save(context)
+    want_identities = graph_identities(graph)
+    command_identities = [(entity, identity) for entity, identity, _ in service.requests]
+    statement_identities = physical_identities(service, context)
+    committed_identities = [(event.entity, scalar(event.entity_id)) for event in sink.events]
+    check_identities(want_identities, command_identities, 'actual commands')
+    check_identities(want_identities, statement_identities, 'command-bound physical SQL')
+    check_identities(want_identities, committed_identities, 'committed audit')
+    print('GRAPH IDENTITY EVIDENCE ' + json.dumps({
+        name: [{'entity': entity, 'id': identity} for entity, identity in values]
+        for name, values in [('expected', want_identities), ('commands', command_identities),
+                             ('physical', statement_identities), ('audit', committed_identities)]
+    }, sort_keys=True))
     expected = expected_graph(graph, 'submit order')
     commands = {(entity, identity): nodes for entity, identity, nodes in service.requests}
     metadata = {(entity, identity): chain(item.mutation_lineage)
@@ -193,13 +285,6 @@ async def main():
         assert [node.kind for node in read.trace_chain] == ['operation', 'request', 'provider', 'sql']
         assert [node.name for node in read.trace_chain] == ['CustomerOrder', 'CustomerOrder', 'sqlite', 'select']
         assert read.trace_chain[0].comment == 'query'
-    physical = [entry for entry in context.sql_logs() if entry.mutation_lineage]
-    assert len(physical) == 12
-    for index, record in enumerate(service.results):
-        write, read = physical[index * 2:index * 2 + 2]
-        assert write.trace_path[-1].name == record.trace_chain[-1].name
-        assert read.trace_path[-1].name == 'select'
-        assert read.mutation_lineage == write.mutation_lineage
     print('PASS: six writes plus six successful readbacks; root request paths; no duplicate SQL facts')
     print('PASS: normative six items; assigned typed identity; branch/deletion reasons; request/SQL/audit boundaries')
 
@@ -247,6 +332,15 @@ async def main():
              for g, name in zip(graphs, ('first', 'second'))}
     assert all(chain(event.trace_chain) == [('CustomerOrder', chain(event.trace_chain)[0][1],
                 roots[chain(event.trace_chain)[0][1]])] for event in sink.events)
+    concurrent_physical = physical_identities(service, context)
+    for graph in graphs:
+        root_id = E.customer_order(graph[0]).id().eval()
+        expected = graph_identities(graph)
+        indices = [index for index, (_, _, nodes) in enumerate(service.requests) if nodes[0][1] == root_id]
+        check_identities(expected, [service.requests[index][:2] for index in indices], 'concurrent commands')
+        check_identities(expected, [concurrent_physical[index] for index in indices], 'concurrent physical SQL')
+        check_identities(expected, [(event.entity, scalar(event.entity_id)) for event in sink.events
+                                   if chain(event.trace_chain)[0][1] == root_id], 'concurrent audit')
     assert context.require_resource('dataService') is service
     print('PASS: two concurrent generated graph saves in one real Context remain isolated')
 
