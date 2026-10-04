@@ -30,10 +30,12 @@ class TraceScope:
         return cls(owner, _AuditReason(key.entity, key.id, intent.comment))
 
     def child(self, key: EntityKey, reason: Optional[str]) -> 'TraceScope':
+        from .request_intent import MutationIntent, _white_space
         self._require_assigned(key)
-        if reason is None or (isinstance(reason, str) and not reason.strip()):
+        # Match the public intent contract (Unicode White_Space), not Python
+        # strip(), which also discards the valid U+001C..U+001F separators.
+        if reason is None or (isinstance(reason, str) and all(_white_space(c) for c in reason)):
             return self
-        from .request_intent import MutationIntent
         intent = MutationIntent(reason)
         return TraceScope(self._owner, _AuditReason(key.entity, key.id, intent.comment), self)
 

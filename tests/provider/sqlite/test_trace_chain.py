@@ -649,6 +649,109 @@ def native_batch_witness(observed, logging, nested, phase):
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('logging', [False, True])
+async def test_blank_local_reasons_inherit_at_command_sql_and_committed_audit(
+        tmp_path, monkeypatch, logging):
+    """TC-MUT-11: real graph scopes and SQLite execution, not supplied SQL frames."""
+    from teaql.core import RequestIntentError
+    from teaql.core.entity import EntityKey
+    context, service, transport, entries, seen = await ordered_batch_fixture(tmp_path, monkeypatch, logging)
+    context.insert_resource('dataService', service)
+    blanks = [None, '', ' \t\r\n', '\u0085', '\u00a0', '\u2003']
+    for blank in blanks:
+        with pytest.raises(RequestIntentError) as caught:
+            await service.mutate(context, MutationRequest(
+                InsertCommand.new('PaymentAttempt').value('name', 'rejected public write'), comment=blank))
+        error = caught.value
+        assert (error.code, error.field, error.request_kind) == ('REQUEST_COMMENT_REQUIRED', 'comment', 'mutation')
+    assert seen.commands == seen.physical == seen.audits == seen.lifecycle == entries == []
+    assert transport.begins == 0 and transport.reads == transport.writes == []
+    expected_payment = [('auditReason', 'CustomerOrder', 100, 'submit order'),
+                        ('auditReason', 'Payment', 201, 'authorize payment')]
+    expected_shipment = [('auditReason', 'CustomerOrder', 100, 'submit order'),
+                         ('auditReason', 'Shipment', 301, 'prepare shipment')]
+    expected = [expected_payment] * len(blanks) + [expected_shipment]
+    identities = [('PaymentAttempt', 400 + index) for index in range(len(blanks))] + [('Shipment', 301)]
+
+    async def work(graph):
+        root = graph.scope(EntityKey('CustomerOrder', 100))
+        payment = graph.scope(EntityKey('Payment', 201), parent=root, local_reason='authorize payment')
+        shipment = graph.scope(EntityKey('Shipment', 301), parent=root, local_reason='prepare shipment')
+        for index, blank in enumerate(blanks):
+            key = EntityKey('PaymentAttempt', 400 + index)
+            inherited = graph.scope(key, parent=payment, local_reason=blank)
+            assert inherited is payment, 'blank local reason must not add an entity reason'
+            command = (InsertCommand.new(key.entity).value('id', key.id).value('version', 1)
+                       .value('name', 'native attempt').value('parent_id', 201))
+            result = await graph.transaction.mutate(graph.context, graph.request(command, inherited))
+            assert result.affected_rows == 1 and result.persisted_record is not None
+            assert seen.audits == [], 'graph audit escaped before commit'
+        command = (InsertCommand.new('Shipment').value('id', 301).value('version', 1)
+                   .value('name', 'native shipment').value('parent_id', 100))
+        await graph.transaction.mutate(graph.context, graph.request(command, shipment))
+        assert seen.audits == [], 'sibling audit escaped before commit'
+
+    await context.execute_graph_save(work, comment='submit order')
+    assert seen.lifecycle == ['begin', 'commit']
+    assert len(seen.commands) == len(seen.audits) == 7 and len(seen.physical) == 14
+    assert [native_batch_identity(request) for request in seen.commands] == identities
+    assert [native_batch_lineage(request.mutation_lineage) for request in seen.commands] == expected
+    assert [(event.entity, event.entity_id.val) for event in seen.audits] == identities
+    assert [native_batch_lineage(event.trace_chain) for event in seen.audits] == expected
+    for index, ((entity, identity), chain) in enumerate(zip(identities, expected)):
+        write, read = seen.physical[index * 2:index * 2 + 2]
+        assert write.affected_rows == 1 and read.result_count == 1
+        assert [value.val for value in read.parameters] == [identity]
+        for statement, operation in [(write, 'insert'), (read, 'select')]:
+            assert native_batch_lineage(statement.mutation_lineage) == chain
+            assert statement.comment == statement.audit_reason == 'submit order'
+            assert statement.trace_chain[-1].name == operation
+            assert statement.trace_chain[-2].name == 'sqlite'
+    assert len(entries) == (14 if logging else 0)
+    assert all(native_batch_lineage(entry.mutation_lineage) == expected[index // 2]
+               for index, entry in enumerate(entries))
+    async with aiosqlite.connect(transport.db_path) as database:
+        for entity, identity in identities:
+            row = await (await database.execute(
+                f'SELECT id, version, parent_id FROM {entity.lower()}_data WHERE id=?', (identity,))).fetchone()
+            assert row == (identity, 1, 201 if entity == 'PaymentAttempt' else 100)
+    native_batch_witness(seen, logging, False, 'blank-local-reason')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+@pytest.mark.parametrize('local_reason', ['\u001c', '\u001d', '\u001e', '\u001f'])
+async def test_non_contract_whitespace_local_reason_is_preserved_at_real_sinks(
+        tmp_path, monkeypatch, logging, local_reason):
+    """Python strip() must not silently discard reasons accepted by the public contract."""
+    from teaql.core.entity import EntityKey
+    context, service, _, entries, seen = await ordered_batch_fixture(tmp_path, monkeypatch, logging)
+    context.insert_resource('dataService', service)
+
+    async def work(graph):
+        root = graph.scope(EntityKey('CustomerOrder', 100))
+        key = EntityKey('PaymentAttempt', 400)
+        scope = graph.scope(key, parent=root, local_reason=local_reason)
+        assert scope is not root, 'not Unicode White_Space; this is a valid local reason'
+        command = (InsertCommand.new(key.entity).value('id', key.id).value('version', 1)
+                   .value('name', 'native separator control').value('parent_id', 100))
+        await graph.transaction.mutate(graph.context, graph.request(command, scope))
+        assert seen.audits == []
+
+    await context.execute_graph_save(work, comment='submit order')
+    expected = [('auditReason', 'CustomerOrder', 100, 'submit order'),
+                ('auditReason', 'PaymentAttempt', 400, local_reason)]
+    assert seen.lifecycle == ['begin', 'commit']
+    assert len(seen.commands) == len(seen.audits) == 1 and len(seen.physical) == 2
+    assert native_batch_lineage(seen.commands[0].mutation_lineage) == expected
+    assert all(native_batch_lineage(statement.mutation_lineage) == expected for statement in seen.physical)
+    assert native_batch_lineage(seen.audits[0].trace_chain) == expected
+    assert (seen.audits[0].entity, seen.audits[0].entity_id.val) == ('PaymentAttempt', 400)
+    assert len(entries) == (2 if logging else 0)
+    assert all(native_batch_lineage(entry.mutation_lineage) == expected for entry in entries)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
 @pytest.mark.parametrize('nested', [False, True])
 @pytest.mark.parametrize('same_root', [False, True])
 async def test_native_batch_ordered_typed_commands_sql_and_committed_audit(
