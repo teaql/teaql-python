@@ -759,7 +759,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         child_desc = self.schema_provider.get_entity(relation.target_entity)
                         related = SmartList(related, facets=await self._query_facets(
                             context, facet_request, child_desc))
-                    parent[load.name] = related if relation.is_many else (related[0] if related else None)
+                    # Preserve the provider's known FK even if target detail is
+                    # filtered out. Unfetched properties are absent/NotLoaded.
+                    parent[load.name] = related if relation.is_many else (
+                        related[0] if related else
+                        {relation.foreign_key: key} if key is not None else None)
                 relation_scope.success({
                     "teaql.result.cardinality": len(children),
                     "teaql.relation.parent_count": len(parent_ids),

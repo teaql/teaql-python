@@ -341,7 +341,17 @@ class SqlDialect(ABC):
             return ", ".join(property_projection(p) for p in getattr(entity, 'properties', []))
             
         parts = []
-        for field in query.projection:
+        projected_fields = list(query.projection)
+        # Hydration must use an actual FK, not treat an omitted column as NULL.
+        # Keep caller-owned query/projection unchanged.
+        if not query.group_by_items:
+            relation_names = [load.name for load in query.relations]
+            relation_names += [aggregate.relation_name for aggregate in query.relation_aggregates]
+            for name in relation_names:
+                relation = entity.relation_by_name(name)
+                if relation and not relation.is_many and relation.local_key not in projected_fields:
+                    projected_fields.append(relation.local_key)
+        for field in projected_fields:
             prop = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'name', None) == field), None)
             if not prop:
                 raise UnknownFieldError(field)

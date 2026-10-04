@@ -1088,7 +1088,8 @@ async def test_loaded_forward_key_remains_usable_by_relation_aggregate(tmp_path,
     if reference == 'visible':
         assert row['parent_id']['name'] == secret
     else:
-        assert row['parent_id'] is None
+        assert row['parent_id'] == {'id': 1}
+        assert 'name' not in row['parent_id']
     if reference == 'filtered_with_sibling':
         assert row['parent_again']['name'] == secret
     assert len(transport.reads) == (4 if nested else 3) + (reference == 'filtered_with_sibling')
@@ -1120,6 +1121,27 @@ async def test_scalar_stream_rejects_relation_aggregate_before_provider(tmp_path
         async for _ in stream:
             pytest.fail('unsupported aggregate stream must not yield incomplete rows')
     assert transport.streams == [] and transport.reads == [] and entries == []
+
+
+@pytest.mark.asyncio
+async def test_forward_id_detail_is_distinct_from_actual_null_and_unrequested_relation(tmp_path):
+    from teaql.core.mutation import UpdateCommand
+    context, service, transport, entries = await fixture(tmp_path)
+    descriptor = service.schema_provider.get_entity('Payment')
+    descriptor.relation(RelationDescriptor('parent', 'CustomerOrder').local('parent_id').foreign('id'))
+    plain = await service.query(context, QueryRequest(SelectQuery('Payment').project('id').limit(1),
+        _comment='identity only', _purpose='do not fabricate an unrequested relation'))
+    assert 'parent' not in plain.rows[0]
+    query = (SelectQuery('Payment').project('id').limit(1)
+             .relation_query('parent', SelectQuery('CustomerOrder').filter(Expr.eq('name', 'absent'))))
+    loaded = await service.query(context, QueryRequest(query, _comment='filtered parent',
+        _purpose='keep actual ID with unloaded details'))
+    assert loaded.rows[0]['parent'] == {'id': 1}
+    await service.mutate(context, MutationRequest(UpdateCommand.new('Payment', 1)
+        .expected_version(1).value('parent_id', None), comment='clear nullable fixture FK'))
+    cleared = await service.query(context, QueryRequest(query, _comment='nullable parent',
+        _purpose='SQL NULL is not a hidden target'))
+    assert cleared.rows[0]['parent'] is None
 
 
 def test_relation_assembly_keeps_original_text_key_after_hydration_or_filtering():

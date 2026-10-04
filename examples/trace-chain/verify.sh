@@ -88,7 +88,10 @@ for attempt in first second; do
   echo "Page/stream $attempt on $TEAQL_TRACE_CHAIN_PAGE_STREAM_DB without cleanup"
   python "$example/page_stream.py"
   echo "Aggregate $attempt on $TEAQL_TRACE_CHAIN_AGGREGATE_DB without cleanup"
-  python "$example/relation_aggregate.py"
+  aggregate_log="$(mktemp -t teaql-python-aggregate.XXXXXX.log)"
+  python "$example/relation_aggregate.py" | tee "$aggregate_log"
+  rg -Fq 'FORWARD_NOTLOADED_OBSERVED {"logging": true' "$aggregate_log"
+  rg -Fq 'FORWARD_NOTLOADED_OBSERVED {"logging": false' "$aggregate_log"
   echo "Checker overlap $attempt on $TEAQL_TRACE_CHAIN_CHECKER_DB without cleanup"
   checker_log="$(mktemp -t teaql-python-checker.XXXXXX.log)"
   TEAQL_TRACE_CHAIN_DB="$TEAQL_TRACE_CHAIN_CHECKER_DB" \

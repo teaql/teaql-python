@@ -70,6 +70,32 @@ async def main():
 
     for logging in (True, False):
         context.enable_all_sql_log() if logging else context.disable_sql_log()
+        hidden = (await (Q.payments().with_id_is(payment_id).limit(1)
+            .select_customer_order_with(Q.customer_orders().with_id_is(0).limit(1))
+            .comment('load filtered forward identity').purpose('distinguish unfetched detail from null')
+            .execute_for_list(context)))[0]
+        identity = E.payment(hidden).customer_order().eval()
+        assert identity is not None
+        assert E.customer_order(identity).id().eval() == order_id
+
+        def assert_unfetched():
+            try:
+                E.customer_order(identity).description().eval()
+            except RuntimeError as error:
+                assert type(error).__name__ == 'TeaQLNotLoadedError', error
+                assert 'description' in str(error), error
+            else:
+                raise AssertionError('unfetched description became loaded-null')
+
+        assert_unfetched()
+        visible = (await (Q.payments().with_id_is(payment_id).limit(1)
+            .select_customer_order_with(Q.customer_orders().with_id_is(order_id).limit(1))
+            .comment('load independent full reference').purpose('verify edge-owned load boundaries')
+            .execute_for_list(context)))[0]
+        full = E.payment(visible).customer_order().eval()
+        assert E.customer_order(full).description().eval() is not None
+        assert_unfetched()
+        print('FORWARD_NOTLOADED_OBSERVED ' + json.dumps({'logging': logging, 'id': order_id}))
         for nested in (False, True):
             clear()
             rows = await query(nested).execute_for_list(context)
