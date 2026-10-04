@@ -543,6 +543,231 @@ async def test_batch_keeps_each_write_readback_pair(tmp_path):
     assert len(entries) == 4
 
 
+async def ordered_batch_fixture(tmp_path, monkeypatch, logging):
+    """Observe real native leaf execution and driver commit, never supply SQL traces."""
+    from copy import deepcopy
+    from teaql.runtime.context import SqlLogOptions
+    monkeypatch.delenv('TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS', raising=False)
+    context, service, transport, entries = await fixture(tmp_path)
+    for entity in ('Payment', 'PaymentAttempt'):
+        context.entity(entity).audit_mask_fields(['name'])
+    if not logging:
+        context.with_sql_log_options(SqlLogOptions.disabled())
+    observed = SimpleNamespace(commands=[], physical=[], audits=[], lifecycle=[])
+    original_mutate = SqlDataServiceExecutor._mutate
+    original_record = type(context)._record_metadata_log
+    original_begin = transport.begin_sql
+
+    async def mutate(executor, invocation, request, privacy=None):
+        if not isinstance(request._data, list):
+            observed.commands.append(deepcopy(request))
+        return await original_mutate(executor, invocation, request, privacy)
+
+    def record(invocation, metadata, **kwargs):
+        observed.physical.append(deepcopy(metadata))
+        return original_record(invocation, metadata, **kwargs)
+
+    async def begin():
+        transaction = await original_begin()
+        observed.lifecycle.append('begin')
+        commit, rollback = transaction.commit_sql, transaction.rollback_sql
+
+        async def committed():
+            assert observed.audits == [], 'no committed audit before driver commit'
+            await commit()
+            observed.lifecycle.append('commit')
+
+        async def rolled_back():
+            await rollback()
+            observed.lifecycle.append('rollback')
+
+        transaction.commit_sql, transaction.rollback_sql = committed, rolled_back
+        return transaction
+
+    def audit(invocation, event):
+        assert observed.lifecycle[-1] == 'commit'
+        observed.audits.append(event)
+
+    monkeypatch.setattr(SqlDataServiceExecutor, '_mutate', mutate)
+    monkeypatch.setattr(type(context), '_record_metadata_log', record)
+    monkeypatch.setattr(transport, 'begin_sql', begin)
+    context.with_app_audit_event_sink(SimpleNamespace(on_safe_event=audit))
+    return context, service, transport, entries, observed
+
+
+def native_batch_lineage(nodes):
+    return [(node.kind, node.name or node.entity_type, node.entity_id, node.comment) for node in nodes]
+
+
+def native_batch_identity(request):
+    target = getattr(request._data, 'id', None)
+    if target is None:
+        target = request._data.values['id']
+    return request._data.entity, target.val
+
+
+def native_batch_statements(metadata):
+    if not metadata.statements:
+        return [metadata]
+    return [leaf for child in metadata.statements for leaf in native_batch_statements(child)]
+
+
+def native_batch_item(entity, identity, value, reason, update=False, old=None):
+    from teaql.core.entity import EntityKey
+    from teaql.core.mutation import UpdateCommand
+    from teaql.core.trace_scope import TraceScope
+    from teaql.core.value import Value
+    command = (UpdateCommand.new(entity, identity).expected_version(1).value('name', value)
+               if update else InsertCommand.new(entity).value('id', identity).value('version', 1)
+               .value('name', value).value('parent_id', 1))
+    if update:
+        command.old_values = {'name': Value.from_any(old)} if old is not None else {}
+    scope = TraceScope.root(object(), EntityKey(entity, identity), reason)
+    return MutationRequest(command, comment=reason).with_mutation_lineage(scope.recover())
+
+
+def nested_native_batch(items, comment, nested):
+    return MutationRequest.Batch([
+        MutationRequest.Batch(items[:2], comment='inner first container'),
+        MutationRequest.Batch(items[2:], comment='inner second container'),
+    ] if nested else items, comment=comment)
+
+
+def native_batch_witness(observed, logging, nested, phase):
+    print('NATIVE_BATCH_OBSERVED ' + json.dumps({
+        'logging': logging, 'nested': nested, 'phase': phase, 'lifecycle': observed.lifecycle,
+        'commands': [{'entity': item._data.entity, 'id': native_batch_identity(item)[1], 'comment': item.comment(),
+                      'lineage': native_batch_lineage(item.mutation_lineage)} for item in observed.commands],
+        'physical': [{'sql': item.parameterized_sql, 'parameters': [value.val for value in item.parameters],
+                      'affected': item.affected_rows, 'count': item.result_count,
+                      'outcome': item.execution_outcome, 'lineage': native_batch_lineage(item.mutation_lineage)}
+                     for item in observed.physical],
+        'committedAudit': [{'entity': item.entity, 'id': getattr(item.entity_id, 'val', item.entity_id),
+                            'lineage': native_batch_lineage(item.trace_chain)} for item in observed.audits],
+    }))
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+@pytest.mark.parametrize('nested', [False, True])
+@pytest.mark.parametrize('same_root', [False, True])
+async def test_native_batch_ordered_typed_commands_sql_and_committed_audit(
+        tmp_path, monkeypatch, logging, nested, same_root):
+    from copy import deepcopy
+    from teaql.core.mutation import UpdateCommand
+    from teaql.data_service import DataServiceOperation
+    context, service, transport, entries, seen = await ordered_batch_fixture(tmp_path, monkeypatch, logging)
+    identities = [('Payment', 3), ('Payment', 2), ('PaymentAttempt', 3)]
+    previous = ['FIRST-PRIVATE', 'SECOND-PRIVATE', 'FUTURE-PRIVATE']
+    for update in (False, True):
+        values = ['UPDATED-' + value for value in previous] if update else previous
+        reason = 'batch ' + ' '.join(values) + ' public marker'
+        local = [reason] * 4 if same_root else ['alpha responsibility', 'beta responsibility',
+                                                'gamma responsibility', 'zero responsibility']
+        items = [native_batch_item(entity, identity, value, local[index], update, previous[index])
+                 for index, ((entity, identity), value) in enumerate(zip(identities, values))]
+        items.append(native_batch_item('Payment', 999, 'unmatched private name', local[3], True))
+        before = [(deepcopy(item._data), item.comment(), item.mutation_lineage) for item in items]
+        seen.commands.clear(); seen.physical.clear(); seen.audits.clear(); seen.lifecycle.clear()
+        entries.clear(); transport.reads.clear(); transport.writes.clear()
+        result = await service.mutate(context, nested_native_batch(items, reason, nested))
+        native_batch_witness(seen, logging, nested, 'update' if update else 'insert')
+        assert result.affected_rows == result.metadata.affected_rows == 3
+        assert result.metadata.operation == DataServiceOperation.Batch
+        assert result.generated_values == {} and result.persisted_record is None
+        assert seen.lifecycle == ['begin', 'commit']
+        assert len(seen.commands) == 4 and len(seen.physical) == 7 and len(seen.audits) == 3
+        assert [native_batch_identity(item) for item in seen.commands] == identities + [('Payment', 999)]
+        returned = native_batch_statements(result.metadata)
+        assert [(item.operation, item.parameters, item.mutation_lineage, item.affected_rows, item.result_count)
+                for item in returned] == [
+                    (item.operation, item.parameters, item.mutation_lineage, item.affected_rows, item.result_count)
+                    for item in seen.physical]
+        assert [(event.entity, event.entity_id.val) for event in seen.audits] == identities
+        assert [event.kind.value for event in seen.audits] == ['updated' if update else 'created'] * 3
+        for index, ((entity, identity), value) in enumerate(zip(identities, values)):
+            expected = ([('auditReason', entity, identity, reason)] if same_root else
+                        [('auditReason', entity, None, reason), ('auditReason', entity, identity, local[index])])
+            assert seen.commands[index].comment() == reason
+            assert seen.commands[index]._data.values['name'].val == value
+            assert native_batch_lineage(seen.commands[index].mutation_lineage) == expected
+            write, read = seen.physical[index * 2:index * 2 + 2]
+            assert write.operation == (DataServiceOperation.Update if update else DataServiceOperation.Insert)
+            assert write.affected_rows == 1 and read.operation == DataServiceOperation.Query and read.result_count == 1
+            assert value in [param.val for param in write.parameters]
+            assert [param.val for param in read.parameters] == [identity]
+            for statement in (write, read):
+                assert native_batch_lineage(statement.mutation_lineage) == expected
+                assert statement.comment == statement.audit_reason == reason
+                assert [node.kind for node in statement.trace_chain] == [
+                    'operation', 'request' if statement is read else 'entity', 'provider', 'sql']
+                assert [node.name for node in statement.trace_chain] == [
+                    entity, entity, 'sqlite', 'select' if statement is read else 'update' if update else 'insert']
+            safe_reason = 'batch [REDACTED] [REDACTED] [REDACTED] public marker'
+            safe_expected = [(kind, name, key, safe_reason if text == reason else text)
+                             for kind, name, key, text in expected]
+            assert native_batch_lineage(seen.audits[index].trace_chain) == safe_expected
+        assert seen.physical[-1].affected_rows == 0 and seen.physical[-1].statements == ()
+        assert len(entries) == (7 if logging else 0)
+        assert all(value not in repr(entries) + repr(seen.audits) for value in values)
+        assert [(item._data, item.comment(), item.mutation_lineage) for item in items] == before
+        # Compare actual transport bindings only for modeled business statements;
+        # explicit INSERT IDs also execute genuine teaql_id_space maintenance.
+        writes = [item for item in transport.writes if 'teaql_id_space' not in item.sql]
+        reads = [item for item in transport.reads if 'teaql_id_space' not in item.sql]
+        assert [item.params for item in writes] == [item.parameters for item in seen.physical[::2]]
+        assert [item.params for item in reads] == [item.parameters for item in seen.physical[1:6:2]]
+        async with aiosqlite.connect(transport.db_path) as db:
+            for (entity, identity), value in zip(identities, values):
+                row = await (await db.execute(f'SELECT name, version FROM {entity.lower()}_data WHERE id=?',
+                                              (identity,))).fetchone()
+                assert row == (value, 2 if update else 1)
+    seen.commands.clear(); seen.physical.clear(); seen.audits.clear(); seen.lifecycle.clear(); entries.clear()
+    independent = 'independent ' + ' '.join(previous + values)
+    await service.mutate(context, MutationRequest(UpdateCommand.new('CustomerOrder', 1).expected_version(1)
+        .value('name', 'ordinary next root'), comment=independent))
+    assert len(seen.audits) == 1 and len(seen.physical) == 2
+    assert native_batch_lineage(seen.audits[0].trace_chain) == [('auditReason', 'CustomerOrder', 1, independent)]
+    if logging:
+        assert all(entry.audit_reason == independent for entry in entries)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+@pytest.mark.parametrize('nested', [False, True])
+async def test_native_batch_failed_write_retains_item_lineage_but_no_committed_audit(
+        tmp_path, monkeypatch, logging, nested):
+    context, service, transport, entries, seen = await ordered_batch_fixture(tmp_path, monkeypatch, logging)
+    items = [native_batch_item('Payment', 3, 'FIRST-PRIVATE', 'alpha responsibility'),
+             native_batch_item('Payment', 2, 'SECOND-PRIVATE', 'beta responsibility'),
+             native_batch_item('PaymentAttempt', 3, 'FUTURE-PRIVATE', 'gamma responsibility'),
+             native_batch_item('Payment', 3, 'duplicate private value', 'failed responsibility')]
+    reason = 'batch FIRST-PRIVATE SECOND-PRIVATE FUTURE-PRIVATE public marker'
+    with pytest.raises(TransportError, match='UNIQUE constraint failed'):
+        await service.mutate(context, nested_native_batch(items, reason, nested))
+    native_batch_witness(seen, logging, nested, 'rollback')
+    assert seen.lifecycle == ['begin', 'rollback'] and seen.audits == []
+    assert len(seen.commands) == 4 and len(seen.physical) == 7
+    assert [native_batch_identity(item) for item in seen.commands] == [
+        ('Payment', 3), ('Payment', 2), ('PaymentAttempt', 3), ('Payment', 3)]
+    assert [item.execution_outcome for item in seen.physical] == ['success'] * 6 + ['failure']
+    assert native_batch_lineage(seen.physical[-1].mutation_lineage) == [
+        ('auditReason', 'Payment', None, reason), ('auditReason', 'Payment', 3, 'failed responsibility')]
+    assert len(entries) == (7 if logging else 0)
+    assert all(value not in repr(entries) for value in ('FIRST-PRIVATE', 'SECOND-PRIVATE', 'FUTURE-PRIVATE'))
+    async with aiosqlite.connect(transport.db_path) as db:
+        for table in ('payment_data', 'paymentattempt_data'):
+            assert (await (await db.execute(f'SELECT COUNT(*) FROM {table} WHERE id IN (2,3)')).fetchone())[0] == 0
+    seen.commands.clear(); seen.physical.clear(); seen.audits.clear(); seen.lifecycle.clear(); entries.clear()
+    independent = 'independent FIRST-PRIVATE SECOND-PRIVATE FUTURE-PRIVATE'
+    await service.mutate(context, MutationRequest(InsertCommand.new('Payment').value('name', 'independent row')
+        .value('parent_id', 1), comment=independent))
+    assert len(seen.audits) == 1 and seen.lifecycle == ['begin', 'commit']
+    assert seen.audits[0].trace_chain[0].comment == independent
+    if logging:
+        assert all(entry.audit_reason == independent for entry in entries)
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize('mode', ['no-match', 'hard-delete'])
 async def test_no_synthetic_readback_when_none_executed(tmp_path, mode):

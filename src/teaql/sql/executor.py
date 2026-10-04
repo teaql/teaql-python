@@ -919,6 +919,16 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 child_request = (child.with_root_intent(request.intent)
                     if isinstance(child, MutationRequest) else
                     MutationRequest(child, comment=request.intent.comment))
+                lineage = child_request.mutation_lineage
+                if (not isinstance(child_request._data, list) and lineage
+                        and lineage[0].comment != request.intent.comment):
+                    # A native batch has no aggregate entity/ID. Its reason
+                    # prefixes each item's own responsibility type, without
+                    # replacing the local chain or duplicating an existing root.
+                    entity = lineage[0].entity_type or lineage[0].name or child_request._data.entity
+                    child_request = child_request.with_mutation_lineage((TraceNode(
+                        kind='auditReason', name=entity, entity_type=entity,
+                        comment=request.intent.comment), *lineage))
                 results.append(await self._mutate(context, child_request, privacy))
             affected = sum(result.affected_rows for result in results)
             return MutationResult(affected, {}, ExecutionMetadata(
