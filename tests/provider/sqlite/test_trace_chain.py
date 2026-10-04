@@ -1,6 +1,8 @@
 """Native SQLite observations; no expected trace frames are supplied to requests."""
 import asyncio
+import json
 import re
+from pathlib import Path
 from types import SimpleNamespace
 
 import aiosqlite
@@ -24,6 +26,8 @@ class RecordingTransport(SqliteTransport):
         super().__init__(path)
         self.reads = []
         self.streams = []
+        self.writes = []
+        self.begins = 0
         self.fail_table = None
         self.failure = RuntimeError('synthetic readback failure')
 
@@ -38,9 +42,15 @@ class RecordingTransport(SqliteTransport):
         async for chunk in super().stream_sql(compiled, chunk_size):
             yield chunk
 
+    async def execute_sql(self, compiled):
+        self.writes.append(compiled)
+        return await super().execute_sql(compiled)
+
     async def begin_sql(self):
+        self.begins += 1
         transaction = await super().begin_sql()
         fetch = transaction.fetch_all_sql
+        execute = transaction.execute_sql
 
         async def capture(compiled):
             self.reads.append(compiled)
@@ -49,6 +59,10 @@ class RecordingTransport(SqliteTransport):
             return await fetch(compiled)
 
         transaction.fetch_all_sql = capture
+        async def capture_write(compiled):
+            self.writes.append(compiled)
+            return await execute(compiled)
+        transaction.execute_sql = capture_write
         return transaction
 
 
@@ -87,6 +101,8 @@ async def fixture(tmp_path):
     entries.clear()
     context.clear_sql_logs()
     transport.reads.clear()
+    transport.writes.clear()
+    transport.begins = 0
     return context, service, transport, entries
 
 
@@ -95,6 +111,187 @@ def three_levels():
             .relation_query('children', SelectQuery('Payment').project('id').limit(1)
                 .relation_query('children', SelectQuery('PaymentAttempt').project('id').limit(1)
                     .relation_query('children', SelectQuery('Shipment').project('id').limit(1)))))
+
+
+INTENT_FAILURES = [case for case in json.loads(
+    (Path(__file__).parents[2] / 'fixtures/request-intent-v1.json').read_text())['cases']
+    if 'error' in case]
+
+
+def unchecked_request(case):
+    """Exercise defensive adapter validation, not a public construction bypass.
+
+    A decoder/custom adapter can present a malformed object without having run
+    its constructor. Trace-only and child-only inputs must still be rejected.
+    These supplied frames are invalid-input stimuli, not generated trace proof.
+    """
+    from teaql.core import TraceNode
+    data = case['input']
+    nodes = [TraceNode(kind=node['kind'], comment=node['detail'])
+             for node in data.get('trace', [])]
+    if case['kind'] == 'query':
+        request = object.__new__(QueryRequest)
+        request.query = SelectQuery('CustomerOrder').limit(1).filter(
+            Expr.eq('name', 'INTENT-PAYLOAD-CANARY'))
+        request.trace_chain = nodes
+        request._QueryRequest__intent = SimpleNamespace(**data)
+    else:
+        request = object.__new__(MutationRequest)
+        request._data = InsertCommand.new('CustomerOrder').value('name', 'INTENT-PAYLOAD-CANARY')
+        request._data.trace_chain = nodes
+        if 'children' in data:
+            request._data = [MutationRequest(InsertCommand.new('Payment').value('name', 'INTENT-PAYLOAD-CANARY'),
+                            comment=child['comment']) for child in data['children']]
+        request._MutationRequest__intent = SimpleNamespace(**data)
+    return request
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('case', INTENT_FAILURES, ids=lambda case: case['id'])
+@pytest.mark.parametrize('logging', [False, True])
+@pytest.mark.parametrize('transaction', [False, True])
+async def test_request_intent_matrix_rejects_before_real_sqlite_policy_and_io(
+        tmp_path, case, logging, transaction):
+    from teaql.core import RequestIntentError
+    from teaql.runtime import DelegatingMutationPolicyRegistry
+    from teaql.runtime.context import SqlLogOptions
+    context, service, transport, entries = await fixture(tmp_path)
+    context.insert_resource('dataService', service)
+    if not logging:
+        context.with_sql_log_options(SqlLogOptions.disabled())
+    calls, audits = [], []
+    def query_policy(query):
+        calls.append('query-policy')
+        return query
+    def mutation_policy(key):
+        calls.append('mutation-policy')
+        return None
+    checker = context.check_and_fix_mutation
+    def check(command):
+        calls.append('checker')
+        return checker(command)
+    context.with_request_policy(query_policy)
+    context.with_mutation_policy_registry(DelegatingMutationPolicyRegistry(mutation_policy))
+    context.check_and_fix_mutation = check
+    context.with_app_audit_event_sink(SimpleNamespace(on_safe_event=lambda _, event: audits.append(event)))
+    tx = await service.begin(context) if transaction else None
+    execution = tx if tx is not None else service
+    # An explicitly opened transaction is setup, not IO caused by invalid input.
+    transport.begins = 0
+    request = unchecked_request(case)
+    def assert_diagnostic(error):
+        assert (error.code, error.field, error.request_kind) == (
+            case['error']['code'], case['error']['field'], case['kind'])
+        assert 'supply ' + error.field in str(error)
+        assert 'INTENT-PAYLOAD-CANARY' not in str(error)
+    try:
+        if case['kind'] == 'query':
+            with pytest.raises(RequestIntentError) as caught:
+                context.prepare_query_request(request)
+            assert_diagnostic(caught.value)
+            with pytest.raises(RequestIntentError) as caught:
+                await execution.query(context, request)
+            assert_diagnostic(caught.value)
+            # Cursor creation itself must reject; no polling is required.
+            with pytest.raises(RequestIntentError) as caught:
+                service.query_stream(context, request, 1)
+            assert_diagnostic(caught.value)
+        else:
+            with pytest.raises(RequestIntentError) as caught:
+                await execution.mutate(context, request)
+            assert_diagnostic(caught.value)
+        assert calls == []
+        assert transport.reads == transport.streams == transport.writes == []
+        assert transport.begins == 0
+        assert entries == audits == context.sql_logs() == []
+    finally:
+        if tx is not None:
+            await tx.rollback(context)
+
+    # Positive controls prove these are live hooks and a functioning SQLite
+    # provider, not a fixture that unconditionally refuses all operations.
+    valid = context.prepare_query_request(QueryRequest(SelectQuery('CustomerOrder').limit(1),
+        _comment='read validation control', _purpose='verify real provider and policy probes'))
+    result = await service.query(context, valid)
+    assert len(result.rows) == 1 and 'query-policy' in calls and transport.reads
+    await service.mutate(context, MutationRequest(InsertCommand.new('CustomerOrder').value('name', 'validation control'),
+        comment='persist validation control'))
+    assert 'checker' in calls and 'mutation-policy' in calls
+    assert transport.writes and transport.begins and len(audits) == 1
+    assert bool(entries) == logging
+    print(f"INTENT_GATE_PASS {case['id']} logging={logging} transaction={transaction} invalid_io=0 invalid_policy=0")
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('comment', [None, '', ' \t\r\n', '\u0085', '\u2003'])
+@pytest.mark.parametrize('logging', [False, True])
+async def test_graph_intent_gate_precedes_begin_and_annotated_child(tmp_path, comment, logging):
+    from teaql.core import RequestIntentError
+    from teaql.runtime import DelegatingMutationPolicyRegistry
+    from teaql.runtime.context import SqlLogOptions
+    context, service, transport, entries = await fixture(tmp_path)
+    context.insert_resource('dataService', service)
+    if not logging:
+        context.with_sql_log_options(SqlLogOptions.disabled())
+    calls, audits = [], []
+    context.with_mutation_policy_registry(DelegatingMutationPolicyRegistry(lambda _: calls.append('policy')))
+    context.check_and_fix_mutation = lambda _: calls.append('checker')
+    context.with_app_audit_event_sink(SimpleNamespace(on_safe_event=lambda _, event: audits.append(event)))
+    child = MutationRequest(InsertCommand.new('Payment').value('name', 'GRAPH-PAYLOAD-CANARY'),
+                            comment='valid local child reason')
+    async def work(session):
+        calls.append('work')
+        return await session.transaction.mutate(session.context, child)
+    with pytest.raises(RequestIntentError) as caught:
+        await context.execute_graph_save(work, comment=comment)
+    error = caught.value
+    assert (error.code, error.field, error.request_kind) == ('REQUEST_COMMENT_REQUIRED', 'comment', 'mutation')
+    assert 'supply comment' in str(error) and 'GRAPH-PAYLOAD-CANARY' not in str(error)
+    assert calls == [] and transport.begins == 0
+    assert transport.reads == transport.streams == transport.writes == []
+    assert entries == audits == context.sql_logs() == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('tail', ['entity', 'provider', 'sql'])
+@pytest.mark.parametrize('logging', [False, True])
+@pytest.mark.parametrize('transaction', [False, True])
+async def test_explicit_mutation_comment_survives_blank_route_tail_at_real_sinks(
+        tmp_path, tail, logging, transaction):
+    from teaql.core import TraceNode
+    from teaql.runtime.context import SqlLogOptions
+    context, service, transport, entries = await fixture(tmp_path)
+    if not logging:
+        context.with_sql_log_options(SqlLogOptions.disabled())
+    audits = []
+    context.with_app_audit_event_sink(SimpleNamespace(on_safe_event=lambda _, event: audits.append(event)))
+    command = InsertCommand.new('CustomerOrder').value('name', 'explicit reason control')
+    command.trace_chain = [TraceNode(kind=tail, name='CustomerOrder', comment='')]
+    request = MutationRequest(command, comment='  explicit root reason  ')
+    tx = await service.begin(context) if transaction else None
+    try:
+        result = await (tx if tx is not None else service).mutate(context, request)
+        if tx is not None:
+            assert audits == [], 'explicit transaction must not publish precommit'
+            await tx.commit(context)
+    except BaseException:
+        if tx is not None:
+            await tx.rollback(context)
+        raise
+    assert result.affected_rows == 1 and len(audits) == 1
+    assert request.comment() == result.metadata.audit_reason == '  explicit root reason  '
+    assert result.metadata.statements
+    for statement in result.metadata.statements:
+        assert statement.comment == statement.audit_reason == request.comment()
+    assert [node.comment for node in audits[0].trace_chain] == [request.comment()]
+    assert audits[0].trace_chain[0].entity_id is not None
+    assert transport.writes and transport.reads
+    if logging:
+        assert len(entries) == 2, 'physical INSERT plus authoritative readback'
+        assert all(entry.audit_reason == request.comment() for entry in entries)
+    else:
+        assert entries == context.sql_logs() == []
+    print(f"INTENT_TAIL_PASS {tail} logging={logging} transaction={transaction} committed_audit=1")
 
 
 def assert_facet_paths(entries, origin, routes, comment='inspect native facets'):

@@ -12,13 +12,25 @@ cd /path/to/teaql-python
 bash examples/trace-chain/verify.sh
 ```
 
-The verifier uses this repository's runtime source and executes all four suites
-twice without cleanup, then checks the generated library hashes. The normative
+The verifier uses this repository's runtime source. It executes the native
+request-intent gate twice on fresh fixtures and every application suite twice
+on retained databases without cleanup, then checks generated library hashes. The normative
 graph and ownership fixtures require separate SQLite files because their graph
 sizes differ. Set `TEAQL_TRACE_CHAIN_DB` and `TEAQL_TRACE_CHAIN_SHARED_DB` to retain
 and replay those files. The page/stream suite has its own
 `TEAQL_TRACE_CHAIN_PAGE_STREAM_DB` file. Each suite reuses its file across both runs. Unique
 business labels avoid deleting existing demo records.
+
+The native intent gate runs 90 SQLite cases: all seventeen shared rejection
+vectors across transaction/direct execution and logging on/off, ten missing-root
+graph-save cases, and twelve explicit-comment/blank-route-tail positive cases.
+Rejections assert the exact code, field, request kind and repair hint, zero
+Query/Mutation Policy and Checker calls, no physical reads/writes/stream opens,
+no invalid-input transaction begin and no SQL/audit events. Positive controls
+prove the observed policies and real SQLite reads/writes remain functional.
+Blank Entity/Provider/SQL tail nodes cannot erase the explicit root comment;
+actual statement metadata and committed safe audit retain it. These native
+fixtures are not a substitute for generated-entry or protocol-decoder coverage.
 
 Seven scenario groups verify missing root reason before transaction access,
 six-item branch/deletion lineage at request/SQL/audit boundaries, Q/E reload and

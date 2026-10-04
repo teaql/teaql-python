@@ -36,7 +36,19 @@ done
 export PYTHONPATH="$example/lib:$repo/src${PYTHONPATH:+:$PYTHONPATH}"
 snapshot="$(mktemp)"
 (cd "$example/lib" && rg --files --hidden -g '!**/__pycache__/**' | LC_ALL=C sort | xargs -d '\n' sha256sum) > "$snapshot"
+echo "Generated library manifest: $snapshot"
 for attempt in first second; do
+  intent_log="$(mktemp -t teaql-python-intent.XXXXXX.log)"
+  if ! python -m pytest -q "$repo/tests/provider/sqlite/test_trace_chain.py" \
+    -k 'request_intent_matrix or graph_intent_gate or explicit_mutation_comment_survives_blank_route' \
+    -s > "$intent_log" 2>&1; then
+    sed -n '1,200p' "$intent_log" >&2
+    echo "FAIL: native request intent gate; evidence $intent_log" >&2
+    exit 1
+  fi
+  rg -Fq 'INTENT_GATE_PASS' "$intent_log"
+  rg -Fq 'INTENT_TAIL_PASS' "$intent_log"
+  echo "PASS: native intent matrix $attempt; evidence $intent_log"
   echo "Run $attempt on $TEAQL_TRACE_CHAIN_DB without cleanup"
   python "$example/main.py"
   echo "Mutation privacy $attempt on $TEAQL_TRACE_CHAIN_DB without cleanup"
