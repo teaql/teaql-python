@@ -521,6 +521,17 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             ]
             nested_query.aggregates = []
             nested_query.group_by_items = []
+            if not facet.include_all_facets:
+                # The target selection (and any Facets nested inside it) must
+                # see only matching candidates before pagination/recursion.
+                # Keep original key types and make empty membership explicit.
+                member_values = [Value.from_any(row[member_column])
+                                 for row in membership_result.rows
+                                 if row.get(member_column) is not None]
+                membership = (BinaryExpr(ColumnExpr(target_field), BinaryOp.In,
+                                         ValueExpr(Value.List(member_values)))
+                              if member_values else ValueExpr(Value.Bool(False)))
+                nested_query.and_filter(membership)
             nested_request = request.with_query(nested_query)
             if relation:
                 nested_request.trace_chain.append(TraceNode(

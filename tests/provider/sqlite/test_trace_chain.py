@@ -134,6 +134,45 @@ async def test_nested_facets_keep_original_route_and_nested_materialization(tmp_
 
 
 @pytest.mark.asyncio
+@pytest.mark.parametrize('include_all', [False, True])
+@pytest.mark.parametrize('empty', [False, True])
+@pytest.mark.parametrize('logging', [False, True])
+async def test_matched_only_nested_facets_filter_membership_before_recursion(tmp_path, include_all, empty, logging):
+    context, service, transport, entries = await fixture(tmp_path)
+    for owner, target in [('PaymentAttempt', 'Payment'), ('Payment', 'CustomerOrder')]:
+        service.schema_provider.get_entity(owner).relation(
+            RelationDescriptor('owner', target).local('parent_id').foreign('id'))
+    # This candidate belongs to the same order but has no matching attempt.
+    await service.mutate(context, MutationRequest(InsertCommand.new('Payment')
+        .value('name', 'unused candidate').value('parent_id', 1), comment='seed unmatched facet candidate'))
+    orders = SelectQuery('CustomerOrder').project('id').limit(10).count('payment_count')
+    payments = (SelectQuery('Payment').project('id', 'parent_id').limit(10).count('attempt_count')
+                .facet_by('orders', 'owner', orders, include_all))
+    query = (SelectQuery('PaymentAttempt').project('id', 'parent_id').limit(1)
+             .facet_by('payments', 'owner', payments, include_all))
+    if empty:
+        query.filter(Expr.eq('id', 999))
+    entries.clear()
+    transport.reads.clear()
+    if not logging:
+        context.disable_sql_log()
+    result = await service.query(context, QueryRequest(query, _comment='inspect native facets',
+        _purpose='verify original facet ancestry'))
+    facets = result.facets['payments']
+    expected = [(1, int(not empty)), (2, 0)] if include_all else ([] if empty else [(1, 1)])
+    assert [(row['id'], row['attempt_count']) for row in facets] == expected
+    expected_nested = [(1, 2)] if include_all else ([] if empty else [(1, 1)])
+    assert [(row['id'], row['payment_count']) for row in facets.facet('orders')] == expected_nested
+    assert len(transport.reads) == 5
+    if logging:
+        assert_facet_paths(entries, 'PaymentAttempt', [[], [], [('owner', 'PaymentAttempt.owner')],
+            [('owner', 'PaymentAttempt.owner')],
+            [('owner', 'PaymentAttempt.owner'), ('owner', 'Payment.owner')]])
+    else:
+        assert entries == []
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize('logging', [False, True])
 @pytest.mark.parametrize('probes', [False, True])
 async def test_loaded_relation_facets_keep_parent_counts_and_empty_results(tmp_path, logging, probes):
