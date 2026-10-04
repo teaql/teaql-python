@@ -931,6 +931,19 @@ async def test_two_live_query_graphs_keep_independent_intent(tmp_path, monkeypat
     monkeypatch.setattr(context, '_record_metadata_log', observe)
     requests = [QueryRequest(three_levels(), _comment=f'load {label} graph',
                              _purpose=f'render {label} graph') for label in ('alpha', 'beta')]
+    # Native test-only inspection: query frames must not become ambient Context
+    # fields/resources. Keep legitimate SQL-log appends observable separately.
+    context_storage_before = {key: id(value) for key, value in vars(context).items()}
+    resource_storage_before = {key: id(value) for key, value in context._resources.items()}
+
+    def assert_context_unchanged():
+        assert {key: id(value) for key, value in vars(context).items()} == context_storage_before, \
+            'shared Context fields changed during independent queries'
+        assert {key: id(value) for key, value in context._resources.items()} == resource_storage_before, \
+            'shared Context resources changed during independent queries'
+        assert context._graph_save_guard.get() is None
+        assert context._graph_session is None
+
     pending = [asyncio.create_task(service.query(context, request)) for request in requests]
     ready = asyncio.create_task(entered.wait())
     try:
@@ -940,12 +953,14 @@ async def test_two_live_query_graphs_keep_independent_intent(tmp_path, monkeypat
         assert roots == 2 and not any(task.done() for task in pending)
         assert metadata == entries == []
         assert [request.intent.comment for request in requests] == ['load alpha graph', 'load beta graph']
+        assert_context_unchanged()
         release.set()
         results = await asyncio.wait_for(asyncio.gather(*pending), timeout=5)
         assert all(result.rows[0]['children'][0]['children'][0]['children'][0]['id'] == 1
                    for result in results)
         assert len(transport.reads) == len(metadata) == 8
         assert len(entries) == (8 if logging else 0)
+        assert_context_unchanged()
         for observed, path_attr in [(metadata, 'trace_chain'), (entries, 'trace_path')]:
             for label in ('alpha', 'beta'):
                 own = [entry for entry in observed if entry.comment == f'load {label} graph']
