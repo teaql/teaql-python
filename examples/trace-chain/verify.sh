@@ -33,6 +33,16 @@ for other_db in "$TEAQL_TRACE_CHAIN_DB" "$TEAQL_TRACE_CHAIN_SHARED_DB" "$TEAQL_T
     exit 1
   fi
 done
+if [[ -z "${TEAQL_TRACE_CHAIN_CHECKER_DB:-}" ]]; then
+  checker_directory="$(mktemp -d -t teaql-python-checker.XXXXXX)"
+  export TEAQL_TRACE_CHAIN_CHECKER_DB="$checker_directory/checker.sqlite"
+fi
+for other_db in "$TEAQL_TRACE_CHAIN_DB" "$TEAQL_TRACE_CHAIN_SHARED_DB" "$TEAQL_TRACE_CHAIN_PAGE_STREAM_DB" "$TEAQL_TRACE_CHAIN_AGGREGATE_DB"; do
+  if [[ "$TEAQL_TRACE_CHAIN_CHECKER_DB" == "$other_db" ]]; then
+    echo 'FAIL: Checker overlap fixture requires its own retained database' >&2
+    exit 1
+  fi
+done
 export PYTHONPATH="$example/lib:$repo/src${PYTHONPATH:+:$PYTHONPATH}"
 snapshot="$(mktemp)"
 (cd "$example/lib" && rg --files --hidden -g '!**/__pycache__/**' | LC_ALL=C sort | xargs -d '\n' sha256sum) > "$snapshot"
@@ -74,6 +84,12 @@ for attempt in first second; do
   python "$example/page_stream.py"
   echo "Aggregate $attempt on $TEAQL_TRACE_CHAIN_AGGREGATE_DB without cleanup"
   python "$example/relation_aggregate.py"
+  echo "Checker overlap $attempt on $TEAQL_TRACE_CHAIN_CHECKER_DB without cleanup"
+  checker_log="$(mktemp -t teaql-python-checker.XXXXXX.log)"
+  TEAQL_TRACE_CHAIN_DB="$TEAQL_TRACE_CHAIN_CHECKER_DB" \
+    python "$example/checker_overlap.py" | tee "$checker_log"
+  rg -Fq 'PASS: Python generated Checker overlap 4 scenarios; accepted-only command/SQL/audit; serialized callbacks' "$checker_log"
+  echo "PASS: generated Checker overlap $attempt; evidence $checker_log"
 done
 (cd "$example/lib" && sha256sum --check "$snapshot")
 echo "PASS: two runs on the same database; generated library hashes unchanged"
