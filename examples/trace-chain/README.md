@@ -119,6 +119,18 @@ under `evidence/`. `AGENTS.md` governs application implementation. The library i
 regenerated only by the upstream `PythonTraceChainExampleGenerationTest`; do not
 edit generated files to fix application usage.
 
+The assigned-identity suite verifies `TC-MUT-07` through actual generated saves.
+New root/annotated child/unannotated sibling start with negative temporary typed
+ledger keys; no explicit IDs or expected trace nodes are injected. Saving
+allocates positive IDs which appear in emitted commands, every actual
+write/readback metadata entry and committed safe audit. Q/E reload verifies
+stored names, versions and parent IDs. A freshly loaded update carries only
+its own reason. Both diagnostic logging modes run twice using the retained
+ownership database, not the normative fixture's equal-ID sequence. The verifier
+requires GNU coreutils `timeout` (60-second deadline, 5-second kill grace) and
+the exact completion marker. This proves allocation and lineage, not batch
+grouping or a complete-ledger override.
+
 Prepared batch grouping, generated ledger override, complete mutation privacy,
 external database acceptance and immutable Registry consumer replay are not
 established by this example. Local tests do not prove any published version.

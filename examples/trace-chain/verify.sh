@@ -75,6 +75,11 @@ for attempt in first second; do
   python "$example/mutation_privacy.py" | tee "$privacy_log"
   rg -Fq 'PASS: Python generated loaded delete privacy; 2 writes/2 reads/2 audits; independent next request' "$privacy_log"
   rg -Fq 'PASS: Python generated unchanged scalar privacy; 1 write/1 read/1 audit' "$privacy_log"
+  echo "Assigned identities $attempt on $TEAQL_TRACE_CHAIN_SHARED_DB without cleanup"
+  assigned_log="$(mktemp -t teaql-python-assigned.XXXXXX.log)"
+  TEAQL_TRACE_CHAIN_DB="$TEAQL_TRACE_CHAIN_SHARED_DB" \
+    timeout --kill-after=5s 60s python "$example/assigned_identity.py" | tee "$assigned_log"
+  rg -Fxq 'PASS: Python generated assigned identity 2 scenarios; command/SQL/audit and independent reload' "$assigned_log"
   echo "Ownership $attempt on $TEAQL_TRACE_CHAIN_SHARED_DB without cleanup"
   run_log="$(mktemp -t teaql-python-shared.XXXXXX.log)"
   env -u TEAQL_TRACE_CHAIN_SCENARIO TEAQL_TRACE_CHAIN_DB="$TEAQL_TRACE_CHAIN_SHARED_DB" \
