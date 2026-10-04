@@ -230,6 +230,12 @@ async def main():
         assert entry.purpose == 'why: retain root query intent'
         assert entry.trace_path[0].name == 'PaymentAttempt'
         assert [node.name for node in entry.trace_path[2:-2]] == ['payment', 'customer_order', 'platform'][:depth]
+        route = [('payment', 'PaymentAttempt.payment'), ('customer_order', 'Payment.customer_order'),
+                 ('platform', 'CustomerOrder.platform')]
+        assert [(node.kind, node.name, node.comment) for node in entry.trace_path] == [
+            ('operation', 'PaymentAttempt', 'query'), ('request', 'PaymentAttempt', ''),
+            *[('relation', name, detail) for name, detail in route[:depth]],
+            ('provider', 'sqlite', ''), ('sql', 'select', '')], 'canonical generated path at every physical boundary'
     print('PASS: generated query traverses three actual relations with inherited intent')
 
     graphs = [make_graph(context, platform, label + '-' + name) for name in ('first', 'second')]
