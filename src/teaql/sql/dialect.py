@@ -161,6 +161,17 @@ class SqlDialect(ABC):
         if where_parts:
             sql += " WHERE " + " AND ".join(where_parts)
 
+        # Window ranks apply to the grouped, HAVING-filtered result. Returning
+        # the partition wrapper first silently collapses aggregate rows and
+        # drops HAVING bindings on both root and loaded-relation queries.
+        if query.group_by_items:
+            group_by = ", ".join(self.column_sql(entity, field) for field in query.group_by_items)
+            sql += f" GROUP BY {group_by}"
+
+        if query.having_expr is not None:
+            having_sql = self.compile_expr(entity, query.having_expr, params)
+            sql += f" HAVING {having_sql}"
+
         if partitioned:
             rank = self.quote_ident("__teaql_partition_rank")
             predicates = [f"{rank} > {query.slice.offset}"]
@@ -168,14 +179,6 @@ class SqlDialect(ABC):
                 predicates.append(f"{rank} <= {query.slice.offset + query.slice.limit}")
             alias = self.quote_ident("__teaql_partitioned")
             return f"SELECT * FROM ({sql}) AS {alias} WHERE {' AND '.join(predicates)} ORDER BY {rank}"
-            
-        if query.group_by_items:
-            group_by = ", ".join(self.column_sql(entity, field) for field in query.group_by_items)
-            sql += f" GROUP BY {group_by}"
-            
-        if query.having_expr is not None:
-            having_sql = self.compile_expr(entity, query.having_expr, params)
-            sql += f" HAVING {having_sql}"
             
         if query.order_by_items:
             order_by = ", ".join(self.order_by_sql(entity, order, params) for order in query.order_by_items)
