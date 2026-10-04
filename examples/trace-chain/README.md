@@ -32,6 +32,15 @@ Blank Entity/Provider/SQL tail nodes cannot erase the explicit root comment;
 actual statement metadata and committed safe audit retain it. These native
 fixtures are not a substitute for generated-entry or protocol-decoder coverage.
 
+The verifier also runs 66 native LIKE privacy cases twice: typed contains,
+starts/ends and negations retain exact original operands for safe intent logging,
+without changing executable patterns or caller/policy inputs. Tests cover direct
+and transaction queries, count, future-child secrets before first-root SQL,
+failure/next-request isolation, logging off, raw/literal wildcard controls,
+rewritten ASTs and scalar streaming with debug opt-in/revocation. Private source
+provenance is not a wire field. These are native small fixtures, not a new
+generated-query scenario or an all-provider acceptance claim.
+
 Seven scenario groups verify missing root reason before transaction access,
 six-item branch/deletion lineage at request/SQL/audit boundaries, Q/E reload and
 retained soft deletion, three relation levels with inherited query intent, two

@@ -19,10 +19,14 @@ class SQLBindings(list):
         self.policies = []
         self.current_policy = 'unknown'
         self.trusted = True
+        self._intent_operands = []
 
     def append(self, value, policy=None):
         super().append(value)
         self.policies.append(policy or self.current_policy)
+
+    def _retain_intent_operand(self, value):
+        self._intent_operands.append((value, self.current_policy))
 
     @contextmanager
     def policy(self, policy):
@@ -45,6 +49,7 @@ class CompiledQuery:
         if isinstance(self.params, SQLBindings):
             self.parameter_log_policies = list(self.params.policies)
             self.sql_origin = 'generated' if self.params.trusted else None
+            self._intent_operands = tuple(self.params._intent_operands)
 
     def sql_with_comment(self) -> str:
         if self.comment:

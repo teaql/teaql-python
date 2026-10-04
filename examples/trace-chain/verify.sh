@@ -49,6 +49,15 @@ for attempt in first second; do
   rg -Fq 'INTENT_GATE_PASS' "$intent_log"
   rg -Fq 'INTENT_TAIL_PASS' "$intent_log"
   echo "PASS: native intent matrix $attempt; evidence $intent_log"
+  like_log="$(mktemp -t teaql-python-like.XXXXXX.log)"
+  if ! python -m pytest -q -p no:cacheprovider "$repo/tests/provider/sqlite/test_like_intent.py" \
+    > "$like_log" 2>&1; then
+    sed -n '1,200p' "$like_log" >&2
+    echo "FAIL: native LIKE intent privacy; evidence $like_log" >&2
+    exit 1
+  fi
+  rg -q '^66 passed in ' "$like_log"
+  echo "PASS: native LIKE privacy $attempt; evidence $like_log"
   echo "Run $attempt on $TEAQL_TRACE_CHAIN_DB without cleanup"
   python "$example/main.py"
   echo "Mutation privacy $attempt on $TEAQL_TRACE_CHAIN_DB without cleanup"

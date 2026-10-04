@@ -436,6 +436,13 @@ class SqlDialect(ABC):
         elif isinstance(expr, BinaryExpr):
             if expr.op in (BinaryOp.In, BinaryOp.NotIn, BinaryOp.InLarge, BinaryOp.NotInLarge):
                 return self.compile_in(entity, expr.left, expr.op, expr.right, params)
+            original = getattr(expr.right, '_like_operand', None)
+            if (isinstance(params, SQLBindings) and expr.op in (BinaryOp.Like, BinaryOp.NotLike)
+                    and isinstance(expr.right, ValueExpr) and original is not None
+                    and expr.right.value == original[1]):
+                # Retain only an intact typed lowering, never infer from raw SQL
+                # wildcards or reuse stale provenance after an AST rewrite.
+                params._retain_intent_operand(original[0])
             lhs = self.compile_expr(entity, expr.left, params)
             rhs = self.compile_expr(entity, expr.right, params)
             op_str = {

@@ -61,13 +61,26 @@ class _RelationAssembly:
 def _intent_bindings(compiled, request):
     # Resolve each source's policy before flattening: credential detection and
     # malformed-policy handling depend on the original statement, not the child.
-    from teaql.runtime.log_privacy import _binding_policies
     inherited = getattr(request, '_log_intent_source', None)
     sources = [inherited, compiled] if inherited is not None else [compiled]
-    return CompiledQuery('', [deepcopy(value) for source in sources for value in source.params],
-                         parameter_log_policies=[policy for source in sources
-                                                 for policy in _binding_policies(source)],
-                         sql_origin='generated')
+    result = CompiledQuery('', [], parameter_log_policies=[], sql_origin='generated')
+    for source in sources:
+        _append_intent_bindings(result, source)
+    return result
+
+
+def _append_intent_bindings(target, source):
+    from teaql.runtime.log_privacy import _binding_policies
+    target.params.extend(deepcopy(source.params))
+    target.parameter_log_policies.extend(_binding_policies(source))
+    operands = getattr(source, '_intent_operands', ())
+    if operands:
+        # This is a private provenance copy, not the executable statement. Apply
+        # the same credential/unknown fail-closed policy before combining it.
+        original = CompiledQuery('', [deepcopy(value) for value, _ in operands],
+            parameter_log_policies=[policy for _, policy in operands], sql_origin='generated')
+        target.params.extend(original.params)
+        target.parameter_log_policies.extend(_binding_policies(original))
 
 
 class _NoopContextManager:
@@ -160,7 +173,6 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         Compile copies only for policy provenance: no SQL, list preparation,
         query-builder mutation or Context-owned redaction state.
         """
-        from teaql.runtime.log_privacy import _binding_policies
         source = _intent_bindings(compiled, request)
         pending = [(request.query, request.query.entity)]
         for original in getattr(request, '_log_intent_queries', ()):
@@ -170,8 +182,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             candidate = deepcopy(original)
             self._resolve_subquery_entities(candidate.filter_expr)
             bindings = self.dialect.compile_select(descriptor, candidate)
-            source.params.extend(deepcopy(bindings.params))
-            source.parameter_log_policies.extend(_binding_policies(bindings))
+            _append_intent_bindings(source, bindings)
             pending.append((original, original.entity))
         visited = set()
         while pending:
@@ -202,8 +213,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 candidate.entity = entity
                 self._resolve_subquery_entities(candidate.filter_expr)
                 bindings = self.dialect.compile_select(child_descriptor, candidate)
-                source.params.extend(deepcopy(bindings.params))
-                source.parameter_log_policies.extend(_binding_policies(bindings))
+                _append_intent_bindings(source, bindings)
                 pending.append((child, entity))
         return source
 

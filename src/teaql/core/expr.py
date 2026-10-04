@@ -77,6 +77,14 @@ class ColumnExpr(Expr):
 class ValueExpr(Expr):
     value: Value
 
+def _like_pattern(original, prefix, suffix):
+    """Retain lowering provenance without changing dataclass/wire contracts."""
+    original = str(original)
+    pattern = prefix + original + suffix
+    result = ValueExpr(Value.Text(pattern))
+    result._like_operand = (Value.Text(original), Value.Text(pattern))
+    return result
+
 @dataclass
 class FunctionExpr(Expr):
     function: ExprFunction
@@ -277,22 +285,22 @@ def not_like(field: str, val: Any) -> Expr:
     return Expr.not_like(field, val)
 
 def contain(field: str, val: Any) -> Expr:
-    return Expr.like(field, f"%{val}%")
+    return Expr.like(field, _like_pattern(val, '%', '%'))
 
 def not_contain(field: str, val: Any) -> Expr:
-    return Expr.not_like(field, f"%{val}%")
+    return Expr.not_like(field, _like_pattern(val, '%', '%'))
 
 def begin_with(field: str, val: Any) -> Expr:
-    return Expr.like(field, f"{val}%")
+    return Expr.like(field, _like_pattern(val, '', '%'))
 
 def not_begin_with(field: str, val: Any) -> Expr:
-    return Expr.not_like(field, f"{val}%")
+    return Expr.not_like(field, _like_pattern(val, '', '%'))
 
 def end_with(field: str, val: Any) -> Expr:
-    return Expr.like(field, f"%{val}")
+    return Expr.like(field, _like_pattern(val, '%', ''))
 
 def not_end_with(field: str, val: Any) -> Expr:
-    return Expr.not_like(field, f"%{val}")
+    return Expr.not_like(field, _like_pattern(val, '%', ''))
 
 def sound_like(field: str, val: Any) -> Expr:
     return eq(soundex(column(field)), soundex(value(val)))
