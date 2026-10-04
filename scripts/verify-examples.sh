@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(business-clock business-id conformance mutation-policy opaque-entity-reference order-management query-policy school-management task_board trace-chain)
+expected=(business-clock business-id conformance facet-trace mutation-policy opaque-entity-reference order-management query-policy school-management task_board trace-chain)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -40,4 +40,5 @@ PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/order-mana
 TEAQL_TASK_BOARD_DB="$task_board_tmp/task_board.db" PYTHONPATH="$repo/examples/task_board:$repo/src" python "$repo/examples/task_board/main.py"
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/task_board" -p 'test_task_board.py' -v
 bash "$repo/examples/trace-chain/verify.sh"
+bash "$repo/examples/facet-trace/verify.sh"
 echo "PASS: all Python examples"

@@ -149,6 +149,12 @@ list, and a later sibling can still load using the same FK. Keys are not added
 to returned records or mutation payloads. Native SQLite cases exercise these
 boundaries with related counts, nested ancestry and logging both on and off.
 
+The reusable [generated Facet example](examples/facet-trace/) exercises 20
+root/nested/loaded-relation scenarios twice on one retained SQLite database.
+It checks actual counts and returned metadata, original root/ancestor routes,
+future-binding masking, logging on/off, and independent next-query state. The
+all-examples gate now includes it and fingerprints the generated library.
+
 This is local-source/generated-consumer evidence, not complete Trace Chain.
 Prepared-batch grouping, generated ledger overrides, complete entry-point and
 inherited mutation privacy coverage, successful readback diagnostic alignment,
