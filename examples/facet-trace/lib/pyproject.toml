@@ -1,0 +1,16 @@
+[project]
+name = "school-management-service-lib"
+version = "1.0.0"
+description = "Generated python library"
+dependencies = ["teaql==0.2.9", "aiosqlite>=0.22.1"]
+
+[tool.setuptools]
+py-modules = ["Q", "E"]
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["models*", "requests*"]
+
+[build-system]
+requires = ["setuptools>=42"]
+build-backend = "setuptools.build_meta"
