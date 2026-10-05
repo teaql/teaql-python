@@ -12,7 +12,12 @@ full matching counts, and SQL logging on/off. Generated Q/E and audited mutation
 APIs seed and traverse the graph. Real database reads, count SQL, safe diagnostics,
 request immutability, raw policy intent, future-binding masking, and independent
 next-request `NotLoaded` semantics are asserted. `FACET_OBSERVED` records actual
-counts/results and diagnostic routes, not just a success marker.
+counts/results and diagnostic routes, not just a success marker. The transport
+and Context metadata boundary are observed separately: every SELECT retains
+its full original root/ancestor path and raw request-owned intent even with
+logging disabled, safe diagnostics emit nothing when disabled, and query
+execution performs no writes. Expected frames are never injected into runtime
+requests by the fixture.
 
 `lib/` is read-only generated output retained from producer commit
 `c7407c93c186fa9f0e2ff9599952f333a5963020` (Python issue #43 / producer #251).

@@ -48,7 +48,7 @@ def log_row(entry):
         'debug_sql': entry.debug_sql, 'params': [getattr(value, 'val', value) for value in entry.params],
         'path': [(n.kind, n.name, n.comment) for n in entry.trace_path]}
 
-def assert_observed(context, diagnostics, reads, loaded, nested, logging):
+def assert_observed(context, diagnostics, reads, raw, writes, loaded, nested, logging, comment):
     child = [('school_list', 'SchoolType.school_list')] if loaded else []
     first = child + [('school_type', 'School.school_type')]
     second = first + [('platform', 'SchoolType.platform')]
@@ -56,11 +56,21 @@ def assert_observed(context, diagnostics, reads, loaded, nested, logging):
     routes = [[], child, *branch, *branch] if loaded else [[], [], first] + ([first, second] if nested else [])
     assert len(reads) == len(routes), ('physical SQL count', len(reads), routes)
     assert sum('COUNT(' in sql.upper() for sql, _ in reads) == (4 if loaded else 2 if nested else 1)
+    assert not writes, 'Facet reads must not write query metadata or entities'
+    assert len(raw) == len(reads), 'logging-off must retain actual execution metadata'
+    root = 'SchoolType' if loaded else 'School'
+    for entry, route, (sql, _) in zip(raw, routes, reads):
+        assert entry['sql'] == sql
+        assert entry['outcome'] == 'success'
+        assert entry['purpose'] == PURPOSE
+        assert entry['comment'] == comment, 'raw metadata must retain original request-owned intent'
+        assert entry['path'] == [('operation', root, 'query'), ('request', root, ''),
+            *[('relation', name, detail) for name, detail in route],
+            ('provider', 'sqlite', ''), ('sql', 'select', '')]
     entries = context.sql_logs()
     assert len(entries) == len(diagnostics) == (len(reads) if logging else 0)
     if not logging:
         return
-    root = 'SchoolType' if loaded else 'School'
     for entry, route in zip(entries, routes):
         assert entry.execution_outcome == 'success'
         assert entry.purpose == PURPOSE
@@ -77,7 +87,7 @@ def assert_observed(context, diagnostics, reads, loaded, nested, logging):
 async def main():
     service = create_sqlite_service(os.environ['TEAQL_FACET_TRACE_DB'])
     context = UserContext.new().install(GENERATED_RUNTIME_MODULE).insert_resource('dataService', service)
-    diagnostics, reads, policies = [], [], []
+    diagnostics, reads, policies, raw, writes = [], [], [], [], []
     context.set_diagnostic_sql_log_sink(SimpleNamespace(write=diagnostics.append))
     await context.ensure_schema()
     for suffix in ('', '-B'):
@@ -95,6 +105,19 @@ async def main():
         reads.append((compiled.sql, [value.val for value in compiled.params]))
         return await original_fetch(compiled)
     service.transport.fetch_all_sql = capture
+    original_execute = service.transport.execute_sql
+    async def capture_write(compiled):
+        writes.append(compiled.sql)
+        return await original_execute(compiled)
+    service.transport.execute_sql = capture_write
+    original_record = context._record_metadata_log
+    def capture_metadata(metadata, *args, **kwargs):
+        # Observe runtime-produced frames without injecting expected lineage.
+        raw.append({'comment': metadata.comment, 'purpose': metadata.purpose,
+            'outcome': metadata.execution_outcome, 'sql': metadata.parameterized_sql,
+            'path': [(n.kind, n.name, n.comment) for n in metadata.trace_chain]})
+        return original_record(metadata, *args, **kwargs)
+    context._record_metadata_log = capture_metadata
     def policy(query):
         policies.append(query.comment_text)
         return query
@@ -106,7 +129,7 @@ async def main():
                 for empty in ((False,) if mode == 'loaded' else (False, True)):
                     label = (mode, include_all, logging, empty)
                     context.enable_all_sql_log() if logging else context.disable_sql_log()
-                    context.clear_sql_logs(); diagnostics.clear(); reads.clear(); policies.clear()
+                    context.clear_sql_logs(); diagnostics.clear(); reads.clear(); policies.clear(); raw.clear(); writes.clear()
                     nested = mode != 'root'
                     request = school_facets(include_all, nested)
                     if empty: request.with_name_is('absent')
@@ -121,7 +144,7 @@ async def main():
                         rows = await executable.execute_for_list(context)
                         assert request.query == before, 'execution mutated caller query'
                         assert policies[0] == comment, 'safe projection changed policy intent'
-                        assert_observed(context, diagnostics, reads, mode == 'loaded', nested, logging)
+                        assert_observed(context, diagnostics, reads, raw, writes, mode == 'loaded', nested, logging, comment)
                         if mode == 'loaded':
                             assert [E.school_type(parent).id().eval() for parent in rows] == [1001, 1002]
                             results = []
@@ -148,6 +171,7 @@ async def main():
                         print('FACET_OBSERVED ' + json.dumps({'case': label, 'calls': len(reads),
                             'counts': sum('COUNT(' in sql.upper() for sql, _ in reads),
                             'results': results,
+                            'raw': raw, 'writes': writes,
                             'sql': [log_row(entry) for entry in context.sql_logs()]}))
                         cases += 1
                     except Exception as error:
