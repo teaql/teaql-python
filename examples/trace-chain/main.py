@@ -91,6 +91,20 @@ def physical_identities(service, context):
     return identities
 
 
+def readback_fact(entry):
+    """Project actual safe SQL observations, omitting all parameter values."""
+    def nodes(values):
+        return [{'Kind': node.kind, 'Name': node.name, 'EntityId': node.entity_id,
+                 'Comment': node.comment} for node in values]
+    return {'Operation': entry.operation.name, 'Comment': entry.comment,
+            'Purpose': entry.purpose, 'AuditReason': entry.audit_reason,
+            'ExecutionOutcome': entry.execution_outcome,
+            'AffectedRows': entry.affected_rows, 'ResultCount': entry.result_count,
+            'StartedAt': entry.started_at.isoformat(), 'EndedAt': entry.ended_at.isoformat(),
+            'ParameterizedSQL': entry.sql, 'TraceChain': nodes(entry.trace_path),
+            'MutationLineage': nodes(entry.mutation_lineage)}
+
+
 class ObservedService:
     """Transparent observer, not a replacement planner or provider."""
     def __init__(self, service):
@@ -350,22 +364,30 @@ async def main():
     metadata = {(entity, identity): chain(item.mutation_lineage)
                 for (entity, identity, _), item in zip(service.requests, service.results)}
     audits = {(event.entity, scalar(event.entity_id)): chain(event.trace_chain) for event in sink.events}
-    assert len(service.requests) == len(service.results) == len(sink.events) == 6
+    assert len(service.raw_requests) == len(service.requests) == len(service.results) == len(sink.events) == 6
     assert commands == metadata == audits == expected
-    for record in service.results:
+    for request, record in zip(service.raw_requests, service.results):
         assert record.trace_chain[0].name == 'CustomerOrder'
         assert [node.kind for node in record.trace_chain] == ['operation', 'entity', 'provider', 'sql']
         assert all(node.kind == 'auditReason' for node in record.mutation_lineage)
         assert len(record.statements) == 2
         write, read = record.statements
         assert not write.statements and not read.statements
-        assert read.comment == write.comment == 'submit order'
+        assert request.comment() == 'submit order'
+        assert read.comment == write.comment == request.comment(), 'derived readback inherits actual mutation comment'
+        assert read.audit_reason == write.audit_reason == request.comment(), 'derived readback inherits root audit reason'
+        assert read.purpose == 'verify the persisted mutation result', 'derived readback owns verification purpose'
         assert read.mutation_lineage == write.mutation_lineage == record.mutation_lineage
         assert read.result_count == 1 and read.affected_rows is None
         assert read.execution_outcome == 'success'
         assert [node.kind for node in read.trace_chain] == ['operation', 'request', 'provider', 'sql']
         assert [node.name for node in read.trace_chain] == ['CustomerOrder', 'CustomerOrder', 'sqlite', 'select']
         assert read.trace_chain[0].comment == 'query'
+        assert write.ended_at <= read.started_at, 'physical write precedes its authoritative readback'
+    print('TC-REQ-10 PYTHON READBACK EVIDENCE ' + json.dumps({
+        'case': 'TC-REQ-10', 'writes': 6, 'readbacks': 6,
+        'statements': [readback_fact(entry) for entry in context.sql_logs()],
+    }, sort_keys=True))
     print('PASS: six writes plus six successful readbacks; root request paths; no duplicate SQL facts')
     print('PASS: normative six items; assigned typed identity; branch/deletion reasons; request/SQL/audit boundaries')
 
