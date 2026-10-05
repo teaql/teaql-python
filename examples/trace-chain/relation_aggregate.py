@@ -1,5 +1,6 @@
 """Assist-guided generated Q/E/save: root and nested aggregate provenance."""
 import asyncio
+import copy
 import json
 import os
 import uuid
@@ -40,7 +41,7 @@ async def main():
     order.payment_list().append(payment)
     await order.audit_as('seed aggregate graph').save(context)
     order_id, payment_id = E.customer_order(order).id().eval(), E.payment(payment).id().eval()
-    reads, fault = [], [False]
+    reads, raw, fault = [], [], [False]
     original_fetch = native.transport.fetch_all_sql
 
     async def capture(compiled):
@@ -50,13 +51,45 @@ async def main():
         return await original_fetch(compiled)
 
     native.transport.fetch_all_sql = capture
+    original_record = context._record_metadata_log
+
+    def capture_metadata(metadata, *args, **kwargs):
+        # Read-only observation of runtime-produced frames, even with logs off.
+        raw.append(copy.deepcopy(metadata))
+        return original_record(metadata, *args, **kwargs)
+
+    context._record_metadata_log = capture_metadata
+
+    def raw_rows():
+        return [{'sql': entry.parameterized_sql, 'comment': entry.comment,
+            'purpose': entry.purpose, 'outcome': entry.execution_outcome,
+            'path': [(n.kind, n.name, n.comment) for n in entry.trace_chain]} for entry in raw]
+
+    def assert_raw(root, routes, comment, purpose, failed=False):
+        assert len(raw) == len(reads) == len(routes), 'every physical SQL needs metadata'
+        actual_routes = []
+        for entry, sql in zip(raw, reads):
+            assert entry.parameterized_sql == sql
+            assert entry.comment == comment and entry.purpose == purpose
+            route = [(node.name, node.comment) for node in entry.trace_chain if node.kind == 'relation']
+            actual_routes.append(route)
+            assert [(node.kind, node.name, node.comment) for node in entry.trace_chain] == [
+                ('operation', root, 'query'), ('request', root, ''),
+                *[('relation', name, detail) for name, detail in route],
+                ('provider', 'sqlite', ''), ('sql', 'select', '')]
+            assert all(name not in ('filtered_count', 'save') for name, _ in route)
+        assert sorted(actual_routes) == sorted(routes), (actual_routes, routes)
+        assert [entry.execution_outcome for entry in raw] == [
+            *['success'] * (len(raw) - 1), 'failure' if failed else 'success']
 
     def query(nested, filtered=secret):
         # Each aggregate has its own child builder; no hand-written application SQL.
         request = (Q.customer_orders().with_id_is(order_id).limit(1)
             .count_order_items_with('filtered_count', Q.order_items().with_name_is(filtered).limit(10))
             .count_order_items_as('save')
-            .select_order_item_list_with(Q.order_items().limit(10)))
+            .select_order_item_list_with(Q.order_items().limit(10))
+            .select_payment_list_with(Q.payments().limit(10).select_customer_order_with(
+                Q.customer_orders().with_id_is(0).limit(1))))
         if nested:
             request = (Q.payments().with_id_is(payment_id).limit(1)
                        .select_customer_order_with(request))
@@ -66,6 +99,7 @@ async def main():
         reset(service, sink, context)
         diagnostic.clear()
         reads.clear()
+        raw.clear()
         policy.plans.clear()
 
     for logging in (True, False):
@@ -103,6 +137,17 @@ async def main():
             loaded = E.payment(rows[0]).customer_order().eval() if nested else rows[0]
             assert E.customer_order(loaded).id().eval() == order_id
             assert E.customer_order(loaded).order_item_list().size().eval() == 2
+            assert E.customer_order(loaded).payment_list().size().eval() == 1
+            # Filtering detail must not erase either list membership or its real FK.
+            child = loaded.payment_list()[0]
+            unfetched = E.payment(child).customer_order().eval()
+            assert E.customer_order(unfetched).id().eval() == order_id
+            try:
+                E.customer_order(unfetched).description().eval()
+            except RuntimeError as error:
+                assert type(error).__name__ == 'TeaQLNotLoadedError', error
+            else:
+                raise AssertionError('aggregate child detail became loaded-null')
             assert loaded.has_query_projection('filtered_count')
             assert loaded.query_projection('filtered_count') == 1
             assert loaded.query_projection('save') == 2 and callable(loaded.save)
@@ -113,14 +158,23 @@ async def main():
                 pass
             else:
                 raise AssertionError('missing aggregate silently became a value')
-            assert len(reads) == (5 if nested else 4), reads
+            assert len(reads) == (7 if nested else 6), reads
+            prefix = [('customer_order', 'Payment.customer_order')] if nested else []
+            item_route = prefix + [('order_item_list', 'CustomerOrder.order_item_list')]
+            payment_route = prefix + [('payment_list', 'CustomerOrder.payment_list')]
+            routes = [[], *([prefix] if nested else []), item_route, payment_route,
+                payment_route + [('customer_order', 'Payment.customer_order')], item_route, item_route]
+            assert_raw('Payment' if nested else 'CustomerOrder', routes,
+                       'inspect ' + secret, 'verify aggregate provenance')
             assert service.requests == [] and policy.plans == [] and sink.events == []
             if logging:
                 assert len(context.sql_logs()) == len(diagnostic) == len(reads)
-                for entry in context.sql_logs():
+                for entry, metadata in zip(context.sql_logs(), raw):
                     assert entry.trace_path[0].name == ('Payment' if nested else 'CustomerOrder')
                     assert entry.purpose == 'verify aggregate provenance'
                     assert secret not in json.dumps(log_row(entry))
+                    assert [(n.kind, n.name, n.comment) for n in entry.trace_path] == [
+                        (n.kind, n.name, n.comment) for n in metadata.trace_chain]
                 aggregates = [entry for entry in context.sql_logs() if 'COUNT(' in entry.sql.upper()]
                 assert len(aggregates) == 2
                 for entry in aggregates:
@@ -131,7 +185,10 @@ async def main():
                 assert context.sql_logs() == diagnostic == []
             print('AGGREGATE_OBSERVED ' + json.dumps({'nested': nested, 'logging': logging,
                 'count': loaded.query_projection('filtered_count'), 'provider_calls': len(reads),
-                'sql': [log_row(entry) for entry in context.sql_logs()]}))
+                'sql': [log_row(entry) for entry in context.sql_logs()],
+                'raw': raw_rows(),
+                'membership': {'items': 2, 'payments': 1, 'foreign_id': order_id,
+                    'target_detail': 'NotLoaded'}}))
             clear()
             await loaded.update_description('aggregate saved ' + uuid.uuid4().hex).audit_as(
                 'save model field without projection aliases').save(context)
@@ -157,20 +214,26 @@ async def main():
             raise AssertionError('aggregate provider failure was swallowed')
         finally:
             fault[0] = False
+        # Aggregates precede eager relation loads; failure must stop those later reads.
         assert len(reads) == 2 and service.requests == [] and sink.events == []
+        assert_raw('CustomerOrder', [[], [('order_item_list', 'CustomerOrder.order_item_list')]],
+            'inspect ' + secret, 'verify aggregate provenance', failed=True)
         if logging:
             assert context.sql_logs()[-1].execution_outcome == 'failure'
             assert all(secret not in json.dumps(log_row(entry)) for entry in context.sql_logs())
         else:
             assert context.sql_logs() == diagnostic == []
         print('AGGREGATE_FAILURE ' + json.dumps({'logging': logging, 'provider_calls': len(reads),
-            'sql': [log_row(entry) for entry in context.sql_logs()]}))
+            'sql': [log_row(entry) for entry in context.sql_logs()], 'raw': raw_rows()}))
         clear()
         await (Q.platforms().with_id_is(1).limit(1).comment('independent next query')
                .purpose('prove scope restored').execute_for_list(context))
         assert len(reads) == 1
+        assert_raw('Platform', [[]], 'independent next query', 'prove scope restored')
         assert all(entry.comment == 'independent next query' and entry.trace_path[0].name == 'Platform'
                    for entry in context.sql_logs())
+        print('AGGREGATE_INDEPENDENT ' + json.dumps({'logging': logging, 'raw': raw_rows(),
+            'sql': [log_row(entry) for entry in context.sql_logs()]}))
     print('PASS: Python generated aggregates; 4 root/nested/logging cases; isolated save; 2 failures restored')
 
 

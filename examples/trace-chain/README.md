@@ -7,6 +7,17 @@ captures actual requests and SQL metadata; the safe audit sink asserts that
 database commit has already completed. No expected trace frames are supplied
 to the planner or provider.
 
+The generated aggregate suite observes every physical SQL's unmodified runtime
+metadata with logging enabled and disabled. Root/nested aggregates retain the
+original query, verified reverse-relation edges and all loaded ancestors. In the
+same query, a loaded Payment list preserves membership and its real parent ID
+even when a forward detail filter excludes the parent; generated E rejects
+unfetched description as NotLoaded. Counts remain 1 filtered / 2 total. Numeric
+non-relation grouping/window paths are separately tested by
+`tests/provider/sqlite/test_numeric_partition_trace.py`; they must not invent a
+relation edge. These checks do not decide whether to allow forward-detail
+filtering as an application API, which remains a design discussion.
+
 ```bash
 cd /path/to/teaql-python
 bash examples/trace-chain/verify.sh
@@ -117,7 +128,9 @@ This rejection includes related aggregate enhancements and occurs before opening
 a provider cursor, even with SQL logging disabled. Native SQLite trace tests also
 cover loading and aggregating the same forward relation, nested scalar-key
 recovery and aggregate failure/privacy. These native tests do not yet constitute
-generated Q/E acceptance of related aggregates in this example.
+generated acceptance of a forward-relation aggregate API; the generated
+`relation_aggregate.py` suite covers reverse counts combined with filtered
+forward detail and checked list membership.
 
 `PAGE_STREAM_OBSERVED` records actual SQL, policy-reviewed operations, commands,
 optimistic versions and safe audits. Native tests additionally cover COUNT
