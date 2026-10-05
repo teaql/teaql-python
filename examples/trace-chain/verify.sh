@@ -81,6 +81,8 @@ for attempt in first second; do
   python "$example/mutation_privacy.py" | tee "$privacy_log"
   rg -Fq 'PASS: Python generated loaded delete privacy; 2 writes/2 reads/2 audits; independent next request' "$privacy_log"
   rg -Fq 'PASS: Python generated unchanged scalar privacy; 1 write/1 read/1 audit' "$privacy_log"
+  [[ "$(rg -c '^PRIVATE_LINEAGE_OBSERVED ' "$privacy_log")" == 4 ]]
+  [[ "$(rg -c '^PASS Python complete private lineage:' "$privacy_log")" == 4 ]]
   echo "Assigned identities $attempt on $TEAQL_TRACE_CHAIN_SHARED_DB without cleanup"
   assigned_log="$(mktemp -t teaql-python-assigned.XXXXXX.log)"
   TEAQL_TRACE_CHAIN_DB="$TEAQL_TRACE_CHAIN_SHARED_DB" \
