@@ -2,6 +2,7 @@
 import asyncio
 import json
 import os
+import sqlite3
 import uuid
 
 from E import E
@@ -98,11 +99,18 @@ class ObservedService:
         self.results = []
         self.actions = []
         self.finishes = []
+        self.queries = []
+        self.raw_requests = []
         self.begins = 0
         self.fault = None
 
     def __getattr__(self, name):
         return getattr(self.service, name)
+
+    async def query(self, context, request):
+        result = await self.service.query(context, request)
+        self.queries.append((request, result.metadata))
+        return result
 
     async def begin(self, context):
         self.begins += 1
@@ -126,6 +134,7 @@ class ObservedTransaction:
 
     async def mutate(self, context, request):
         command = request._data
+        self.owner.raw_requests.append(request)
         identity = scalar(getattr(command, 'id', None) or command.values.get('id'))
         self.owner.requests.append((command.entity, identity, chain(request.mutation_lineage)))
         self.owner.actions.append({InsertCommand: 'insert', UpdateCommand: 'update',
@@ -193,26 +202,98 @@ def reset(service, sink, context):
     service.results.clear()
     service.actions.clear()
     service.finishes.clear()
+    service.queries.clear()
+    service.raw_requests.clear()
     service.begins = 0
     sink.events.clear()
     context.clear_sql_logs()
+
+
+async def verify_bootstrap(path, logging):
+    """Observe generated startup without supplying caller intent or trace frames."""
+    context = UserContext.new().install(GENERATED_RUNTIME_MODULE)
+    context.with_user_identifier('trace-example-user')
+    service = ObservedService(create_sqlite_service(path))
+    sink = AuditSink(service)
+    context.insert_resource('dataService', service).with_app_audit_event_sink(sink)
+    context.set_diagnostic_sql_log_sink(type('Silent', (), {'write': lambda self, entry: None})())
+    if not logging:
+        context.disable_sql_log()
+    await context.ensure_schema()
+    first_queries = tuple(service.queries)
+    first_requests = tuple(service.raw_requests)
+    first_results = tuple(service.results)
+    first_audits = tuple(sink.events)
+    first_sql = tuple(context.sql_logs())
+    assert first_queries, 'observe generated bootstrap lookup even with logging disabled'
+    first_intent = first_queries[0][1].comment
+    first_purpose = first_queries[0][1].purpose
+    assert first_intent and first_intent.strip(), 'bootstrap owns a nonblank lookup comment'
+    assert first_purpose and first_purpose.strip(), 'bootstrap owns a nonblank lookup purpose'
+    assert len(first_requests) == len(first_results) == len(first_audits) <= 1
+    for request, result, event in zip(first_requests, first_results, first_audits):
+        assert request.comment() and request.comment().strip()
+        assert chain(request.mutation_lineage) == [('Platform', 1, request.comment())]
+        assert result.comment == request.comment()
+        assert len(result.statements) == 2 and result.affected_rows == 1
+        assert event.actor == 'teaql-generated-bootstrap' and event.category == 'runtime-bootstrap'
+        assert event.entity == 'Platform' and scalar(event.entity_id) == 1
+        assert chain(event.trace_chain) == [('Platform', 1, request.comment().replace('1', '[REDACTED]'))], 'safe bootstrap audit preserves responsibility while redacting identity text'
+        for statement in result.statements:
+            assert statement.comment == request.comment()
+            assert statement.execution_outcome == 'success'
+            assert chain(statement.mutation_lineage) == chain(request.mutation_lineage)
+        assert result.statements[1].result_count == 1
+        assert result.statements[1].purpose and result.statements[1].purpose.strip()
+    # The sink already checks that audit followed commit. Independently verify
+    # the resulting row through a read-only connection, not the runtime cache.
+    with sqlite3.connect('file:' + os.path.abspath(path) + '?mode=ro', uri=True) as connection:
+        assert connection.execute('SELECT id, version FROM platform_data WHERE id = 1').fetchall() == [(1, 1)]
+    reset(service, sink, context)
+    await context.ensure_schema()
+    assert service.raw_requests == [] and service.results == [] and sink.events == [], 'repeat bootstrap cannot write or audit'
+    assert service.queries, 'repeat bootstrap must inspect persisted root'
+    for _, metadata in (*first_queries, *service.queries):
+        assert metadata.comment == first_intent, 'generated bootstrap lookup intent is stable'
+        assert metadata.purpose == first_purpose
+        assert metadata.execution_outcome == 'success'
+        assert [node.kind for node in metadata.trace_chain] == ['operation', 'request', 'provider', 'sql']
+        assert metadata.trace_chain[0].name == 'Platform'
+    if logging:
+        assert len(first_sql) == len(first_queries) + 2 * len(first_requests)
+        assert len(context.sql_logs()) == len(service.queries)
+        for entry in (*first_sql, *context.sql_logs()):
+            select = entry.operation.name.lower() == 'select'
+            assert [node.kind for node in entry.trace_path] == ['operation', 'request' if select else 'entity', 'provider', 'sql']
+            assert entry.comment and entry.comment.strip()
+            if select:
+                assert entry.purpose and entry.purpose.strip()
+            if entry.mutation_lineage:
+                assert len(first_audits) == 1
+                assert chain(entry.mutation_lineage) == chain(first_audits[0].trace_chain)
+                assert entry.audit_reason == first_audits[0].trace_chain[0].comment
+    else:
+        assert first_sql == () and context.sql_logs() == []
+    assert context.user_identifier() == 'trace-example-user', 'bootstrap must restore caller identity'
+    print('BOOTSTRAP INTENT EVIDENCE ' + json.dumps({'logging': logging,
+          'first_writes': len(first_requests), 'repeat_writes': 0,
+          'comment': first_intent, 'purpose': first_purpose,
+          'queries': len(first_queries) + len(service.queries)}))
+    reset(service, sink, context)
+    return context, service, sink
 
 
 async def main():
     identity_controls()
     path = os.environ['TEAQL_TRACE_CHAIN_DB']
     label = 'TRACE-' + uuid.uuid4().hex[:16]
-    context = UserContext.new().install(GENERATED_RUNTIME_MODULE)
+    await verify_bootstrap(path + '.bootstrap-off', False)
+    context, service, sink = await verify_bootstrap(path, True)
     policy_calls = []
     def resolve_policy(request_key):
         policy_calls.append(request_key)
         return None  # Observe the configured resolver; retain generated-default governance.
     context.with_mutation_policy_registry(DelegatingMutationPolicyRegistry(resolve_policy))
-    service = ObservedService(create_sqlite_service(path))
-    sink = AuditSink(service)
-    context.insert_resource('dataService', service).with_app_audit_event_sink(sink)
-    context.set_diagnostic_sql_log_sink(type('Silent', (), {'write': lambda self, entry: None})())
-    await context.ensure_schema()
     platforms = await Q.platforms().with_id_is(1).limit(1).comment(
         'what: reuse bootstrap root').purpose('why: attach trace example').execute_for_list(context)
     assert len(platforms) == 1
