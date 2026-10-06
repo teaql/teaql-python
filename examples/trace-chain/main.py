@@ -4,6 +4,7 @@ import json
 import os
 import sqlite3
 import uuid
+from types import SimpleNamespace
 
 from E import E
 from Q import Q
@@ -16,7 +17,9 @@ from teaql.sql.executor import TransportError
 
 
 def chain(nodes):
-    return [(node.name or node.entity_type, node.entity_id, node.comment) for node in nodes]
+    values = list(nodes)
+    assert all(node.kind == 'auditReason' for node in values), 'lineage requires typed AuditReason nodes'
+    return [(node.name or node.entity_type, node.entity_id, node.comment) for node in values]
 
 
 def scalar(value):
@@ -47,6 +50,19 @@ def check_identities(expected, actual, boundary):
 
 
 def identity_controls():
+    # Pure oracle inputs only: these nodes are never supplied to the runtime.
+    def sample(kind):
+        return SimpleNamespace(kind=kind, name='CustomerOrder', entity_type='CustomerOrder',
+                               entity_id=1, comment='submit order')
+    assert chain([sample('auditReason')]) == [('CustomerOrder', 1, 'submit order')]
+    for kind in ('comment', 'purpose', 'entity', 'sql'):
+        try:
+            chain([sample(kind)])
+        except AssertionError as error:
+            assert str(error) == 'lineage requires typed AuditReason nodes'
+        else:
+            raise AssertionError('wrong-kind lineage oracle input was accepted: ' + kind)
+    print('PASS: typed lineage oracle rejects correct-text Comment/Purpose/Entity/Sql nodes')
     expected = [('CustomerOrder', 1), ('OrderItem', 1), ('Payment', 1),
                 ('PaymentAttempt', 1), ('Shipment', 1), ('OrderItem', 2)]
     check_identities(expected, expected, 'positive control')
