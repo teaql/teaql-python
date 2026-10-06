@@ -1,7 +1,8 @@
 from teaql.core.query import RelationAggregate, SelectQuery
 from teaql.core.list import SmartList, TeaQLPage
-from teaql.runtime import EntityRoot
 from teaql.data_service import QueryRequest
+from teaql.core import QueryIntent
+from copy import deepcopy
 from teaql.core.expr import (
     begin_with, between, column, contain, end_with, eq, gt, gte,
     in_list, in_subquery, is_not_null, is_null, lt, lte, ne, not_begin_with,
@@ -352,8 +353,7 @@ class ExecutablePlatformRequest:
 
     def new_entity(self, context) -> Platform:
         request = self._request
-        if not request._comment or not request._comment.strip() or not request._purpose or not request._purpose.strip():
-            raise ValueError("Security audit failure: non-empty comment() and purpose() are required before new_entity()")
+        QueryIntent(request._comment, request._purpose)
         entity = context.initialize_entity("Platform", Platform())
         if not isinstance(entity, Platform):
             raise TypeError("entity initializer returned an incompatible Platform")
@@ -361,10 +361,9 @@ class ExecutablePlatformRequest:
 
     async def execute_for_result(self, context):
         self = self._request
-        if not self._purpose or not self._purpose.strip() or not self._comment or not self._comment.strip():
-            raise Exception("Security audit failure: comment() and purpose() must be called before execute_for_rows()")
+        req = QueryRequest(self.query, _comment=self._comment, _purpose=self._purpose)
+        req = context.prepare_query_request(req)
         service = context.require_resource("dataService")
-        req = QueryRequest(context.prepare_query(self.query), _comment=self._comment, _purpose=self._purpose)
         return await service.query(context, req)
 
     async def execute_for_rows(self, context):
@@ -372,53 +371,59 @@ class ExecutablePlatformRequest:
 
     async def execute_for_list(self, context) -> SmartList[Platform]:
         result = await self.execute_for_result(context)
-        query_root = EntityRoot()
         return SmartList(
-            (Platform(_entity_root=query_root, **row) for row in result.rows),
+            (Platform(**row) for row in result.rows),
             facets=result.facets)
 
     async def execute_for_page(self, context, offset: int, limit: int) -> TeaQLPage[Platform]:
         request = self._request
-        if not request._purpose or not request._purpose.strip() or not request._comment or not request._comment.strip():
-            raise ValueError("Security audit failure: comment() and purpose() must be called before execute_for_page()")
-        request.query.offset(offset).limit(limit)
-        authorized = context.prepare_query(request.query)
+        intent = QueryIntent(request._comment, request._purpose)
+        query = deepcopy(request.query)
+        query.offset(offset).limit(limit)
+        authorized = context.prepare_query_request(QueryRequest(query, _comment=intent.comment, _purpose=intent.purpose))
         service = context.require_resource("dataService")
         alias = "__teaql_total"
-        if authorized.id_set_pagination is not None:
-            row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
+        if authorized.query.id_set_pagination is not None:
+            row_result = await service.query(context, authorized)
             retained_count, accuracy = context.id_set_count()
             if accuracy == "EXACT":
                 total_count = retained_count
             else:
-                count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias), _comment=request._comment, _purpose=request._purpose))
+                count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
                 if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
                     raise RuntimeError("dataService did not return an exact page count")
                 total_count = int(count_result.rows[0][alias])
         else:
-            count_result = await service.query(context, QueryRequest(authorized.for_exact_count(alias), _comment=request._comment, _purpose=request._purpose))
+            count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
             if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
                 raise RuntimeError("dataService did not return an exact page count")
             total_count = int(count_result.rows[0][alias])
-            row_result = await service.query(context, QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose))
-        query_root = EntityRoot()
-        data = SmartList(Platform(_entity_root=query_root, **row) for row in row_result.rows)
+            row_result = await service.query(context, authorized)
+        data = SmartList(Platform(**row) for row in row_result.rows)
         return TeaQLPage(data=data, total_count=total_count, offset=offset, limit=limit)
 
     async def execute_for_one(self, context):
-        self._request.limit(1)
-        entities = await self.execute_for_list(context)
+        request = deepcopy(self._request)
+        request.limit(1)
+        entities = await ExecutablePlatformRequest(request).execute_for_list(context)
         return entities[0] if entities else None
 
-    async def execute_for_stream(self, context, chunk_size: int = 1000):
+    def execute_for_stream(self, context, chunk_size: int = 1000):
         """Yield entity chunks lazily from the provider cursor."""
         request = self._request
-        if not request._purpose or not request._purpose.strip() or not request._comment or not request._comment.strip():
-            raise Exception("Security audit failure: comment() and purpose() must be called before execute_for_stream()")
+        req = QueryRequest(request.query, _comment=request._comment, _purpose=request._purpose)
+        req = context.prepare_query_request(req)
         service = context.require_resource("dataService")
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
-        query_root = EntityRoot()
-        async for chunk in service.query_stream(context, QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose), chunk_size):
-            for row in chunk.rows:
-                yield Platform(_entity_root=query_root, **row)
+        stream = service.query_stream(context, req, chunk_size)
+        async def entities():
+            try:
+                async for chunk in stream:
+                    for row in chunk.rows:
+                        yield Platform(**row)
+            finally:
+                close = getattr(stream, "aclose", None)
+                if close is not None:
+                    await close()
+        return entities()

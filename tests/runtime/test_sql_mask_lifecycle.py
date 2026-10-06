@@ -82,7 +82,7 @@ def request():
     query = (SelectQuery('Customer').filter(Expr.eq('display_name', 'Riverside'))
              .and_filter(Expr.eq('public_address', '1 Runtime Road'))
              .and_filter(Expr.eq('password_hash', 'PASSWORD-CANARY')).limit(5))
-    return QueryRequest(query).comment('what: inspect customers').purpose('why: lifecycle test')
+    return QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior').comment('what: inspect customers').purpose('why: lifecycle test')
 
 
 @pytest.mark.asyncio
@@ -137,7 +137,7 @@ async def test_failed_statement_logs_and_preserves_error(fixture, operation):
             }
             cmd = commands[operation]
             cmd.trace_chain = [TraceNode(comment='what: lifecycle mutation')]
-            await executor.mutate(context, MutationRequest(cmd))
+            await executor.mutate(context, MutationRequest(cmd, comment='what: runtime regression fixture'))
     assert caught.value.error is failure
     assert_log(fixture, 'failure')
     assert entries[0].affected_rows is None
@@ -309,6 +309,37 @@ async def test_consumer_athrow_closes_stream(fixture):
 
 
 @pytest.mark.asyncio
+async def test_stream_owns_request_before_delayed_consumption(fixture):
+    context, provider, _, entries = fixture
+    transport = FaultTransport(3)
+    supplied = request()
+    supplied.trace_chain.append(TraceNode(kind='relation', name='original', comment='Customer.original'))
+    original_params = ['Riverside', '1 Runtime Road', 'PASSWORD-CANARY']
+    stream = SqlDataServiceExecutor(SqliteDialect(), transport, provider).query_stream(context, supplied, 1)
+    supplied.query.filter(Expr.eq('public_address', 'LATE-BUILDER-CANARY'))
+    supplied.trace_chain.clear()
+    chunks = [chunk async for chunk in stream]
+    assert len(chunks) == 3 and transport.closed
+    assert [getattr(value, 'val', value) for value in transport.params] == original_params
+    assert any(node.name == 'original' for node in entries[0].trace_path)
+    assert 'LATE-BUILDER-CANARY' not in repr(context.sql_logs())
+
+
+@pytest.mark.asyncio
+async def test_live_stream_path_cannot_be_rewritten_before_close(fixture):
+    context, provider, _, entries = fixture
+    transport = FaultTransport(3)
+    supplied = request()
+    supplied.trace_chain.append(TraceNode(kind='relation', name='original', comment='Customer.original'))
+    stream = SqlDataServiceExecutor(SqliteDialect(), transport, provider).query_stream(context, supplied, 1)
+    await anext(stream)
+    supplied.trace_chain[:] = [TraceNode(kind='relation', name='late', comment='Customer.late')]
+    await stream.aclose()
+    assert transport.closed and entries[0].execution_outcome == 'cancelled'
+    assert [node.name for node in entries[0].trace_path if node.kind == 'relation'] == ['original']
+
+
+@pytest.mark.asyncio
 async def test_cancelled_mutation_rolls_back_transaction(fixture):
     context, provider, _, _ = fixture
     failure = asyncio.CancelledError()
@@ -327,7 +358,7 @@ async def test_cancelled_mutation_rolls_back_transaction(fixture):
     cmd = DeleteCommand('Customer', Value.I64(1)).expected_version(1)
     cmd.trace_chain = [TraceNode(comment='what: cancel mutation')]
     with pytest.raises(asyncio.CancelledError) as caught:
-        await executor.mutate(context, MutationRequest(cmd))
+        await executor.mutate(context, MutationRequest(cmd, comment='what: runtime regression fixture'))
     assert caught.value is failure
     assert tx.rolled_back and not tx.committed
     assert_log(fixture, 'cancelled')
@@ -338,11 +369,10 @@ async def test_generated_mutation_string_comment_is_preserved(fixture):
     context, provider, _, entries = fixture
     executor = DomainStatementExecutor(SqliteDialect(), FaultTransport(), provider)
     command = InsertCommand('Customer').value('display_name', 'Riverside')
-    mutation = MutationRequest(command)
-    mutation.comment = 'what: generated audited save'
+    mutation = MutationRequest(command, comment='what: generated audited save')
     await executor.mutate(context, mutation)
-    assert entries[0].comment == mutation.comment
-    assert entries[0].audit_reason == mutation.comment
+    assert entries[0].comment == mutation.comment()
+    assert entries[0].audit_reason == mutation.comment()
     assert_log(fixture, 'success')
 
 
@@ -362,8 +392,7 @@ async def test_sql_intent_scrubs_target_id_without_changing_bindings(fixture, op
     }
     command = commands[operation]
     command.trace_chain = [TraceNode(comment='what: mutate target 1001')]
-    mutation = MutationRequest(command)
-    mutation.comment = 'what: mutate target 1001'
+    mutation = MutationRequest(command, comment='what: mutate target 1001')
     if failure:
         with pytest.raises(TransportError):
             await executor.mutate(context, mutation)
@@ -373,7 +402,7 @@ async def test_sql_intent_scrubs_target_id_without_changing_bindings(fixture, op
     assert '1001' not in repr(entries[0].trace_path)
     assert '1001' not in output[0].split('auditReason=', 1)[1].split('Debug SQL:', 1)[0]
     assert any(getattr(value, 'val', value) == 1001 for value in transport.params)
-    assert mutation.comment == 'what: mutate target 1001'
+    assert mutation.comment() == 'what: mutate target 1001'
 
 
 def test_short_target_id_does_not_redact_structural_row_count(fixture):
@@ -419,7 +448,7 @@ def readback_request():
     command = (UpdateCommand('Customer', Value.I64(1)).expected_version(1)
                .value('display_name', 'Riverside').value('password_hash', 'PASSWORD-CANARY'))
     command.trace_chain = [TraceNode(comment='what: update Riverside PASSWORD-CANARY')]
-    return MutationRequest(command)
+    return MutationRequest(command, comment='what: update Riverside PASSWORD-CANARY')
 
 
 @pytest.mark.asyncio
@@ -445,7 +474,11 @@ async def test_readback_independent_diagnostic(fixture, explicit, mode):
             assert tx.commits == 0
             await target.commit(context)
         assert tx.commits == 1 and tx.rollbacks == 0
-        assert len(entries) == 1
+        assert len(entries) == 2
+        assert len(result.metadata.statements) == 2
+        assert entries[1].execution_outcome == 'success'
+        assert entries[1].result_count == 1
+        assert entries[1].trace_path[1].kind == 'request'
     else:
         with pytest.raises(BaseException) as caught:
             await target.mutate(context, readback_request())
@@ -520,15 +553,17 @@ async def test_partial_transaction_keeps_prior_write_and_stops_after_readback(fi
             return tx
     context.insert_resource('dataService', SqlDataServiceExecutor(SqliteDialect(), Transport(), provider))
     failure = RuntimeError('SECOND-READBACK-FAILURE')
-    async def work():
-        service = context.require_resource('dataService')
-        await service.mutate(context, readback_request())
+    async def work(graph):
+        local = graph.context
+        service = local.require_resource('dataService')
+        await service.mutate(local, readback_request())
         tx.failure = failure
-        await service.mutate(context, readback_request())
-        await service.mutate(context, readback_request())
+        await service.mutate(local, readback_request())
+        await service.mutate(local, readback_request())
     with pytest.raises(RuntimeError) as caught:
-        await context.execute_graph_save(work)
+        await context.execute_graph_save(work, comment='what: runtime regression fixture')
     assert caught.value is failure
-    assert [entry.execution_outcome for entry in entries] == ['success','success','failure']
+    assert [entry.execution_outcome for entry in entries] == ['success','success','success','failure']
+    assert [entry.trace_path[-1].name for entry in entries] == ['update','select','update','select']
     assert tx.writes == tx.reads == 2 and tx.rollbacks == 1 and tx.commits == 0
     assert 'Riverside' not in repr(context.sql_logs())

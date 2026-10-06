@@ -161,6 +161,17 @@ class SqlDialect(ABC):
         if where_parts:
             sql += " WHERE " + " AND ".join(where_parts)
 
+        # Window ranks apply to the grouped, HAVING-filtered result. Returning
+        # the partition wrapper first silently collapses aggregate rows and
+        # drops HAVING bindings on both root and loaded-relation queries.
+        if query.group_by_items:
+            group_by = ", ".join(self.column_sql(entity, field) for field in query.group_by_items)
+            sql += f" GROUP BY {group_by}"
+
+        if query.having_expr is not None:
+            having_sql = self.compile_expr(entity, query.having_expr, params)
+            sql += f" HAVING {having_sql}"
+
         if partitioned:
             rank = self.quote_ident("__teaql_partition_rank")
             predicates = [f"{rank} > {query.slice.offset}"]
@@ -168,14 +179,6 @@ class SqlDialect(ABC):
                 predicates.append(f"{rank} <= {query.slice.offset + query.slice.limit}")
             alias = self.quote_ident("__teaql_partitioned")
             return f"SELECT * FROM ({sql}) AS {alias} WHERE {' AND '.join(predicates)} ORDER BY {rank}"
-            
-        if query.group_by_items:
-            group_by = ", ".join(self.column_sql(entity, field) for field in query.group_by_items)
-            sql += f" GROUP BY {group_by}"
-            
-        if query.having_expr is not None:
-            having_sql = self.compile_expr(entity, query.having_expr, params)
-            sql += f" HAVING {having_sql}"
             
         if query.order_by_items:
             order_by = ", ".join(self.order_by_sql(entity, order, params) for order in query.order_by_items)
@@ -338,7 +341,17 @@ class SqlDialect(ABC):
             return ", ".join(property_projection(p) for p in getattr(entity, 'properties', []))
             
         parts = []
-        for field in query.projection:
+        projected_fields = list(query.projection)
+        # Hydration must use an actual FK, not treat an omitted column as NULL.
+        # Keep caller-owned query/projection unchanged.
+        if not query.group_by_items:
+            relation_names = [load.name for load in query.relations]
+            relation_names += [aggregate.relation_name for aggregate in query.relation_aggregates]
+            for name in relation_names:
+                relation = entity.relation_by_name(name)
+                if relation and not relation.is_many and relation.local_key not in projected_fields:
+                    projected_fields.append(relation.local_key)
+        for field in projected_fields:
             prop = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'name', None) == field), None)
             if not prop:
                 raise UnknownFieldError(field)
@@ -399,15 +412,8 @@ class SqlDialect(ABC):
             return self.aggregate_projection(entity, query, params)
             
     def field_log_policy(self, entity, field):
-        from teaql.runtime.log_privacy import credential_name
-        prop = entity.property_by_name(field)
-        if credential_name(field) or (prop and credential_name(prop.column_name_val)):
-            return 'credential'
-        if not entity.audit_mask_fields_declared:
-            return 'unknown'
-        if field in entity.audit_mask_fields_val:
-            return 'masked'
-        return getattr(prop, 'log_policy_val', 'unknown')
+        from teaql.runtime.log_privacy import field_log_policy
+        return field_log_policy(entity, field)
 
     def bind_field(self, params, value, entity, field):
         if isinstance(params, SQLBindings):
@@ -443,6 +449,13 @@ class SqlDialect(ABC):
         elif isinstance(expr, BinaryExpr):
             if expr.op in (BinaryOp.In, BinaryOp.NotIn, BinaryOp.InLarge, BinaryOp.NotInLarge):
                 return self.compile_in(entity, expr.left, expr.op, expr.right, params)
+            original = getattr(expr.right, '_like_operand', None)
+            if (isinstance(params, SQLBindings) and expr.op in (BinaryOp.Like, BinaryOp.NotLike)
+                    and isinstance(expr.right, ValueExpr) and original is not None
+                    and expr.right.value == original[1]):
+                # Retain only an intact typed lowering, never infer from raw SQL
+                # wildcards or reuse stale provenance after an AST rewrite.
+                params._retain_intent_operand(original[0])
             lhs = self.compile_expr(entity, expr.left, params)
             rhs = self.compile_expr(entity, expr.right, params)
             op_str = {

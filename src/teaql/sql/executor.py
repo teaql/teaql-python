@@ -27,6 +27,7 @@ from teaql.core.expr import (
 )
 from teaql.core.query import Aggregate, AggregateFunction, SelectQuery
 from teaql.core.value import Value
+from teaql.core.trace import canonical_sql_trace_path, physical_readback_path, trace_name
 from teaql.runtime.telemetry import RuntimeOperation, observe_runtime_operation, start_runtime_operation
 from teaql.runtime.context import RetainedIdSet
 
@@ -36,21 +37,50 @@ _id_set_build_locks_guard = threading.RLock()
 
 class _QueryWithLogIntent(QueryRequest):
     """Invocation-local compiler plumbing, excluded from dataclass/wire fields."""
-    def __init__(self, query, trace_chain, comment, purpose, source):
-        super().__init__(query, trace_chain, comment, purpose)
+    def __init__(self, query, trace_chain, comment, purpose, source, origin_entity=None, assembly=None):
+        super().__init__(query, trace_chain, comment, purpose, _origin_entity=origin_entity)
         self._log_intent_source = source
+        self._relation_assembly = assembly
+
+
+class _RelationAssembly:
+    """One derived load owns scalar keys; never attach them to result records."""
+    def __init__(self, field):
+        self.field = field
+        self.keys = {}
+
+    def capture(self, rows):
+        self.keys = {id(row): row.get(self.field) for row in rows}
+
+    def key(self, row):
+        # Hydration mutates these same row dictionaries. Reordering (ID-set
+        # paging) is fine, but a replacement must not silently drop membership.
+        return self.keys[id(row)]
 
 
 def _intent_bindings(compiled, request):
     # Resolve each source's policy before flattening: credential detection and
     # malformed-policy handling depend on the original statement, not the child.
-    from teaql.runtime.log_privacy import _binding_policies
     inherited = getattr(request, '_log_intent_source', None)
     sources = [inherited, compiled] if inherited is not None else [compiled]
-    return CompiledQuery('', [deepcopy(value) for source in sources for value in source.params],
-                         parameter_log_policies=[policy for source in sources
-                                                 for policy in _binding_policies(source)],
-                         sql_origin='generated')
+    result = CompiledQuery('', [], parameter_log_policies=[], sql_origin='generated')
+    for source in sources:
+        _append_intent_bindings(result, source)
+    return result
+
+
+def _append_intent_bindings(target, source):
+    from teaql.runtime.log_privacy import _binding_policies
+    target.params.extend(deepcopy(source.params))
+    target.parameter_log_policies.extend(_binding_policies(source))
+    operands = getattr(source, '_intent_operands', ())
+    if operands:
+        # This is a private provenance copy, not the executable statement. Apply
+        # the same credential/unknown fail-closed policy before combining it.
+        original = CompiledQuery('', [deepcopy(value) for value, _ in operands],
+            parameter_log_policies=[policy for _, policy in operands], sql_origin='generated')
+        target.params.extend(original.params)
+        target.parameter_log_policies.extend(_binding_policies(original))
 
 
 class _NoopContextManager:
@@ -132,6 +162,61 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         self.transport = transport
         self.schema_provider = schema_provider
 
+    def _backend_name(self) -> str:
+        kind = self.dialect.kind()
+        name = getattr(kind, 'name', str(kind)).lower()
+        return 'postgres' if name == 'postgresql' else name
+
+    def _query_intent_bindings(self, compiled, request):
+        """Capture declared descendant bindings before any physical parent log.
+
+        Compile copies only for policy provenance: no SQL, list preparation,
+        query-builder mutation or Context-owned redaction state.
+        """
+        source = _intent_bindings(compiled, request)
+        pending = [(request.query, request.query.entity)]
+        for original in getattr(request, '_log_intent_queries', ()):
+            descriptor = self.schema_provider.get_entity(original.entity)
+            if descriptor is None:
+                continue
+            candidate = deepcopy(original)
+            self._resolve_subquery_entities(candidate.filter_expr)
+            bindings = self.dialect.compile_select(descriptor, candidate)
+            _append_intent_bindings(source, bindings)
+            pending.append((original, original.entity))
+        visited = set()
+        while pending:
+            query, entity = pending.pop()
+            key = (id(query), entity)
+            if key in visited:
+                continue
+            visited.add(key)
+            descriptor = self.schema_provider.get_entity(entity)
+            children = []
+            for relation in query.relations:
+                model = descriptor.relation_by_name(relation.name) if descriptor else None
+                if relation.query is not None and model is not None:
+                    children.append((relation.query, model.target_entity))
+            for aggregate in query.relation_aggregates:
+                model = descriptor.relation_by_name(aggregate.relation_name) if descriptor else None
+                if model is not None:
+                    children.append((aggregate.query, model.target_entity))
+            for facet in query.facets:
+                children.append((facet.query, facet.query.entity))
+            for child, entity in children:
+                if (id(child), entity) in visited:
+                    continue
+                child_descriptor = self.schema_provider.get_entity(entity)
+                if child_descriptor is None:
+                    continue  # execution still owns missing-schema diagnostics
+                candidate = deepcopy(child)
+                candidate.entity = entity
+                self._resolve_subquery_entities(candidate.filter_expr)
+                bindings = self.dialect.compile_select(child_descriptor, candidate)
+                _append_intent_bindings(source, bindings)
+                pending.append((child, entity))
+        return source
+
     def _sync_generated_schema(self, context: 'UserContext') -> None:
         register = getattr(self.schema_provider, "register_entity", None)
         if callable(register) and context is not None:
@@ -189,15 +274,28 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         )
 
     def _record_statement(self, context, request, compiled, started_at, operation,
-                          outcome, result_count=None, affected_rows=None):
+                          outcome, result_count=None, affected_rows=None, intent_privacy=None):
         """Project through context; never attach driver exceptions to diagnostics."""
         query = operation == DataServiceOperation.Query
         entity = request.query.entity if query else request._data.entity
         comment = request._comment if query else getattr(request, 'comment', None)
         if not query and callable(comment):
             comment = comment()
-        provider = str(self.dialect.kind()).lower()
+        provider = self._backend_name()
         sql_operation = 'select' if query else operation.name.lower()
+        if query:
+            trace_source = [TraceNode(kind='comment', name=request.origin_entity, comment=comment),
+                            TraceNode(kind='purpose', name=request.origin_entity, comment=request._purpose),
+                            *request.trace_chain]
+        else:
+            chain = [*request.mutation_lineage, *request.trace_chain()]
+            root = next((trace_name(node) for node in chain if trace_name(node).strip()), entity)
+            target_id = getattr(request._data, 'id', None)
+            if target_id is None:
+                target_id = getattr(request._data, 'values', {}).get('id')
+            target_id = getattr(target_id, 'val', target_id)
+            trace_source = [TraceNode(kind='auditReason', name=root, comment=comment),
+                            *chain, TraceNode(kind='entity', name=entity, entity_id=target_id)]
         metadata = ExecutionMetadata(
             backend=provider, operation=operation, started_at=started_at,
             ended_at=datetime.now(), execution_outcome=outcome,
@@ -207,13 +305,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             result_count=result_count, affected_rows=affected_rows,
             comment=comment, purpose=request._purpose if query else None,
             audit_reason=None if query else comment,
-            trace_chain=[
-                TraceNode(kind='operation', name='query' if query else 'mutation', comment='query' if query else 'mutation'),
-                TraceNode(kind='request' if query else 'entity', name=entity, comment=entity),
-                *(request.trace_chain if query else request.trace_chain()),
-                TraceNode(kind='provider', name=provider, comment=provider),
-                TraceNode(kind='sql', name=sql_operation, comment=sql_operation),
-            ],
+            trace_chain=canonical_sql_trace_path(trace_source, provider, sql_operation),
+            mutation_lineage=() if query else request.mutation_lineage,
         )
         if context is not None:
             try:
@@ -227,11 +320,12 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                             if getattr(prop, '_is_id', False) or getattr(prop, 'is_id_val', False)), None)
                         if id_property is not None:
                             target_id = getattr(request._data, 'values', {}).get(id_property.name)
-                if source is None and target_id is None:
+                if source is None and target_id is None and intent_privacy is None:
                     context.record_metadata_log(metadata)
                 else:
                     context._record_metadata_log(metadata, intent_source=source,
-                        intent_values=() if target_id is None else (target_id,))
+                        intent_values=() if target_id is None else (target_id,),
+                        intent_privacy=intent_privacy)
             except Exception:
                 # A broken diagnostic destination must not replace an in-flight
                 # driver failure, cancellation or generator close.
@@ -239,10 +333,16 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     raise
         return metadata
 
-    async def query_stream(self, context, request: QueryRequest, chunk_size: int):
+    def query_stream(self, context, request: QueryRequest, chunk_size: int):
+        """Own the request at cursor creation; opening the driver stays lazy."""
+        request.validate()
         if chunk_size <= 0:
             raise ValueError("chunk_size must be positive")
-        if (request.query.relations or request.query.child_enhancements
+        owned = request.with_query(request.query)
+        return self._query_stream(context, owned, chunk_size)
+
+    async def _query_stream(self, context, request: QueryRequest, chunk_size: int):
+        if (request.query.relations or request.query.relation_aggregates or request.query.child_enhancements
                 or request.query.object_group_bys or request.query.facets):
             raise ValueError(
                 "streaming relation or aggregate enhancement is not supported; "
@@ -253,6 +353,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             raise CompileError(SqlCompileError(f"unknown entity: {request.query.entity}"))
         self._resolve_subquery_entities(request.query.filter_expr)
         compiled = self.dialect.compile_select(entity_desc, request.query)
+        request._log_intent_source = self._query_intent_bindings(compiled, request)
         pending = None
         index = 0
         delivered = 0
@@ -291,6 +392,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                                        DataServiceOperation.Query, outcome, result_count=delivered)
 
     async def query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
+        request.validate()
         telemetry = context.runtime_telemetry() if context is not None else None
         return await observe_runtime_operation(
             telemetry,
@@ -302,23 +404,21 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         )
 
     async def _query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
+        request.validate()
+        assembly = getattr(request, '_relation_assembly', None)
+        request = request.with_query(request.query)
         self._sync_generated_schema(context)
         request.query.prepare_for_list()
         execution_query, retained_order, retained_empty = await self._prepare_id_set_page(context, request.query)
         if retained_empty:
             now = datetime.now()
-            provider = str(self.dialect.kind()).lower()
+            provider = self._backend_name()
             metadata = ExecutionMetadata(
                 backend=provider, operation=DataServiceOperation.Query,
                 started_at=now, ended_at=now, result_count=0,
-                trace_chain=[
-                    TraceNode(kind="operation", name="query", comment="query"),
-                    TraceNode(kind="request", name=request.query.entity,
-                              comment=request.query.entity),
-                    *request.trace_chain,
-                    TraceNode(kind="provider", name=provider, comment=provider),
-                    TraceNode(kind="sql", name="select", comment="select"),
-                ],
+                trace_chain=canonical_sql_trace_path(
+                    [TraceNode(kind='comment', name=request.origin_entity, comment=request._comment),
+                     *request.trace_chain], provider, 'select'),
                 comment=request._comment, purpose=request._purpose,
             )
             if context is not None:
@@ -326,8 +426,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             return QueryResult(rows=[], metadata=metadata)
         source = getattr(request, '_log_intent_source', None)
         request = (_QueryWithLogIntent(execution_query, request.trace_chain, request._comment,
-                                      request._purpose, source) if source is not None else
-                   QueryRequest(execution_query, request.trace_chain, request._comment, request._purpose))
+                                      request._purpose, source, request.origin_entity) if source is not None else
+                   request.with_query(execution_query))
         entity_desc = self.schema_provider.get_entity(request.query.entity)
         if not entity_desc and context:
             entities = context.get_resource("entities")
@@ -344,6 +444,9 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             compiled = self.dialect.compile_select(entity_desc, request.query)
         except SqlCompileError as e:
             raise CompileError(e)
+
+        source = self._query_intent_bindings(compiled, request)
+        request._log_intent_source = source
             
         start = datetime.now()
         try:
@@ -365,58 +468,97 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         metadata = self._record_statement(context, request, compiled, start,
                                           DataServiceOperation.Query, 'success', result_count=len(rows))
 
-        source = (_intent_bindings(compiled, request) if rows and
-                  (request.query.relations or request.query.relation_aggregates) else None)
-        await self._enhance_relations(context, rows, request, source)
+        if assembly is not None:
+            assembly.capture(rows)
+        # All local identities are captured before aggregate aliases or sibling
+        # hydration can replace record fields.
+        parent_keys = {relation.local_key: [row.get(relation.local_key) for row in rows]
+                       for load in request.query.relations
+                       if (relation := entity_desc.relation_by_name(load.name)) is not None}
+        # Forward hydration may replace a scalar membership key with an object.
+        # Compute related aggregates while those keys still identify their rows.
         await self._enhance_relation_aggregates(context, rows, request, source)
+        await self._enhance_relations(context, rows, request, source, parent_keys)
         if retained_order:
             by_id = {int(row["id"]): row for row in rows if row.get("id") is not None}
             rows = [by_id[entity_id] for entity_id in retained_order if entity_id in by_id]
 
+        facets = await self._query_facets(context, request, entity_desc)
+        return QueryResult(rows=rows, metadata=metadata, facets=facets)
+
+    async def _query_facets(self, context, request, entity_desc):
+        """Count the current membership, then traverse each owned Facet selection."""
+        from teaql.core.list import SmartList
         facets = {}
         for facet in getattr(request.query, 'facets', []):
+            relation = entity_desc.relation_by_name(facet.relation_name)
+            # Legacy numeric partitions still work, but only model metadata can
+            # identify a relationship or add a logical traversal to the trace.
+            member_field = relation.local_key if relation else facet.relation_name
+            target_field = relation.foreign_key if relation else 'id'
+            if relation and relation.target_entity != facet.query.entity:
+                raise CompileError(SqlCompileError(
+                    f'facet target differs from relation: {request.query.entity}.{facet.relation_name}'))
             membership_query = deepcopy(request.query)
             membership_query.facets = []
             membership_query.relations = []
+            membership_query.relation_aggregates = []
+            membership_query.child_enhancements = []
+            membership_query.object_group_bys = []
+            membership_query.dynamic_properties = []
+            membership_query.raw_projections = []
             membership_query.order_by_items = []
             membership_query.slice = None
+            membership_query.partition_by = None
             membership_query.projection = []
+            membership_query.expr_projection = []
             membership_query.aggregates = [Aggregate(
                 AggregateFunction.Count, "id", "__teaql_facet_count")]
-            membership_query.group_by_items = [facet.relation_name]
-            membership_result = await self._query(context, QueryRequest(membership_query))
+            membership_query.group_by_items = [member_field]
+            membership_result = await self._query(context, request.with_query(membership_query))
+            member_property = entity_desc.property_by_name(member_field)
+            member_column = member_property.column_name_val if member_property else member_field
             counts = {
-                str(row[facet.relation_name]): int(row["__teaql_facet_count"])
+                str(row[member_column]): int(row["__teaql_facet_count"])
                 for row in membership_result.rows
-                if row.get(facet.relation_name) is not None
+                if row.get(member_column) is not None
             }
 
             nested_query = deepcopy(facet.query)
-            nested_query.facets = []
             count_aliases = [
                 aggregate.alias for aggregate in nested_query.aggregates
                 if aggregate.function == AggregateFunction.Count
             ]
             nested_query.aggregates = []
             nested_query.group_by_items = []
-            nested_result = await self._query(context, QueryRequest(nested_query))
+            if not facet.include_all_facets:
+                # The target selection (and any Facets nested inside it) must
+                # see only matching candidates before pagination/recursion.
+                # Keep original key types and make empty membership explicit.
+                member_values = [Value.from_any(row[member_column])
+                                 for row in membership_result.rows
+                                 if row.get(member_column) is not None]
+                membership = (BinaryExpr(ColumnExpr(target_field), BinaryOp.In,
+                                         ValueExpr(Value.List(member_values)))
+                              if member_values else ValueExpr(Value.Bool(False)))
+                nested_query.and_filter(membership)
+            nested_request = request.with_query(nested_query)
+            if relation:
+                nested_request.trace_chain.append(TraceNode(
+                    kind='relation', name=facet.relation_name,
+                    comment=f'{request.query.entity}.{facet.relation_name}'))
+            nested_result = await self._query(context, nested_request)
             facet_rows = []
             for row in nested_result.rows:
-                count = counts.get(str(row.get("id")), 0)
+                count = counts.get(str(row.get(target_field)), 0)
                 if not facet.include_all_facets and count == 0:
                     continue
                 decorated = dict(row)
                 for alias in count_aliases or ["count"]:
                     decorated[alias] = count
                 facet_rows.append(decorated)
-            from teaql.core.list import SmartList
-            facets[facet.name] = SmartList(facet_rows)
-        
-        return QueryResult(
-            rows=rows,
-            metadata=metadata,
-            facets=facets
-        )
+            facets[facet.name] = SmartList(facet_rows, facets=nested_result.facets)
+        return facets
 
     async def _prepare_id_set_page(self, context, query: SelectQuery):
         options = getattr(query, "id_set_pagination", None)
@@ -518,7 +660,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         return "teaql:id-set:v1:" + hashlib.sha256(repr(scope).encode("utf-8")).hexdigest()
 
     async def _enhance_relations(self, context, parents: List[Dict[str, Any]], request: QueryRequest,
-                                 intent_source=None) -> None:
+                                 intent_source, parent_keys) -> None:
         query = request.query
         if not parents or not query.relations:
             return
@@ -537,33 +679,56 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 relation = parent_desc.relation_by_name(load.name)
                 if relation is None:
                     raise CompileError(SqlCompileError(f"missing relation: {query.entity}.{load.name}"))
-                parent_ids = [row[relation.local_key] for row in parents if relation.local_key in row]
+                local_keys = parent_keys[relation.local_key]
+                parent_ids = [key for key in local_keys if key is not None]
                 child_query = deepcopy(load.query) if load.query is not None else SelectQuery(relation.target_entity)
                 child_query.entity = relation.target_entity
+                # A batched relation SELECT can serve several parents, but its
+                # Facet counts belong to each parent's full filtered membership.
+                # Preserve the finite selection tree while deferring that work
+                # until scalar parent keys have been used to assemble the rows.
+                relation_facets = child_query.facets if relation.is_many else []
+                if relation_facets:
+                    child_query.facets = []
                 if relation.foreign_key not in child_query.projection:
                     child_query.projection.append(relation.foreign_key)
                 limited = child_query.slice is not None and child_query.slice.limit is not None
-                if limited and not any(order.field_name == "id" for order in child_query.order_by_items):
-                    child_query.order_asc("id")
+                if limited:
+                    # Aggregate rows have group identities, not source-row IDs.
+                    stable_fields = child_query.group_by_items or (
+                        ['id'] if not child_query.aggregates else [])
+                    for field in stable_fields:
+                        if not any(order.field_name == field for order in child_query.order_by_items):
+                            child_query.order_asc(field)
                 threshold = child_query.top_n_probe_threshold_value
                 provider_policy = self.dialect.relation_top_n_policy()
                 use_probes = limited and (
                     provider_policy == "always_probe" and threshold is None
                     or threshold is not None and threshold > 0 and len(parent_ids) <= threshold
                 )
-                if use_probes:
+                child_trace = [*request.trace_chain, TraceNode(
+                    kind="relation", name=load.name,
+                    comment=f"{query.entity}.{load.name}")]
+                if not parent_ids:
+                    # Missing/NULL local keys have no relation membership.
+                    # Do not compile IN [] or accidentally load orphan rows.
+                    children, child_keys = [], []
+                    selected_plan, probe_count = "empty", 0
+                elif use_probes:
                     children = []
+                    child_keys = []
                     for parent_id in parent_ids:
                         probe = deepcopy(child_query)
                         probe.partition_by = None
                         probe.and_filter(BinaryExpr(
                             ColumnExpr(relation.foreign_key), BinaryOp.Eq,
                             ValueExpr(Value.from_any(parent_id))))
-                        child_trace = [*request.trace_chain, TraceNode(
-                            kind="relation", name=f"{query.entity}.{load.name}",
-                            comment=load.name)]
-                        children.extend((await self.query(context, _QueryWithLogIntent(
-                            probe, child_trace, request._comment, request._purpose, intent_source))).rows)
+                        assembly = _RelationAssembly(relation.foreign_key)
+                        loaded = (await self.query(context, _QueryWithLogIntent(
+                            probe, child_trace, request._comment, request._purpose, intent_source,
+                            request.origin_entity, assembly))).rows
+                        children.extend(loaded)
+                        child_keys.extend(assembly.key(row) for row in loaded)
                     selected_plan = "bounded_probes"
                     probe_count = len(parent_ids)
                 else:
@@ -572,21 +737,38 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
                     if limited:
                         child_query.partition_by_field(relation.foreign_key)
-                    child_trace = [*request.trace_chain, TraceNode(
-                        kind="relation", name=f"{query.entity}.{load.name}",
-                        comment=load.name)]
+                    assembly = _RelationAssembly(relation.foreign_key)
                     children = (await self.query(context, _QueryWithLogIntent(
-                        child_query, child_trace, request._comment, request._purpose, intent_source))).rows
+                        child_query, child_trace, request._comment, request._purpose, intent_source,
+                        request.origin_entity, assembly))).rows
+                    child_keys = [assembly.key(row) for row in children]
                     selected_plan = "window" if limited else "batch"
                     probe_count = 0
                 for child in children:
                     child.pop("__teaql_partition_rank", None)
                 buckets: Dict[Any, List[Dict[str, Any]]] = {}
-                for child in children:
-                    buckets.setdefault(child.get(relation.foreign_key), []).append(child)
-                for parent in parents:
-                    related = buckets.get(parent.get(relation.local_key), [])
-                    parent[load.name] = related if relation.is_many else (related[0] if related else None)
+                for key, child in zip(child_keys, children):
+                    buckets.setdefault(key, []).append(child)
+                for key, parent in zip(local_keys, parents):
+                    related = buckets.get(key, [])
+                    if relation_facets:
+                        from teaql.core.list import SmartList
+                        per_parent = deepcopy(child_query)
+                        per_parent.facets = deepcopy(relation_facets)
+                        per_parent.and_filter(BinaryExpr(
+                            ColumnExpr(relation.foreign_key), BinaryOp.Eq,
+                            ValueExpr(Value.from_any(key))))
+                        facet_request = _QueryWithLogIntent(
+                            per_parent, child_trace, request._comment, request._purpose,
+                            intent_source, request.origin_entity)
+                        child_desc = self.schema_provider.get_entity(relation.target_entity)
+                        related = SmartList(related, facets=await self._query_facets(
+                            context, facet_request, child_desc))
+                    # Preserve the provider's known FK even if target detail is
+                    # filtered out. Unfetched properties are absent/NotLoaded.
+                    parent[load.name] = related if relation.is_many else (
+                        related[0] if related else
+                        {relation.foreign_key: key} if key is not None else None)
                 relation_scope.success({
                     "teaql.result.cardinality": len(children),
                     "teaql.relation.parent_count": len(parent_ids),
@@ -635,10 +817,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             child_query.and_filter(BinaryExpr(
                 ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
             child_trace = [*request.trace_chain, TraceNode(
-                kind="relation", name=f"{query.entity}.{aggregate.relation_name}",
-                comment=aggregate.relation_name)]
+                kind="relation", name=aggregate.relation_name,
+                comment=f"{query.entity}.{aggregate.relation_name}")]
             rows = (await self.query(context, _QueryWithLogIntent(
-                child_query, child_trace, request._comment, request._purpose, intent_source))).rows
+                child_query, child_trace, request._comment, request._purpose, intent_source,
+                request.origin_entity))).rows
             child_desc = self.schema_provider.get_entity(relation.target_entity)
             foreign_property = child_desc.property_by_name(relation.foreign_key) if child_desc else None
             if foreign_property and foreign_property.column_name_val != relation.foreign_key:
@@ -673,12 +856,22 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             parent[aggregate.alias] = value
 
     async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
+        request.validate()
+        if context is not None:
+            context._require_mutation_invocation()
         self._sync_generated_schema(context)
         entity = getattr(request._data, "entity", "unknown")
         kind = type(request._data).__name__.replace("Command", "").lower()
         if context is not None:
-            if not context.consume_mutation_checked(request._data):
-                context.check_and_fix_mutation(request._data)
+            def check(data):
+                if isinstance(data, MutationRequest):
+                    check(data._data)
+                elif isinstance(data, list):
+                    for child in data:
+                        check(child)
+                elif not context.consume_mutation_checked(data):
+                    context.check_and_fix_mutation(data)
+            check(request._data)
         telemetry = context.runtime_telemetry() if context is not None else None
         scope = (
             context.mutation_policy_execution(request)
@@ -686,24 +879,35 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             else _NoopContextManager()
         )
         with scope:
+            from teaql.runtime.log_privacy import _MutationIntentPrivacy
+            def descriptor(name):
+                return self.schema_provider.get_entity(name) or (context.entity(name) if context else None)
+            privacy = _MutationIntentPrivacy.capture(request, descriptor)
+            session = getattr(context, '_graph_session', None)
+            if session is not None:
+                privacy = session._intent_privacy.merge(privacy)
             return await observe_runtime_operation(
                 telemetry,
                 RuntimeOperation("mutation", f"{entity}.{kind}", {
                     "teaql.entity.type": entity,
                     "teaql.mutation.kind": kind,
                 }),
-                lambda: self._mutate(context, request),
+                lambda: self._mutate(context, request, privacy),
             )
 
-    async def _mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
+    async def _mutate(self, context: 'UserContext', request: MutationRequest, privacy=None) -> MutationResult:
+        request.validate()
         if isinstance(self.transport, SqlTransactionTransport):
             transaction = await self.transport.begin_sql()
             executor = SqlDataServiceExecutor(self.dialect, transaction, self.schema_provider)
+            from teaql.runtime.audit import _CommittedAuditJournal
+            journal = _CommittedAuditJournal(context) if context is not None else None
             try:
-                result = await executor._mutate(context, request)
+                result = await executor._mutate(journal.context if journal else context, request, privacy)
                 await transaction.commit_sql()
-                return result
             except BaseException:
+                if journal:
+                    journal.discard()
                 # CancelledError is not an Exception. Release the transaction
                 # on cancellation too, without replacing the original failure.
                 try:
@@ -711,8 +915,36 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 except BaseException:
                     pass
                 raise
+            else:
+                if journal:
+                    await journal.committed()
+                return result
 
         req_data = request._data
+        if isinstance(req_data, list):
+            start = datetime.now()
+            results = []
+            for child in req_data:
+                child_request = (child.with_root_intent(request.intent)
+                    if isinstance(child, MutationRequest) else
+                    MutationRequest(child, comment=request.intent.comment))
+                lineage = child_request.mutation_lineage
+                if (not isinstance(child_request._data, list) and lineage
+                        and lineage[0].comment != request.intent.comment):
+                    # A native batch has no aggregate entity/ID. Its reason
+                    # prefixes each item's own responsibility type, without
+                    # replacing the local chain or duplicating an existing root.
+                    entity = lineage[0].entity_type or lineage[0].name or child_request._data.entity
+                    child_request = child_request.with_mutation_lineage((TraceNode(
+                        kind='auditReason', name=entity, entity_type=entity,
+                        comment=request.intent.comment), *lineage))
+                results.append(await self._mutate(context, child_request, privacy))
+            affected = sum(result.affected_rows for result in results)
+            return MutationResult(affected, {}, ExecutionMetadata(
+                backend=self._backend_name(), operation=DataServiceOperation.Batch,
+                started_at=start, ended_at=datetime.now(), affected_rows=affected,
+                comment=request.intent.comment, audit_reason=request.intent.comment,
+                statements=tuple(result.metadata for result in results)))
         entity_desc = self.schema_provider.get_entity(req_data.entity)
         if not entity_desc and context:
             entities = context.get_resource("entities")
@@ -745,6 +977,14 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             ), None)
             if version_prop is not None and version_prop.name not in req_data.values:
                 req_data.values[version_prop.name] = Value.from_any(1)
+
+        if not request.mutation_lineage:
+            target_id = getattr(req_data, 'id', None)
+            if target_id is None and id_prop is not None:
+                target_id = getattr(req_data, 'values', {}).get(id_prop.name)
+            request = request.with_mutation_lineage((TraceNode(
+                kind='auditReason', name=req_data.entity, entity_type=req_data.entity,
+                entity_id=getattr(target_id, 'val', target_id), comment=request.comment()),))
             
         try:
             if isinstance(req_data, InsertCommand):
@@ -780,12 +1020,13 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             )
         except BaseException as e:
             self._record_statement(context, request, compiled, start, operation,
-                                   'cancelled' if isinstance(e, asyncio.CancelledError) else 'failure')
+                                   'cancelled' if isinstance(e, asyncio.CancelledError) else 'failure',
+                                   intent_privacy=privacy)
             if isinstance(e, Exception):
                 raise TransportError(e) from e
             raise
         metadata = self._record_statement(context, request, compiled, start, operation,
-                                          'success', affected_rows=affected_rows)
+                                          'success', affected_rows=affected_rows, intent_privacy=privacy)
 
         generated_values = {}
         if op == "insert" and last_insert_id:
@@ -838,9 +1079,12 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         f"expected one authoritative persisted row for {req_data.entity}, got {len(persisted_rows)}"))
             except BaseException as error:
                 self._record_readback(context, readback, compiled, metadata, read_start,
-                                      persisted_rows, error)
+                                      persisted_rows, error, privacy)
                 raise
             persisted_record = persisted_rows[0]
+            read_metadata = self._record_readback(context, readback, compiled, metadata,
+                                                  read_start, persisted_rows, None, privacy)
+            metadata = replace(metadata, statements=(metadata, read_metadata))
 
         if affected_rows > 0 and context is not None:
             from teaql.runtime.audit import AuditFieldChange, MutationAuditKind, RawAuditEvent
@@ -866,10 +1110,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 req_data.entity,
                 entity_id,
                 changes,
-                tuple(request.trace_chain()),
+                request.mutation_lineage,
                 context.user_identifier(),
                 context.get_resource("bootstrapCategory"),
                 context.current_mutation_governance(),
+                _intent_privacy=privacy,
             ))
         return MutationResult(
             affected_rows=affected_rows,
@@ -878,25 +1123,27 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             persisted_record=persisted_record,
         )
 
-    def _record_readback(self, context, readback, source, write_metadata, started_at, rows, error):
-        if context is None:
-            return
+    def _record_readback(self, context, readback, source, write_metadata, started_at, rows, error, privacy=None):
         # A driver returning zero/multiple rows succeeded as SQL; validation of
         # the authoritative snapshot is a separate business failure.
         outcome = ('success' if rows is not None else 'cancelled'
                    if isinstance(error, asyncio.CancelledError) else 'failure')
         metadata = replace(write_metadata, operation=DataServiceOperation.Query,
+            purpose='verify the persisted mutation result',
             started_at=started_at, ended_at=datetime.now(), execution_outcome=outcome,
             parameterized_sql=readback.sql, parameters=list(readback.params),
             parameter_log_policies=readback.parameter_log_policies, sql_origin=readback.sql_origin,
             affected_rows=None, result_count=len(rows) if rows is not None else None,
-            trace_chain=[*write_metadata.trace_chain, TraceNode(kind='sql', name='readback', comment='readback')])
+            trace_chain=physical_readback_path(write_metadata.trace_chain))
+        if context is None:
+            return metadata
         try:
             context._record_metadata_log(metadata, intent_source=source,
-                intent_values=tuple(readback.params[:1]))
+                intent_values=tuple(readback.params[:1]), intent_privacy=privacy)
         except BaseException:
             # An in-flight readback error must survive a diagnostic sink failure.
             pass
+        return metadata
 
     async def next_id(self, entity: str) -> int:
         await self.transport.execute_sql(CompiledQuery(
@@ -1050,6 +1297,9 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
         self.dialect = dialect
         self.transport = transport
         self.schema_provider = schema_provider
+        self._audit_journal = None
+        self._audit_owner = None
+        self._completed = False
 
     def capabilities(self) -> DataServiceCapabilities:
         return DataServiceCapabilities(
@@ -1067,6 +1317,21 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
         return await executor.query(context, request)
 
     async def mutate(self, context: 'UserContext', request: MutationRequest) -> MutationResult:
+        request.validate()
+        if self._completed:
+            raise RuntimeError('SQL transaction is already completed')
+        if context is not None:
+            context._require_mutation_invocation()
+            if context._graph_session is None:
+                if self._audit_journal is None:
+                    from teaql.runtime.audit import _CommittedAuditJournal
+                    self._audit_journal = _CommittedAuditJournal(context)
+                    self._audit_owner = context
+                    self._audit_journal.context._mutation_policy = context._mutation_policy.for_invocation()
+                    self._audit_journal.context._checked_mutations = set()
+                elif self._audit_owner is not context:
+                    raise RuntimeError('SQL transaction audit owner cannot change')
+                context = self._audit_journal.context
         executor = SqlDataServiceExecutor(self.dialect, self.transport, self.schema_provider)
         return await executor.mutate(context, request)
 
@@ -1079,7 +1344,15 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
         await executor.ensure_id_floor(entity, floor)
 
     async def commit(self, context: 'UserContext') -> None:
+        if self._completed:
+            raise RuntimeError('SQL transaction is already completed')
         await self.transport.commit_sql()
+        self._completed = True
+        if self._audit_journal:
+            await self._audit_journal.committed()
 
     async def rollback(self, context: 'UserContext') -> None:
+        if self._audit_journal:
+            self._audit_journal.discard()
+        self._completed = True
         await self.transport.rollback_sql()

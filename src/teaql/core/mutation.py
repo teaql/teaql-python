@@ -1,7 +1,9 @@
 from enum import Enum, auto
 from typing import Dict, Any, List, Optional
 from dataclasses import dataclass, field
+from copy import deepcopy
 from .value import Value
+from .request_intent import MutationIntent
 
 @dataclass
 class TraceNode:
@@ -77,6 +79,7 @@ class DeleteCommand:
     expected_version_val: Optional[int] = None
     soft_delete: bool = True
     trace_chain: List[TraceNode] = field(default_factory=list)
+    old_values: Optional[Dict[str, Value]] = field(default=None, repr=False)
 
     @classmethod
     def new(cls, entity: str, id_val: Any) -> 'DeleteCommand':
@@ -96,6 +99,7 @@ class RecoverCommand:
     id: Value
     expected_version_val: int
     trace_chain: List[TraceNode] = field(default_factory=list)
+    old_values: Optional[Dict[str, Value]] = field(default=None, repr=False)
 
     @classmethod
     def new(cls, entity: str, id_val: Any, expected_version: int) -> 'RecoverCommand':
@@ -113,38 +117,62 @@ class MutationKind(Enum):
     BATCH = auto()
 
 class MutationRequest:
-    def __init__(self, data: Any):
+    __slots__ = ('_data', '__intent', '__mutation_lineage')
+
+    def __init__(self, data: Any, comment: Optional[str] = None):
+        self.__intent = MutationIntent(comment)
         self._data = data
+        self.__mutation_lineage = ()
+
+    @property
+    def mutation_lineage(self) -> tuple[TraceNode, ...]:
+        """Detached business lineage, never the physical SQL trace path."""
+        return deepcopy(self.__mutation_lineage)
+
+    def with_mutation_lineage(self, chain) -> 'MutationRequest':
+        nodes = tuple(chain)
+        if any(not isinstance(node, TraceNode) or node.kind != 'auditReason' for node in nodes):
+            raise TypeError('mutation lineage must contain typed AuditReason nodes')
+        result = MutationRequest(self._data, comment=self.intent.comment)
+        result.__mutation_lineage = deepcopy(nodes)
+        return result
+
+    @property
+    def intent(self) -> MutationIntent:
+        return self.__intent
+
+    def validate(self) -> None:
+        MutationIntent(getattr(getattr(self, '_MutationRequest__intent', None), 'comment', None))
+        if any(not isinstance(node, TraceNode) for node in self.trace_chain()):
+            raise TypeError('MutationRequest trace must contain typed TraceNode values')
+
+    def with_root_intent(self, intent: MutationIntent) -> 'MutationRequest':
+        return MutationRequest(self._data, comment=intent.comment).with_mutation_lineage(self.mutation_lineage)
 
     def trace_chain(self) -> List[TraceNode]:
         if isinstance(self._data, list):
             return []
         return getattr(self._data, 'trace_chain', [])
 
-    def comment(self) -> Optional[str]:
-        if isinstance(self._data, list):
-            return None
-        traces = self.trace_chain()
-        if traces:
-            return traces[-1].comment
-        return None
+    def comment(self) -> str:
+        return self.intent.comment
 
     @classmethod
-    def Insert(cls, cmd: InsertCommand) -> 'MutationRequest':
-        return cls(cmd)
+    def Insert(cls, cmd: InsertCommand, comment: Optional[str] = None) -> 'MutationRequest':
+        return cls(cmd, comment)
 
     @classmethod
-    def Update(cls, cmd: UpdateCommand) -> 'MutationRequest':
-        return cls(cmd)
+    def Update(cls, cmd: UpdateCommand, comment: Optional[str] = None) -> 'MutationRequest':
+        return cls(cmd, comment)
 
     @classmethod
-    def Delete(cls, cmd: DeleteCommand) -> 'MutationRequest':
-        return cls(cmd)
+    def Delete(cls, cmd: DeleteCommand, comment: Optional[str] = None) -> 'MutationRequest':
+        return cls(cmd, comment)
 
     @classmethod
-    def Recover(cls, cmd: RecoverCommand) -> 'MutationRequest':
-        return cls(cmd)
+    def Recover(cls, cmd: RecoverCommand, comment: Optional[str] = None) -> 'MutationRequest':
+        return cls(cmd, comment)
         
     @classmethod
-    def Batch(cls, cmds: List['MutationRequest']) -> 'MutationRequest':
-        return cls(cmds)
+    def Batch(cls, cmds: List['MutationRequest'], comment: Optional[str] = None) -> 'MutationRequest':
+        return cls(cmds, comment)

@@ -2,7 +2,7 @@
 name = "runtime-example-conformance-service-lib"
 version = "1.0.0"
 description = "Generated python library"
-dependencies = ["teaql==0.2.7", "aiosqlite>=0.22.1"]
+dependencies = ["teaql==0.2.9", "aiosqlite>=0.22.1"]
 
 [tool.setuptools]
 py-modules = ["Q", "E"]

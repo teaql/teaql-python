@@ -73,7 +73,7 @@ async def test_dynamic_search_preserves_scoped_sql_and_nested_filter(temp_db):
             if name == 'Order':
                 command.value('customer', tenant)
             command.trace_chain = [TraceNode(comment='seed dynamic search fixture')]
-            await service.mutate(context, MutationRequest(command))
+            await service.mutate(context, MutationRequest(command, comment='what: runtime regression fixture'))
     models = {
         'Order': {'fields': {'name': 'string', 'id': 'integer'}, 'relations': {'customer': 'Customer'}},
         'Customer': {'fields': {'name': 'string'}, 'relations': {}},
@@ -90,7 +90,7 @@ async def test_dynamic_search_preserves_scoped_sql_and_nested_filter(temp_db):
         'removed': 'SECRET', 'missing.name': 'SECRET', 'customer.removed': 'SECRET',
         'customer.name': 'Ada', 'name': 'Ada'}, 'orderBy': [{'field': 'removed', 'direction': 'desc'}]},
         models, bind, lambda path, direction: OrderBy.asc(path), lambda _: None)
-    rows = (await service.query(context, QueryRequest(query).comment('what: scoped search').purpose('why: conformance'))).rows
+    rows = (await service.query(context, QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior').comment('what: scoped search').purpose('why: conformance'))).rows
     assert len(rows) == 1 and rows[0]['tenant'] == 1
     assert len(warnings) == 4 and 'SECRET' not in repr(warnings)
     assert repr(base) == original
@@ -108,6 +108,41 @@ def schema_provider():
     ]
     provider.register_entity(entity)
     return provider
+
+
+@pytest.mark.asyncio
+async def test_atomic_batch_owns_root_comment_independently_of_child_route(temp_db, schema_provider):
+    from teaql.core import RequestIntentError
+    from teaql.runtime.context import SqlLogOptions
+    # The legacy mock does not mark _is_id, which SQLite DDL uses for its PK.
+    entity = (EntityDescriptor('User').table_name('users')
+        .property(PropertyDescriptor('id', DataType.I64).is_id())
+        .property(PropertyDescriptor('version', DataType.I64).is_version())
+        .property(PropertyDescriptor('name', DataType.Text)))
+    schema_provider = SimpleSchemaProvider()
+    schema_provider.register_entity(entity)
+    service = create_sqlite_service(temp_db, schema_provider)
+    context = RuntimeModule.new().entity(schema_provider.get_entity('User')).into_context()
+    context.with_schema_provider(service).with_sql_log_options(SqlLogOptions.disabled())
+    await context.ensure_schema()
+    child = MutationRequest(InsertCommand('User').value('id', 7).value('name', 'Batch user'), comment='create child')
+    child._data.trace_chain.append(TraceNode(kind='provider', comment=''))
+    with pytest.raises(RequestIntentError):
+        await service.mutate(context, MutationRequest.Batch([child]))
+    result = await service.mutate(context, MutationRequest.Batch([child], comment='save batch'))
+    assert result.affected_rows == 1
+    assert result.metadata.audit_reason == 'save batch'
+    assert child.comment() == 'create child'
+    rows = await service.query(context, QueryRequest(SelectQuery('User'), _comment='verify batch', _purpose='check result'))
+    assert len(rows.rows) == 1 and rows.rows[0]['id'] == 7
+    first = MutationRequest(InsertCommand('User').value('id', 8).value('name', 'must roll back'), comment='create first')
+    duplicate = MutationRequest(InsertCommand('User').value('id', 7).value('name', 'duplicate'), comment='create second')
+    from teaql.sql.executor import TransportError
+    with pytest.raises(TransportError):
+        await service.mutate(context, MutationRequest.Batch([first, duplicate], comment='atomic failing batch'))
+    rows = await service.query(context, QueryRequest(SelectQuery('User'), _comment='verify rollback', _purpose='check atomic batch'))
+    assert [row['id'] for row in rows.rows] == [7]
+    await service.close()
 
 @pytest.fixture
 def service(temp_db, schema_provider):
@@ -157,7 +192,7 @@ async def test_query_attaches_batched_relation_aggregate_aliases(temp_db):
             Aggregate(AggregateFunction.Sum, "score", "inner_total")]), True),
     ])
 
-    rows = (await service.query(None, QueryRequest(query))).rows
+    rows = (await service.query(None, QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows
 
     assert rows[0]["record_count"] == 2
     assert rows[0]["score_total"] == 42
@@ -194,8 +229,8 @@ async def test_schema_provider_does_not_interpret_legacy_bootstrap_graphs(temp_d
 
     context.with_schema_provider(service)
     await context.ensure_schema()
-    platforms = (await service.query(context, QueryRequest(SelectQuery("Platform")))).rows
-    constants = (await service.query(context, QueryRequest(SelectQuery("SchoolType")))).rows
+    platforms = (await service.query(context, QueryRequest(SelectQuery("Platform"), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows
+    constants = (await service.query(context, QueryRequest(SelectQuery("SchoolType"), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows
     assert platforms == []
     assert constants == []
 
@@ -206,13 +241,13 @@ async def test_crud(temp_db, schema_provider, service):
         await db.commit()
 
     # Insert
-    insert_req = MutationRequest(InsertCommand("User", {"id": Value.I64(1), "name": Value.Text("Alice"), "version": Value.I64(1)}))
+    insert_req = MutationRequest(InsertCommand("User", {"id": Value.I64(1), "name": Value.Text("Alice"), "version": Value.I64(1)}), comment='what: runtime regression fixture')
     res = await service.mutate(None, insert_req)
     assert res.affected_rows == 1
     assert res.persisted_record == {"id": 1, "name": "Alice", "version": 1}
 
     # Query
-    query_req = QueryRequest(SelectQuery("User"))
+    query_req = QueryRequest(SelectQuery("User"), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior')
     query_res = await service.query(None, query_req)
     assert len(query_res.rows) == 1
     assert query_res.rows[0]["id"] == 1
@@ -220,7 +255,7 @@ async def test_crud(temp_db, schema_provider, service):
     assert query_res.rows[0]["version"] == 1
 
     # Update
-    update_req = MutationRequest(UpdateCommand("User", Value.I64(1)).value("name", Value.Text("Bob")))
+    update_req = MutationRequest(UpdateCommand("User", Value.I64(1)).value("name", Value.Text("Bob")), comment='what: runtime regression fixture')
     res = await service.mutate(None, update_req)
     assert res.affected_rows == 1
     assert res.persisted_record["name"] == "Bob"
@@ -229,7 +264,7 @@ async def test_crud(temp_db, schema_provider, service):
     assert query_res.rows[0]["name"] == "Bob"
 
     # Delete
-    delete_req = MutationRequest(DeleteCommand("User", Value.I64(1)).hard_delete())
+    delete_req = MutationRequest(DeleteCommand("User", Value.I64(1)).hard_delete(), comment='what: runtime regression fixture')
     res = await service.mutate(None, delete_req)
     assert res.affected_rows == 1
 
@@ -251,18 +286,18 @@ async def test_crud_privacy_preserves_sqlite_values_and_failure(temp_db, service
         context.set_diagnostic_sql_log_sink(TextDiagnosticSqlLogSink(lambda line: print(line, file=output)))
         def insert(name):
             return MutationRequest(InsertCommand("User", {
-                "id": Value.I64(1), "name": Value.Text(name), "version": Value.I64(1)}))
+                "id": Value.I64(1), "name": Value.Text(name), "version": Value.I64(1)}), comment='what: runtime regression fixture')
         created = await service.mutate(context, insert(first))
         assert created.persisted_record["name"] == first
-        query = QueryRequest(SelectQuery("User").limit(1)).comment("read privacy fixture").purpose("verify original stored values")
+        query = QueryRequest(SelectQuery("User").limit(1), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior').comment("read privacy fixture").purpose("verify original stored values")
         assert (await service.query(context, query)).rows[0]["name"] == first
         updated = await service.mutate(context, MutationRequest(
-            UpdateCommand("User", Value.I64(1)).value("name", Value.Text(second))))
+            UpdateCommand("User", Value.I64(1)).value("name", Value.Text(second)), comment='what: runtime regression fixture'))
         assert updated.persisted_record["name"] == second
         with pytest.raises(Exception):
             await service.mutate(context, insert(failed))
         assert (await service.query(context, query)).rows[0]["name"] == second
-        await service.mutate(context, MutationRequest(DeleteCommand("User", Value.I64(1)).hard_delete()))
+        await service.mutate(context, MutationRequest(DeleteCommand("User", Value.I64(1)).hard_delete(), comment='what: runtime regression fixture'))
         assert (await service.query(context, query)).rows == []
     logged = path.read_text() + repr(context.sql_logs())
     for marker in (first, second, failed):
@@ -292,14 +327,14 @@ async def test_id_set_pagination_jumps_restores_order_and_avoids_count(temp_db, 
 
     jumped = SelectQuery("User").order_desc("id").offset(2).limit(2)
     jumped.optimize_pagination_with_id_set_config("users", 60, 100)
-    rows = (await service.query(context, QueryRequest(jumped))).rows
+    rows = (await service.query(context, QueryRequest(jumped, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows
     assert [row["id"] for row in rows] == [3, 2]
     assert context.id_set_count() == (5, "EXACT")
     assert context.id_set_plan() == "ID_SET_BUILD"
 
     first = SelectQuery("User").order_desc("id").offset(0).limit(2)
     first.optimize_pagination_with_id_set_config("users", 60, 100)
-    rows = (await service.query(context, QueryRequest(first))).rows
+    rows = (await service.query(context, QueryRequest(first, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows
     assert [row["id"] for row in rows] == [5, 4]
     assert context.id_set_count() == (5, "EXACT")
     assert context.id_set_plan() == "ID_SET_HIT"
@@ -343,7 +378,7 @@ async def test_id_set_pagination_lifecycle_isolation_and_fallbacks(temp_db, sche
             ColumnExpr("name"), BinaryOp.Eq, ValueExpr(Value.Text("missing"))))
         empty.order_asc("name").offset(0).limit(2)
         empty.optimize_pagination_with_id_set_config("empty", 60, 10)
-        assert (await service.query(context, QueryRequest(empty))).rows == []
+        assert (await service.query(context, QueryRequest(empty, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows == []
     assert calls == 1
     assert "ORDER BY name ASC, id ASC" in compiled_sql[0]
     assert context.id_set_count() == (0, "EXACT")
@@ -352,14 +387,14 @@ async def test_id_set_pagination_lifecycle_isolation_and_fallbacks(temp_db, sche
     # max_ids + 1 is a lower bound and visibly falls back.
     overflow = SelectQuery("User").order_desc("id").offset(0).limit(2)
     overflow.optimize_pagination_with_id_set_config("overflow", 60, 3)
-    assert len((await service.query(context, QueryRequest(overflow))).rows) == 2
+    assert len((await service.query(context, QueryRequest(overflow, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows) == 2
     assert context.id_set_count() == (4, "LOWER_BOUND")
     assert context.id_set_plan() == "ID_SET_FALLBACK_LIMIT_EXCEEDED"
 
     # Unsupported grouped shape and store failure preserve ordinary results.
     unsupported = SelectQuery("User").count("row_count").limit(2)
     unsupported.optimize_pagination_with_id_set_config("unsupported", 60, 10)
-    assert (await service.query(context, QueryRequest(unsupported))).rows[0]["row_count"] == 5
+    assert (await service.query(context, QueryRequest(unsupported, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows[0]["row_count"] == 5
     assert context.id_set_plan() == "ID_SET_FALLBACK_UNSUPPORTED_SHAPE"
 
     class UnavailableStore:
@@ -369,7 +404,7 @@ async def test_id_set_pagination_lifecycle_isolation_and_fallbacks(temp_db, sche
     context.set_id_set_store(UnavailableStore())
     fallback = SelectQuery("User").order_desc("id").offset(0).limit(2)
     fallback.optimize_pagination_with_id_set_config("store-down", 60, 10)
-    assert [row["id"] for row in (await service.query(context, QueryRequest(fallback))).rows] == [5, 4]
+    assert [row["id"] for row in (await service.query(context, QueryRequest(fallback, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows] == [5, 4]
     assert context.id_set_plan() == "ID_SET_FALLBACK_STORE_UNAVAILABLE"
 
     # TTL expiry rebuilds; principal, predicate, and active root produce separate keys.
@@ -377,11 +412,11 @@ async def test_id_set_pagination_lifecycle_isolation_and_fallbacks(temp_db, sche
     context = new_context(store)
     ttl = SelectQuery("User").order_desc("id").offset(0).limit(1)
     ttl.optimize_pagination_with_id_set_config("ttl", 1, 10)
-    await service.query(context, QueryRequest(ttl))
+    await service.query(context, QueryRequest(ttl, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
     await asyncio.sleep(1.05)
     ttl = SelectQuery("User").order_desc("id").offset(0).limit(1)
     ttl.optimize_pagination_with_id_set_config("ttl", 1, 10)
-    await service.query(context, QueryRequest(ttl))
+    await service.query(context, QueryRequest(ttl, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
     assert context.id_set_plan() == "ID_SET_BUILD"
 
     source_one, source_two, policy_one, policy_two = object(), object(), object(), object()
@@ -399,20 +434,20 @@ async def test_id_set_pagination_lifecycle_isolation_and_fallbacks(temp_db, sche
             ColumnExpr("name"), BinaryOp.Eq, ValueExpr(Value.Text(name))))
         query.order_desc("id").offset(0).limit(1)
         query.optimize_pagination_with_id_set_config("isolation", 60, 10)
-        await service.query(isolated, QueryRequest(query))
+        await service.query(isolated, QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
         assert isolated.id_set_plan() == "ID_SET_BUILD"
 
     # A retained page does not shift when one of its IDs is deleted.
     context = new_context(InMemoryIdSetStore())
     snapshot = SelectQuery("User").order_desc("id").offset(2).limit(2)
     snapshot.optimize_pagination_with_id_set_config("deletion", 60, 10)
-    assert [row["id"] for row in (await service.query(context, QueryRequest(snapshot))).rows] == [3, 2]
+    assert [row["id"] for row in (await service.query(context, QueryRequest(snapshot, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows] == [3, 2]
     async with aiosqlite.connect(temp_db) as db:
         await db.execute("DELETE FROM users WHERE id=3")
         await db.commit()
     snapshot = SelectQuery("User").order_desc("id").offset(2).limit(2)
     snapshot.optimize_pagination_with_id_set_config("deletion", 60, 10)
-    assert [row["id"] for row in (await service.query(context, QueryRequest(snapshot))).rows] == [2]
+    assert [row["id"] for row in (await service.query(context, QueryRequest(snapshot, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows] == [2]
     assert context.id_set_plan() == "ID_SET_HIT"
 
 @pytest.mark.asyncio
@@ -438,7 +473,7 @@ async def test_id_set_pagination_coalesces_concurrent_contexts(temp_db, schema_p
         context.set_id_set_store(store)
         query = SelectQuery("User").order_desc("id").offset(0).limit(1)
         query.optimize_pagination_with_id_set_config("single-flight", 60, 10)
-        return await service.query(context, QueryRequest(query))
+        return await service.query(context, QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
 
     results = await asyncio.gather(execute(), execute())
     assert [[row["id"] for row in result.rows] for result in results] == [[2], [2]]
@@ -484,11 +519,11 @@ async def test_relation_subquery_resolves_generated_entity_name_and_executes(tem
     excluded = SelectQuery("QueryRecord").and_filter(
         not_in_subquery(column("query_group"), "QueryGroup", child))
 
-    assert [row["name"] for row in (await service.query(context, QueryRequest(included))).rows] == ["included"]
-    assert [row["name"] for row in (await service.query(context, QueryRequest(excluded))).rows] == ["excluded"]
+    assert [row["name"] for row in (await service.query(context, QueryRequest(included, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows] == ["included"]
+    assert [row["name"] for row in (await service.query(context, QueryRequest(excluded, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows] == ["excluded"]
 
     async def ids(query):
-        return [row["id"] for row in (await service.query(context, QueryRequest(query))).rows]
+        return [row["id"] for row in (await service.query(context, QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows]
 
     assert await ids(SelectQuery("QueryRecord").and_filter(
         is_not_null(column("query_group"))).order_asc("id")) == [11, 12]
@@ -546,7 +581,7 @@ async def test_complete_scalar_fixture_including_nullable_boolean_executes(temp_
 
     async def ids(expr):
         query = SelectQuery("QueryRecord").project("id").and_filter(expr).order_asc("id")
-        return [row["id"] for row in (await service.query(context, QueryRequest(query))).rows]
+        return [row["id"] for row in (await service.query(context, QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))).rows]
 
     assert await ids(BinaryExpr(column("required_text"), BinaryOp.Eq, value("Alpha"))) == [1]
     assert await ids(BinaryExpr(column("required_text"), BinaryOp.Ne, value("Alpha"))) == [2, 3]
@@ -584,8 +619,8 @@ async def test_crud_emits_balanced_runtime_telemetry(temp_db, schema_provider, s
     context = RuntimeModule.new().into_context().with_runtime_telemetry(Telemetry())
     await service.mutate(context, MutationRequest(InsertCommand("User", {
         "id": Value.I64(1), "name": Value.Text("Alice"), "version": Value.I64(1)
-    })))
-    await service.query(context, QueryRequest(SelectQuery("User")))
+    }), comment='what: runtime regression fixture'))
+    await service.query(context, QueryRequest(SelectQuery("User"), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
 
     starts = [family for phase, family in events if phase == "start"]
     assert set(starts) >= {"mutation", "provider", "audit", "query"}
@@ -611,7 +646,7 @@ async def test_mutation_returns_external_database_default_in_same_transaction(te
     service = create_sqlite_service(temp_db, provider)
 
     result = await service.mutate(
-        None, MutationRequest(InsertCommand("Widget", {"version": Value.I64(1)})))
+        None, MutationRequest(InsertCommand("Widget", {"version": Value.I64(1)}), comment='what: runtime regression fixture'))
 
     assert result.persisted_record["id"] > 0
     assert result.persisted_record["name"] == "database-default"
@@ -628,7 +663,7 @@ async def test_structured_sql_evidence_is_parameterized_and_filterable(temp_db, 
     secret = "secret-customer-value"
     insert = MutationRequest(InsertCommand("User", {
         "id": Value.I64(1), "name": Value.Text(secret), "version": Value.I64(1)
-    }))
+    }), comment='what: runtime regression fixture')
     await service.mutate(context, insert)
     query = SelectQuery("User").filter(
         BinaryExpr(ColumnExpr("name"), BinaryOp.Eq, ValueExpr(Value.Text(secret))))
@@ -636,16 +671,17 @@ async def test_structured_sql_evidence_is_parameterized_and_filterable(temp_db, 
         TraceNode(kind="relation", name="User.organization", comment="organization"),
         TraceNode(kind="relation", name="Organization.region", comment="region"),
         TraceNode(kind="relation", name="Region.country", comment="country"),
-    ]).comment("what: load governed users").purpose("why: verify trace inheritance")
+    ], _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior').comment("what: load governed users").purpose("why: verify trace inheritance")
     await service.query(context, request)
 
     entries = context.sql_logs()
-    assert len(entries) == 2
+    assert len(entries) == 3  # INSERT, authoritative readback, explicit query
     assert all(entry.sql and secret not in entry.sql for entry in entries)
     assert all(entry.params for entry in entries)
     assert any(entry.result_count is not None for entry in entries)
     assert any(entry.affected_rows is not None for entry in entries)
-    select_entry = next(entry for entry in entries if entry.operation.is_select())
+    select_entry = entries[-1]
+    assert select_entry.operation.is_select()
     assert select_entry.comment == "what: load governed users"
     assert select_entry.purpose == "why: verify trace inheritance"
     assert [node.kind for node in select_entry.trace_path] == [
@@ -655,10 +691,11 @@ async def test_structured_sql_evidence_is_parameterized_and_filterable(temp_db, 
     context.enable_select_sql_log()
     await service.mutate(context, MutationRequest(InsertCommand("User", {
         "id": Value.I64(2), "name": Value.Text("ignored"), "version": Value.I64(1)
-    })))
-    assert context.sql_logs() == []
+    }), comment='what: runtime regression fixture'))
+    assert len(context.sql_logs()) == 1
+    assert context.sql_logs()[0].operation.is_select()  # the real readback
     context.enable_mutation_sql_log()
-    await service.query(context, QueryRequest(SelectQuery("User")))
+    await service.query(context, QueryRequest(SelectQuery("User"), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
     assert context.sql_logs() == []
     context.disable_sql_log()
     assert context.sql_logs() == []
@@ -736,12 +773,17 @@ async def test_successful_mutation_emits_raw_and_independently_masked_app_audit(
     raw, app = RawSink(), AppSink()
     context = RuntimeModule.new().entity(entity).audit_event_sink(raw).into_context().with_app_audit_event_sink(app)
     command = InsertCommand("User", {"id": Value.I64(1), "name": Value.Text("Alice Example"), "version": Value.I64(1)})
-    command.trace_chain.append(type("Trace", (), {"comment": "approved change"})())
-    result = await service.mutate(context, MutationRequest(command))
+    command.trace_chain.append(TraceNode(kind='auditReason', entity_type='User',
+                                       entity_id=1, comment='approved change'))
+    result = await service.mutate(context, MutationRequest(command, comment='what: runtime regression fixture'))
 
     assert result.affected_rows == 1
     assert len(raw.events) == 1 and raw.events[0].changes[1].new_value.val == "Alice Example"
-    assert raw.events[0].trace_chain[0].comment == "approved change"
+    assert raw.events[0].trace_chain[0].comment == "what: runtime regression fixture"
+    assert len(raw.events[0].trace_chain) == 1
+    assert raw.events[0].trace_chain[0].entity_id == 1
+    # Legacy command trace text is not the request-owned root audit reason.
+    assert command.trace_chain[0].comment == "approved change"
     assert len(app.events) == 1
     name_field = next(field for field in app.events[0].fields if field.field == "name")
     assert name_field.masked and name_field.value != "Alice Example"
@@ -809,7 +851,7 @@ async def test_nested_relation_limit_is_applied_per_parent(temp_db):
         return {parent["id"]: [child["id"] for child in parent["lines"]]
                 for parent in rows}
 
-    result = await service.query(context, QueryRequest(nested()))
+    result = await service.query(context, QueryRequest(nested(), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
     assert len(result.rows) == 3
     assert [len(parent["lines"]) for parent in result.rows] == [3, 3, 0]
     assert len(queries) == 4
@@ -822,21 +864,24 @@ async def test_nested_relation_limit_is_applied_per_parent(temp_db):
     assert relation_entries
     assert [node.kind for node in relation_entries[0].trace_path] == [
         "operation", "request", "relation", "provider", "sql"]
-    assert relation_entries[0].trace_path[2].name == "Order.lines"
+    assert relation_entries[0].trace_path[2].name == "lines"
+    assert relation_entries[0].trace_path[2].comment == "Order.lines"
+    assert relation_entries[0].trace_path[0].name == "Order"
+    assert relation_entries[0].trace_path[1].name == "Order"
     probe_ids = relation_ids(result.rows)
 
     queries.clear()
-    window = await service.query(context, QueryRequest(nested(0)))
+    window = await service.query(context, QueryRequest(nested(0), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
     assert len(queries) == 2 and "ROW_NUMBER() OVER" in queries[1]
     assert relation_ids(window.rows) == probe_ids
     assert "state" in queries[1] and "version" in queries[1]
 
     for threshold, expected_queries in ((3, 4), (2, 2)):
         queries.clear()
-        first = await service.query(context, QueryRequest(nested(threshold)))
+        first = await service.query(context, QueryRequest(nested(threshold), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
         first_sql = list(queries)
         queries.clear()
-        second = await service.query(context, QueryRequest(nested(threshold)))
+        second = await service.query(context, QueryRequest(nested(threshold), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
         assert relation_ids(first.rows) == relation_ids(second.rows) == probe_ids
         assert queries == first_sql
         assert len(queries) == expected_queries
@@ -901,10 +946,10 @@ async def test_relation_facet_merges_outer_filter_and_supports_include_all(temp_
     outer = (SelectQuery("School")
         .and_filter(contain("name", "Riverside"))
         .facet_by("types", "school_type", nested))
-    result = await service.query(None, QueryRequest(outer))
+    result = await service.query(None, QueryRequest(outer, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
     assert [(row["code"], row["school_count"]) for row in result.facets["types"]] == [
         ("PRIMARY", 2), ("SECONDARY", 0), ("VOCATIONAL", 0)]
 
     outer.facets[0].include_all_facets = False
-    matched = await service.query(None, QueryRequest(outer))
+    matched = await service.query(None, QueryRequest(outer, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
     assert [(row["code"], row["school_count"]) for row in matched.facets["types"]] == [("PRIMARY", 2)]

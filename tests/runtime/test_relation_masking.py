@@ -43,7 +43,7 @@ class CaptureExecutor(SqlDataServiceExecutor):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize('shape', ['batch', 'probe', 'window', 'aggregate', 'nested'])
+@pytest.mark.parametrize('shape', ['batch', 'probe', 'window', 'aggregate', 'nested', 'nested-aggregate'])
 @pytest.mark.parametrize('debug', [False, True])
 @pytest.mark.parametrize('failure', [False, True])
 async def test_derived_relation_intent(tmp_path, monkeypatch, shape, debug, failure):
@@ -88,7 +88,7 @@ async def test_derived_relation_intent(tmp_path, monkeypatch, shape, debug, fail
     if debug:
         monkeypatch.setenv(PLAINTEXT_ENV, PLAINTEXT_ACK)
     if failure:
-        transport.failing_table = 'line_data' if shape == 'nested' else 'order_data'
+        transport.failing_table = 'line_data' if shape in ('nested', 'nested-aggregate') else 'order_data'
     query = (SelectQuery('Customer').project('id', 'name')
              .filter(Expr.eq('name', 'Riverside')).and_filter(Expr.eq('password', 'PASSWORD-CANARY')).limit(1))
     child = SelectQuery('Order').project('id', 'name')
@@ -98,13 +98,16 @@ async def test_derived_relation_intent(tmp_path, monkeypatch, shape, debug, fail
         child.limit(1).top_n_probe_parent_threshold(0)
     if shape == 'nested':
         child.filter(Expr.eq('name', 'Lakeside')).relation_query('lines', SelectQuery('Line').project('id').limit(2))
+    if shape == 'nested-aggregate':
+        child.filter(Expr.eq('name', 'Lakeside'))
+        child.relation_aggregates.append(RelationAggregate('lines', 'line_count', SelectQuery('Line').count('n'), True))
     if shape == 'aggregate':
         query.relation_aggregates.append(RelationAggregate('orders', 'record_count', SelectQuery('Order').count('n'), True))
     elif shape == 'batch':
         query.relation('orders')
     else:
         query.relation_query('orders', child)
-    request = (QueryRequest(query).comment('what: load Riverside PASSWORD-CANARY Lakeside graph')
+    request = (QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior').comment('what: load Riverside PASSWORD-CANARY Lakeside graph')
                .purpose('why: verify inherited intent'))
     if failure:
         with pytest.raises(TransportError) as caught:
@@ -122,7 +125,9 @@ async def test_derived_relation_intent(tmp_path, monkeypatch, shape, debug, fail
             assert result.rows[0]['orders'][0]['id'] == 1
             if shape == 'nested':
                 assert result.rows[0]['orders'][0]['lines'][0]['id'] == 1
-    assert service.dispatched == (['Customer', 'Order', 'Line'] if shape == 'nested' else ['Customer', 'Order'])
+            if shape == 'nested-aggregate':
+                assert result.rows[0]['orders'][0]['line_count'] == 1
+    assert service.dispatched == (['Customer', 'Order', 'Line'] if shape in ('nested', 'nested-aggregate') else ['Customer', 'Order'])
     assert len(logs) == len(service.dispatched)
     entry = logs[-1]
     assert entry.execution_outcome == ('failure' if failure else 'success')
@@ -132,8 +137,13 @@ async def test_derived_relation_intent(tmp_path, monkeypatch, shape, debug, fail
     assert 'PASSWORD-CANARY' not in repr(logs) + '\n'.join(output) + repr(context.sql_logs())
     if not debug:
         assert 'Riverside' not in repr(logs) + '\n'.join(output)
-        if shape == 'nested':
+        if shape in ('nested', 'nested-aggregate'):
             assert 'Lakeside' not in entry.comment
+            assert 'Lakeside' not in repr(logs) + '\n'.join(output) + repr(context.sql_logs())
+    if shape == 'nested-aggregate':
+        assert [(node.kind, node.name) for node in entry.trace_path] == [
+            ('operation', 'Customer'), ('request', 'Customer'), ('relation', 'orders'),
+            ('relation', 'lines'), ('provider', 'sqlite'), ('sql', 'select')]
     assert len(entry.params) == len(transport.reads[-1].params)
     assert 'PASSWORD-CANARY' in [v.val for v in transport.reads[0].params]
     if shape == 'batch':
@@ -145,6 +155,6 @@ async def test_derived_relation_intent(tmp_path, monkeypatch, shape, debug, fail
     monkeypatch.delenv(PLAINTEXT_ENV, raising=False)
     assert 'Riverside' not in repr(sql_log_projection(entry))
     transport.failing_table = None
-    await service.query(context, QueryRequest(SelectQuery('Customer').limit(1))
+    await service.query(context, QueryRequest(SelectQuery('Customer').limit(1), _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior')
                         .comment('what: independent Riverside').purpose('why: source isolation'))
     assert logs[-1].comment == 'what: independent Riverside'

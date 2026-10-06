@@ -35,15 +35,15 @@ def test_mutation_requests():
     i = InsertCommand.new("User")
     i.trace_chain = [t]
     
-    req_i = MutationRequest.Insert(i)
-    req_u = MutationRequest.Update(UpdateCommand.new("U", 1))
-    req_d = MutationRequest.Delete(DeleteCommand.new("U", 1))
-    req_r = MutationRequest.Recover(RecoverCommand.new("U", 1, 1))
+    req_i = MutationRequest.Insert(i, comment='what: runtime regression fixture')
+    req_u = MutationRequest.Update(UpdateCommand.new("U", 1), comment='what: runtime regression fixture')
+    req_d = MutationRequest.Delete(DeleteCommand.new("U", 1), comment='what: runtime regression fixture')
+    req_r = MutationRequest.Recover(RecoverCommand.new("U", 1, 1), comment='what: runtime regression fixture')
     
-    req_b = MutationRequest.Batch([req_i, req_u])
+    req_b = MutationRequest.Batch([req_i, req_u], comment='what: runtime regression fixture')
     
     assert len(req_i.trace_chain()) == 1
-    assert req_i.comment() == "test"
+    assert req_i.comment() == 'what: runtime regression fixture'
     
     assert req_b.trace_chain() == []
-    assert req_b.comment() is None
+    assert req_b.comment() == 'what: runtime regression fixture'

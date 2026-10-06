@@ -64,3 +64,4 @@ class Q:
     def order_search_presets_minimal() -> OrderSearchPresetRequest:
         return OrderSearchPresetRequest(minimal=True)
 
+

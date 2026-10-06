@@ -2,8 +2,10 @@ from dataclasses import dataclass, field
 from datetime import datetime
 from enum import Enum, auto
 from typing import List, Dict, Any, Optional, Protocol, Union, AsyncIterator
+from copy import deepcopy
 
 from teaql.core.query import SelectQuery
+from teaql.core.request_intent import QueryIntent
 from teaql.core.mutation import (
     MutationRequest,
     InsertCommand as CoreInsertCommand,
@@ -25,33 +27,67 @@ class DataServiceCapabilities:
     returning: bool = False
 
 
-@dataclass
 class QueryRequest:
-    query: SelectQuery
-    trace_chain: List[TraceNode] = field(default_factory=list)
-    _comment: Optional[str] = None
-    _purpose: Optional[str] = None
+    __slots__ = ('query', 'trace_chain', '__intent', '__origin_entity',
+                 '_log_intent_source', '_log_intent_queries')
+    _UNSET = object()
 
-    def __post_init__(self) -> None:
-        # Older generated wrappers store intent on SelectQuery but construct
-        # QueryRequest(query) without forwarding it. Keep the explicit request
-        # values authoritative while preserving their diagnostic intent.
-        if self._comment is None:
-            self._comment = getattr(self.query, 'comment_text', None)
-        if self._purpose is None:
-            self._purpose = getattr(self.query, 'purpose_text', None)
+    def __init__(self, query: SelectQuery, trace_chain=None, _comment=_UNSET, _purpose=_UNSET,
+                 *, _origin_entity=None):
+        comment = getattr(query, 'comment_text', None) if _comment is self._UNSET else _comment
+        purpose = getattr(query, 'purpose_text', None) if _purpose is self._UNSET else _purpose
+        self.__intent = QueryIntent(comment, purpose)
+        self.__origin_entity = query.entity if _origin_entity is None else _origin_entity
+        self.query = deepcopy(query)
+        self.query.comment_text = self.intent.comment
+        self.query.purpose_text = self.intent.purpose
+        self.trace_chain = deepcopy(trace_chain) if trace_chain is not None else []
+
+    @property
+    def intent(self) -> QueryIntent:
+        return self.__intent
+
+    @property
+    def origin_entity(self) -> str:
+        return self.__origin_entity
+
+    @property
+    def _comment(self) -> str:
+        return self.intent.comment
+
+    @property
+    def _purpose(self) -> str:
+        return self.intent.purpose
+
+    def validate(self) -> None:
+        intent = getattr(self, '_QueryRequest__intent', None)
+        QueryIntent(getattr(intent, 'comment', None), getattr(intent, 'purpose', None))
+        if any(not isinstance(node, TraceNode) for node in self.trace_chain):
+            raise TypeError('QueryRequest trace must contain typed TraceNode values')
+
+    def with_query(self, query: SelectQuery) -> 'QueryRequest':
+        result = QueryRequest(query, self.trace_chain, self._comment, self._purpose,
+                              _origin_entity=self.origin_entity)
+        if hasattr(self, '_log_intent_source'):
+            result._log_intent_source = deepcopy(self._log_intent_source)
+        # Derived work may drop a relation/projection whose private values are
+        # still mentioned by the originating intent. Retain owned source graphs
+        # solely for compiler classification, never on Context or log payloads.
+        result._log_intent_queries = (*deepcopy(getattr(self, '_log_intent_queries', ())),
+                                      deepcopy(self.query))
+        return result
 
     def comment(self, text: str) -> 'QueryRequest':
-        if not text:
-            raise ValueError("comment cannot be empty")
-        self._comment = text
-        return self
+        result = self.with_query(self.query)
+        result.__intent = QueryIntent(text, self._purpose)
+        result.query.comment_text = result.intent.comment
+        return result
 
     def purpose(self, text: str) -> 'QueryRequest':
-        if not text:
-            raise ValueError("purpose cannot be empty")
-        self._purpose = text
-        return self
+        result = self.with_query(self.query)
+        result.__intent = QueryIntent(self._comment, text)
+        result.query.purpose_text = result.intent.purpose
+        return result
 
 
 class DataServiceOperation(Enum):
@@ -75,6 +111,7 @@ class ExecutionMetadata:
     affected_rows: Optional[int] = None
     result_count: Optional[int] = None
     trace_chain: List[TraceNode] = field(default_factory=list)
+    mutation_lineage: tuple[TraceNode, ...] = field(default_factory=tuple)
     comment: Optional[str] = None
     purpose: Optional[str] = None
     audit_reason: Optional[str] = None
@@ -85,6 +122,9 @@ class ExecutionMetadata:
     sql_origin: Optional[str] = None
     # Statement/cursor termination only, not transaction commit.
     execution_outcome: Optional[str] = None
+    # Logical mutation summaries own ordered physical children. Batch summaries
+    # retain per-item grouping; leaves are empty and never point to a summary.
+    statements: tuple['ExecutionMetadata', ...] = field(default_factory=tuple)
 
 
 @dataclass
@@ -93,17 +133,17 @@ class QueryResult:
     metadata: ExecutionMetadata
     facets: Dict[str, Any] = field(default_factory=dict)
 
-def InsertCommand(cmd):
-    return MutationRequest(cmd)
+def InsertCommand(cmd, comment=None):
+    return MutationRequest(cmd, comment)
 
-def UpdateCommand(cmd):
-    return MutationRequest(cmd)
+def UpdateCommand(cmd, comment=None):
+    return MutationRequest(cmd, comment)
 
-def DeleteCommand(cmd):
-    return MutationRequest(cmd)
+def DeleteCommand(cmd, comment=None):
+    return MutationRequest(cmd, comment)
 
-def RecoverCommand(cmd):
-    return MutationRequest(cmd)
+def RecoverCommand(cmd, comment=None):
+    return MutationRequest(cmd, comment)
 
 
 

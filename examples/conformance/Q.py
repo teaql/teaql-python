@@ -19,3 +19,4 @@ class Q:
     def work_items_minimal() -> WorkItemRequest:
         return WorkItemRequest(minimal=True)
 
+

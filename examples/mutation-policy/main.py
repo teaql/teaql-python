@@ -127,14 +127,15 @@ def context_for(provider, audit):
 
 
 async def save(context, *commands):
-    async def graph():
-        transaction = context.require_resource("dataService")
+    async def graph(session):
+        context = session.context
+        transaction = session.transaction
         for command in commands:
             context.preflight_mutation(command)
         for command in commands:
-            await transaction.mutate(context, MutationRequest(command))
+            await transaction.mutate(context, MutationRequest(command, comment='what: runtime regression fixture'))
 
-    await context.execute_graph_save(graph)
+    await context.execute_graph_save(graph, comment='what: runtime regression fixture')
 
 
 async def main():

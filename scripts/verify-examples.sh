@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(business-clock business-id conformance mutation-policy opaque-entity-reference order-management query-policy school-management task_board)
+expected=(business-clock business-id conformance facet-trace mutation-policy opaque-entity-reference order-management query-policy school-management task_board trace-chain)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -23,6 +23,7 @@ fi
 PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/conformance" -p 'test_sql_log_intent.py' -v
 PYTHONPATH="$repo/examples/school-management:$repo/src" python -m app.main
+bash "$repo/scripts/verify-school-bootstrap-example.sh"
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/school-management" -p 'test_sql_log_intent.py' -v
 PYTHONPATH="$repo/src" python "$repo/examples/mutation-policy/main.py"
 PYTHONPATH="$repo/src" python "$repo/examples/business-clock/main.py"
@@ -38,4 +39,6 @@ TEAQL_ORDER_MANAGEMENT_DB="$order_management_tmp/order.db" \
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/order-management" -p 'test_sql_log_intent.py' -v
 TEAQL_TASK_BOARD_DB="$task_board_tmp/task_board.db" PYTHONPATH="$repo/examples/task_board:$repo/src" python "$repo/examples/task_board/main.py"
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/task_board" -p 'test_task_board.py' -v
+bash "$repo/examples/trace-chain/verify.sh"
+bash "$repo/examples/facet-trace/verify.sh"
 echo "PASS: all Python examples"

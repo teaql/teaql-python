@@ -84,7 +84,7 @@ async def test_live_provider_keeps_values_and_masks_q_and_mutation(
             .value("password_hash", "PASSWORD-CANARY")
         )
         command.trace_chain = [TraceNode(comment="what: create masked customer")]
-        await service.mutate(context, MutationRequest(command))
+        await service.mutate(context, MutationRequest(command, comment='what: runtime regression fixture'))
         query = SelectQuery("Customer").filter(
             Expr.new_and(
                 Expr.eq("display_name", "Riverside"),
@@ -94,7 +94,7 @@ async def test_live_provider_keeps_values_and_masks_q_and_mutation(
         rows = (
             await service.query(
                 context,
-                QueryRequest(query)
+                QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior')
                 .comment("what: read masked customer")
                 .purpose("why: verify live-provider SQL masking"),
             )

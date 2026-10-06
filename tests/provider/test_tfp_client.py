@@ -117,13 +117,13 @@ async def test_provider_adapts_core_query_and_mutation_without_broadening():
     provider = TfpHttpProvider("https://tfp.test", client=http)
     query = SelectQuery.new("CustomerOrder").filter(Expr.eq("status", "NEW"))
     query.slice = Slice(offset=0, limit=20)
-    result = await provider.query(None, QueryRequest(query).comment("List orders").purpose("Render queue"))
+    result = await provider.query(None, QueryRequest(query, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior').comment("List orders").purpose("Render queue"))
     assert isinstance(result.rows, SmartList)
     assert payloads[0]["filterCondition"] == {"status": {"$eq": "NEW"}}
 
     command = UpdateCommand.new("CustomerOrder", 42).expected_version(3).value("status", "PAID")
     command.trace_chain.append(TraceNode(comment="Mark paid"))
-    mutation = await provider.mutate(None, MutationRequest.Update(command))
+    mutation = await provider.mutate(None, MutationRequest.Update(command, comment='what: runtime regression fixture'))
     assert mutation.affected_rows == 1
     assert payloads[1]["expectedVersion"] == 3
 
@@ -163,7 +163,7 @@ async def test_provider_policy_denial_prevents_remote_mutation_request():
     command.trace_chain.append(TraceNode(comment="Mark paid"))
 
     with pytest.raises(MutationPolicyError, match="REMOTE_MUTATION_DENIED"):
-        await provider.mutate(context, MutationRequest.Update(command))
+        await provider.mutate(context, MutationRequest.Update(command, comment='what: runtime regression fixture'))
     assert calls == 0
 
 

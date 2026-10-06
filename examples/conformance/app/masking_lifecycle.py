@@ -46,11 +46,11 @@ async def verify_masking_lifecycle():
             entries.append(entry)
             sink.write(entry)
         context.set_diagnostic_sql_log_sink(SimpleNamespace(write=capture))
-        async def insert(entity_id, target=None):
+        async def insert(entity_id, target=None, request_context=None):
             command = (InsertCommand('MaskCustomer').value('id', entity_id).value('version', 1)
                        .value('display_name', 'Riverside'))
             command.trace_chain = [TraceNode(comment='what: seed Riverside lifecycle fixture')]
-            return await (target or service).mutate(context, MutationRequest(command))
+            return await (target or service).mutate(request_context or context, MutationRequest(command, comment='what: seed Riverside lifecycle fixture'))
         try:
             for entity_id in [1, 2, 3]:
                 await insert(entity_id)
@@ -58,7 +58,7 @@ async def verify_masking_lifecycle():
             output.clear()
             request = QueryRequest(SelectQuery('MaskCustomer')
                 .filter(Expr.eq('display_name', 'Riverside')).limit(3)
-            ).comment('what: inspect customers').purpose('why: verify stream lifecycle')
+            , _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior').comment('what: inspect customers').purpose('why: verify stream lifecycle')
             # async-for break alone does not promise immediate generator close
             # in Python. aclosing makes ownership explicit and deterministic.
             async with aclosing(service.query_stream(context, request, 1)) as stream:
@@ -100,17 +100,17 @@ async def verify_masking_lifecycle():
 
             context.insert_resource('dataService', service)
             entries.clear()
-            async def partial_graph():
-                target = context.require_resource('dataService')
-                await insert(30, target)
-                await insert(777, target)
-                await insert(31, target)
+            async def partial_graph(graph):
+                await insert(30, graph.transaction, graph.context)
+                await insert(777, graph.transaction, graph.context)
+                await insert(31, graph.transaction, graph.context)
             try:
-                await context.execute_graph_save(partial_graph)
+                await context.execute_graph_save(partial_graph, comment='what: runtime regression fixture')
                 raise AssertionError('partial graph unexpectedly committed')
             except TransportError:
                 pass
-            assert [entry.execution_outcome for entry in entries] == ['success','success','success']
+            assert [entry.execution_outcome for entry in entries] == ['success','success','success','success']
+            assert [entry.trace_path[-1].name for entry in entries] == ['insert','select','insert','select']
             assert entries[-1].result_count == 0
             assert not await service.transport.fetch_all_sql(CompiledQuery(
                 'SELECT id FROM mask_customer_data WHERE id IN (30,31,777)', []))
@@ -120,11 +120,11 @@ async def verify_masking_lifecycle():
 
             command = (InsertCommand('MaskChild').value('id', 1).value('version', 1).value('parent_id', 1))
             command.trace_chain = [TraceNode(comment='what: seed child for relation verification')]
-            await service.mutate(context, MutationRequest(command))
+            await service.mutate(context, MutationRequest(command, comment='what: runtime regression fixture'))
             graph_request = QueryRequest(SelectQuery('MaskCustomer').project('id')
                 .filter(Expr.eq('id', 1)).and_filter(Expr.eq('display_name', 'Riverside'))
                 .relation_query('children', SelectQuery('MaskChild').project('id').limit(2)).limit(1)
-            ).comment('what: load Riverside graph').purpose('why: verify inherited relation masking')
+            , _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior').comment('what: load Riverside graph').purpose('why: verify inherited relation masking')
             entries.clear()
             await service.transport.execute_sql(CompiledQuery(
                 'ALTER TABLE mask_child_data RENAME TO mask_child_unavailable', []))

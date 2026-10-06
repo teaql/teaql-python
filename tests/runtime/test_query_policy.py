@@ -4,7 +4,7 @@ from teaql.runtime.context import UserContext
 
 def test_prepare_query_clones_and_governs_every_query_node_once():
     shared = SelectQuery("SchoolType").project("id")
-    root = SelectQuery("School").project("id")
+    root = SelectQuery("School").project("id").comment('govern query graph').purpose('verify policy')
     root.relations.append(RelationLoad("schoolType", shared))
     root.facets.append(FacetRequest("types", "schoolType", shared))
     calls = []
@@ -27,7 +27,7 @@ def test_prepare_query_clones_and_governs_every_query_node_once():
 
 def test_prepare_query_without_policy_still_returns_independent_graph():
     child = SelectQuery("SchoolType").project("id")
-    root = SelectQuery("School")
+    root = SelectQuery("School").comment('clone query graph').purpose('verify policy')
     root.relations.append(RelationLoad("schoolType", child))
 
     prepared = UserContext().prepare_query(root)
@@ -43,7 +43,7 @@ def test_prepare_query_propagates_policy_denial():
         if query.entity == "SchoolType":
             raise PermissionError("query policy denied SchoolType")
 
-    root = SelectQuery("School")
+    root = SelectQuery("School").comment('deny query graph').purpose('verify policy')
     root.relations.append(RelationLoad("schoolType", SelectQuery("SchoolType")))
 
     context = UserContext().with_request_policy(deny)
@@ -57,7 +57,7 @@ def test_prepare_query_propagates_policy_denial():
 
 def test_prepare_query_preserves_shared_nodes_when_policy_returns_replacement():
     shared = SelectQuery("SchoolType")
-    root = SelectQuery("School")
+    root = SelectQuery("School").comment('replace query graph').purpose('verify policy')
     root.relations.append(RelationLoad("schoolType", shared))
     root.facets.append(FacetRequest("types", "schoolType", shared))
 

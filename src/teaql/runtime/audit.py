@@ -28,6 +28,7 @@ class RawAuditEvent:
     actor: Optional[str] = None
     category: Optional[str] = None
     mutation_governance: Any = None
+    _intent_privacy: Any = field(default=None, repr=False, compare=False)
 
     def safe(self, mask_fields: List[str], max_length: Optional[int]) -> "SafeAuditEvent":
         from .log_privacy import REDACTED, credential_name, payload_has_credentials, plaintext_enabled, scrub, value_strings
@@ -50,6 +51,8 @@ class RawAuditEvent:
                 value = "*" * max_length if max_length <= 3 else value[:max_length - 3] + "..."
             fields.append(SafeAuditField(change.field, value, masked, truncated))
         intent_values = secrets + value_strings(self.entity_id)
+        if self._intent_privacy is not None:
+            intent_values.extend(self._intent_privacy.secrets(allow))
         return SafeAuditEvent(
             self.kind, self.entity, self.entity_id, scrub(tuple(fields), secrets), scrub(self.trace_chain, intent_values),
             scrub(self.actor, intent_values), self.category, self.mutation_governance,
@@ -88,3 +91,43 @@ async def deliver(sink: Any, method: str, context: Any, event: Any) -> None:
     result = callback(context, event)
     if isawaitable(result):
         await result
+
+
+class _CommittedAuditJournal:
+    """Private journal owned by one SQL transaction, never by shared Context."""
+
+    def __init__(self, context):
+        from copy import copy
+        self._events = []
+        self._active = True
+        view = copy(context)
+        context._resources.setdefault('sql_logs', [])
+        view._resources = dict(context._resources)
+        view._audit_journal = self
+        self.context = view
+
+    def require_active(self):
+        if not self._active:
+            raise RuntimeError('SQL audit transaction is no longer writable')
+
+    def queue(self, event, safe_event):
+        from copy import deepcopy
+        self.require_active()
+        self._events.append((deepcopy(event), deepcopy(safe_event)))
+
+    def discard(self):
+        self._active = False
+        self._events.clear()
+
+    async def committed(self):
+        self._active = False
+        failures = []
+        for event, safe in self._events:
+            try:
+                await self.context._deliver_audit_event(event, safe)
+            except BaseException as error:
+                failures.append(error)
+        self._events.clear()
+        if failures:
+            from .graph_session import GraphCommittedError
+            raise GraphCommittedError(failures)

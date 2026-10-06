@@ -2,6 +2,7 @@ from typing import Dict, Any, Optional, List, Callable, TypeVar
 import asyncio
 import contextvars
 from copy import deepcopy
+from inspect import signature
 from dataclasses import dataclass
 from array import array
 from datetime import date, datetime, timedelta, timezone
@@ -109,13 +110,14 @@ class UserContext:
         self._id_set_plan = "ID_SET_DISABLED"
         self._id_set_count = 0
         self._id_set_count_accuracy = "UNKNOWN"
-        self._graph_save_active = False
         self._graph_save_lock = asyncio.Lock()
-        self._graph_save_owner = contextvars.ContextVar(
-            f"teaql_graph_save_owner_{id(self)}", default=None
+        # This variable is a fail-fast re-entry guard, not an ambient session
+        # or a trace stack. Children receive the session explicitly.
+        self._graph_save_guard = contextvars.ContextVar(
+            f"teaql_graph_save_guard_{id(self)}", default=None
         )
-        self._graph_commit_actions: List[Any] = []
-        self._graph_rollback_actions: List[Any] = []
+        self._graph_session = None
+        self._audit_journal = None
         self._fix_evidence_current: List[FixEvidence] = []
         self._fix_evidence_last: List[FixEvidence] = []
         self._checked_mutations = set()
@@ -207,76 +209,59 @@ class UserContext:
         )
         return claims
 
-    async def execute_graph_save(self, work):
-        """Run one generated entity graph in one provider transaction."""
-        if self._graph_save_owner.get() is not None:
-            return await work()
+    async def execute_graph_save(self, work, *, comment=None):
+        """Run ``work(session)``; never implicitly join another root save."""
+        from teaql.core.request_intent import MutationIntent
+        from .graph_session import GraphMutationSession
+        intent = MutationIntent(comment)
+        guard = self._graph_save_guard.get()
+        if self._graph_session is not None or (guard is not None and guard['active']):
+            raise RuntimeError('independent graph save cannot re-enter an active graph; compose children explicitly')
         async with self._graph_save_lock:
             provider = self.require_resource("dataService")
             begin = getattr(provider, "begin", None)
             if not callable(begin):
                 raise RuntimeError("Configured dataService does not support graph transactions")
+            transaction = await self._call_transaction_method(begin, self)
+            guard = {'active': True}
+            guard_token = self._graph_save_guard.set(guard)
+            session = None
             try:
-                transaction = await begin(self)
-            except TypeError:
-                transaction = await begin()
-            owner_token = self._graph_save_owner.set(object())
-            self._graph_save_active = True
-            self._mutation_policy.begin_graph()
-            self._graph_commit_actions = []
-            self._graph_rollback_actions = []
-            self.insert_resource("fix_time", self.business_time())
-            self.begin_fix_evidence()
-            self.insert_resource("dataService", transaction)
-            try:
-                result = await work()
+                session = GraphMutationSession(self, transaction, intent)
+                result = await work(session)
+                session.context._mutation_policy.ensure_graph_complete()
+                await self._finish_graph_transaction(transaction, "commit", session.context)
             except BaseException:
                 try:
-                    await self._finish_graph_transaction(transaction, "rollback")
-                finally:
-                    for action in reversed(self._graph_rollback_actions):
-                        action()
+                    await self._finish_graph_transaction(transaction, "rollback", session.context if session else self)
+                except BaseException:
+                    pass  # Preserve the original operation/commit failure.
+                if session is not None:
+                    await session.rolled_back()
                 raise
             else:
-                try:
-                    self._mutation_policy.ensure_graph_complete()
-                    await self._finish_graph_transaction(transaction, "commit")
-                except BaseException:
-                    try:
-                        await self._finish_graph_transaction(transaction, "rollback")
-                    finally:
-                        for action in reversed(self._graph_rollback_actions):
-                            action()
-                    raise
-                for action in self._graph_commit_actions:
-                    action()
+                await session.committed()
                 return result
             finally:
-                self.insert_resource("dataService", provider)
-                self._graph_save_active = False
-                self._mutation_policy.end_graph()
-                self._graph_commit_actions = []
-                self._graph_rollback_actions = []
-                self._resources.pop("fix_time", None)
-                self.finish_fix_evidence()
-                self._graph_save_owner.reset(owner_token)
+                if session is not None:
+                    session.close()
+                    self._fix_evidence_last = list(session.context.last_fix_evidence())
+                guard['active'] = False
+                self._graph_save_guard.reset(guard_token)
 
-    async def _finish_graph_transaction(self, transaction, operation: str) -> None:
-        finish = getattr(transaction, operation)
+    @staticmethod
+    async def _call_transaction_method(method, context):
+        # Select the signature before invocation. A TypeError thrown *inside*
+        # a provider must not trigger a second begin/commit/rollback call.
         try:
-            await finish(self)
+            signature(method).bind(context)
         except TypeError:
-            await finish()
+            return await method()
+        return await method(context)
 
-    def after_graph_commit(self, work) -> None:
-        if not self._graph_save_active:
-            raise RuntimeError("No graph save is active")
-        self._graph_commit_actions.append(work)
-
-    def after_graph_rollback(self, work) -> None:
-        if not self._graph_save_active:
-            raise RuntimeError("No graph save is active")
-        self._graph_rollback_actions.append(work)
+    async def _finish_graph_transaction(self, transaction, operation: str, context) -> None:
+        finish = getattr(transaction, operation)
+        await self._call_transaction_method(finish, context)
 
     async def get_in_store(self, key: str) -> Optional[Any]:
         store = self.get_resource("data_store")
@@ -385,6 +370,8 @@ class UserContext:
 
     def prepare_query(self, query: Any) -> Any:
         """Clone a query graph and apply trusted policy once to every query node."""
+        from teaql.core.request_intent import QueryIntent
+        intent = QueryIntent.from_query(query)
         prepared_root = deepcopy(query)
         policy = self.get_resource("request_policy")
         if policy is None:
@@ -420,7 +407,17 @@ class UserContext:
                 prepared.child_enhancements = [prepare_node(child) for child in children]
             return prepared
 
-        return prepare_node(prepared_root)
+        result = prepare_node(prepared_root)
+        result.comment_text = intent.comment
+        result.purpose_text = intent.purpose
+        return result
+
+    def prepare_query_request(self, request):
+        request.validate()
+        query = deepcopy(request.query)
+        query.comment_text = request.intent.comment
+        query.purpose_text = request.intent.purpose
+        return request.with_query(self.prepare_query(query))
 
     def set_user_identifier(self, identifier: str):
         self._user_identifier = identifier
@@ -738,6 +735,19 @@ class UserContext:
         return results
 
     async def send_audit_event(self, event: Any):
+        descriptor = self.entity(event.entity)
+        mask_fields = getattr(descriptor, "audit_mask_fields_val", []) if descriptor else []
+        max_len = getattr(descriptor, "audit_value_max_len_val", None) if descriptor else None
+        safe_event = event.safe(mask_fields, max_len)
+        if self._graph_session is not None:
+            self._graph_session.queue_audit(event, safe_event)
+            return
+        if self._audit_journal is not None:
+            self._audit_journal.queue(event, safe_event)
+            return
+        await self._deliver_audit_event(event, safe_event)
+
+    async def _deliver_audit_event(self, event: Any, safe_event: Any):
         from .audit import deliver
         from .telemetry import RuntimeOperation, start_runtime_operation
         scope = start_runtime_operation(self._runtime_telemetry, RuntimeOperation(
@@ -748,13 +758,19 @@ class UserContext:
             },
         ))
         try:
+            failures = []
             if self._standard_audit_sink is not None:
-                await deliver(self._standard_audit_sink, "on_event", self, event)
+                try:
+                    await deliver(self._standard_audit_sink, "on_event", self, event)
+                except BaseException as error:
+                    failures.append(error)
             if self._app_audit_sink is not None:
-                descriptor = self.entity(event.entity)
-                mask_fields = getattr(descriptor, "audit_mask_fields_val", []) if descriptor else []
-                max_len = getattr(descriptor, "audit_value_max_len_val", None) if descriptor else None
-                await deliver(self._app_audit_sink, "on_safe_event", self, event.safe(mask_fields, max_len))
+                try:
+                    await deliver(self._app_audit_sink, "on_safe_event", self, safe_event)
+                except BaseException as error:
+                    failures.append(error)
+            if failures:
+                raise failures[0]
             scope.success()
         except BaseException as error:
             scope.failure(error)
@@ -797,10 +813,26 @@ class UserContext:
         """Check/fix and snapshot one operation for whole-graph policy review."""
         self.check_and_fix_mutation(mutation)
         self._mutation_policy.record_preflight(mutation)
+        if self._graph_session is not None:
+            from .log_privacy import _MutationIntentPrivacy
+            session = self._graph_session
+            session._intent_privacy = session._intent_privacy.merge(
+                _MutationIntentPrivacy.capture(mutation, self.entity))
 
     def mutation_policy_execution(self, request: Any):
         """Provider boundary scope; entered after validation and before mutation."""
+        self._require_mutation_invocation()
         return self._mutation_policy.enter_mutation(self, request)
+
+    def _require_mutation_invocation(self):
+        if self._audit_journal is not None:
+            self._audit_journal.require_active()
+        if self._graph_session is not None:
+            self._graph_session._require_active()
+            return
+        guard = self._graph_save_guard.get()
+        if guard is not None and guard['active']:
+            raise RuntimeError('mutation within an active graph requires its explicit session context')
 
     def with_sql_log_options(self, options: 'SqlLogOptions') -> 'UserContext':
         self.insert_resource("sql_log_options", options)
@@ -870,7 +902,7 @@ class UserContext:
     def record_metadata_log(self, metadata: Any):
         self._record_metadata_log(metadata)
 
-    def _record_metadata_log(self, metadata: Any, *, intent_source=None, intent_values=()):
+    def _record_metadata_log(self, metadata: Any, *, intent_source=None, intent_values=(), intent_privacy=None):
         """Internal statement plumbing: source bindings never reach sinks/buffers."""
         op = SqlLogOperation.Select
         op_str = str(getattr(metadata, 'operation', '')).lower()
@@ -889,6 +921,7 @@ class UserContext:
             purpose=getattr(metadata, 'purpose', None),
             audit_reason=getattr(metadata, 'audit_reason', None),
             trace_path=list(getattr(metadata, 'trace_chain', [])),
+            mutation_lineage=tuple(getattr(metadata, 'mutation_lineage', ())),
             sql=getattr(metadata, 'parameterized_sql', ''),
             params=list(getattr(metadata, 'parameters', [])),
             debug_sql=getattr(metadata, 'debug_query', '') or '',
@@ -911,7 +944,8 @@ class UserContext:
             entry.result_summary = f"{entry.affected_rows} rows affected"
 
         from .log_privacy import sql_log_projection
-        entry = sql_log_projection(entry, _intent_source=intent_source, _intent_values=intent_values)
+        entry = sql_log_projection(entry, _intent_source=intent_source, _intent_values=intent_values,
+                                   _intent_privacy=intent_privacy)
         logs = self.sql_logs()
         logs.append(entry)
         self._resources["sql_logs"] = logs
@@ -1224,6 +1258,7 @@ class SqlLogEntry:
     log_mode: Optional[str] = None
     omission_reason: Optional[str] = None
     execution_outcome: Optional[str] = None
+    mutation_lineage: tuple[Any, ...] = ()
 
 class DiagnosticSqlLogSink:
     """Policy-projected SQL destination; the text sink is installed by default."""

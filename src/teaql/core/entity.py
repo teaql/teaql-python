@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from copy import deepcopy
 from threading import RLock
 from typing import Dict, Optional, Any, Iterable, Mapping, Set, Tuple
 from .value import Value
@@ -12,6 +13,36 @@ class EntityKey:
     def __post_init__(self):
         if not self.entity or not self.entity.strip():
             raise ValueError("entity type is required")
+
+
+class _LoadedScalarSnapshot:
+    """Generated plumbing: owned original scalars, not a mutable graph ledger."""
+
+    def __init__(self, values):
+        self.__values = deepcopy(values)
+
+    def select(self, fields):
+        return {name: deepcopy(self.__values[name]) for name in fields if name in self.__values}
+
+    def business_values(self):
+        """Private provenance includes unchanged loaded scalars, never structural version/ID."""
+        return self.select(name for name in self.__values if name not in ('id', 'version'))
+
+
+class _QueryProjectionSnapshot:
+    """Owned query-only aliases; never entity attributes or mutation payloads."""
+
+    def __init__(self, values, modeled_names):
+        excluded = frozenset(modeled_names)
+        self.__values = {name: deepcopy(value) for name, value in values.items()
+                         if name not in excluded}
+
+    def contains(self, alias):
+        return alias in self.__values
+
+    def get(self, alias):
+        # Missing is not zero/None. Return an owned value, not a writable alias.
+        return deepcopy(self.__values[alias])
 
 
 class EntityChangeSet:
@@ -57,6 +88,20 @@ class EntityRoot:
         self._original_versions: Dict[EntityKey, int] = {}
         self._new_keys: Set[EntityKey] = set()
         self._deleted_keys: Set[EntityKey] = set()
+        self._trace_chains: Dict[EntityKey, tuple] = {}
+
+    def set_trace_chain(self, key: EntityKey, chain) -> None:
+        """Store a complete per-entity replacement, not an appended fragment."""
+        from .mutation import TraceNode
+        nodes = tuple(chain)
+        if any(not isinstance(node, TraceNode) or node.kind != 'auditReason' for node in nodes):
+            raise TypeError('ledger lineage must contain typed AuditReason nodes')
+        with self._lock:
+            self._trace_chains[key] = deepcopy(nodes)
+
+    def trace_chain(self, key: EntityKey) -> tuple:
+        with self._lock:
+            return deepcopy(self._trace_chains.get(key, ()))
 
     def push_change_set(self) -> None:
         with self._lock:
@@ -96,7 +141,20 @@ class EntityRoot:
 
     def set_original_version(self, key: EntityKey, version: int) -> None:
         with self._lock:
+            self._validate_version(key, version)
             self._original_versions[key] = version
+
+    def accept_committed_version(self, key: EntityKey, version: int) -> None:
+        """Advance authoritative state only after this key's changes clear."""
+        with self._lock:
+            if self.has_pending(key):
+                raise ValueError('ENTITY_PENDING_CHANGES: clear committed changes before accepting a version')
+            self._original_versions[key] = version
+
+    def has_pending(self, key: EntityKey) -> bool:
+        with self._lock:
+            return (key in self._new_keys or key in self._deleted_keys or
+                    any(key in change_set._changes for change_set in self._change_sets))
 
     def original_version(self, key: EntityKey) -> Optional[int]:
         with self._lock:
@@ -115,18 +173,61 @@ class EntityRoot:
             self._change_sets[-1] = EntityChangeSet()
             self._new_keys.clear()
             self._deleted_keys.clear()
+            self._trace_chains.clear()
 
     def merge_from(self, other: 'EntityRoot') -> None:
         if other is self:
             return
-        with self._lock, other._lock:
-            self._change_sets[-1].merge_from(other._change_sets[-1])
-            self._original_versions.update(other._original_versions)
-            self._new_keys.update(other._new_keys)
-            self._deleted_keys.update(other._deleted_keys)
+        # Release the source lock before acquiring the target: opposing imports
+        # must not hold both graph locks in opposite order.
+        with other._lock:
+            keys = (set(other._original_versions) | other._new_keys | other._deleted_keys |
+                    set(other._trace_chains) | set(other._change_sets[-1]._changes))
+            entries = [other._snapshot(key) for key in keys]
+        with self._lock:
+            for key, _, version, _, _, _ in entries:
+                self._validate_version(key, version)
+            for entry in entries:
+                self._import(entry)
+
+    def merge_entity_from(self, other: 'EntityRoot', key: EntityKey) -> None:
+        """Copy one reached typed key without draining its source graph."""
+        if other is self:
+            return
+        entry = other._snapshot(key)
+        with self._lock:
+            self._validate_version(key, entry[2])
+            self._import(entry)
+
+    def _snapshot(self, key):
+        with self._lock:
+            return (key, dict(self._change_sets[-1]._changes.get(key, {})),
+                    self._original_versions.get(key), key in self._new_keys,
+                    key in self._deleted_keys, deepcopy(self._trace_chains.get(key)))
+
+    def _validate_version(self, key, incoming):
+        original = self._original_versions.get(key)
+        if incoming is not None and original is not None and incoming != original:
+            raise ValueError(f'ENTITY_VERSION_CONFLICT: {key.entity} has loaded versions {original} and {incoming}')
+
+    def _import(self, entry):
+        key, values, version, added, removed, trace = entry
+        for field, value in values.items():
+            self._change_sets[-1].set(key, field, value)
+        if version is not None:
+            self._original_versions[key] = version
+        if added:
+            self._new_keys.add(key)
+        if removed:
+            self.mark_as_deleted(key)
+        if trace is not None:
+            self._trace_chains[key] = trace
 
     def rekey(self, old_key: EntityKey, new_key: EntityKey) -> None:
+        if old_key == new_key:
+            return
         with self._lock:
+            self._validate_version(new_key, self._original_versions.get(old_key))
             for change_set in self._change_sets:
                 change_set.rekey(old_key, new_key)
             if old_key in self._original_versions:
@@ -137,6 +238,12 @@ class EntityRoot:
             if old_key in self._deleted_keys:
                 self._deleted_keys.remove(old_key)
                 self._deleted_keys.add(new_key)
+            if old_key in self._trace_chains:
+                self._trace_chains[new_key] = self._trace_chains.pop(old_key)
+            for chain in self._trace_chains.values():
+                for node in chain:
+                    if (node.name or node.entity_type, node.entity_id) == (old_key.entity, old_key.id):
+                        node.entity_id = new_key.id
 
     def clear_entity(self, key: EntityKey) -> None:
         with self._lock:
@@ -144,6 +251,7 @@ class EntityRoot:
                 change_set.clear_entity(key)
             self._new_keys.discard(key)
             self._deleted_keys.discard(key)
+            self._trace_chains.pop(key, None)
 
 class BaseEntityData:
     def __init__(self, id: int = 0, version: int = 0, dynamic: Optional[Dict[str, Value]] = None):
