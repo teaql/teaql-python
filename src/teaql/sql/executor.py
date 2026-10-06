@@ -693,8 +693,13 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 if relation.foreign_key not in child_query.projection:
                     child_query.projection.append(relation.foreign_key)
                 limited = child_query.slice is not None and child_query.slice.limit is not None
-                if limited and not any(order.field_name == "id" for order in child_query.order_by_items):
-                    child_query.order_asc("id")
+                if limited:
+                    # Aggregate rows have group identities, not source-row IDs.
+                    stable_fields = child_query.group_by_items or (
+                        ['id'] if not child_query.aggregates else [])
+                    for field in stable_fields:
+                        if not any(order.field_name == field for order in child_query.order_by_items):
+                            child_query.order_asc(field)
                 threshold = child_query.top_n_probe_threshold_value
                 provider_policy = self.dialect.relation_top_n_policy()
                 use_probes = limited and (

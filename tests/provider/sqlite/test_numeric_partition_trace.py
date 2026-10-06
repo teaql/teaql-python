@@ -1,6 +1,7 @@
 """Native numeric grouping/window evidence, not generated aggregation acceptance."""
 from copy import deepcopy
 import json
+import re
 from types import SimpleNamespace
 
 import aiosqlite
@@ -187,6 +188,8 @@ async def test_loaded_grouped_relation_keeps_ancestors_membership_and_future_pri
         assert all('__teaql_partition_rank' not in row for parent in loaded for row in parent['items'])
         child_reads = transport.reads[2:]
         assert all('GROUP BY' in item.sql and 'HAVING' in item.sql for item in child_reads)
+        assert all(not re.search(r'(?<![\w])"?id"?\s+(?:ASC|DESC)\b', item.sql, re.I)
+                   for item in child_reads), 'grouped relation must order by group keys, not source-row ID'
         assert all(('ROW_NUMBER()' in item.sql) == (plan == 'window') for item in child_reads)
         expected_params = [[], [1]] + (
             [[operand + '%', 1, 2, 3, minimum]] if plan == 'window' else
