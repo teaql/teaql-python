@@ -68,10 +68,20 @@ class RuntimeTelemetry(Protocol):
 
 
 class _NoopScope:
+    correlation = None
     def success(self, attributes: Optional[Dict[str, AttributeValue]] = None) -> None:
         pass
 
     def failure(self, error: BaseException) -> None:
+        pass
+
+    def activate(self):
+        pass
+
+    def deactivate(self):
+        pass
+
+    def cancelled(self, attributes=None):
         pass
 
 
@@ -111,6 +121,43 @@ class _FailOpenScope:
     def __init__(self, delegate: RuntimeTelemetryScope):
         self._delegate = delegate
         self._ended = False
+
+    @property
+    def correlation(self):
+        try:
+            return getattr(self._delegate, 'correlation', None)
+        except Exception:
+            return None
+
+    def activate(self):
+        try:
+            method = getattr(self._delegate, 'activate', None)
+            if method is not None:
+                method()
+        except BaseException:
+            pass
+
+    def deactivate(self):
+        try:
+            method = getattr(self._delegate, 'deactivate', None)
+            if method is not None:
+                method()
+        except BaseException:
+            pass
+
+    def cancelled(self, attributes=None):
+        if self._ended:
+            return
+        self._ended = True
+        try:
+            method = getattr(self._delegate, 'cancelled', None)
+            if method is not None:
+                method(attributes)
+            else:
+                import asyncio
+                self._delegate.failure(asyncio.CancelledError())
+        except BaseException:
+            pass
 
     def success(self, attributes: Optional[Dict[str, AttributeValue]] = None) -> None:
         if self._ended:

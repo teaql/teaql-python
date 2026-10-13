@@ -5,7 +5,7 @@ import math
 import re
 from copy import deepcopy
 from datetime import date
-from .expr import Expr
+from .expr import Expr, column, eq, ne, gt, gte, lt, lte, contain, in_list, not_in_list, is_null, is_not_null
 from .query import OrderBy
 
 _LOG = logging.getLogger(__name__)
@@ -96,6 +96,8 @@ def normalize_dynamic_search(source, entity, models, warn=_warning, max_clauses=
         if kind is None:
             missing(path, 'FILTER')
             continue
+        if kind == 'unsupported':
+            raise ValueError('Known search field has no supported scalar binding')
         if operator == '$contains' and kind != 'string':
             raise ValueError('String operator requires a string field')
         if isinstance(item, list):
@@ -110,9 +112,12 @@ def normalize_dynamic_search(source, entity, models, warn=_warning, max_clauses=
         if (not isinstance(order, dict) or set(order) != {'field', 'direction'}
                 or order['direction'] not in ('asc', 'desc')):
             raise ValueError('Invalid dynamic search ordering')
-        if field_type(order['field']) is None:
+        kind = field_type(order['field'])
+        if kind is None:
             missing(order['field'], 'ORDER_BY')
         else:
+            if kind == 'unsupported':
+                raise ValueError('Known search field has no supported scalar binding')
             result['orderBy'].append(dict(order))
     for warning in warnings:
         warn(dict(warning))
@@ -133,3 +138,32 @@ def merge_dynamic_search(base, source, models, filter_binding, order_binding, wa
     for warning in warnings:
         warn(dict(warning))
     return query, warnings
+
+
+def merge_generated_scalar_search(base, source, models, warn=_warning):
+    """Generated scalar keys/types are trusted metadata, never source JSON.
+
+    Known relation paths require application bindings through merge_dynamic_search;
+    those bindings own related authorization and are never guessed here.
+    """
+    def field(path):
+        if '.' in path:
+            raise ValueError('Dynamic search requires a trusted relation binding')
+        fields = models[base.entity].get('query_fields', {})
+        if path not in fields:
+            raise ValueError('Missing generated scalar search binding')
+        return fields[path]
+
+    def predicate(path, condition):
+        name = field(path)
+        operator, item = next(iter(condition.items()))
+        if item is None and operator in ('$eq', '$ne'):
+            return is_null(column(name)) if operator == '$eq' else is_not_null(column(name))
+        if item is None:
+            raise ValueError('Null supports only equality predicates')
+        builders = {'$eq': eq, '$ne': ne, '$gt': gt, '$gte': gte, '$lt': lt, '$lte': lte,
+                    '$in': in_list, '$notIn': not_in_list, '$contains': contain}
+        return builders[operator](name, item)
+
+    return merge_dynamic_search(base, source, models, predicate,
+        lambda path, direction: OrderBy.asc(field(path)) if direction == 'asc' else OrderBy.desc(field(path)), warn)

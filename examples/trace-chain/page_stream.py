@@ -119,23 +119,23 @@ async def pages(context, platform, service, sink, policy):
     await revised.update_description('prior page revision').audit_as('advance paged root').save(context)
     builder = (Q.customer_orders().with_id_in(*ids).order_by_id_ascending()
         .select_platform_with(Q.platforms().limit(1))
-        .select_order_item_list_with(Q.order_items().limit(10)).limit(3))
+        .select_order_item_list_with(Q.order_items().limit(10)).offset(1).limit(2).count_as('totalOrders'))
     executable = builder.comment('load independent page graphs').purpose('verify page mutation boundaries')
     entered, release = asyncio.Event(), asyncio.Event()
     service.count_pause = (entered, release)
     service.reuse_platform = True
     clear(service, sink, context, policy)
-    task = asyncio.create_task(executable.execute_for_page(context, 1, 2))
+    task = asyncio.create_task(executable.execute_for_list(context))
     await asyncio.wait_for(entered.wait(), 10)
     builder.with_id_is(9223372036854775807).comment('LATE-PAGE-COMMENT').purpose('LATE-PAGE-PURPOSE')
     release.set()
     page = await asyncio.wait_for(task, 10)
     service.reuse_platform = False
-    first, second = page.data
-    assert page.total_count == 3 and [E.customer_order(row).id().eval() for row in page.data] == ids[1:]
-    assert [E.customer_order(row).version().eval() for row in page.data] == [2, 1]
+    first, second = page
+    assert page.total_count == 3 and [E.customer_order(row).id().eval() for row in page] == ids[1:]
+    assert [E.customer_order(row).version().eval() for row in page] == [2, 1]
     assert first._entity_root is not second._entity_root and service.snapshot_uses == 2
-    assert all(not row._entity_root.has_pending(row._teaql_entity_key()) for row in page.data)
+    assert all(not row._entity_root.has_pending(row._teaql_entity_key()) for row in page)
     assert service.requests == [] and policy.plans == [] and sink.events == []
     assert all(entry.comment == 'load independent page graphs' and entry.purpose == 'verify page mutation boundaries'
                for entry in context.sql_logs())
@@ -177,9 +177,9 @@ async def count_privacy(context, service, sink, policy, ids):
     context.configure_audit_policy('OrderItem', ['name'])
     clear(service, sink, context, policy)
     page = await (Q.customer_orders().with_id_in(*ids)
-        .select_order_item_list_with(Q.order_items().with_name_is(private).limit(1)).limit(3)
+        .select_order_item_list_with(Q.order_items().with_name_is(private).limit(1)).offset(0).limit(2).count_as('totalOrders')
         .comment('inspect page referencing ' + private).purpose('count page referencing ' + private)
-        .execute_for_page(context, 0, 2))
+        .execute_for_list(context))
     assert page.total_count == 3
     logs = context.sql_logs()
     assert any('COUNT(' in entry.sql.upper() for entry in logs)

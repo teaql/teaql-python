@@ -41,4 +41,8 @@ TEAQL_TASK_BOARD_DB="$task_board_tmp/task_board.db" PYTHONPATH="$repo/examples/t
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/task_board" -p 'test_task_board.py' -v
 bash "$repo/examples/trace-chain/verify.sh"
 bash "$repo/examples/facet-trace/verify.sh"
+bash "$repo/examples/trace-chain/verify-standard-telemetry.sh"
+bash "$repo/examples/trace-chain/verify-standard-order.sh"
+bash "$repo/examples/trace-chain/verify-standard-graph.sh"
+bash "$repo/examples/trace-chain/verify-standard-stream.sh"
 echo "PASS: all Python examples"
