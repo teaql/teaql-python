@@ -148,16 +148,12 @@ async def main():
                 assert type(error).__name__ == 'TeaQLNotLoadedError', error
             else:
                 raise AssertionError('aggregate child detail became loaded-null')
-            assert loaded.has_query_projection('filtered_count')
-            assert loaded.query_projection('filtered_count') == 1
-            assert loaded.query_projection('save') == 2 and callable(loaded.save)
-            assert not loaded.has_query_projection('id')
-            try:
-                loaded.query_projection('absent')
-            except KeyError:
-                pass
-            else:
-                raise AssertionError('missing aggregate silently became a value')
+            assert loaded.get_dynamic_property('filtered_count') == 1
+            assert loaded.get_dynamic_property('save') == 2 and callable(loaded.save)
+            assert loaded.get_dynamic_property('id') is None
+            # Computed dynamic properties are nullable when absent. They do not
+            # use fixed-field NotLoaded or the retired projection exception API.
+            assert loaded.get_dynamic_property('absent') is None
             assert len(reads) == (7 if nested else 6), reads
             prefix = [('customer_order', 'Payment.customer_order')] if nested else []
             item_route = prefix + [('order_item_list', 'CustomerOrder.order_item_list')]
@@ -184,7 +180,7 @@ async def main():
             else:
                 assert context.sql_logs() == diagnostic == []
             print('AGGREGATE_OBSERVED ' + json.dumps({'nested': nested, 'logging': logging,
-                'count': loaded.query_projection('filtered_count'), 'provider_calls': len(reads),
+                'count': loaded.get_dynamic_property('filtered_count'), 'provider_calls': len(reads),
                 'sql': [log_row(entry) for entry in context.sql_logs()],
                 'raw': raw_rows(),
                 'membership': {'items': 2, 'payments': 1, 'foreign_id': order_id,
@@ -195,14 +191,14 @@ async def main():
             assert len(service.requests) == len(sink.events) == len(policy.plans) == 1
             operation = policy.plans[0].operations[0]
             assert set(operation.changed_values) == {'description'}, operation.changed_values
-            assert loaded.query_projection('save') == 2
+            assert loaded.get_dynamic_property('save') == 2
             print('AGGREGATE_SAVE ' + json.dumps({'nested': nested, 'logging': logging,
                 'commands': len(service.requests), 'audits': len(sink.events),
-                'fields': sorted(operation.changed_values), 'projection': loaded.query_projection('save')}))
+                'fields': sorted(operation.changed_values), 'projection': loaded.get_dynamic_property('save')}))
             fresh = (await query(nested, 'NO-MATCH-' + uuid.uuid4().hex).execute_for_list(context))[0]
             fresh = E.payment(fresh).customer_order().eval() if nested else fresh
             assert E.customer_order(fresh).description().eval() == E.customer_order(loaded).description().eval()
-            assert fresh.has_query_projection('filtered_count') and fresh.query_projection('filtered_count') == 0
+            assert fresh.get_dynamic_property('filtered_count') == 0
 
         clear()
         fault[0] = True

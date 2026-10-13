@@ -5,6 +5,7 @@ from dataclasses import dataclass, field
 from .expr import (AndExpr, BinaryExpr, BinaryOp, ColumnExpr, Expr, ExprBuilder,
                    ValueExpr)
 from .mutation import TraceNode
+from .request_tree import QueryOperation, _copy_owner
 
 class SortDirection(Enum):
     Asc = auto()
@@ -82,6 +83,7 @@ class Slice:
 class RelationLoad:
     name: str
     query: Optional['SelectQuery'] = None
+    operation: Optional[QueryOperation] = None
 
 @dataclass
 class RelationAggregate:
@@ -89,6 +91,7 @@ class RelationAggregate:
     alias: str
     query: 'SelectQuery'
     single_result: bool = True
+    operation: Optional[QueryOperation] = None
 
 
 @dataclass
@@ -134,6 +137,7 @@ class FacetRequest:
     relation_name: str
     query: 'SelectQuery'
     include_all_facets: bool = True
+    operation: Optional[QueryOperation] = None
 
 @dataclass
 class AggregationCacheOptions:
@@ -185,6 +189,13 @@ class SelectQuery:
         # Local runtime policy: intentionally excluded from federation serialization.
         self.hard_limit_value = 10_000
 
+    def __deepcopy__(self, memo):
+        copied = object.__new__(type(self))
+        memo[id(self)] = copied
+        copied.__dict__.update(deepcopy(self.__dict__, memo))
+        _copy_owner(self, copied)
+        return copied
+
     @classmethod
     def new(cls, entity: str) -> 'SelectQuery':
         return cls(entity=entity)
@@ -231,6 +242,8 @@ class SelectQuery:
         count_query.order_by_items = []
         count_query.slice = None
         count_query.relations = []
+        count_query.relation_aggregates = []
+        count_query.partition_by = None
         count_query.child_enhancements = []
         count_query.object_group_bys = []
         count_query.facets = []
@@ -497,16 +510,16 @@ class SelectQuery:
         return self
 
     def facet_by(self, name: str, relation_name: str, query: 'SelectQuery',
-                 include_all_facets: bool = True) -> 'SelectQuery':
-        self.facets.append(FacetRequest(name, relation_name, query, include_all_facets))
+                 include_all_facets: bool = True, operation: Optional[QueryOperation] = None) -> 'SelectQuery':
+        self.facets.append(FacetRequest(name, relation_name, query, include_all_facets, operation))
         return self
 
     def relation(self, name: str) -> 'SelectQuery':
         self.relations.append(RelationLoad(name, None))
         return self
 
-    def relation_query(self, name: str, query: 'SelectQuery') -> 'SelectQuery':
-        self.relations.append(RelationLoad(name, query))
+    def relation_query(self, name: str, query: 'SelectQuery', operation: Optional[QueryOperation] = None) -> 'SelectQuery':
+        self.relations.append(RelationLoad(name, query, operation))
         return self
 
     def enable_aggregation_cache(self, expire_millis: int) -> 'SelectQuery':

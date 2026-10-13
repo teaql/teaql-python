@@ -265,6 +265,86 @@ repository's local runtime. No external database server or generator is needed
 to run the retained generated example. Use only the example's test database;
 reset/repeated-run behavior is documented in its README.
 
+## Optional standard OpenTelemetry module
+
+The local standard-module changes are not yet released. Install the optional
+SDK dependencies from this checkout when testing telemetry:
+
+```bash
+python -m pip install -e '.[telemetry]'
+export TEAQL_TELEMETRY_ENABLED=true
+export TEAQL_TELEMETRY_SERVICE_NAME=my-application
+export TEAQL_TELEMETRY_OTLP_ENDPOINT=http://localhost:4318
+```
+
+`UserContext` initializes the standard module automatically. Without enablement,
+startup prints support and the three variable names without importing the SDK.
+Enabled telemetry records supported operations without percentage sampling,
+using private providers that do not replace customer globals. Expanded SQL uses
+the existing masking rules. Disabling ordinary SQL logging does not disable
+telemetry or committed audit. Queues and export lifetimes are bounded; failed
+export does not fail business operations.
+
+The [standard Order example](examples/trace-chain/standard-order/main.py)
+uses generated Q and E to load a bounded list, forward detail, reverse previews,
+full child counts and status facets. Explicit count is optional; both variants
+use `execute_for_list(context)` and one root through entity construction.
+Its gate runs twice on one SQLite file and verifies audited, idempotent bootstrap:
+
+```bash
+PYTHONDONTWRITEBYTECODE=1 bash scripts/verify-examples.sh
+```
+
+The [standard graph example](examples/trace-chain/standard_graph.py) saves six
+related entities, performs five updates and one deletion, then verifies rollback
+and retry. One automatic graph root covers the transaction, committed audit and
+cleanup; each SQL completion carries its actual execution span. Child comments
+remain local or inherit the root. No application SDK setup or manual spans are
+needed. The example keeps ordinary SQL logging off and preserves the original
+business error without exporting its message.
+
+```bash
+bash examples/trace-chain/verify-standard-graph.sh
+```
+
+Current local qualification passes 844 tests with eight configured skips, all
+eleven example groups and fresh-generation checks. The migrated TraceChain and
+Order libraries use ordinary list execution, isolated row ledgers and reached-only
+graph adoption. Runtime-owned original scalar snapshots protect log/audit intent
+after changes or deletion.
+
+Ten actual OTLP response scenarios qualify failed export, partial acceptance,
+warnings and invalid acknowledgements across traces, logs and metrics. Official
+protobuf encoding/decoding uses private HTTP connections, with no change to
+customer log settings. Requests have a three-second attempt budget, no retry or
+redirect, and four-MiB response limits. Remote status/header/body text does not
+leak even under DEBUG. Failed MetricData objects and receiver-rejected metric
+points are counted separately. Cumulative health metrics follow record settlement
+and include a final shutdown snapshot; export failure preserves business and audit.
+Default span/log admission counts queued and exporting records in one 2,048-record
+budget, with visible overflow. Successful handoffs define the flush prefix;
+later completions cannot replace older accepted work. Real generated Q/E pressure
+qualifies recovery and backlog shutdown in about six seconds, separating failed
+attempts from queued retirement. Post-shutdown reads stay functional and late
+completions are counted without fake SQL correlation. Generated streams explicitly
+close their owned cursor, rather than relying on garbage collection.
+The [standard scalar-stream example](examples/trace-chain/standard_stream.py)
+verifies complete delivery of three rows, early close after one row with chunk
+size two, an independent query between suspended cursors and an unpolled stream.
+Runtime owns the logical root, actual SQL correlation and delivered cardinality;
+activation exists only during poll/close. Neither idle nor unpolled streams
+capture unrelated work. Generated requests retain creation-time query semantics.
+
+```bash
+bash examples/trace-chain/verify-standard-stream.sh
+```
+
+Actual failure/cancellation backend variants, advanced concurrency/lifecycle and
+internal-artifact qualification remain separate gates. Relation/facet-enhanced
+streaming is explicitly unsupported.
+
+Current qualification uses local source, not an installed public artifact.
+
 ## Use the published runtime
 
 Current documented runtime: **0.3.0**. Keep domain-library and runtime

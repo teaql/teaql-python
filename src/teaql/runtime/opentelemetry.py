@@ -73,6 +73,26 @@ class _OpenTelemetryScope:
         self._operations = operations
         self._ended = False
 
+    def activate(self):
+        if self._activation is None and not self._ended:
+            self._activation = use_span(self._span, end_on_exit=False, record_exception=False, set_status_on_exception=False)
+            self._activation.__enter__()
+
+    def deactivate(self):
+        if self._activation is not None:
+            activation, self._activation = self._activation, None
+            activation.__exit__(None, None, None)
+
+    def cancelled(self, attributes=None):
+        if self._ended:
+            return
+        for key, value in (attributes or {}).items():
+            if key == 'teaql.result.cardinality':
+                self._span.set_attribute(key, value)
+        self._span.set_attribute('teaql.error.category', 'cancelled')
+        self._span.set_status(Status(StatusCode.ERROR))
+        self._finish('cancelled', 'cancelled')
+
     def success(self, attributes: Optional[Dict[str, AttributeValue]] = None) -> None:
         if self._ended:
             return
@@ -112,5 +132,5 @@ class _OpenTelemetryScope:
             "TeaQL runtime operation completed",
             extra=log_attributes,
         )
-        self._activation.__exit__(None, None, None)
+        self.deactivate()
         self._span.end()

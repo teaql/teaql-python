@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, AsyncIterator
 from copy import deepcopy
-from datetime import datetime
+from datetime import date, datetime
 import asyncio
 import hashlib
 import logging
@@ -10,6 +10,7 @@ import threading
 from array import array
 from dataclasses import fields, is_dataclass, replace
 from enum import Enum
+from uuid import uuid4
 from teaql.data_service import (
     DataServiceExecutor, QueryExecutor, MutationExecutor,
     DataServiceCapabilities, QueryRequest, QueryResult,
@@ -26,21 +27,15 @@ from teaql.core.expr import (
     IsNullExpr, NotExpr, OrExpr, SubQueryExpr, ColumnExpr, ValueExpr,
 )
 from teaql.core.query import Aggregate, AggregateFunction, SelectQuery
-from teaql.core.value import Value
+from teaql.core.request_tree import QueryOperation
+from teaql.core.value import DataType, Value
 from teaql.core.trace import canonical_sql_trace_path, physical_readback_path, trace_name
 from teaql.runtime.telemetry import RuntimeOperation, observe_runtime_operation, start_runtime_operation
+from teaql.runtime.query_list import observe_query_operation
 from teaql.runtime.context import RetainedIdSet
 
 _id_set_build_locks = {}
 _id_set_build_locks_guard = threading.RLock()
-
-
-class _QueryWithLogIntent(QueryRequest):
-    """Invocation-local compiler plumbing, excluded from dataclass/wire fields."""
-    def __init__(self, query, trace_chain, comment, purpose, source, origin_entity=None, assembly=None):
-        super().__init__(query, trace_chain, comment, purpose, _origin_entity=origin_entity)
-        self._log_intent_source = source
-        self._relation_assembly = assembly
 
 
 class _RelationAssembly:
@@ -161,11 +156,40 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         self.dialect = dialect
         self.transport = transport
         self.schema_provider = schema_provider
+        # Context may legitimately have no ambient "db" resource. The actual
+        # executor still needs a stable, non-recycled cache isolation identity.
+        self._id_set_source_identity = uuid4().hex
 
     def _backend_name(self) -> str:
         kind = self.dialect.kind()
         name = getattr(kind, 'name', str(kind)).lower()
         return 'postgres' if name == 'postgresql' else name
+
+    @staticmethod
+    def _normalize_loaded_dates(rows, descriptor, query=None):
+        """Declared Date fields stay native through list, cursor and save readback.
+
+        Do not guess from text content or convert computed aggregate aliases.
+        Missing columns and loaded SQL NULL retain their distinct states.
+        """
+        aliases = {aggregate.alias for aggregate in query.aggregates} if query is not None else set()
+        properties = [prop for prop in descriptor.properties
+                      if prop.property_type == DataType.Date or str(prop.property_type).lower() == 'date']
+        for row in rows:
+            for prop in properties:
+                for key in {prop.name, prop.column_name_val} - aliases:
+                    if key not in row or row[key] is None:
+                        continue
+                    current = row[key]
+                    if isinstance(current, datetime):
+                        row[key] = current.date()
+                    elif isinstance(current, str):
+                        try:
+                            row[key] = date.fromisoformat(current)
+                        except ValueError:
+                            raise ValueError(f'invalid loaded Date field {descriptor._name}.{prop.name}') from None
+                    elif not isinstance(current, date):
+                        raise ValueError(f'invalid loaded Date field {descriptor._name}.{prop.name}')
 
     def _query_intent_bindings(self, compiled, request):
         """Capture declared descendant bindings before any physical parent log.
@@ -274,7 +298,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         )
 
     def _record_statement(self, context, request, compiled, started_at, operation,
-                          outcome, result_count=None, affected_rows=None, intent_privacy=None):
+                          outcome, result_count=None, affected_rows=None, intent_privacy=None, correlation=None):
         """Project through context; never attach driver exceptions to diagnostics."""
         query = operation == DataServiceOperation.Query
         entity = request.query.entity if query else request._data.entity
@@ -306,8 +330,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             comment=comment, purpose=request._purpose if query else None,
             audit_reason=None if query else comment,
             trace_chain=canonical_sql_trace_path(trace_source, provider, sql_operation),
+            request_trace_chain=request.business_trace_chain if query else (),
             mutation_lineage=() if query else request.mutation_lineage,
         )
+        # Not a dataclass/wire field. This identity belongs to the physical call.
+        metadata._sql_correlation = correlation
         if context is not None:
             try:
                 source = getattr(request, '_log_intent_source', None) if query else None
@@ -359,46 +386,71 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         delivered = 0
         started_at = datetime.now()
         outcome = 'cancelled'
-        stream = self.transport.stream_sql(compiled, chunk_size)
+        from teaql.runtime.query_stream import stream_observation
+        observation = stream_observation(context, self, request)
+        telemetry = context.runtime_telemetry() if context is not None else None
+        statement = start_runtime_operation(telemetry, RuntimeOperation('provider', f'{self.dialect.kind()}.stream', {
+            'teaql.provider.kind': str(self.dialect.kind()), 'teaql.provider.operation': 'query',
+            'teaql.provider.execution': 'statement'}))
+        if observation is not None:
+            observation.bind_scope(statement)
+        failure = None
+        stream = None
         try:
+            stream = self.transport.stream_sql(compiled, chunk_size)
             async for rows in stream:
+                self._normalize_loaded_dates(rows, entity_desc, request.query)
                 if pending is not None:
                     delivered += len(pending)
-                    yield StreamChunk(pending, index, False)
+                    statement.deactivate()
+                    try:
+                        yield StreamChunk(pending, index, False)
+                    finally:
+                        statement.activate()
                     index += 1
                 pending = rows
             if pending is not None:
                 delivered += len(pending)
-                yield StreamChunk(pending, index, True)
+                statement.deactivate()
+                try:
+                    yield StreamChunk(pending, index, True)
+                finally:
+                    statement.activate()
             outcome = 'success'
         except (asyncio.CancelledError, GeneratorExit):
             outcome = 'cancelled'
             raise
-        except BaseException:
+        except BaseException as error:
             outcome = 'failure'
+            failure = error
             raise
         finally:
             try:
                 close = getattr(stream, 'aclose', None)
                 if close is not None:
                     await close()
-            except BaseException:
+            except BaseException as error:
                 if outcome == 'success':
                     outcome = 'failure'
+                    failure = error
                     raise
                 # Preserve the error/close already being propagated.
             finally:
+                count = observation.delivered if observation is not None else delivered
+                if outcome == 'success':
+                    statement.success({'teaql.result.cardinality': count})
+                elif outcome == 'cancelled':
+                    statement.cancelled({'teaql.result.cardinality': count})
+                else:
+                    statement.failure(failure)
                 self._record_statement(context, request, compiled, started_at,
-                                       DataServiceOperation.Query, outcome, result_count=delivered)
+                                       DataServiceOperation.Query, outcome, result_count=count,
+                                       correlation=statement.correlation)
 
     async def query(self, context: 'UserContext', request: QueryRequest) -> QueryResult:
         request.validate()
-        telemetry = context.runtime_telemetry() if context is not None else None
-        return await observe_runtime_operation(
-            telemetry,
-            RuntimeOperation("query", f"{request.query.entity}.list", {
-                "teaql.entity.type": request.query.entity,
-            }),
+        return await observe_query_operation(
+            context, self, request,
             lambda: self._query(context, request),
             lambda result: {"teaql.result.cardinality": len(result.rows)},
         )
@@ -409,25 +461,22 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         request = request.with_query(request.query)
         self._sync_generated_schema(context)
         request.query.prepare_for_list()
-        execution_query, retained_order, retained_empty = await self._prepare_id_set_page(context, request.query)
+        execution_query, retained_order, retained_empty = await self._prepare_id_set_page(context, request)
         if retained_empty:
             now = datetime.now()
             provider = self._backend_name()
             metadata = ExecutionMetadata(
                 backend=provider, operation=DataServiceOperation.Query,
                 started_at=now, ended_at=now, result_count=0,
-                trace_chain=canonical_sql_trace_path(
-                    [TraceNode(kind='comment', name=request.origin_entity, comment=request._comment),
-                     *request.trace_chain], provider, 'select'),
+                trace_chain=[],  # Logical empty result; no provider statement executed.
                 comment=request._comment, purpose=request._purpose,
+                request_trace_chain=request.business_trace_chain,
             )
-            if context is not None:
-                context.record_metadata_log(metadata)
             return QueryResult(rows=[], metadata=metadata)
         source = getattr(request, '_log_intent_source', None)
-        request = (_QueryWithLogIntent(execution_query, request.trace_chain, request._comment,
-                                      request._purpose, source, request.origin_entity) if source is not None else
-                   request.with_query(execution_query))
+        request = request.with_query(execution_query)
+        if source is not None:
+            request._log_intent_source = source
         entity_desc = self.schema_provider.get_entity(request.query.entity)
         if not entity_desc and context:
             entities = context.get_resource("entities")
@@ -451,22 +500,25 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         start = datetime.now()
         try:
             telemetry = context.runtime_telemetry() if context is not None else None
-            rows = await observe_runtime_operation(
-                telemetry,
-                RuntimeOperation("provider", f"{self.dialect.kind()}.query", {
+            statement = start_runtime_operation(telemetry, RuntimeOperation("provider", f"{self.dialect.kind()}.query", {
                     "teaql.provider.kind": str(self.dialect.kind()),
                     "teaql.provider.operation": "query",
-                }),
-                lambda: self.transport.fetch_all_sql(compiled),
-            )
+                    "teaql.provider.execution": "statement",
+                }))
+            rows = await self.transport.fetch_all_sql(compiled)
+            statement.success()
         except BaseException as e:
+            if 'statement' in locals(): statement.failure(e)
             self._record_statement(context, request, compiled, start, DataServiceOperation.Query,
-                                   'cancelled' if isinstance(e, asyncio.CancelledError) else 'failure')
+                                   'cancelled' if isinstance(e, asyncio.CancelledError) else 'failure',
+                                   correlation=getattr(locals().get('statement'), 'correlation', None))
             if isinstance(e, Exception):
                 raise TransportError(e) from e
             raise
         metadata = self._record_statement(context, request, compiled, start,
-                                          DataServiceOperation.Query, 'success', result_count=len(rows))
+                                          DataServiceOperation.Query, 'success', result_count=len(rows), correlation=statement.correlation)
+
+        self._normalize_loaded_dates(rows, entity_desc, request.query)
 
         if assembly is not None:
             assembly.capture(rows)
@@ -491,6 +543,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         from teaql.core.list import SmartList
         facets = {}
         for facet in getattr(request.query, 'facets', []):
+            operation = request.derive_operation(request.query, facet.operation or QueryOperation(
+                'facet', alias=facet.name, relation=facet.relation_name))
             relation = entity_desc.relation_by_name(facet.relation_name)
             # Legacy numeric partitions still work, but only model metadata can
             # identify a relationship or add a logical traversal to the trace.
@@ -499,6 +553,9 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             if relation and relation.target_entity != facet.query.entity:
                 raise CompileError(SqlCompileError(
                     f'facet target differs from relation: {request.query.entity}.{facet.relation_name}'))
+            count_aliases = [aggregate.alias for aggregate in facet.query.aggregates
+                             if aggregate.function == AggregateFunction.Count]
+            sql_count_aliases = count_aliases or ['__teaql_facet_count']
             membership_query = deepcopy(request.query)
             membership_query.facets = []
             membership_query.relations = []
@@ -512,25 +569,44 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             membership_query.partition_by = None
             membership_query.projection = []
             membership_query.expr_projection = []
-            membership_query.aggregates = [Aggregate(
-                AggregateFunction.Count, "id", "__teaql_facet_count")]
+            membership_query.aggregates = [Aggregate(AggregateFunction.Count, 'id', alias)
+                                           for alias in sql_count_aliases]
             membership_query.group_by_items = [member_field]
-            membership_result = await self._query(context, request.with_query(membership_query))
+            membership_result = await self._query(context, operation.derive_helper(
+                membership_query, 'aggregate ' + facet.relation_name))
             member_property = entity_desc.property_by_name(member_field)
             member_column = member_property.column_name_val if member_property else member_field
             counts = {
-                str(row[member_column]): int(row["__teaql_facet_count"])
+                str(row[member_column]): int(row[sql_count_aliases[0]])
                 for row in membership_result.rows
                 if row.get(member_column) is not None
             }
 
             nested_query = deepcopy(facet.query)
-            count_aliases = [
-                aggregate.alias for aggregate in nested_query.aggregates
-                if aggregate.function == AggregateFunction.Count
-            ]
             nested_query.aggregates = []
             nested_query.group_by_items = []
+            for aggregate in nested_query.relation_aggregates:
+                if aggregate.query.entity != request.query.entity:
+                    continue
+                # Reverse sums inherit complete source membership, not the
+                # limited page or every row referencing this facet value.
+                membership = deepcopy(request.query)
+                membership.projection = ['id']
+                membership.expr_projection = []
+                membership.raw_projections = []
+                membership.aggregates = []
+                membership.group_by_items = []
+                membership.relations = []
+                membership.relation_aggregates = []
+                membership.facets = []
+                membership.child_enhancements = []
+                membership.object_group_bys = []
+                membership.dynamic_properties = []
+                membership.order_by_items = []
+                membership.slice = None
+                membership.partition_by = None
+                aggregate.query.and_filter(SubQueryExpr(ColumnExpr('id'), BinaryOp.In,
+                                                         entity_desc, membership))
             if not facet.include_all_facets:
                 # The target selection (and any Facets nested inside it) must
                 # see only matching candidates before pagination/recursion.
@@ -542,11 +618,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                                          ValueExpr(Value.List(member_values)))
                               if member_values else ValueExpr(Value.Bool(False)))
                 nested_query.and_filter(membership)
-            nested_request = request.with_query(nested_query)
-            if relation:
-                nested_request.trace_chain.append(TraceNode(
-                    kind='relation', name=facet.relation_name,
-                    comment=f'{request.query.entity}.{facet.relation_name}'))
+            nested_request = operation.derive_child(nested_query, facet.relation_name if relation else None)
             nested_result = await self._query(context, nested_request)
             facet_rows = []
             for row in nested_result.rows:
@@ -560,7 +632,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             facets[facet.name] = SmartList(facet_rows, facets=nested_result.facets)
         return facets
 
-    async def _prepare_id_set_page(self, context, query: SelectQuery):
+    async def _prepare_id_set_page(self, context, request: QueryRequest):
+        query = request.query
         options = getattr(query, "id_set_pagination", None)
         if context is None or options is None:
             if context is not None:
@@ -607,8 +680,10 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     id_query.facets = []
                     id_query.slice = None
                     id_query.limit(options.max_ids + 1)
+                    id_query.hard_limit_value = options.max_ids + 1
                     id_query.id_set_pagination = None
-                    id_result = await self._query(context, QueryRequest(id_query))
+                    id_result = await self._query(context, request.derive_helper(
+                        id_query, 'collect ' + query.entity + ' IDs for pagination'))
                     try:
                         ids = array("Q", (int(row["id"]) for row in id_result.rows))
                     except (KeyError, TypeError, ValueError, OverflowError):
@@ -642,8 +717,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             ValueExpr(Value.List([Value.from_any(entity_id) for entity_id in page_ids]))))
         return page, page_ids, False
 
-    @staticmethod
-    def _id_set_query_key(context, query: SelectQuery, namespace: str) -> str:
+    def _id_set_query_key(self, context, query: SelectQuery, namespace: str) -> str:
         normalized = deepcopy(query)
         normalized.slice = None
         normalized.projection = []
@@ -653,7 +727,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         normalized.comment_text = None
         normalized.trace_chain = []
         normalized.id_set_pagination = None
-        scope = (namespace, context.user_identifier(), id(context.get_resource("db")),
+        scope = (namespace, self._id_set_source_identity, context.user_identifier(), id(context.get_resource("db")),
                  id(context.get_resource("request_policy")),
                  _canonical_id_set_value(context.get_resource("active_root")),
                  _canonical_id_set_value(normalized))
@@ -706,9 +780,6 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     provider_policy == "always_probe" and threshold is None
                     or threshold is not None and threshold > 0 and len(parent_ids) <= threshold
                 )
-                child_trace = [*request.trace_chain, TraceNode(
-                    kind="relation", name=load.name,
-                    comment=f"{query.entity}.{load.name}")]
                 if not parent_ids:
                     # Missing/NULL local keys have no relation membership.
                     # Do not compile IN [] or accidentally load orphan rows.
@@ -724,9 +795,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                             ColumnExpr(relation.foreign_key), BinaryOp.Eq,
                             ValueExpr(Value.from_any(parent_id))))
                         assembly = _RelationAssembly(relation.foreign_key)
-                        loaded = (await self.query(context, _QueryWithLogIntent(
-                            probe, child_trace, request._comment, request._purpose, intent_source,
-                            request.origin_entity, assembly))).rows
+                        loaded = (await self.query(context, request.derive(
+                            probe, load.name, load.operation).with_log_intent(intent_source, assembly))).rows
                         children.extend(loaded)
                         child_keys.extend(assembly.key(row) for row in loaded)
                     selected_plan = "bounded_probes"
@@ -738,9 +808,8 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     if limited:
                         child_query.partition_by_field(relation.foreign_key)
                     assembly = _RelationAssembly(relation.foreign_key)
-                    children = (await self.query(context, _QueryWithLogIntent(
-                        child_query, child_trace, request._comment, request._purpose, intent_source,
-                        request.origin_entity, assembly))).rows
+                    children = (await self.query(context, request.derive(
+                        child_query, load.name, load.operation).with_log_intent(intent_source, assembly))).rows
                     child_keys = [assembly.key(row) for row in children]
                     selected_plan = "window" if limited else "batch"
                     probe_count = 0
@@ -758,9 +827,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                         per_parent.and_filter(BinaryExpr(
                             ColumnExpr(relation.foreign_key), BinaryOp.Eq,
                             ValueExpr(Value.from_any(key))))
-                        facet_request = _QueryWithLogIntent(
-                            per_parent, child_trace, request._comment, request._purpose,
-                            intent_source, request.origin_entity)
+                        facet_request = request.derive(per_parent, load.name, load.operation).with_log_intent(intent_source)
                         child_desc = self.schema_provider.get_entity(relation.target_entity)
                         related = SmartList(related, facets=await self._query_facets(
                             context, facet_request, child_desc))
@@ -816,12 +883,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             values = Value.List([Value.from_any(value) for value in parent_ids])
             child_query.and_filter(BinaryExpr(
                 ColumnExpr(relation.foreign_key), BinaryOp.In, ValueExpr(values)))
-            child_trace = [*request.trace_chain, TraceNode(
-                kind="relation", name=aggregate.relation_name,
-                comment=f"{query.entity}.{aggregate.relation_name}")]
-            rows = (await self.query(context, _QueryWithLogIntent(
-                child_query, child_trace, request._comment, request._purpose, intent_source,
-                request.origin_entity))).rows
+            operation = aggregate.operation or QueryOperation(
+                'relation-count' if child_query.aggregates[0].function == AggregateFunction.Count else 'aggregate',
+                alias=aggregate.alias, relation=aggregate.relation_name)
+            child_request = request.derive_aggregate(child_query, aggregate.relation_name, operation)
+            rows = (await self.query(context, child_request.with_log_intent(intent_source))).rows
             child_desc = self.schema_provider.get_entity(relation.target_entity)
             foreign_property = child_desc.property_by_name(relation.foreign_key) if child_desc else None
             if foreign_property and foreign_property.column_name_val != relation.foreign_key:
@@ -1010,23 +1076,23 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                      'delete': DataServiceOperation.Delete, 'recover': DataServiceOperation.Recover}[op]
         try:
             telemetry = context.runtime_telemetry() if context is not None else None
-            affected_rows, last_insert_id = await observe_runtime_operation(
-                telemetry,
-                RuntimeOperation("provider", f"{self.dialect.kind()}.mutation", {
+            statement = start_runtime_operation(telemetry, RuntimeOperation("provider", f"{self.dialect.kind()}.mutation", {
                     "teaql.provider.kind": str(self.dialect.kind()),
                     "teaql.provider.operation": op,
-                }),
-                lambda: self.transport.execute_sql(compiled),
-            )
+                    "teaql.provider.execution": "statement",
+                }))
+            affected_rows, last_insert_id = await self.transport.execute_sql(compiled)
+            statement.success()
         except BaseException as e:
+            if 'statement' in locals(): statement.failure(e)
             self._record_statement(context, request, compiled, start, operation,
                                    'cancelled' if isinstance(e, asyncio.CancelledError) else 'failure',
-                                   intent_privacy=privacy)
+                                   intent_privacy=privacy, correlation=getattr(locals().get('statement'), 'correlation', None))
             if isinstance(e, Exception):
                 raise TransportError(e) from e
             raise
         metadata = self._record_statement(context, request, compiled, start, operation,
-                                          'success', affected_rows=affected_rows, intent_privacy=privacy)
+                                          'success', affected_rows=affected_rows, intent_privacy=privacy, correlation=statement.correlation)
 
         generated_values = {}
         if op == "insert" and last_insert_id:
@@ -1072,18 +1138,23 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             )
             read_start = datetime.now()
             persisted_rows = None
+            read_scope = start_runtime_operation(telemetry, RuntimeOperation('provider', f'{self.dialect.kind()}.readback', {
+                'teaql.provider.kind': str(self.dialect.kind()), 'teaql.provider.operation': 'query', 'teaql.provider.execution': 'statement'}))
             try:
                 persisted_rows = await self.transport.fetch_all_sql(readback)
+                read_scope.success()
                 if len(persisted_rows) != 1:
                     raise TransportError(RuntimeError(
                         f"expected one authoritative persisted row for {req_data.entity}, got {len(persisted_rows)}"))
+                self._normalize_loaded_dates(persisted_rows, entity_desc)
             except BaseException as error:
+                read_scope.failure(error)
                 self._record_readback(context, readback, compiled, metadata, read_start,
-                                      persisted_rows, error, privacy)
+                                      persisted_rows, error, privacy, read_scope.correlation)
                 raise
             persisted_record = persisted_rows[0]
             read_metadata = self._record_readback(context, readback, compiled, metadata,
-                                                  read_start, persisted_rows, None, privacy)
+                                                  read_start, persisted_rows, None, privacy, read_scope.correlation)
             metadata = replace(metadata, statements=(metadata, read_metadata))
 
         if affected_rows > 0 and context is not None:
@@ -1123,7 +1194,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             persisted_record=persisted_record,
         )
 
-    def _record_readback(self, context, readback, source, write_metadata, started_at, rows, error, privacy=None):
+    def _record_readback(self, context, readback, source, write_metadata, started_at, rows, error, privacy=None, correlation=None):
         # A driver returning zero/multiple rows succeeded as SQL; validation of
         # the authoritative snapshot is a separate business failure.
         outcome = ('success' if rows is not None else 'cancelled'
@@ -1135,6 +1206,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             parameter_log_policies=readback.parameter_log_policies, sql_origin=readback.sql_origin,
             affected_rows=None, result_count=len(rows) if rows is not None else None,
             trace_chain=physical_readback_path(write_metadata.trace_chain))
+        metadata._sql_correlation = correlation
         if context is None:
             return metadata
         try:

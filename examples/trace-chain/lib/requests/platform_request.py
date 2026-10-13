@@ -1,7 +1,11 @@
-from teaql.core.query import RelationAggregate, SelectQuery
-from teaql.core.list import SmartList, TeaQLPage
+from teaql.core.query import AggregateFunction, RelationAggregate, SelectQuery
+from teaql.core.request_tree import QueryOperation
+from teaql.core.dynamic_search import merge_generated_scalar_search
+from generated_search_models import GENERATED_SEARCH_MODELS
+from teaql.core.list import SmartList
+from teaql.core.request_intent import QueryIntent
+from teaql.runtime import EntityRoot
 from teaql.data_service import QueryRequest
-from teaql.core import QueryIntent
 from copy import deepcopy
 from teaql.core.expr import (
     begin_with, between, column, contain, end_with, eq, gt, gte,
@@ -20,6 +24,9 @@ class PlatformRequest:
         self.query = SelectQuery("Platform")
         self._purpose = None
         self._comment = None
+        self._page_count_alias = None
+        self._page_count_method = None
+        self._dynamic_search_warnings = []
         self.query.and_filter(gte("version", 1))
         if minimal:
             self.select_id()
@@ -31,6 +38,17 @@ class PlatformRequest:
         self.query.comment(c)
         self._comment = c
         return self
+
+    def filter_by_json(self, source, warn=None):
+        kwargs = {} if warn is None else {"warn": warn}
+        query, warnings = merge_generated_scalar_search(self.query, source, GENERATED_SEARCH_MODELS, **kwargs)
+        self.query = query
+        self._dynamic_search_warnings.extend(warnings)
+        return self
+
+    @property
+    def dynamic_search_warnings(self):
+        return tuple(dict(warning) for warning in self._dynamic_search_warnings)
 
     def purpose(self, p: str):
         self.query.purpose(p)
@@ -276,10 +294,14 @@ class PlatformRequest:
 
     def count(self):
         self.query.count_field("id", "count")
+        self._page_count_alias = "count"
+        self._page_count_method = "count"
         return self
 
     def count_as(self, ret_name: str):
         self.query.count_field("id", ret_name)
+        self._page_count_alias = ret_name
+        self._page_count_method = "count_as"
         return self
 
     def group_by_id(self):
@@ -308,7 +330,8 @@ class PlatformRequest:
         return self.select_customer_order_list_with(CustomerOrderRequest())
 
     def select_customer_order_list_with(self, child_request):
-        self.query.relation_query("customer_order_list", child_request.query)
+        self.query.relation_query("customer_order_list", child_request.query,
+            QueryOperation("relation-select", "select_customer_order_list_with", relation="customer_order_list"))
         return self
     def have_customer_orders(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -332,12 +355,18 @@ class PlatformRequest:
 
     def count_customer_orders_as(self, alias: str):
         from requests.customer_order_request import CustomerOrderRequest
-        return self.count_customer_orders_with(alias, CustomerOrderRequest())
+        self.count_customer_orders_with(alias, CustomerOrderRequest())
+        self.query.relation_aggregates[-1].operation = QueryOperation(
+            "relation-count", "count_customer_orders_as", alias, "customer_order_list")
+        return self
 
     def count_customer_orders_with(self, alias: str, child_request):
-        child_request.query.count_field("id", alias)
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.count_field("id", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("customer_order_list", alias, child_request.query, True)
+            RelationAggregate("customer_order_list", alias, query, True,
+                QueryOperation("relation-count", "count_customer_orders_with", alias, "customer_order_list"))
         )
         return self
 
@@ -353,7 +382,8 @@ class ExecutablePlatformRequest:
 
     def new_entity(self, context) -> Platform:
         request = self._request
-        QueryIntent(request._comment, request._purpose)
+        if not request._comment or not request._comment.strip() or not request._purpose or not request._purpose.strip():
+            raise ValueError("Security audit failure: non-empty comment() and purpose() are required before new_entity()")
         entity = context.initialize_entity("Platform", Platform())
         if not isinstance(entity, Platform):
             raise TypeError("entity initializer returned an incompatible Platform")
@@ -361,46 +391,28 @@ class ExecutablePlatformRequest:
 
     async def execute_for_result(self, context):
         self = self._request
-        req = QueryRequest(self.query, _comment=self._comment, _purpose=self._purpose)
-        req = context.prepare_query_request(req)
+        if not self._purpose or not self._purpose.strip() or not self._comment or not self._comment.strip():
+            raise Exception("Security audit failure: comment() and purpose() must be called before execute_for_rows()")
         service = context.require_resource("dataService")
+        req = QueryRequest(context.prepare_query(self.query), _comment=self._comment, _purpose=self._purpose)
         return await service.query(context, req)
 
     async def execute_for_rows(self, context):
         return (await self.execute_for_result(context)).rows
 
     async def execute_for_list(self, context) -> SmartList[Platform]:
-        result = await self.execute_for_result(context)
-        return SmartList(
-            (Platform(**row) for row in result.rows),
-            facets=result.facets)
-
-    async def execute_for_page(self, context, offset: int, limit: int) -> TeaQLPage[Platform]:
+        from teaql.runtime.query_list import execute_typed_list
         request = self._request
-        intent = QueryIntent(request._comment, request._purpose)
+        QueryIntent(request._comment, request._purpose)
         query = deepcopy(request.query)
-        query.offset(offset).limit(limit)
-        authorized = context.prepare_query_request(QueryRequest(query, _comment=intent.comment, _purpose=intent.purpose))
-        service = context.require_resource("dataService")
-        alias = "__teaql_total"
-        if authorized.query.id_set_pagination is not None:
-            row_result = await service.query(context, authorized)
-            retained_count, accuracy = context.id_set_count()
-            if accuracy == "EXACT":
-                total_count = retained_count
-            else:
-                count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
-                if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
-                    raise RuntimeError("dataService did not return an exact page count")
-                total_count = int(count_result.rows[0][alias])
-        else:
-            count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
-            if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
-                raise RuntimeError("dataService did not return an exact page count")
-            total_count = int(count_result.rows[0][alias])
-            row_result = await service.query(context, authorized)
-        data = SmartList(Platform(**row) for row in row_result.rows)
-        return TeaQLPage(data=data, total_count=total_count, offset=offset, limit=limit)
+        authorized = context.prepare_query(query)
+        root = QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose)
+        operation = (QueryOperation("named-count", request._page_count_method or "count",
+            request._page_count_alias if request._page_count_method == "count_as" else None)
+            if request._page_count_alias is not None else None)
+        return await execute_typed_list(context, root,
+            lambda row: Platform(_entity_root=EntityRoot(), **row),
+            count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
         request = deepcopy(self._request)
@@ -410,20 +422,12 @@ class ExecutablePlatformRequest:
 
     def execute_for_stream(self, context, chunk_size: int = 1000):
         """Yield entity chunks lazily from the provider cursor."""
-        request = self._request
-        req = QueryRequest(request.query, _comment=request._comment, _purpose=request._purpose)
-        req = context.prepare_query_request(req)
+        request = deepcopy(self._request)
+        QueryIntent(request._comment, request._purpose)
         service = context.require_resource("dataService")
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
-        stream = service.query_stream(context, req, chunk_size)
-        async def entities():
-            try:
-                async for chunk in stream:
-                    for row in chunk.rows:
-                        yield Platform(**row)
-            finally:
-                close = getattr(stream, "aclose", None)
-                if close is not None:
-                    await close()
-        return entities()
+        root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
+        from teaql.runtime.query_stream import execute_typed_stream
+        return execute_typed_stream(context, root,
+            lambda row: Platform(_entity_root=EntityRoot(), **row), chunk_size)

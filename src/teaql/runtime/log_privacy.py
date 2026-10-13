@@ -162,9 +162,9 @@ class _MutationIntentPrivacy:
         return cls(tuple(bindings))
 
 
-def sql_log_projection(entry, *, _intent_source=None, _intent_values=(), _intent_privacy=None):
+def sql_log_projection(entry, *, _intent_source=None, _intent_values=(), _intent_privacy=None, _allow_plaintext=None):
     """Source bindings are call-local runtime plumbing, never stored on a log entry."""
-    allow = plaintext_enabled() and entry.log_mode != 'masked'
+    allow = (plaintext_enabled() if _allow_plaintext is None else _allow_plaintext) and entry.log_mode != 'masked'
     prior = _projections.get(id(entry))
     # Log entries are mutable: reuse only an unchanged projection. Weak references
     # keep this idempotence bookkeeping from retaining a long-running log history.
@@ -239,5 +239,6 @@ def _project_with_policy(entry, allow, intent_source, intent_values, intent_priv
                             else f'{entry.affected_rows} rows affected' if entry.affected_rows is not None
                             else scrub(entry.result_summary, secrets, hide_all=unknown_debug_intent)),
                         trace_path=intent(entry.trace_path),
+                        trace_chain=intent(entry.trace_chain),
                         mutation_lineage=intent(entry.mutation_lineage))
     return projected

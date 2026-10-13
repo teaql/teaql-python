@@ -113,6 +113,417 @@ def three_levels():
                     .relation_query('children', SelectQuery('Shipment').project('id').limit(1)))))
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+@pytest.mark.parametrize('field', ['comment', 'purpose'])
+async def test_annotated_children_cannot_authorize_missing_root_intent(tmp_path, logging, field):
+    from teaql.core import RequestIntentError
+    from teaql.runtime.context import SqlLogOptions
+    context, service, transport, entries = await fixture(tmp_path)
+    if not logging:
+        context.with_sql_log_options(SqlLogOptions.disabled())
+    policies = []
+    context.with_request_policy(lambda query: policies.append(query.entity) or query)
+    child = SelectQuery('Payment').project('id').comment('load payment details').purpose('render payment details')
+    query = SelectQuery('CustomerOrder').project('id').comment('load orders').purpose('render orders')
+    query.relation_query('children', child)
+    setattr(query, field + '_text', None)
+    assert child.comment_text == 'load payment details'
+    assert child.purpose_text == 'render payment details'
+    with pytest.raises(RequestIntentError) as caught:
+        await service.query(context, context.prepare_query_request(QueryRequest(query)))
+    assert caught.value.field == field
+    assert policies == []
+    assert transport.reads == transport.streams == transport.writes == []
+    assert transport.begins == 0
+    assert entries == context.sql_logs() == []
+    query.comment('load validation control').purpose('verify live SQLite')
+    result = await service.query(context, context.prepare_query_request(QueryRequest(query)))
+    assert len(result.rows) == 1 and len(result.rows[0]['children']) == 1
+    assert policies and len(transport.reads) == 2
+    assert bool(entries) == logging
+    print(f'RTC_COM_01_PASS logging={str(logging).lower()} field={field} invalid_provider=0 invalid_policy=0 annotated_child=true live_control=true')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+async def test_request_tree_retains_operation_explicit_and_default_comments_in_native_sqlite(tmp_path, logging):
+    from teaql.core import QueryOperation
+    from teaql.runtime.context import SqlLogOptions
+    context, service, transport, entries = await fixture(tmp_path)
+    if not logging:
+        context.with_sql_log_options(SqlLogOptions.disabled())
+    query = three_levels().comment('load order graph').purpose('render graph')
+    query.relations[0].operation = QueryOperation('relation-select', 'select_children_with', relation='children')
+    query.relations[0].query.comment('load payment details')
+    result = await service.query(context, QueryRequest(query))
+    assert result.rows[0]['children'][0]['children'][0]['children'][0]['id'] == 1
+    assert len(transport.reads) == 4
+    assert len(entries) == (4 if logging else 0)
+    if logging:
+        assert [node.comment for node in entries[1].trace_chain] == [
+            'render graph', 'load order graph', 'select_children_with(...)', 'load payment details']
+        assert [node.comment for node in entries[2].trace_chain] == [
+            'render graph', 'load order graph', 'select_children_with(...)', 'load payment details',
+            'framework: relation-select children', 'load PaymentAttempt']
+        assert all(entry.comment == 'load order graph' and entry.purpose == 'render graph' for entry in entries)
+        assert all(node.kind not in ('purpose', 'comment') for entry in entries for node in entry.trace_path)
+    assert query.relations[0].query.relations[0].query.comment_text is None
+    print(f'RTC_COM_02_PASS logging={str(logging).lower()} explicit=both')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+@pytest.mark.parametrize('blank', ['', ' \t', '\u0085'])
+async def test_explicitly_blank_relation_comment_rejects_before_child_sqlite(tmp_path, logging, blank):
+    from teaql.core import RequestIntentError
+    from teaql.runtime.context import SqlLogOptions
+    context, service, transport, entries = await fixture(tmp_path)
+    if not logging:
+        context.with_sql_log_options(SqlLogOptions.disabled())
+    query = three_levels().comment('load order graph').purpose('validate nested input')
+    query.relations[0].query.comment(blank)
+    with pytest.raises(RequestIntentError) as caught:
+        await service.query(context, QueryRequest(query))
+    assert caught.value.field == 'comment'
+    assert len(transport.reads) <= 1
+    assert all('payment_data' not in compiled.sql for compiled in transport.reads)
+    assert query.relations[0].query.comment_text == blank
+    transport.reads.clear()
+    valid = three_levels().comment('load validation control').purpose('verify real child provider')
+    result = await service.query(context, QueryRequest(valid))
+    assert result.rows[0]['children'][0]['children'][0]['children'][0]['id'] == 1
+    assert len(transport.reads) == 4
+    print(f'RTC_COM_04_RELATION_PASS logging={str(logging).lower()} invalid_child_provider=0')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+@pytest.mark.parametrize('blank', ['', ' \t', '\u0085'])
+async def test_explicitly_blank_facet_value_comment_rejects_before_value_sqlite(tmp_path, logging, blank):
+    from teaql.core import RequestIntentError
+    from teaql.runtime.context import SqlLogOptions
+    context, service, transport, entries = await fixture(tmp_path)
+    if not logging:
+        context.with_sql_log_options(SqlLogOptions.disabled())
+    child = SelectQuery('Payment').count('orderCount').comment(blank)
+    outer = SelectQuery('CustomerOrder').comment('load orders').purpose('validate facet input')
+    outer.facet_by('paymentCounts', 'children', child, True)
+    with pytest.raises(RequestIntentError) as caught:
+        await service.query(context, QueryRequest(outer))
+    assert caught.value.field == 'comment'
+    assert all('payment_data' not in compiled.sql for compiled in transport.reads)
+    assert child.comment_text == blank
+    print(f'RTC_COM_04_FACET_PASS logging={str(logging).lower()} invalid_value_provider=0')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+async def test_compound_aggregates_emit_one_physical_statement(tmp_path, logging):
+    context, service, transport, entries = await fixture(tmp_path)
+    if not logging:
+        context.disable_select_sql_log()
+    query = SelectQuery('CustomerOrder').count('orderCount').sum('id', 'idTotal').comment('calculate order totals').purpose('render totals')
+    result = await service.query(context, QueryRequest(query))
+    assert result.rows == [{'orderCount': 1, 'idTotal': 1}]
+    assert len(transport.reads) == 1
+    assert 'COUNT(' in transport.reads[0].sql.upper() and 'SUM(' in transport.reads[0].sql.upper()
+    assert len(entries) == int(logging)
+    if logging:
+        assert [node.comment for node in entries[0].trace_chain] == ['render totals', 'calculate order totals']
+    print(f'RTC_COM_07_AGGREGATE_PASS logging={str(logging).lower()} expressions=2 statements=1')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+async def test_cached_exact_total_emits_only_page_sql_on_hit(tmp_path, logging):
+    context, service, transport, entries = await fixture(tmp_path)
+    if not logging:
+        context.disable_select_sql_log()
+    query = (SelectQuery('CustomerOrder').project('id').order_desc('id').limit(1)
+             .optimize_pagination_with_id_set().comment('load order page').purpose('render order page'))
+    first = await service.query(context, QueryRequest(query))
+    assert [row['id'] for row in first.rows] == [1]
+    assert context.id_set_plan() == 'ID_SET_BUILD' and context.id_set_count() == (1, 'EXACT')
+    assert len(transport.reads) == 2
+    transport.reads.clear(); entries.clear()
+    second = await service.query(context, QueryRequest(query))
+    assert [row['id'] for row in second.rows] == [1]
+    assert context.id_set_plan() == 'ID_SET_HIT' and context.id_set_count() == (1, 'EXACT')
+    assert len(transport.reads) == 1 and 'COUNT(' not in transport.reads[0].sql.upper()
+    assert len(entries) == int(logging)
+    if logging:
+        assert [node.comment for node in entries[0].trace_chain] == ['render order page', 'load order page']
+    print(f'RTC_COM_07_CACHE_PASS logging={str(logging).lower()} accuracy=EXACT hit_statements=1')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+async def test_named_count_preserves_result_alias_sql_and_business_parent_without_fake_relation(tmp_path, logging):
+    from teaql.core import QueryOperation
+    from teaql.runtime.context import SqlLogOptions
+    context, service, transport, entries = await fixture(tmp_path)
+    if not logging:
+        context.with_sql_log_options(SqlLogOptions.disabled())
+    original = QueryRequest(SelectQuery('CustomerOrder').limit(1).comment('load orders').purpose('render page'))
+    result = await service.query(context, original.for_count('totalResults',
+        QueryOperation('named-count', 'count_as', 'totalResults')))
+    assert result.rows == [{'totalResults': 1}]
+    assert len(transport.reads) == 1 and len(entries) == int(logging)
+    assert 'totalResults' in transport.reads[0].sql
+    if logging:
+        assert [node.comment for node in entries[0].trace_chain] == [
+            'render page', 'load orders', "count_as('totalResults')"]
+        assert not any(node.kind == 'relation' for node in entries[0].trace_path)
+    transport.reads.clear(); entries.clear()
+    default = original.for_count()
+    assert default.local_comment == 'framework: named-count'
+    result = await service.query(context, default)
+    assert result.rows == [{'__teaql_total': 1}]
+    assert len(transport.reads) == 1 and len(entries) == int(logging)
+    assert '__teaql_total' in transport.reads[0].sql
+    if logging:
+        assert [node.comment for node in entries[0].trace_chain] == [
+            'render page', 'load orders', 'framework: named-count']
+        assert not any(node.kind == 'relation' for node in entries[0].trace_path)
+    print(f'RTC_COM_05_PASS logging={str(logging).lower()} named=true unnamed=true')
+
+
+@pytest.mark.asyncio
+async def test_generated_relation_count_is_one_request_with_real_relation_provenance(tmp_path):
+    from teaql.core import QueryOperation
+    from teaql.core.query import RelationAggregate
+    context, service, transport, entries = await fixture(tmp_path)
+    query = SelectQuery('CustomerOrder').project('id').comment('load orders').purpose('render page')
+    query.relation_aggregates.append(RelationAggregate('children', 'itemCount', SelectQuery('Payment').count('itemCount'),
+        True, QueryOperation('relation-count', 'count_children_as', 'itemCount', 'children')))
+    result = await service.query(context, QueryRequest(query))
+    assert result.rows[0]['itemCount'] == 1
+    assert len(entries) == len(transport.reads) == 2
+    assert [node.comment for node in entries[1].trace_chain] == [
+        'render page', 'load orders', "count_children_as('itemCount')"]
+    assert [node.comment for node in entries[1].trace_path if node.kind == 'relation'] == [
+        'CustomerOrder.children']
+
+
+@pytest.mark.asyncio
+async def test_facet_sql_branches_share_native_operation_and_keep_explicit_child_comment(tmp_path):
+    from teaql.core import QueryOperation
+    context, service, transport, entries = await fixture(tmp_path)
+    nested = SelectQuery('Payment').count('orderCount').comment('load payment facets')
+    outer = SelectQuery('CustomerOrder').comment('load orders').purpose('render page')
+    outer.facet_by('paymentCounts', 'children', nested, True,
+        QueryOperation('facet', 'facet_by_children_as', 'paymentCounts', 'children'))
+    result = await service.query(context, QueryRequest(outer))
+    assert result.facets['paymentCounts'][0]['orderCount'] == 1
+    assert len(entries) == len(transport.reads) == 3
+    prefix = ['render page', 'load orders', "facet_by_children_as('paymentCounts')"]
+    assert [node.comment for node in entries[1].trace_chain] == [*prefix, 'aggregate children']
+    assert [node.comment for node in entries[2].trace_chain] == [*prefix, 'load payment facets']
+
+
+@pytest.mark.asyncio
+async def test_new_business_comments_follow_existing_mask_projection(tmp_path):
+    from teaql.core import QueryOperation
+    context, service, transport, entries = await fixture(tmp_path)
+    query = three_levels().filter(Expr.eq('name', 'CustomerOrder'))
+    query.comment('load CustomerOrder graph').purpose('inspect CustomerOrder')
+    query.relations[0].query.comment('load CustomerOrder payment')
+    query.relations[0].operation = QueryOperation('relation-select', 'select_children_with', relation='children')
+    await service.query(context, QueryRequest(query))
+    assert len(entries) == 4
+    for entry in entries:
+        assert entry.trace_chain
+        assert 'CustomerOrder' not in '/'.join(node.comment for node in entry.trace_chain)
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+async def test_prefixes_and_escaped_facet_aliases_preserve_bindings_under_privacy_projection(tmp_path, logging):
+    from copy import deepcopy
+    from teaql.core import QueryOperation
+    from teaql.core.mutation import UpdateCommand
+    context, service, transport, entries = await fixture(tmp_path)
+    secret = 'TRACE-PRIVATE-CANARY'
+    service.schema_provider.get_entity('CustomerOrder').audit_mask_fields(['name'])
+    service.schema_provider.get_entity('Payment').relation(RelationDescriptor('owner', 'CustomerOrder').local('parent_id').foreign('id'))
+    await service.mutate(context, MutationRequest(UpdateCommand.new('CustomerOrder', 1).expected_version(1).value('name', secret), comment='seed privacy canary'))
+    if not logging:
+        context.disable_select_sql_log()
+    for private_input in (False, True):
+        entries.clear(); transport.reads.clear()
+        alias = 'choices"\\\n' + (secret if private_input else '')
+        native_comment = "facet_by_owner_as('choices\"\\\\\\n" + (secret if private_input else '') + "')"
+        comment = f'what: load {secret}' if private_input else 'what: load orders'
+        purpose = f'why: inspect {secret}' if private_input else 'why: inspect orders'
+        child = SelectQuery('CustomerOrder').project('id', 'name').limit(10).count('paymentCount').comment(
+            f'load {secret} facets' if private_input else 'load order facets')
+        query = SelectQuery('Payment').project('id', 'parent_id').limit(10).comment(comment).purpose(purpose)
+        if private_input:
+            child.filter(Expr.eq('name', secret))
+        operation = QueryOperation('facet', 'facet_by_owner_as', alias, 'owner')
+        assert operation.comment() == native_comment
+        query.facet_by(alias, 'owner', child, False, operation)
+        before = deepcopy(query)
+        request = QueryRequest(query)
+        result = await service.query(context, request)
+        assert result.rows[0]['id'] == 1
+        assert result.facets[alias][0]['name'] == secret
+        assert result.facets[alias][0]['paymentCount'] == 1
+        assert len(transport.reads) == 3 and len(entries) == (3 if logging else 0)
+        assert request.intent.comment == comment and request.intent.purpose == purpose
+        assert query == before
+        if private_input:
+            assert any(secret in [value.val for value in read.params] for read in transport.reads)
+        if logging:
+            safe_comment = 'what: load [REDACTED]' if private_input else comment
+            safe_purpose = 'why: inspect [REDACTED]' if private_input else purpose
+            chains = [[node.comment for node in entry.trace_chain] for entry in entries]
+            assert [safe_purpose, safe_comment] in chains
+            for local in ('aggregate owner', 'load [REDACTED] facets' if private_input else 'load order facets'):
+                assert [safe_purpose, safe_comment, native_comment.replace(secret, '[REDACTED]'), local] in chains
+            if private_input:
+                assert secret not in repr(entries)
+    print(f'RTC_COM_09_12_PASS logging={str(logging).lower()} plain=true private=true escaped=true bindings=true')
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [True, False])
+@pytest.mark.parametrize('comment', ['sum visible attempt IDs', '', ' \t', '\u0085'])
+async def test_facet_reverse_sum_keeps_explicit_comment_and_rejects_blank(tmp_path, monkeypatch, logging, comment):
+    from teaql.core import QueryOperation, RequestIntentError
+    from teaql.core.query import RelationAggregate
+    context, service, transport, entries = await fixture(tmp_path)
+    metadata = []
+    record = context._record_metadata_log
+
+    def observe(actual, **kwargs):
+        metadata.append(actual)
+        return record(actual, **kwargs)
+
+    monkeypatch.setattr(context, '_record_metadata_log', observe)
+    if not logging:
+        context.disable_select_sql_log()
+    service.schema_provider.get_entity('PaymentAttempt').relation(
+        RelationDescriptor('owner', 'Payment').local('parent_id').foreign('id'))
+    sum_query = SelectQuery('PaymentAttempt').sum('id', 'attemptTotal').comment(comment)
+    values = SelectQuery('Payment').project('id').limit(10).count('attemptCount').comment('load payment facets')
+    values.relation_aggregates.append(RelationAggregate('children', 'attemptTotal', sum_query, True,
+        QueryOperation('aggregate', 'sum_id_of_children_as', 'attemptTotal', 'children')))
+    outer = (SelectQuery('PaymentAttempt').project('id', 'parent_id').limit(10)
+             .comment('load attempts').purpose('render attempts')
+             .facet_by('payments', 'owner', values, True,
+                 QueryOperation('facet', 'facet_by_owner_as', 'payments', 'owner')))
+    if comment != 'sum visible attempt IDs':
+        with pytest.raises(RequestIntentError):
+            await service.query(context, QueryRequest(outer))
+        assert all(len(entry.trace_chain) <= 4 for entry in entries)
+        assert all('SUM(' not in statement.sql.upper() for statement in transport.reads)
+        return
+    result = await service.query(context, QueryRequest(outer))
+    assert result.facets['payments'][0]['attemptTotal'] == 1
+    aggregate = [entry for entry in metadata if entry.request_trace_chain[-1].comment == comment]
+    assert len(aggregate) == 1
+    assert [node.comment for node in aggregate[0].request_trace_chain] == ['render attempts', 'load attempts',
+        "facet_by_owner_as('payments')", 'aggregate owner', comment]
+    assert len(entries) == (len(transport.reads) if logging else 0)
+    assert len(metadata) == len(transport.reads)
+    assert sum_query.comment_text == comment
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [True, False])
+async def test_id_set_empty_cache_keeps_helper_ancestry_and_emits_no_fictitious_sql(tmp_path, monkeypatch, logging):
+    context, service, transport, entries = await fixture(tmp_path)
+    metadata = []
+    record = context._record_metadata_log
+
+    def observe(actual, **kwargs):
+        metadata.append(actual)
+        return record(actual, **kwargs)
+
+    monkeypatch.setattr(context, '_record_metadata_log', observe)
+    requests = []
+    execute = service._query
+
+    async def observe_request(caller, request):
+        requests.append(request)
+        return await execute(caller, request)
+
+    monkeypatch.setattr(service, '_query', observe_request)
+    if not logging:
+        context.disable_select_sql_log()
+    query = (SelectQuery('CustomerOrder').filter(Expr.eq('id', 999)).limit(2)
+             .optimize_pagination_with_id_set()
+             .comment('load empty page').purpose('render filtered page'))
+    for _ in range(2):
+        result = await service.query(context, QueryRequest(query))
+        assert result.rows == []
+        assert result.metadata.parameterized_sql == ''
+        assert context.id_set_count() == (0, 'EXACT')
+    assert len(transport.reads) == 1
+    assert len(metadata) == 1
+    assert len(entries) == (1 if logging else 0)
+    helpers = [request for request in requests if request.local_comment == 'collect CustomerOrder IDs for pagination']
+    assert len(helpers) == 1
+    assert [node.comment for node in helpers[0].business_trace_chain] == [
+        'render filtered page', 'load empty page', 'collect CustomerOrder IDs for pagination']
+    assert metadata[0].execution_outcome == 'success'
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [True, False])
+async def test_actual_sqlite_stream_retains_a_derived_count_request_parent(tmp_path, monkeypatch, logging):
+    from teaql.core import QueryOperation
+    context, service, transport, entries = await fixture(tmp_path)
+    metadata = []
+    record = context._record_metadata_log
+
+    def observe(actual, **kwargs):
+        metadata.append(actual)
+        return record(actual, **kwargs)
+
+    monkeypatch.setattr(context, '_record_metadata_log', observe)
+    if not logging:
+        context.disable_select_sql_log()
+    root = QueryRequest(SelectQuery('CustomerOrder').comment('load orders').purpose('render totals'))
+    counted = root.for_count('totalResults', QueryOperation('named-count', 'count_as', 'totalResults'))
+    chunks = [chunk async for chunk in service.query_stream(context, counted, 1)]
+    assert chunks[0].rows == [{'totalResults': 1}]
+    assert len(metadata) == len(transport.streams) == 1
+    assert len(entries) == (1 if logging else 0)
+    assert [node.comment for node in metadata[0].request_trace_chain] == [
+        'render totals', 'load orders', "count_as('totalResults')"]
+    assert not any(node.kind == 'relation' for node in metadata[0].trace_chain)
+
+
+@pytest.mark.asyncio
+async def test_id_set_cache_isolates_actual_sqlite_sources_without_ambient_db_registration(tmp_path):
+    from teaql.runtime.context import InMemoryIdSetStore
+    store = InMemoryIdSetStore()
+    first_path = tmp_path / 'first'; first_path.mkdir()
+    second_path = tmp_path / 'second'; second_path.mkdir()
+    first, first_service, first_transport, _ = await fixture(first_path)
+    second, second_service, second_transport, _ = await fixture(second_path)
+    first.set_id_set_store(store); second.set_id_set_store(store)
+    assert first.get_resource('db') is second.get_resource('db') is None
+    await second_service.mutate(second, MutationRequest(InsertCommand.new('CustomerOrder')
+        .value('id', 999).value('version', 1).value('name', 'second database only'), comment='seed source isolation'))
+    second_transport.reads.clear()
+
+    def page():
+        return QueryRequest(SelectQuery('CustomerOrder').project('id').filter(Expr.eq('id', 999)).limit(1)
+            .optimize_pagination_with_id_set().comment('load isolated page').purpose('verify source isolation'))
+
+    assert (await first_service.query(first, page())).rows == []
+    assert len(first_transport.reads) == 1
+    result = await second_service.query(second, page())
+    assert result.rows == [{'id': 999}]
+    assert len(second_transport.reads) == 2
+    result = await second_service.query(second, page())
+    assert result.rows == [{'id': 999}] and len(second_transport.reads) == 3
+
+
 INTENT_FAILURES = [case for case in json.loads(
     (Path(__file__).parents[2] / 'fixtures/request-intent-v1.json').read_text())['cases']
     if 'error' in case]
@@ -328,6 +739,43 @@ async def test_nested_facets_keep_original_route_and_nested_materialization(tmp_
     assert [(row['id'], row['order_count']) for row in
             result.facets['payments'].facet('orders')] == [(1, 1)]
     assert query.facets[0].query.facets[0].name == 'orders', 'execution changed the caller Facet tree'
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize('logging', [False, True])
+async def test_nested_facet_siblings_preserve_native_parent_and_local_comments(tmp_path, logging):
+    from teaql.core import QueryOperation
+    from teaql.runtime.context import SqlLogOptions
+    context, service, transport, entries = await fixture(tmp_path)
+    if not logging:
+        context.with_sql_log_options(SqlLogOptions.disabled())
+    for owner, target in [('PaymentAttempt', 'Payment'), ('Payment', 'CustomerOrder')]:
+        service.schema_provider.get_entity(owner).relation(RelationDescriptor('owner', target).local('parent_id').foreign('id'))
+    query = SelectQuery('PaymentAttempt').project('id').limit(10).comment('load branches').purpose('render branches')
+    for alias in ('left', 'right'):
+        orders = SelectQuery('CustomerOrder').project('id').limit(10).count('paymentCount').comment(f'load {alias} orders')
+        payments = SelectQuery('Payment').project('id', 'parent_id').limit(10).count('attemptCount').comment(f'load {alias} payments')
+        payments.facet_by('orders', 'owner', orders, True, QueryOperation('facet', 'facet_by_owner_as', 'orders', 'owner'))
+        query.facet_by(alias, 'owner', payments, True, QueryOperation('facet', 'facet_by_owner_as', alias, 'owner'))
+    result = await service.query(context, QueryRequest(query))
+    assert len(transport.reads) == 9
+    assert len(entries) == (9 if logging else 0)
+    for alias in ('left', 'right'):
+        assert [(row['id'], row['attemptCount']) for row in result.facets[alias]] == [(1, 1)]
+        assert [(row['id'], row['paymentCount']) for row in result.facets[alias].facet('orders')] == [(1, 1)]
+        if logging:
+            prefix = ['render branches', 'load branches', f"facet_by_owner_as('{alias}')"]
+            chains = [[node.comment for node in entry.trace_chain] for entry in entries]
+            branches = [chain for chain in chains if len(chain) > 2 and chain[2] == prefix[2]]
+            assert len(branches) == 4
+            assert [*prefix, 'aggregate owner'] in branches
+            assert [*prefix, f'load {alias} payments'] in branches
+            for local in ('aggregate owner', f'load {alias} orders'):
+                assert [*prefix, f'load {alias} payments', "facet_by_owner_as('orders')", local] in branches
+    assert query.comment_text == 'load branches'
+    assert query.facets[0].query.comment_text == 'load left payments'
+    assert query.facets[1].query.comment_text == 'load right payments'
+    print(f'RTC_COM_06_PASS logging={str(logging).lower()} nested=true siblings=true')
 
 
 @pytest.mark.asyncio
@@ -1004,7 +1452,8 @@ async def test_inherited_debug_opt_in_keeps_credentials_hidden_and_can_reproject
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize('logging', [False, True])
-async def test_two_live_query_graphs_keep_independent_intent(tmp_path, monkeypatch, logging):
+@pytest.mark.parametrize('shared_template', [False, True])
+async def test_two_live_query_graphs_keep_independent_intent(tmp_path, monkeypatch, logging, shared_template):
     context, service, transport, entries = await fixture(tmp_path)
     if not logging:
         context.disable_select_sql_log()
@@ -1032,7 +1481,23 @@ async def test_two_live_query_graphs_keep_independent_intent(tmp_path, monkeypat
 
     monkeypatch.setattr(transport, 'fetch_all_sql', pause_real_roots)
     monkeypatch.setattr(context, '_record_metadata_log', observe)
-    requests = [QueryRequest(three_levels(), _comment=f'load {label} graph',
+    from copy import deepcopy
+    from teaql.core.request_tree import _owner_for
+    template = three_levels().relations[0].query
+    template_before = deepcopy(template)
+    def parent_query():
+        query = three_levels()
+        if shared_template:
+            query.relations[0].query = template
+        return query
+    def assert_template_unchanged():
+        assert template == template_before
+        query = template
+        while query is not None:
+            assert _owner_for(query) is None
+            assert query.comment_text is None and getattr(query, 'purpose_text', None) is None
+            query = query.relations[0].query if query.relations else None
+    requests = [QueryRequest(parent_query(), _comment=f'load {label} graph',
                              _purpose=f'render {label} graph') for label in ('alpha', 'beta')]
     # Native test-only inspection: query frames must not become ambient Context
     # fields/resources. Keep legitimate SQL-log appends observable separately.
@@ -1057,6 +1522,7 @@ async def test_two_live_query_graphs_keep_independent_intent(tmp_path, monkeypat
         assert metadata == entries == []
         assert [request.intent.comment for request in requests] == ['load alpha graph', 'load beta graph']
         assert_context_unchanged()
+        assert_template_unchanged()
         release.set()
         results = await asyncio.wait_for(asyncio.gather(*pending), timeout=5)
         assert all(result.rows[0]['children'][0]['children'][0]['children'][0]['id'] == 1
@@ -1064,6 +1530,7 @@ async def test_two_live_query_graphs_keep_independent_intent(tmp_path, monkeypat
         assert len(transport.reads) == len(metadata) == 8
         assert len(entries) == (8 if logging else 0)
         assert_context_unchanged()
+        assert_template_unchanged()
         for observed, path_attr in [(metadata, 'trace_chain'), (entries, 'trace_path')]:
             for label in ('alpha', 'beta'):
                 own = [entry for entry in observed if entry.comment == f'load {label} graph']

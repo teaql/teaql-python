@@ -65,6 +65,14 @@ class GraphMutationSession:
         return MutationRequest(command, comment=self.intent.comment).with_mutation_lineage(
             specific or scope.recover())
 
+    def capture_loaded_values(self, entity_type, values):
+        """Unchanged/removed graph values still protect invocation annotations."""
+        from types import SimpleNamespace
+        from .log_privacy import _MutationIntentPrivacy
+        self._require_active()
+        self._intent_privacy = self._intent_privacy.merge(_MutationIntentPrivacy.capture(
+            SimpleNamespace(entity=entity_type, values=values), self.context.entity))
+
     def after_commit(self, action):
         self._require_active()
         self._commit_actions.append(action)

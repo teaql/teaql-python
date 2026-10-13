@@ -104,8 +104,8 @@ class UserContext:
         self._app_audit_sink: Optional[Any] = None
         self._entity_initializers: Dict[str, List[EntityInitializer]] = {}
         self._managed_entities: List[Any] = []
-        from .telemetry import NOOP_RUNTIME_TELEMETRY
-        self._runtime_telemetry = NOOP_RUNTIME_TELEMETRY
+        from .telemetry_startup import default_telemetry
+        self._runtime_telemetry = default_telemetry()
         self._id_set_store = _default_id_set_store
         self._id_set_plan = "ID_SET_DISABLED"
         self._id_set_count = 0
@@ -218,36 +218,45 @@ class UserContext:
         if self._graph_session is not None or (guard is not None and guard['active']):
             raise RuntimeError('independent graph save cannot re-enter an active graph; compose children explicitly')
         async with self._graph_save_lock:
-            provider = self.require_resource("dataService")
-            begin = getattr(provider, "begin", None)
-            if not callable(begin):
-                raise RuntimeError("Configured dataService does not support graph transactions")
-            transaction = await self._call_transaction_method(begin, self)
-            guard = {'active': True}
-            guard_token = self._graph_save_guard.set(guard)
-            session = None
+            from .telemetry import RuntimeOperation, observe_runtime_operation
+            # One owned operation covers physical writes, commit, audit and
+            # cleanup. It starts only after admission to the existing save gate;
+            # generated entities do not initialize SDKs or create manual spans.
+            return await observe_runtime_operation(
+                self._runtime_telemetry, RuntimeOperation('mutation', 'graph.save'),
+                lambda: self._execute_graph_transaction(work, intent, GraphMutationSession))
+
+    async def _execute_graph_transaction(self, work, intent, session_type):
+        provider = self.require_resource("dataService")
+        begin = getattr(provider, "begin", None)
+        if not callable(begin):
+            raise RuntimeError("Configured dataService does not support graph transactions")
+        transaction = await self._call_transaction_method(begin, self)
+        guard = {'active': True}
+        guard_token = self._graph_save_guard.set(guard)
+        session = None
+        try:
+            session = session_type(self, transaction, intent)
+            result = await work(session)
+            session.context._mutation_policy.ensure_graph_complete()
+            await self._finish_graph_transaction(transaction, "commit", session.context)
+        except BaseException:
             try:
-                session = GraphMutationSession(self, transaction, intent)
-                result = await work(session)
-                session.context._mutation_policy.ensure_graph_complete()
-                await self._finish_graph_transaction(transaction, "commit", session.context)
+                await self._finish_graph_transaction(transaction, "rollback", session.context if session else self)
             except BaseException:
-                try:
-                    await self._finish_graph_transaction(transaction, "rollback", session.context if session else self)
-                except BaseException:
-                    pass  # Preserve the original operation/commit failure.
-                if session is not None:
-                    await session.rolled_back()
-                raise
-            else:
-                await session.committed()
-                return result
-            finally:
-                if session is not None:
-                    session.close()
-                    self._fix_evidence_last = list(session.context.last_fix_evidence())
-                guard['active'] = False
-                self._graph_save_guard.reset(guard_token)
+                pass  # Preserve the original operation/commit failure.
+            if session is not None:
+                await session.rolled_back()
+            raise
+        else:
+            await session.committed()
+            return result
+        finally:
+            if session is not None:
+                session.close()
+                self._fix_evidence_last = list(session.context.last_fix_evidence())
+            guard['active'] = False
+            self._graph_save_guard.reset(guard_token)
 
     @staticmethod
     async def _call_transaction_method(method, context):
@@ -910,7 +919,10 @@ class UserContext:
         elif 'update' in op_str: op = SqlLogOperation.Update
         elif 'delete' in op_str: op = SqlLogOperation.Delete
         elif 'recover' in op_str: op = SqlLogOperation.Recover
-        if not self.sql_log_options().enabled_for(op):
+        logging_enabled = self.sql_log_options().enabled_for(op)
+        writer = getattr(self._runtime_telemetry, 'record_diagnostic', None)
+        correlation = getattr(metadata, '_sql_correlation', None)
+        if not logging_enabled and not (writer and correlation):
             return
 
         started_at = getattr(metadata, 'started_at', datetime.now())
@@ -921,6 +933,7 @@ class UserContext:
             purpose=getattr(metadata, 'purpose', None),
             audit_reason=getattr(metadata, 'audit_reason', None),
             trace_path=list(getattr(metadata, 'trace_chain', [])),
+            trace_chain=tuple(getattr(metadata, 'request_trace_chain', ())),
             mutation_lineage=tuple(getattr(metadata, 'mutation_lineage', ())),
             sql=getattr(metadata, 'parameterized_sql', ''),
             params=list(getattr(metadata, 'parameters', [])),
@@ -944,6 +957,30 @@ class UserContext:
             entry.result_summary = f"{entry.affected_rows} rows affected"
 
         from .log_privacy import sql_log_projection
+        if writer and correlation:
+            try:
+                import json
+                safe = sql_log_projection(entry, _intent_source=intent_source, _intent_values=intent_values,
+                    _intent_privacy=intent_privacy, _allow_plaintext=False)
+                def nodes(source):
+                    return json.dumps([{'kind': getattr(node, 'kind', ''), 'name': getattr(node, 'name', ''),
+                        'detail': getattr(node, 'comment', '')} for node in source])
+                attributes = {
+                    'teaql.sql.debug': safe.debug_sql, 'teaql.sql.log_mode': 'masked' if not getattr(safe, 'omission_reason', None) else 'omitted',
+                    'teaql.sql.operation': 'select' if op == SqlLogOperation.Select else op.name.lower(),
+                    'teaql.sql.outcome': safe.execution_outcome or 'unknown', 'teaql.sql.elapsed_us': int(safe.elapsed.total_seconds() * 1000000),
+                    'teaql.intent.comment': safe.comment or safe.audit_reason or '', 'teaql.intent.purpose': safe.purpose or '',
+                    'teaql.trace_chain': nodes(safe.trace_chain), 'teaql.trace_path': nodes(safe.trace_path), 'teaql.mutation_lineage': nodes(safe.mutation_lineage)
+                }
+                if safe.result_count is not None:
+                    attributes['teaql.sql.result_count'] = safe.result_count
+                if safe.affected_rows is not None:
+                    attributes['teaql.sql.affected_rows'] = safe.affected_rows
+                writer(attributes, correlation)
+            except Exception:
+                pass
+        if not logging_enabled:
+            return
         entry = sql_log_projection(entry, _intent_source=intent_source, _intent_values=intent_values,
                                    _intent_privacy=intent_privacy)
         logs = self.sql_logs()
@@ -1259,6 +1296,7 @@ class SqlLogEntry:
     omission_reason: Optional[str] = None
     execution_outcome: Optional[str] = None
     mutation_lineage: tuple[Any, ...] = ()
+    trace_chain: tuple[Any, ...] = ()
 
 class DiagnosticSqlLogSink:
     """Policy-projected SQL destination; the text sink is installed by default."""
@@ -1276,7 +1314,7 @@ class TextDiagnosticSqlLogSink(DiagnosticSqlLogSink):
         self._writer(
             f"[TeaQL SQL][{entry.operation.name.lower()}][{elapsed_us}us] "
             f"{entry.result_summary} outcome={entry.execution_outcome or 'unknown'} comment={entry.comment!r} purpose={entry.purpose!r} "
-            f"auditReason={entry.audit_reason!r} tracePath={entry.trace_path!r}\n"
+            f"auditReason={entry.audit_reason!r} tracePath={entry.trace_path!r} traceChain={entry.trace_chain!r}\n"
             f"SQL omission reason: {entry.omission_reason or 'none'}\n"
             f"Debug SQL: {entry.debug_sql}"
         )

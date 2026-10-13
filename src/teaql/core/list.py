@@ -12,10 +12,11 @@ class TeaQLPage(Generic[T]):
 
 class SmartList(List[T], Generic[T]):
     def __init__(self, data: Iterable[T] = (), facets: Optional[Dict[str, Any]] = None,
-                 total_count: Optional[int] = None):
+                 total_count: Optional[int] = None, aggregations: Optional[Dict[str, Any]] = None):
         super().__init__(data)
         self.facets = facets or {}
         self.total_count = total_count if total_count is not None else len(self)
+        self.aggregations = dict(aggregations or {})
 
     @property
     def data(self) -> 'SmartList[T]':
@@ -25,16 +26,16 @@ class SmartList(List[T], Generic[T]):
         return self.facets.get(name)
 
     def map(self, f: Callable[[T], Any]) -> 'SmartList[Any]':
-        return SmartList((f(x) for x in self), self.facets, self.total_count)
+        return SmartList((f(x) for x in self), self.facets, self.total_count, self.aggregations)
 
     def filter(self, f) -> 'SmartList':
-        return SmartList((x for x in self if f(x)), self.facets, self.total_count)
+        return SmartList((x for x in self if f(x)), self.facets, self.total_count, self.aggregations)
 
     def flat_map(self, f) -> 'SmartList':
         result = []
         for x in self:
             result.extend(f(x))
-        return SmartList(result, self.facets, self.total_count)
+        return SmartList(result, self.facets, self.total_count, self.aggregations)
 
     def first(self) -> Any:
         return self[0] if self else None
