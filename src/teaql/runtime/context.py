@@ -318,6 +318,19 @@ class UserContext:
         self._runtime_telemetry = telemetry
         return self
 
+    def with_object_storage(self, provider) -> "UserContext":
+        if provider is None:
+            from teaql.core.object_storage import StorageError, StorageErrorCode
+            raise StorageError(StorageErrorCode.INVALID_INPUT)
+        return self.insert_resource("object_storage_provider", provider)
+
+    def with_object_storage_observer(self, observer) -> "UserContext":
+        return self.insert_resource("object_storage_observer", observer)
+
+    def object_storage(self, comment: str):
+        from .object_storage import ObjectStorage
+        return ObjectStorage(self, comment)
+
     def set_runtime_telemetry(self, telemetry: Any) -> None:
         self._runtime_telemetry = telemetry
 

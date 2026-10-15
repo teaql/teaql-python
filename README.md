@@ -399,6 +399,7 @@ Request JSON is not allowed to replace those trusted capabilities.
 - [Mutation Policy example](examples/mutation-policy)
 - [Facet example](examples/facet-trace/README.md)
 - [Opaque reference example](examples/opaque-entity-reference)
+- [Binary object storage and temporary S3 URLs](examples/object-storage/README.md)
 
 ## Safe troubleshooting
 
