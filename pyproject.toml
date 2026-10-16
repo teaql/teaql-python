@@ -30,6 +30,7 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
+object-storage-s3 = ["boto3==1.43.113"]
 telemetry = [
     "opentelemetry-api>=1.44.0,<2",
     "opentelemetry-sdk>=1.44.0,<2",
