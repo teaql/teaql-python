@@ -419,7 +419,9 @@ async def test_id_set_pagination_lifecycle_isolation_and_fallbacks(temp_db, sche
     await service.query(context, QueryRequest(ttl, _comment='what: runtime regression fixture', _purpose='why: verify runtime behavior'))
     assert context.id_set_plan() == "ID_SET_BUILD"
 
-    source_one, source_two, policy_one, policy_two = object(), object(), object(), object()
+    source_one, source_two = object(), object()
+    policy_one = lambda query: query
+    policy_two = lambda query: query
     cases = [
         ("tenant:user-a", 1, "one", source_one, policy_one),
         ("tenant:user-b", 1, "one", source_one, policy_one),

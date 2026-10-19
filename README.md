@@ -285,6 +285,29 @@ atomic allocation and floor advancement. See the runnable
 [Internal ID example](examples/internal-id/README.md). The old synchronous
 `generate_id`/`next_id` context calls are unsupported; use the async capability.
 
+## Typed Context extension points
+
+Trusted application wiring installs runtime capabilities through typed Context
+methods. Malformed providers fail during registration, before a query or Save
+reaches the database. The contracts are importable from `teaql.runtime`:
+
+| Capability | Install on Context | Minimum Protocol |
+| --- | --- | --- |
+| Query authorization | `with_request_policy` | Callable query policy or `RequestPolicy.apply` |
+| Checker/Fix | `with_checker_registry` | `CheckerRegistry.checker` returning a `Checker` |
+| Physical schema | `with_schema_provider` | Async `SchemaCapability._ensure_schema` |
+| Application audit | `with_app_audit_event_sink` | `SafeAuditEventSink.on_safe_event` |
+| Runtime telemetry | `with_runtime_telemetry` | `RuntimeTelemetryAdapter.start`, or diagnostic-only `record_diagnostic` |
+| Internal IDs | `with_internal_id_allocator` | Async `InternalIdAllocator.next_id` and `ensure_id_floor` |
+
+The schema capability is independent of the query/mutation data service;
+`context.ensure_schema()` remains the application entry point and runs
+generated bootstrap after physical schema reconciliation. Existing callable
+query policies still work. Telemetry start and diagnostic failures remain
+fail-open, whereas query-policy and Checker denials remain fail-closed. The
+[typed extension example](examples/typed-extension-spi/README.md) wires all
+six contracts into one small SQLite application.
+
 ## Optional standard OpenTelemetry module
 
 The local standard-module changes are not yet released. Install the optional
