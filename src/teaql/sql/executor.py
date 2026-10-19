@@ -1030,12 +1030,14 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             None,
         )
         if isinstance(req_data, InsertCommand) and id_prop is not None:
+            allocator = context.internal_id_allocator() if context is not None else None
+            allocator = allocator if allocator is not None else self
             if id_prop.name not in req_data.values:
                 req_data.values[id_prop.name] = Value.from_any(
-                    await self.next_id(req_data.entity)
+                    await allocator.next_id(req_data.entity)
                 )
             else:
-                await self.ensure_id_floor(
+                await allocator.ensure_id_floor(
                     req_data.entity, int(req_data.values[id_prop.name].val))
             version_prop = next((
                 prop for prop in getattr(entity_desc, "properties", [])
