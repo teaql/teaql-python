@@ -265,6 +265,26 @@ repository's local runtime. No external database server or generator is needed
 to run the retained generated example. Use only the example's test database;
 reset/repeated-run behavior is documented in its README.
 
+## Customize internal ID allocation
+
+By default, the SQL provider uses its own durable per-entity ID space. To use
+an application allocator, install an asynchronous `InternalIdAllocator` on the
+Context before saving entities:
+
+```python
+context.with_internal_id_allocator(my_allocator)
+```
+
+The allocator implements `async next_id(entity: str) -> int` and
+`async ensure_id_floor(entity: str, floor: int) -> None`. The latter reserves
+explicitly supplied IDs so future automatic IDs cannot collide. Direct INSERT,
+nested batch and graph Save use this one Context capability. An installed
+allocator failure stops the write; it never silently falls back to the SQL
+provider. Implementations shared across processes must provide durable,
+atomic allocation and floor advancement. See the runnable
+[Internal ID example](examples/internal-id/README.md). The old synchronous
+`generate_id`/`next_id` context calls are unsupported; use the async capability.
+
 ## Optional standard OpenTelemetry module
 
 The local standard-module changes are not yet released. Install the optional

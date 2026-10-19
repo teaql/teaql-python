@@ -8,6 +8,7 @@ from array import array
 from datetime import date, datetime, timedelta, timezone
 
 from .business_clock import BusinessClock, SystemBusinessClock
+from .internal_id import InternalIdAllocator, validate_internal_id_allocator
 from .entity_reference import (
     EntityReferenceClaims,
     EntityReferenceCodec,
@@ -123,6 +124,7 @@ class UserContext:
         self._checked_mutations = set()
         self._business_clock: BusinessClock = SystemBusinessClock()
         self._entity_reference_codec: Optional[EntityReferenceCodec] = None
+        self._internal_id_allocator: Optional[InternalIdAllocator] = None
         from .mutation_policy import MutationPolicyRuntimeState
         self._mutation_policy = MutationPolicyRuntimeState()
 
@@ -548,12 +550,20 @@ class UserContext:
             descriptor.audit_value_max_len(value_max_len)
         return self
 
-    def with_internal_id_generator(self, gen: Any) -> 'UserContext':
-        self.insert_resource("internal_id_generator", gen)
+    def with_internal_id_allocator(self, allocator: InternalIdAllocator) -> 'UserContext':
+        """Install ID allocation independently of the query/mutation provider."""
+        self._internal_id_allocator = validate_internal_id_allocator(allocator)
         return self
 
-    def set_internal_id_generator(self, gen: Any):
-        self.insert_resource("internal_id_generator", gen)
+    def internal_id_allocator(self) -> Optional[InternalIdAllocator]:
+        return self._internal_id_allocator
+
+    def with_internal_id_generator(self, gen: InternalIdAllocator) -> 'UserContext':
+        """Compatibility spelling; synchronous generate_id providers are unsupported."""
+        return self.with_internal_id_allocator(gen)
+
+    def set_internal_id_generator(self, gen: InternalIdAllocator):
+        self.with_internal_id_allocator(gen)
 
     def with_business_id_profile_factory(self, factory: Any) -> 'UserContext':
         if factory is None or not callable(getattr(factory, "create", None)):
@@ -621,17 +631,10 @@ class UserContext:
         return self.get_resource("i18n_catalog") or I18nCatalog.builtin()
 
     def generate_id(self, entity: str) -> Optional[int]:
-        gen = self.get_resource("internal_id_generator")
-        if gen and hasattr(gen, "generate_id"):
-            return gen.generate_id(entity)
-        return None
+        raise RuntimeError("synchronous generate_id is unsupported; use an async InternalIdAllocator")
 
     def next_id(self, entity: str) -> int:
-        gen_id = self.generate_id(entity)
-        if gen_id is not None:
-            return gen_id
-        # Simple fallback
-        return int(datetime.now().timestamp() * 1000)
+        raise RuntimeError("synchronous next_id is unsupported; use an async InternalIdAllocator")
 
     def entity(self, name: str) -> Optional[Any]:
         if self._metadata and hasattr(self._metadata, "entity"):
