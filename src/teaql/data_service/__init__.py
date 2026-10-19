@@ -328,21 +328,6 @@ class TransactionExecutor(DataServiceExecutor, Protocol):
         ...
 
 
-@dataclass
-class _SchemaRequest:
-    entity_name: str
-
-
-@dataclass
-class _SchemaResult:
-    changed: bool
-
-
-class _SchemaExecutor(DataServiceExecutor, Protocol):
-    async def _ensure_schema_request(self, request: _SchemaRequest) -> _SchemaResult:
-        ...
-
-
 class IdGeneratorExecutor(DataServiceExecutor, Protocol):
     async def next_id(self, entity: str) -> int:
         ...

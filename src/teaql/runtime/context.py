@@ -9,6 +9,13 @@ from datetime import date, datetime, timedelta, timezone
 
 from .business_clock import BusinessClock, SystemBusinessClock
 from .internal_id import InternalIdAllocator, validate_internal_id_allocator
+from .extensions import (
+    Checker, CheckerRegistry, RequestPolicyInput, RuntimeTelemetryAdapter,
+    RuntimeTelemetryInput,
+    SafeAuditEventSink, SchemaCapability, validate_checker_registry,
+    validate_request_policy, validate_runtime_telemetry,
+    validate_safe_audit_sink, validate_schema_capability,
+)
 from .entity_reference import (
     EntityReferenceClaims,
     EntityReferenceCodec,
@@ -125,6 +132,7 @@ class UserContext:
         self._business_clock: BusinessClock = SystemBusinessClock()
         self._entity_reference_codec: Optional[EntityReferenceCodec] = None
         self._internal_id_allocator: Optional[InternalIdAllocator] = None
+        self._explicit_schema_provider = False
         from .mutation_policy import MutationPolicyRuntimeState
         self._mutation_policy = MutationPolicyRuntimeState()
 
@@ -316,8 +324,8 @@ class UserContext:
     def managed_entities(self) -> List[Any]:
         return list(self._managed_entities)
 
-    def with_runtime_telemetry(self, telemetry: Any) -> "UserContext":
-        self._runtime_telemetry = telemetry
+    def with_runtime_telemetry(self, telemetry: RuntimeTelemetryInput) -> "UserContext":
+        self._runtime_telemetry = validate_runtime_telemetry(telemetry)
         return self
 
     def with_object_storage(self, provider) -> "UserContext":
@@ -333,10 +341,10 @@ class UserContext:
         from .object_storage import ObjectStorage
         return ObjectStorage(self, comment)
 
-    def set_runtime_telemetry(self, telemetry: Any) -> None:
-        self._runtime_telemetry = telemetry
+    def set_runtime_telemetry(self, telemetry: RuntimeTelemetryInput) -> None:
+        self.with_runtime_telemetry(telemetry)
 
-    def runtime_telemetry(self) -> Any:
+    def runtime_telemetry(self) -> RuntimeTelemetryAdapter:
         return self._runtime_telemetry
 
     def set_id_set_store(self, store: Any) -> None:
@@ -378,9 +386,24 @@ class UserContext:
         return self
 
     def insert_resource(self, resource_type: str, resource: Any):
+        inferred_schema = None
+        if resource_type == "request_policy":
+            resource = validate_request_policy(resource)
+        elif resource_type == "checker_registry":
+            resource = validate_checker_registry(resource)
+        elif resource_type == "schema_provider":
+            resource = validate_schema_capability(resource)
+        elif (resource_type == "dataService" and not self._explicit_schema_provider
+              and isinstance(resource, SchemaCapability)):
+            inferred_schema = validate_schema_capability(resource)
         self._resources[resource_type] = resource
-        if resource_type == "dataService" and hasattr(resource, "_ensure_schema"):
-            self._resources["schema_provider"] = resource
+        if resource_type == "schema_provider":
+            self._explicit_schema_provider = True
+        elif resource_type == "dataService" and not self._explicit_schema_provider:
+            if inferred_schema is None:
+                self._resources.pop("schema_provider", None)
+            else:
+                self._resources["schema_provider"] = inferred_schema
         return self
 
     def get_resource(self, resource_type: str) -> Optional[Any]:
@@ -401,9 +424,7 @@ class UserContext:
         if policy is None:
             return prepared_root
 
-        apply_policy = policy if callable(policy) else getattr(policy, "apply", None)
-        if apply_policy is None or not callable(apply_policy):
-            raise TypeError("request_policy must be callable or expose apply(query)")
+        apply_policy = policy if callable(policy) else policy.apply
 
         prepared_nodes: Dict[int, Any] = {}
 
@@ -512,34 +533,34 @@ class UserContext:
     def set_entity_data_service_behavior_registry(self, registry: Any):
         self.insert_resource("entity_data_service_behavior_registry", registry)
 
-    def with_request_policy(self, policy: Any) -> 'UserContext':
-        self.insert_resource("request_policy", policy)
+    def with_request_policy(self, policy: RequestPolicyInput) -> 'UserContext':
+        self.insert_resource("request_policy", validate_request_policy(policy))
         return self
 
-    def set_request_policy(self, policy: Any):
-        self.insert_resource("request_policy", policy)
+    def set_request_policy(self, policy: RequestPolicyInput):
+        self.with_request_policy(policy)
 
     def clear_request_policy(self):
         self._resources.pop("request_policy", None)
 
-    def with_checker_registry(self, registry: Any) -> 'UserContext':
-        self.insert_resource("checker_registry", registry)
+    def with_checker_registry(self, registry: CheckerRegistry) -> 'UserContext':
+        self.insert_resource("checker_registry", validate_checker_registry(registry))
         return self
 
-    def set_checker_registry(self, registry: Any):
-        self.insert_resource("checker_registry", registry)
+    def set_checker_registry(self, registry: CheckerRegistry):
+        self.with_checker_registry(registry)
 
-    def with_custom_event_sink(self, sink: Any) -> 'UserContext':
-        self._app_audit_sink = sink
-        return self
+    def with_custom_event_sink(self, sink: SafeAuditEventSink) -> 'UserContext':
+        return self.with_app_audit_event_sink(sink)
 
-    def set_custom_event_sink(self, sink: Any):
-        self._app_audit_sink = sink
+    def set_custom_event_sink(self, sink: SafeAuditEventSink):
+        self.with_app_audit_event_sink(sink)
 
     def initialize_audit(self, raw_sink: Any, app_sink: Any = None) -> 'UserContext':
         """Compatibility entry point for generated applications."""
+        checked_app_sink = None if app_sink is None else validate_safe_audit_sink(app_sink)
         self._set_standard_audit_sink(raw_sink)
-        self._app_audit_sink = app_sink
+        self._app_audit_sink = checked_app_sink
         return self
 
     def configure_audit_policy(self, entity: str, mask_fields: List[str],
@@ -588,12 +609,13 @@ class UserContext:
             self, definition, domain_root_key, aggregate_type, slot
         )
 
-    def with_schema_provider(self, provider: Any) -> 'UserContext':
-        self.insert_resource("schema_provider", provider)
+    def with_schema_provider(self, provider: SchemaCapability) -> 'UserContext':
+        self._resources["schema_provider"] = validate_schema_capability(provider)
+        self._explicit_schema_provider = True
         return self
 
-    def set_schema_provider(self, provider: Any):
-        self.insert_resource("schema_provider", provider)
+    def set_schema_provider(self, provider: SchemaCapability):
+        self.with_schema_provider(provider)
 
     async def ensure_schema(self):
         provider = self.get_resource("schema_provider")
@@ -688,14 +710,14 @@ class UserContext:
 
     def has_checker(self, entity: str) -> bool:
         registry = self.get_resource("checker_registry")
-        return bool(registry and hasattr(registry, "checker") and registry.checker(entity))
+        return bool(registry and registry.checker(entity))
 
     def check_and_fix_record(self, entity: str, record: Any):
         self.check_and_fix_record_at(entity, record, None)
 
     def check_and_fix_record_at(self, entity: str, record: Any, location: Any):
         registry = self.get_resource("checker_registry")
-        if not registry or not hasattr(registry, "checker"):
+        if not registry:
             return
             
         checker = registry.checker(entity)
@@ -703,8 +725,9 @@ class UserContext:
             return
             
         results = []
-        if hasattr(checker, "check_and_fix"):
-            checker.check_and_fix(self, record, location, results)
+        if not isinstance(checker, Checker):
+            raise TypeError("checker registry returned an object without check_and_fix")
+        checker.check_and_fix(self, record, location, results)
             
         if results:
             self.translate_check_results(results)
@@ -804,8 +827,8 @@ class UserContext:
     def _set_standard_audit_sink(self, sink: Any):
         self._standard_audit_sink = sink
 
-    def with_app_audit_event_sink(self, sink: Any) -> 'UserContext':
-        self._app_audit_sink = sink
+    def with_app_audit_event_sink(self, sink: SafeAuditEventSink) -> 'UserContext':
+        self._app_audit_sink = validate_safe_audit_sink(sink)
         return self
 
     def with_mutation_policy_registry(self, registry: Any) -> 'UserContext':
