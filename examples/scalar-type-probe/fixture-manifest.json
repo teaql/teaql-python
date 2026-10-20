@@ -1,0 +1,19 @@
+{
+  "schema": "teaql.generated-example-fixture/v1",
+  "generatorCommit": "b0f743dfbed6d27af9f334945ca1c25f5d1eb5f8",
+  "generatorTest": "PythonGeneratedCompileTest#generatedPythonExactScalarNameProbe",
+  "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
+  "files": {
+    "E.py": "1760794f67fd808e402c88f56edb761b800561ac8513c3ddae1e1802feb48aac",
+    "generated_search_models.py": "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19",
+    "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "models/scalar_type_probe.py": "5a4cf6dcca0d717ff4880a065f12fb689207ef93383edb51dee8c354266e2f05",
+    "models/type_platform.py": "70b41a7849f09a9310fde2d6df04a96b9d935400c94ef7c27928291e682b2779",
+    "Q.py": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
+    "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requests/scalar_type_probe_request.py": "b28a0cc24d747fa2efe89f5cc23b5a08eebc050244a2099aaf7f06db191459f2",
+    "requests/type_platform_request.py": "00cf79bd3ca8618099c8853ae9c3e178e6dbaf04e38201ac703f05fbf91a608c",
+    "runtime_module.py": "3313ab25407c836fb3fc4c9a906a7a1e32f7e9a6b4b2d2e75daf4aca6b766884",
+    "teaql-i18n.json": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163"
+  }
+}
