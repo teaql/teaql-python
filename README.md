@@ -443,6 +443,7 @@ Request JSON is not allowed to replace those trusted capabilities.
 - [Facet example](examples/facet-trace/README.md)
 - [Opaque reference example](examples/opaque-entity-reference)
 - [Binary object storage and temporary S3 URLs](examples/object-storage/README.md)
+- [Generated scalar probe and exact SQLite Decimal](examples/scalar-type-probe/README.md)
 
 ## Safe troubleshooting
 

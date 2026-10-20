@@ -1,0 +1,2 @@
+# Keep the frozen generator output byte-identical, including its EOF spacing.
+generated/** linguist-generated=true whitespace=-blank-at-eof

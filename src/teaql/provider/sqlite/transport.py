@@ -1,4 +1,5 @@
 import json
+import re
 import aiosqlite
 from decimal import Decimal
 from datetime import date, time
@@ -6,6 +7,7 @@ from typing import List, Dict, Any, Optional, AsyncIterator
 from teaql.sql.executor import SqlTransactionTransport, SqlTransactionTransportTx
 from teaql.sql.types import CompiledQuery
 from teaql.core.value import Value, DataType, Timestamp
+from ._decimal import DecimalConnection, decimal_text
 
 def _soundex(value: Optional[str]) -> str:
     if value is None:
@@ -33,6 +35,10 @@ class SqliteTransport(SqlTransactionTransport):
         self.db_path = db_path
         self._soundex_enabled = False
 
+    def _connect(self):
+        return aiosqlite.connect(self.db_path, uri=self.db_path.startswith("file:"),
+                                 factory=DecimalConnection)
+
     async def enable_soundex(self) -> None:
         self._soundex_enabled = True
 
@@ -48,10 +54,7 @@ class SqliteTransport(SqlTransactionTransport):
             elif isinstance(v._data, bool):
                 res.append(1 if v._data else 0)
             elif isinstance(v._data, Decimal):
-                # SQLite applies NUMERIC affinity to an ordinary decimal string.
-                # A tagged transport sentinel would be stored/compared as text and
-                # breaks ordered predicates such as amount > Decimal("50").
-                res.append(str(v._data))
+                res.append(decimal_text(v._data))
             elif getattr(v, '_type_hint', None) == DataType.Json or isinstance(v._data, (dict, list)):
                 res.append(json.dumps(v._data))
             elif getattr(v, '_type_hint', None) == DataType.Time or isinstance(v._data, time):
@@ -71,19 +74,44 @@ class SqliteTransport(SqlTransactionTransport):
         return tuple(res)
         
     def _decode_value(self, val: Any) -> Any:
-        if val is None:
-            return None
-        if isinstance(val, str):
-            if val.startswith("__teaql_decimal__:"):
-                return Decimal(val.split(":", 1)[1])
+        # Only declared field/result metadata may interpret text as Decimal.
         return val
+
+    async def verify_schema(self, entity):
+        properties = [prop for prop in entity.properties
+                      if prop.property_type == DataType.Decimal
+                      or str(prop.property_type).lower() in ("decimal", "numeric")]
+        if not properties:
+            return
+        table = getattr(entity, "table_name_val", entity._name)
+        quoted_table = '"' + table.replace('"', '""') + '"'
+        columns = await self.fetch_all_sql(CompiledQuery(f"PRAGMA table_info({quoted_table})", []))
+        types = {row["name"]: row["type"].upper() for row in columns}
+        definitions = await self.fetch_all_sql(CompiledQuery(
+            "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = ?", [Value.Text(table)]))
+        definition = definitions[0]["sql"] if definitions else ""
+        for prop in properties:
+            name = prop.column_name_val
+            escaped = re.escape(name)
+            quoted = re.escape('"' + name.replace('"', '""') + '"')
+            identifier = rf'(?:{quoted}|(?<![\w]){escaped}(?![\w]))'
+            declaration = rf'{identifier}\s+TEAQL_DECIMAL_TEXT\s+COLLATE\s+TEAQL_DECIMAL\b'
+            check = (rf'CHECK\s*\(\s*{identifier}\s+IS\s+NULL\s+OR\s*\(\s*'
+                     rf'typeof\(\s*{identifier}\s*\)\s*=\s*\x27text\x27\s+AND\s+'
+                     rf'teaql_decimal_valid\(\s*{identifier}\s*\)\s*\)\s*\)')
+            if (types.get(name) != "TEAQL_DECIMAL_TEXT"
+                    or not re.search(declaration, definition, re.IGNORECASE)
+                    or not re.search(check, definition, re.IGNORECASE)):
+                raise ValueError(
+                    f"SQLITE_DECIMAL_MIGRATION_REQUIRED: {table}.{name} requires "
+                    "TEAQL_DECIMAL_TEXT, TEAQL_DECIMAL collation and the generated value check; "
+                    "previously rounded NUMERIC/REAL values cannot be recovered automatically")
 
     async def fetch_all_sql(self, query: CompiledQuery) -> List[Dict[str, Any]]:
         sql = query.sql_with_comment()
         params = self._bind_values(query.params)
         
-        is_uri = self.db_path.startswith("file:")
-        async with aiosqlite.connect(self.db_path, uri=is_uri) as db:
+        async with self._connect() as db:
             await self._prepare(db)
             db.row_factory = aiosqlite.Row
             async with db.execute(sql, params) as cursor:
@@ -103,8 +131,7 @@ class SqliteTransport(SqlTransactionTransport):
 
     async def stream_sql(self, query: CompiledQuery, chunk_size: int) -> AsyncIterator[List[Dict[str, Any]]]:
         sql = query.sql_with_comment(); params = self._bind_values(query.params)
-        is_uri = self.db_path.startswith("file:")
-        async with aiosqlite.connect(self.db_path, uri=is_uri) as db:
+        async with self._connect() as db:
             await self._prepare(db)
             db.row_factory = aiosqlite.Row
             async with db.execute(sql, params) as cursor:
@@ -118,16 +145,14 @@ class SqliteTransport(SqlTransactionTransport):
         sql = query.sql_with_comment()
         params = self._bind_values(query.params)
         
-        is_uri = self.db_path.startswith("file:")
-        async with aiosqlite.connect(self.db_path, uri=is_uri) as db:
+        async with self._connect() as db:
             await self._prepare(db)
             async with db.execute(sql, params) as cursor:
                 await db.commit()
                 return cursor.rowcount, cursor.lastrowid
 
     async def begin_sql(self) -> 'SqlTransactionTransportTx':
-        is_uri = self.db_path.startswith("file:")
-        db = await aiosqlite.connect(self.db_path, uri=is_uri)
+        db = await self._connect()
         await self._prepare(db)
         await db.execute("BEGIN IMMEDIATE")
         return _SqliteTransaction(db, self._bind_values, self._decode_value)
