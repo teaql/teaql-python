@@ -197,13 +197,15 @@ async def test_decimal_transaction_rollback_and_sparse_projection_keep_the_contr
     try:
         await context.ensure_schema()
         transaction = await service.transport.begin_sql()
-        await transaction.execute_sql(CompiledQuery(
-            "INSERT INTO amount_data (id, version, amount) VALUES (99, 1, ?)",
-            [Value.Decimal(Decimal("3.50"))]))
-        rows = await transaction.fetch_all_sql(CompiledQuery(
-            "SELECT teaql_decimal_sum(amount) AS total FROM amount_data", []))
-        assert rows == [{"total": "3.50"}]
-        await transaction.rollback_sql()
+        try:
+            await transaction.execute_sql(CompiledQuery(
+                "INSERT INTO amount_data (id, version, amount) VALUES (99, 1, ?)",
+                [Value.Decimal(Decimal("3.50"))]))
+            rows = await transaction.fetch_all_sql(CompiledQuery(
+                "SELECT teaql_decimal_sum(amount) AS total FROM amount_data", []))
+            assert rows == [{"total": "3.50"}]
+        finally:
+            await transaction.rollback_sql()
         assert not (await service.query(context, QueryRequest(bounded_query()))).rows
         created = await insert(service, context, None)
         rows = (await service.query(context, QueryRequest(bounded_query().project("id")))).rows
