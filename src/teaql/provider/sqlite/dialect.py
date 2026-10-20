@@ -25,7 +25,7 @@ class SqliteDialect(SqlDialect):
             if dt_str in ("f64", "f32", "float", "double"): return "REAL"
             if dt_str in ("decimal", "numeric"): return "NUMERIC"
             if dt_str in ("text", "string", "varchar"): return "VARCHAR(255)"
-            if dt_str in ("largetext", "json", "date", "timestamp"): return "TEXT"
+            if dt_str in ("largetext", "json", "date", "time", "timestamp"): return "TEXT"
             raise UnsupportedSchemaTypeError(data_type)
 
         if data_type == DataType.Bool: 
@@ -38,7 +38,7 @@ class SqliteDialect(SqlDialect):
             return "NUMERIC"
         if data_type == DataType.Text: 
             return "VARCHAR(255)"
-        if data_type in (DataType.LargeText, DataType.Json, DataType.Date, DataType.Timestamp): 
+        if data_type in (DataType.LargeText, DataType.Json, DataType.Date, DataType.Time, DataType.Timestamp):
             return "TEXT"
             
         raise UnsupportedSchemaTypeError(data_type)

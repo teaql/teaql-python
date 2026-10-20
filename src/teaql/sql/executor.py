@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, AsyncIterator
 from copy import deepcopy
-from datetime import date, datetime
+from datetime import date, datetime, time as wall_time
 import asyncio
 import hashlib
 import logging
@@ -167,20 +167,30 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
 
     @staticmethod
     def _normalize_loaded_dates(rows, descriptor, query=None):
-        """Declared Date fields stay native through list, cursor and save readback.
+        """Declared Date/Time fields stay native through list, cursor and save readback.
 
         Do not guess from text content or convert computed aggregate aliases.
         Missing columns and loaded SQL NULL retain their distinct states.
         """
         aliases = {aggregate.alias for aggregate in query.aggregates} if query is not None else set()
         properties = [prop for prop in descriptor.properties
-                      if prop.property_type == DataType.Date or str(prop.property_type).lower() == 'date']
+                      if prop.property_type in (DataType.Date, DataType.Time)
+                      or str(prop.property_type).lower() in ('date', 'time')]
         for row in rows:
             for prop in properties:
                 for key in {prop.name, prop.column_name_val} - aliases:
                     if key not in row or row[key] is None:
                         continue
                     current = row[key]
+                    if prop.property_type == DataType.Time or str(prop.property_type).lower() == 'time':
+                        if isinstance(current, str):
+                            try:
+                                row[key] = wall_time.fromisoformat(current)
+                            except ValueError:
+                                raise ValueError(f'invalid loaded Time field {descriptor._name}.{prop.name}') from None
+                        elif not isinstance(current, wall_time):
+                            raise ValueError(f'invalid loaded Time field {descriptor._name}.{prop.name}')
+                        continue
                     if isinstance(current, datetime):
                         row[key] = current.date()
                     elif isinstance(current, str):

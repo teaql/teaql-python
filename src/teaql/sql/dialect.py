@@ -91,6 +91,7 @@ class SqlDialect(ABC):
         if data_type == DataType.F64: return "REAL"
         if data_type == DataType.Decimal: return "NUMERIC"
         if data_type == DataType.Text: return "VARCHAR(255)"
+        if data_type == DataType.Time: return "TIME"
         if data_type in (DataType.LargeText, DataType.Json, DataType.Date, DataType.Timestamp): return "TEXT"
         raise UnsupportedSchemaTypeError(data_type)
 

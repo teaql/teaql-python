@@ -1,7 +1,7 @@
 from enum import Enum, auto
 from dataclasses import dataclass
 from typing import List, Optional
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from decimal import Decimal
 import json
 from contextlib import contextmanager
@@ -179,6 +179,11 @@ def _sql_literal(value: Value, dialect: DatabaseKind) -> str:
         return "TRUE" if raw else "FALSE"
     if isinstance(raw, (int, float, Decimal)):
         return str(raw)
+    if isinstance(raw, time):
+        literal = _quote_sql_string(raw.isoformat())
+        if dialect == DatabaseKind.PostgreSql: return f"TIME {literal}"
+        if dialect == DatabaseKind.MySql: return f"CAST({literal} AS TIME)"
+        return literal
     if isinstance(raw, date):
         literal = _quote_sql_string(raw.isoformat())
         if dialect == DatabaseKind.PostgreSql: return f"DATE {literal}"

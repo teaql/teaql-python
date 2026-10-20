@@ -1,5 +1,5 @@
 import pytest
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from decimal import Decimal
 from teaql.core.value import Value, Timestamp, DataType
 
@@ -98,6 +98,16 @@ def test_value_try_date_rejects_invalid_dates_and_unrelated_variants():
     assert Value.Text("2023-02-29").try_date() is None
     assert Value.Text("2024-02-29T00:00:00Z").try_date() is None
     assert Value.Null().try_date() is None
+
+def test_value_time_is_a_native_scalar_and_json_safe():
+    clock = time(9, 30, 15, 123000)
+    value = Value.from_any(clock)
+    assert value._type_hint == DataType.Time
+    assert value.try_time() == clock
+    assert value.to_json_value() == "09:30:15.123000"
+    assert Value.Text("09:30:15.123000").try_time() == clock
+    assert Value.Text("25:30:15").try_time() is None
+    assert Value.Null().try_time() is None
 
 def test_value_try_timestamp_accepts_timestamp_and_supported_text_formats():
     utc_timestamp = Timestamp(int(datetime(2024, 1, 2, 3, 4, 5, tzinfo=timezone.utc).timestamp() * 1000))

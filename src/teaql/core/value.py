@@ -1,6 +1,6 @@
 from enum import Enum, auto
 from dataclasses import dataclass
-from datetime import date, datetime, timezone
+from datetime import date, datetime, time, timezone
 from decimal import Decimal
 from typing import Any, Dict, List, Optional, Union
 import json
@@ -15,6 +15,7 @@ class DataType(Enum):
     LargeText = auto()
     Json = auto()
     Date = auto()
+    Time = auto()
     Timestamp = auto()
 
 @dataclass
@@ -95,6 +96,10 @@ class Value:
         return Value(v)
 
     @staticmethod
+    def Time(v: time) -> 'Value':
+        return Value(v, DataType.Time)
+
+    @staticmethod
     def Timestamp(v: Timestamp) -> 'Value':
         return Value(v)
 
@@ -137,6 +142,8 @@ class Value:
             return cls.Text(value)
         if isinstance(value, date) and not isinstance(value, datetime):
             return cls.Date(value)
+        if isinstance(value, time):
+            return cls.Time(value)
         if isinstance(value, Timestamp):
             return cls.Timestamp(value)
         if isinstance(value, datetime):
@@ -215,6 +222,16 @@ class Value:
                 pass
         return None
 
+    def try_time(self) -> Optional[time]:
+        if isinstance(self._data, time):
+            return self._data
+        if isinstance(self._data, str):
+            try:
+                return time.fromisoformat(self._data)
+            except ValueError:
+                pass
+        return None
+
     def try_timestamp(self) -> Optional[Timestamp]:
         if isinstance(self._data, Timestamp):
             return self._data
@@ -251,6 +268,8 @@ class Value:
         if isinstance(self._data, Decimal):
             return str(self._data)
         if isinstance(self._data, date):
+            return self._data.isoformat()
+        if isinstance(self._data, time):
             return self._data.isoformat()
         if isinstance(self._data, Timestamp):
             return self._data.millis
