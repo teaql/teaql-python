@@ -1,7 +1,7 @@
 import json
 import aiosqlite
 from decimal import Decimal
-from datetime import date
+from datetime import date, time
 from typing import List, Dict, Any, Optional, AsyncIterator
 from teaql.sql.executor import SqlTransactionTransport, SqlTransactionTransportTx
 from teaql.sql.types import CompiledQuery
@@ -54,6 +54,8 @@ class SqliteTransport(SqlTransactionTransport):
                 res.append(str(v._data))
             elif getattr(v, '_type_hint', None) == DataType.Json or isinstance(v._data, (dict, list)):
                 res.append(json.dumps(v._data))
+            elif getattr(v, '_type_hint', None) == DataType.Time or isinstance(v._data, time):
+                res.append(v._data.isoformat() if isinstance(v._data, time) else str(v._data))
             elif getattr(v, '_type_hint', None) == DataType.Date or isinstance(v._data, date):
                 if hasattr(v._data, "strftime"):
                     res.append(v._data.strftime("%Y-%m-%d"))

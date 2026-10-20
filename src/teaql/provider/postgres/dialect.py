@@ -30,6 +30,8 @@ class PostgresDialect(SqlDialect):
             return "JSONB"
         if data_type == DataType.Date:
             return "DATE"
+        if data_type == DataType.Time:
+            return "TIME"
         if data_type == DataType.Timestamp:
             return "TIMESTAMPTZ"
             
