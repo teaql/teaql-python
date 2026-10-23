@@ -12,6 +12,7 @@ from .graph_session import GraphMutationSession, GraphCommittedError
 from .store import DataStore
 from .audit import RawAuditEvent, SafeAuditEvent, MutationAuditKind
 from .business_clock import BusinessClock, FixedBusinessClock, SystemBusinessClock
+from .expression_path import ExpressionPath, TeaQLNotLoadedError
 from .internal_id import InternalIdAllocator
 from .extensions import (
     Checker, CheckerRegistry, DiagnosticTelemetryAdapter, RequestPolicy,
@@ -66,6 +67,7 @@ from teaql.core.entity import EntityKey, EntityChangeSet, EntityRoot
 __all__ = ["WireFieldMetadata", "WireEntityMetadata", "NormalizedWireInput", "WireInputError", "create_wire_entity_metadata", "normalize_wire_input", "encode_wire_output", "retain_submitted_paths", "EntityKey", "EntityChangeSet", "EntityRoot", "ContextEntityRef", "ContextRootError", "CheckException", "CheckResult", "I18nCatalog", "JsonFieldNamingProfile", "Locale", "ObjectLocation", "UnsupportedLocaleError", "UserContext", "TeaqlRuntime", "SqlLogEntry", "SqlLogOperation", "DiagnosticSqlLogSink", "TextDiagnosticSqlLogSink", "ServiceRuntimeFromEnv", "RuntimeModule", "DataStore", "RawAuditEvent", "SafeAuditEvent", "MutationAuditKind", "BusinessClock", "FixedBusinessClock", "SystemBusinessClock", "InternalIdAllocator", "AeadEntityReferenceCodec", "EntityReferenceClaims", "EntityReferenceCodec", "EntityReferenceTokenError", "ENTITY_REFERENCE_AAD", "UNSAFE_RAW_ENTITY_REFERENCES_ACKNOWLEDGEMENT", "UNSAFE_RAW_ENTITY_REFERENCES_ENVIRONMENT", "BUSINESS_ID_PERMUTATION_V1_ALPHABET", "BUSINESS_ID_PERMUTATION_V1_DOMAIN_SIZE", "BUSINESS_ID_PERMUTATION_V1_MAX_SEQUENCE", "BUSINESS_ID_PERMUTATION_V1_WIDTH", "DefaultBusinessIdProfileFactory", "DefaultBusinessIdService", "InMemoryBusinessIdAllocator", "PermutedDailyBusinessIdProfile", "StaticBusinessIdKeyProvider", "encode_business_id_permutation_v1", "ContextTools", "ExecutableHttpTool", "HTTP_TOOL", "HttpIntentPhase", "HttpTool", "HttpToolProvider", "ToolDeniedError", "ToolError", "ToolPolicy", "ToolRisk", "Tools", "ToolToken", "ToolUnavailableError"]
 
 __all__ += [
+    "ExpressionPath", "TeaQLNotLoadedError",
     "Checker", "CheckerRegistry", "DiagnosticTelemetryAdapter", "RequestPolicy",
     "RequestPolicyInput", "RuntimeTelemetryAdapter", "RuntimeTelemetryInput",
     "SafeAuditEventSink", "SchemaCapability",
