@@ -753,6 +753,41 @@ class UserContext:
                 self.finish_fix_evidence()
             self._resources.pop("fix_operation", None)
 
+    def _validate_required_mutation_input(self, mutation: Any, *, parent_field=None):
+        """Reject missing input before stable-ID allocation does any I/O.
+
+        This narrow admission check never replaces Checker/Fix, policy review
+        or transactional validation. Generated defaults and a cascade's known
+        parent association are resolved by those later stages, not fabricated
+        here. It reads canonical model keys from trusted schema metadata.
+        """
+        from teaql.core.mutation import InsertCommand, UpdateCommand
+        from .i18n import CheckException, CheckResult, ObjectLocation
+        if not isinstance(mutation, (InsertCommand, UpdateCommand)):
+            return
+        descriptor = self.entity(mutation.entity)
+        if descriptor is None:
+            return  # The authoritative checker/provider still validates it.
+        inserting = isinstance(mutation, InsertCommand)
+        values = mutation.values
+        results = []
+        for prop in getattr(descriptor, "properties", ()):
+            if prop.nullable or prop._is_id or prop._is_version:
+                continue
+            if (inserting and prop.generated_on_insert) or (
+                    not inserting and prop.generated_on_update):
+                continue
+            if prop.name == parent_field:
+                continue  # A concrete parent object will supply its reserved ID.
+            present = prop.name in values
+            value = values.get(prop.name)
+            is_null = value.is_null() if hasattr(value, "is_null") else value is None
+            if (inserting and not present) or (present and is_null):
+                results.append(CheckResult("required", ObjectLocation().property(prop.name)))
+        if results:
+            self.translate_check_results(results)
+            raise CheckException(results)
+
     def with_business_clock(self, clock: BusinessClock) -> 'UserContext':
         if clock is None or not callable(getattr(clock, "now", None)):
             raise TypeError("business clock must provide now()")
