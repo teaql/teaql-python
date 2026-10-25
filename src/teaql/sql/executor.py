@@ -1107,14 +1107,20 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                                           'success', affected_rows=affected_rows, intent_privacy=privacy, correlation=statement.correlation)
 
         generated_values = {}
-        if op == "insert" and last_insert_id:
-            # Assumes the first ID column
+        if op == "insert":
             id_prop = next((
                 p for p in getattr(entity_desc, 'properties', [])
                 if getattr(p, '_is_id', False) or getattr(p, 'is_id_val', False)
             ), None)
             if id_prop:
-                generated_values[id_prop.name] = Value.val_u64(last_insert_id)
+                # TeaQL assigned the modeled identity before compiling INSERT.
+                # SQLite lastrowid is a different key for BIGINT PRIMARY KEY;
+                # it is only an identity fallback when no assigned key exists.
+                assigned = req_data.values.get(id_prop.name)
+                if assigned is not None:
+                    generated_values[id_prop.name] = assigned
+                elif last_insert_id:
+                    generated_values[id_prop.name] = Value.val_u64(last_insert_id)
 
         id_prop = next(
             (

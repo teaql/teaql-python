@@ -76,6 +76,8 @@ async def test_one_root_covers_optional_count_facets_and_hydration(counted):
 
     result = await typed(context, root, counted, hydrate)
     assert list(result) == [2] and result.facets == {'statusCounts': []}
+    assert result.total_count == (3 if counted else None)
+    assert result.is_loaded and result.facets['statusCounts'].is_loaded
     assert len(service.queries) == (2 if counted else 1)
     assert result.aggregations == ({'totalOrders': 3} if counted else {})
     assert probe.events == [('start', 'Order.list'), ('success', 1)]
@@ -192,3 +194,27 @@ async def test_adapter_faults_do_not_replace_results_or_failures():
     with pytest.raises(ValueError) as caught:
         await typed(context, root)
     assert caught.value is original and _query_owner.get() is None
+
+
+@pytest.mark.asyncio
+async def test_scalar_aggregation_does_not_hydrate_an_entity():
+    context, service, probe, _ = setup(False)
+    query = SelectQuery('Order').sum('amount', 'totalOrders').comment('sum orders').purpose('verify aggregate boundary')
+
+    def hydrate(row):
+        pytest.fail('aggregate aliases must never be hydrated as an entity')
+
+    result = await typed(context, QueryRequest(query), False, hydrate)
+    assert result == [] and result.is_loaded and result.total_count is None
+    assert result.aggregations == {'totalOrders': 3}
+    assert probe.events == [('start', 'Order.list'), ('success', 0)]
+
+
+@pytest.mark.asyncio
+async def test_grouped_projection_cannot_weaken_typed_entity_list():
+    context, service, _, _ = setup(False)
+    query = (SelectQuery('Order').count_field('id', 'n').group_by('status')
+             .comment('group orders').purpose('verify separate projection boundary'))
+    with pytest.raises(ValueError, match='separate projection'):
+        await typed(context, QueryRequest(query), False)
+    assert service.queries == []

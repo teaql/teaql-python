@@ -11,7 +11,7 @@ class WebResponse(BaseModel, Generic[T]):
     resultCode: int = 0
     status: str = "YES"
     message: Optional[str] = None
-    recordCount: int = 0
+    recordCount: Optional[int] = 0
     facets: Optional[Dict[str, Any]] = None
     version: str = "1.001"
     traceId: Optional[str] = None
