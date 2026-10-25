@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, AsyncIterator
 from copy import deepcopy
-from datetime import date, datetime, time as wall_time
+from datetime import date, datetime, time as wall_time, timedelta, timezone
 import asyncio
 import hashlib
 import logging
@@ -23,12 +23,12 @@ from teaql.core.mutation import (
 from .types import CompiledQuery, SqlCompileError
 from .dialect import SqlDialect
 from teaql.core.expr import (
-    AndExpr, BetweenExpr, BinaryExpr, BinaryOp, FunctionExpr, IsNotNullExpr,
+    AndExpr, BetweenExpr, BinaryExpr, BinaryOp, ExprFunction, FunctionExpr, IsNotNullExpr,
     IsNullExpr, NotExpr, OrExpr, SubQueryExpr, ColumnExpr, ValueExpr,
 )
 from teaql.core.query import Aggregate, AggregateFunction, SelectQuery
 from teaql.core.request_tree import QueryOperation
-from teaql.core.value import DataType, Value
+from teaql.core.value import DataType, Timestamp, Value
 from teaql.core.trace import canonical_sql_trace_path, physical_readback_path, trace_name
 from teaql.runtime.telemetry import RuntimeOperation, observe_runtime_operation, start_runtime_operation
 from teaql.runtime.query_list import observe_query_operation
@@ -114,6 +114,9 @@ class SqlTransport(ABC):
     async def stream_sql(self, query: CompiledQuery, chunk_size: int) -> AsyncIterator[List[Dict[str, Any]]]:
         raise NotImplementedError("streaming query is not supported by this transport")
 
+    async def verify_schema(self, entity) -> None:
+        """Provider-specific storage guarantees that must fail before bootstrap."""
+
 class SqlTransaction(ABC):
     @abstractmethod
     async def commit_sql(self) -> None:
@@ -165,6 +168,42 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         name = getattr(kind, 'name', str(kind)).lower()
         return 'postgres' if name == 'postgresql' else name
 
+    def _normalize_loaded_scalars(self, rows, descriptor, query=None):
+        self._normalize_loaded_dates(rows, descriptor, query)
+        decimal_properties = {prop.name: prop for prop in descriptor.properties
+                              if prop.property_type == DataType.Decimal
+                              or str(prop.property_type).lower() in ("decimal", "numeric")}
+        if not decimal_properties:
+            return
+        aliases = set()
+        result_fields = {}
+        if query is not None:
+            aliases.update(aggregate.alias for aggregate in query.aggregates)
+            aliases.update(projection.alias for projection in query.expr_projection)
+            aliases.update(projection.property_name
+                           for projection in query.raw_projections + query.dynamic_properties)
+            for aggregate in query.aggregates:
+                if (aggregate.function in (AggregateFunction.Sum, AggregateFunction.Min, AggregateFunction.Max)
+                        and aggregate.field in decimal_properties):
+                    result_fields[aggregate.alias] = aggregate.field
+            for projection in query.expr_projection:
+                expr = projection.expr
+                argument = (expr.args[0] if isinstance(expr, FunctionExpr) and len(expr.args) == 1
+                            and expr.function in (ExprFunction.Sum, ExprFunction.Min, ExprFunction.Max)
+                            else expr if isinstance(expr, ColumnExpr) else None)
+                if isinstance(argument, ColumnExpr) and argument.name in decimal_properties:
+                    result_fields[projection.alias] = argument.name
+        for prop in decimal_properties.values():
+            for key in {prop.name, prop.column_name_val} - aliases:
+                result_fields[key] = prop.name
+        for row in rows:
+            for key, field in result_fields.items():
+                if key in row and row[key] is not None:
+                    try:
+                        row[key] = self.dialect.normalize_decimal(row[key])
+                    except ValueError:
+                        raise ValueError(f"invalid loaded Decimal field {descriptor._name}.{field}") from None
+
     @staticmethod
     def _normalize_loaded_dates(rows, descriptor, query=None):
         """Declared Date/Time fields stay native through list, cursor and save readback.
@@ -172,34 +211,69 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         Do not guess from text content or convert computed aggregate aliases.
         Missing columns and loaded SQL NULL retain their distinct states.
         """
-        aliases = {aggregate.alias for aggregate in query.aggregates} if query is not None else set()
-        properties = [prop for prop in descriptor.properties
-                      if prop.property_type in (DataType.Date, DataType.Time)
-                      or str(prop.property_type).lower() in ('date', 'time')]
+        properties = {prop.name: prop for prop in descriptor.properties
+                      if prop.property_type in (DataType.Date, DataType.Time, DataType.Timestamp)
+                      or str(prop.property_type).lower() in ('date', 'time', 'timestamp')}
+        aliases = set()
+        result_fields = {}
+        if query is not None:
+            aliases.update(aggregate.alias for aggregate in query.aggregates)
+            aliases.update(projection.alias for projection in query.expr_projection)
+            aliases.update(projection.property_name for projection in query.raw_projections + query.dynamic_properties)
+            for aggregate in query.aggregates:
+                if aggregate.function in (AggregateFunction.Min, AggregateFunction.Max) and aggregate.field in properties:
+                    result_fields[aggregate.alias] = properties[aggregate.field]
+            for projection in query.expr_projection:
+                expr = projection.expr
+                argument = (expr.args[0] if isinstance(expr, FunctionExpr) and len(expr.args) == 1
+                            and expr.function in (ExprFunction.Min, ExprFunction.Max)
+                            else expr if isinstance(expr, ColumnExpr) else None)
+                if isinstance(argument, ColumnExpr) and argument.name in properties:
+                    result_fields[projection.alias] = properties[argument.name]
+        for prop in properties.values():
+            for key in {prop.name, prop.column_name_val} - aliases:
+                result_fields[key] = prop
         for row in rows:
-            for prop in properties:
-                for key in {prop.name, prop.column_name_val} - aliases:
-                    if key not in row or row[key] is None:
-                        continue
-                    current = row[key]
-                    if prop.property_type == DataType.Time or str(prop.property_type).lower() == 'time':
+            for key, prop in result_fields.items():
+                if key not in row or row[key] is None:
+                    continue
+                current = row[key]
+                if prop.property_type == DataType.Timestamp or str(prop.property_type).lower() == 'timestamp':
+                    try:
+                        if isinstance(current, Timestamp):
+                            current = current.millis
                         if isinstance(current, str):
-                            try:
-                                row[key] = wall_time.fromisoformat(current)
-                            except ValueError:
-                                raise ValueError(f'invalid loaded Time field {descriptor._name}.{prop.name}') from None
-                        elif not isinstance(current, wall_time):
-                            raise ValueError(f'invalid loaded Time field {descriptor._name}.{prop.name}')
-                        continue
-                    if isinstance(current, datetime):
-                        row[key] = current.date()
-                    elif isinstance(current, str):
+                            current = (int(current) if current.lstrip('-').isdigit()
+                                       else datetime.fromisoformat(current.replace('Z', '+00:00')))
+                        if isinstance(current, datetime):
+                            # Database DATETIME(3) is canonical UTC in the accepted
+                            # MySQL mapping. Never consult the application host zone.
+                            row[key] = (current if current.tzinfo is not None else current.replace(tzinfo=timezone.utc)).astimezone(timezone.utc)
+                        elif isinstance(current, int) and not isinstance(current, bool):
+                            row[key] = datetime(1970, 1, 1, tzinfo=timezone.utc) + timedelta(milliseconds=current)
+                        else:
+                            raise ValueError()
+                    except (TypeError, ValueError, OverflowError):
+                        raise ValueError(f'invalid loaded Timestamp field {descriptor._name}.{prop.name}') from None
+                    continue
+                if prop.property_type == DataType.Time or str(prop.property_type).lower() == 'time':
+                    if isinstance(current, str):
                         try:
-                            row[key] = date.fromisoformat(current)
+                            row[key] = wall_time.fromisoformat(current)
                         except ValueError:
-                            raise ValueError(f'invalid loaded Date field {descriptor._name}.{prop.name}') from None
-                    elif not isinstance(current, date):
-                        raise ValueError(f'invalid loaded Date field {descriptor._name}.{prop.name}')
+                            raise ValueError(f'invalid loaded Time field {descriptor._name}.{prop.name}') from None
+                    elif not isinstance(current, wall_time):
+                        raise ValueError(f'invalid loaded Time field {descriptor._name}.{prop.name}')
+                    continue
+                if isinstance(current, datetime):
+                    row[key] = current.date()
+                elif isinstance(current, str):
+                    try:
+                        row[key] = date.fromisoformat(current)
+                    except ValueError:
+                        raise ValueError(f'invalid loaded Date field {descriptor._name}.{prop.name}') from None
+                elif not isinstance(current, date):
+                    raise ValueError(f'invalid loaded Date field {descriptor._name}.{prop.name}')
 
     def _query_intent_bindings(self, compiled, request):
         """Capture declared descendant bindings before any physical parent log.
@@ -409,7 +483,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         try:
             stream = self.transport.stream_sql(compiled, chunk_size)
             async for rows in stream:
-                self._normalize_loaded_dates(rows, entity_desc, request.query)
+                self._normalize_loaded_scalars(rows, entity_desc, request.query)
                 if pending is not None:
                     delivered += len(pending)
                     statement.deactivate()
@@ -528,7 +602,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         metadata = self._record_statement(context, request, compiled, start,
                                           DataServiceOperation.Query, 'success', result_count=len(rows), correlation=statement.correlation)
 
-        self._normalize_loaded_dates(rows, entity_desc, request.query)
+        self._normalize_loaded_scalars(rows, entity_desc, request.query)
 
         if assembly is not None:
             assembly.capture(rows)
@@ -1158,7 +1232,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 if len(persisted_rows) != 1:
                     raise TransportError(RuntimeError(
                         f"expected one authoritative persisted row for {req_data.entity}, got {len(persisted_rows)}"))
-                self._normalize_loaded_dates(persisted_rows, entity_desc)
+                self._normalize_loaded_scalars(persisted_rows, entity_desc)
             except BaseException as error:
                 read_scope.failure(error)
                 self._record_readback(context, readback, compiled, metadata, read_start,
@@ -1359,6 +1433,9 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                     getattr(entity, '_name', type(entity).__name__),
                     type(error).__name__,
                 )
+            verify_schema = getattr(self.transport, "verify_schema", None)
+            if callable(verify_schema):
+                await verify_schema(entity)
         await self.transport.execute_sql(CompiledQuery(
             "CREATE TABLE IF NOT EXISTS teaql_id_space ("
             "type_name VARCHAR(255) NOT NULL PRIMARY KEY, "

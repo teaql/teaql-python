@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+from decimal import Decimal, InvalidOperation
 from typing import List, Optional, Dict, Any, Tuple
 from teaql.core.query import (
     SelectQuery, OrderBy, SortDirection, Aggregate, AggregateFunction
@@ -65,6 +66,17 @@ class SqlDialect(ABC):
 
     def schema_setup_sqls(self) -> List[str]:
         return []
+
+    def normalize_decimal(self, value):
+        if not isinstance(value, (str, Decimal)):
+            raise ValueError("exact Decimal readback requires text or Decimal")
+        try:
+            result = Decimal(value)
+        except InvalidOperation:
+            raise ValueError("invalid exact Decimal readback") from None
+        if not result.is_finite():
+            raise ValueError("invalid exact Decimal readback")
+        return result
 
     def relation_top_n_policy(self) -> str:
         return "window"
@@ -401,7 +413,8 @@ class SqlDialect(ABC):
                 AggregateFunction.BitOr: "BIT_OR",
                 AggregateFunction.BitXor: "BIT_XOR",
             }[agg.function]
-            call = f"{func_sql}({field})"
+            call = ("COUNT(*)" if field == "*" else
+                    self.aggregate_call_sql(entity, func_sql, ColumnExpr(agg.field), params))
             parts.append(f"{call} AS {self.quote_ident(agg.alias)}")
             
         return ", ".join(parts)
@@ -503,7 +516,10 @@ class SqlDialect(ABC):
                 raise InvalidFunctionArgumentsError(f"Unsupported function: {function}")
             if len(args) != 1:
                 raise InvalidFunctionArgumentsError(f"{func_map[function]} expects exactly one argument")
-            return f"{func_map[function]}({self.compile_expr(entity, args[0], params)})"
+            return self.aggregate_call_sql(entity, func_map[function], args[0], params)
+
+    def aggregate_call_sql(self, entity, function_name, argument, params):
+        return f"{function_name}({self.compile_expr(entity, argument, params)})"
             
     def compile_gbk_function(self, entity: EntityDescriptor, args: List[Expr], params: List[Value]) -> str:
         if len(args) != 1:

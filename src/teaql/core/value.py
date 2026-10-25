@@ -147,7 +147,15 @@ class Value:
         if isinstance(value, Timestamp):
             return cls.Timestamp(value)
         if isinstance(value, datetime):
-            return cls.Timestamp(Timestamp(int(value.timestamp() * 1000)))
+            if value.utcoffset() is None:
+                # Legacy naive-input policy is tracked separately in #64.
+                return cls.Timestamp(Timestamp(int(value.timestamp() * 1000)))
+            utc = value.astimezone(timezone.utc)
+            delta = utc - datetime(1970, 1, 1, tzinfo=timezone.utc)
+            # Timestamp has millisecond resolution. Integer calendar arithmetic
+            # avoids binary-float truncation (e.g. 1001 ms becoming 1000 ms).
+            millis = delta.days * 86_400_000 + delta.seconds * 1000 + delta.microseconds // 1000
+            return cls.Timestamp(Timestamp(millis))
         if isinstance(value, dict):
             return cls.Json(value)
         if isinstance(value, list):

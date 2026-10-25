@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(business-clock business-id conformance facet-trace internal-id mutation-policy object-storage opaque-entity-reference order-management query-policy school-management task_board trace-chain typed-extension-spi)
+expected=(business-clock business-id conformance facet-trace internal-id mutation-policy object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management task_board trace-chain typed-extension-spi)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -21,6 +21,7 @@ if rg -l 'include\s*=.*teaql\*' "$repo/examples" --glob pyproject.toml >/dev/nul
 fi
 
 bash "$repo/examples/object-storage/verify.sh"
+bash "$repo/examples/scalar-type-probe/verify.sh"
 PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/conformance" -p 'test_sql_log_intent.py' -v
 PYTHONPATH="$repo/examples/school-management:$repo/src" python -m app.main

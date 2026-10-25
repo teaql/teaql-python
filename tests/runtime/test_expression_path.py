@@ -18,7 +18,10 @@ def test_early_repeated_relation_preserves_suffix_and_first_positional_breakpoin
     assert wire["expressionWithBrokenPoint"].count("<broken>") == 1
     assert wire["breakPointIndex"] == 0
     assert wire["suggestedFix"] == {"action": "preload", "location": wire["location"]}
-    assert json.loads(str(error)) == wire
+    assert str(error) == ("TeaQLNotLoadedError: access_path=parent break_point=parent"
+                          " — select the missing field or relation expression="
+                          + wire["expressionWithBrokenPoint"])
+    assert json.loads(json.dumps(error.to_wire())) == wire
 
 
 @pytest.mark.parametrize("profile", list(JsonFieldNamingProfile))

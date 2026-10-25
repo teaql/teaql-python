@@ -568,7 +568,8 @@ async def test_complete_scalar_fixture_including_nullable_boolean_executes(temp_
     context = RuntimeModule.new().entity(record).into_context()
     context.with_schema_provider(service)
     await context.ensure_schema()
-    async with aiosqlite.connect(temp_db) as db:
+    # Exact Decimal columns need the provider's connection-local extensions.
+    async with service.transport._connect() as db:
         await db.executemany(
             "INSERT INTO query_record_scalar VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
             [

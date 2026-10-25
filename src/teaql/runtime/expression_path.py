@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 from dataclasses import dataclass, replace
-import json
 
 from .i18n import JsonFieldNamingProfile, ObjectLocation
 
@@ -68,7 +67,15 @@ class TeaQLNotLoadedError(RuntimeError):
     def __init__(self, path: ExpressionPath, break_point: str):
         self.path = path
         self.break_point = break_point
-        super().__init__(json.dumps(self.to_wire(), ensure_ascii=False))
+        wire = self.to_wire()
+        location = ObjectLocation(tuple(
+            (segment["kind"], segment["index"] if segment["kind"] == "index" else segment["name"])
+            for segment in wire["location"]
+        ))
+        super().__init__(
+            f"TeaQLNotLoadedError: access_path={location.native_path} break_point={wire['breakPoint']}"
+            f" — select the missing field or relation expression={wire['expressionWithBrokenPoint']}"
+        )
 
     @property
     def access_path(self) -> str:

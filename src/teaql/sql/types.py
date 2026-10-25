@@ -177,7 +177,11 @@ def _sql_literal(value: Value, dialect: DatabaseKind) -> str:
         return "NULL"
     if isinstance(raw, bool):
         return "TRUE" if raw else "FALSE"
-    if isinstance(raw, (int, float, Decimal)):
+    if isinstance(raw, Decimal):
+        # Match SQLite's exact text bind. An unquoted high-precision literal
+        # would be parsed as REAL when replaying diagnostic SQL.
+        return _quote_sql_string(str(raw)) if dialect == DatabaseKind.Sqlite else str(raw)
+    if isinstance(raw, (int, float)):
         return str(raw)
     if isinstance(raw, time):
         literal = _quote_sql_string(raw.isoformat())

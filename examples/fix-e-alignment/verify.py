@@ -23,14 +23,9 @@ def arguments():
 
 
 def instant(value):
-    # Existing SQLite hydration can expose Timestamp's millisecond storage text.
-    # Compare the instant without claiming that scalar representation is aligned.
-    if isinstance(value, (int, float)) or (isinstance(value, str) and value.lstrip("-").isdigit()):
-        return datetime.fromtimestamp(int(value) / 1000, tz=timezone.utc)
-    if isinstance(value, str):
-        value = datetime.fromisoformat(value.replace("Z", "+00:00"))
-    assert isinstance(value, datetime), f"Expected a datetime-compatible result, got {type(value).__name__}"
-    return value.replace(tzinfo=value.tzinfo or timezone.utc).astimezone(timezone.utc)
+    assert isinstance(value, datetime), f"Expected a native datetime, got {type(value).__name__}"
+    assert value.tzinfo is not None, "Timestamp hydration must be explicitly zone-aware"
+    return value.astimezone(timezone.utc)
 
 
 async def verify(options):
@@ -44,6 +39,7 @@ async def verify(options):
     from teaql.runtime import ContextEntityRef, FixedBusinessClock, TeaQLNotLoadedError, UserContext
 
     diagnostics = []
+    human_messages = []
 
     def missing(expression, location, attempted, marked, terminal="eval", fallback=None):
         try:
@@ -58,6 +54,7 @@ async def verify(options):
             assert "root" not in wire and "inputValue" not in wire
             assert fallback is None or fallback not in str(error)
             diagnostics.append(wire)
+            human_messages.append(str(error))
         else:
             raise AssertionError("NotLoaded must not be treated as loaded null or fallback")
 
@@ -119,11 +116,16 @@ async def verify(options):
     assert instant(E.purchase_order(persisted).update_time().eval()) == second
     assert E.purchase_order(persisted).contact_phone().eval() == "5550101"
     assert context.get_resource("fix_time") is None
+    from loading_probe import verify_loading
+    await verify_loading(context, saved.id)
+    from ownership_probe import verify_ownership
+    await verify_ownership(context)
     print("FIX_E_EXAMPLE=" + json.dumps({"language": "python", "passed": True,
           "normalGeneratedSave": True, "database": str(options.database),
           "createTimePreserved": True, "updateTimeAdvanced": True,
           "observedTimestampRepresentation": type(E.purchase_order(persisted).create_time().eval()).__name__,
-          "declaredContextRootInjected": True, "diagnostics": diagnostics}))
+          "declaredContextRootInjected": True, "diagnostics": diagnostics,
+          "humanMessages": human_messages}))
 
 
 if __name__ == "__main__":
