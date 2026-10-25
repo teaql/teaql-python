@@ -717,17 +717,17 @@ class UserContext:
 
     def check_and_fix_record_at(self, entity: str, record: Any, location: Any):
         registry = self.get_resource("checker_registry")
-        if not registry:
-            return
-            
-        checker = registry.checker(entity)
-        if not checker:
-            return
-            
         results = []
-        if not isinstance(checker, Checker):
-            raise TypeError("checker registry returned an object without check_and_fix")
-        checker.check_and_fix(self, record, location, results)
+        checker = registry.checker(entity) if registry else None
+        if checker is not None:
+            if not isinstance(checker, Checker):
+                raise TypeError("checker registry returned an object without check_and_fix")
+            checker.check_and_fix(self, record, location, results)
+        # Customer Fix may repair an input or introduce a different value. The
+        # portable representation check therefore runs last, even when no
+        # customer/generated checker is installed for this entity.
+        from .scalar_validation import finite_scalar_results
+        results.extend(finite_scalar_results(self.entity(entity), record, location))
             
         if results:
             self.translate_check_results(results)

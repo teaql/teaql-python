@@ -1,5 +1,6 @@
 import json
 import re
+from math import isfinite
 import aiosqlite
 from decimal import Decimal
 from datetime import date, time
@@ -49,6 +50,8 @@ class SqliteTransport(SqlTransactionTransport):
     def _bind_values(self, params: List[Value]) -> tuple:
         res = []
         for v in params:
+            if isinstance(v._data, float) and not isfinite(v._data):
+                raise ValueError("nonfinite SQLite floating-point parameter")
             if v._data is None:
                 res.append(None)
             elif isinstance(v._data, bool):
