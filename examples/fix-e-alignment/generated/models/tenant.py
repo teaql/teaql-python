@@ -1,4 +1,5 @@
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
+from teaql.core.list import SmartList
 from teaql.core.value import Value
 from teaql.core.request_intent import MutationIntent
 from teaql.core.projection_properties import ProjectionProperties
@@ -50,16 +51,22 @@ class Tenant:
             self._loaded_fields.add("order_item_list")
         if self._purchase_order_list:
             from models.purchase_order import PurchaseOrder
-            self._purchase_order_list = [
-                item if isinstance(item, PurchaseOrder) else PurchaseOrder(**item)
-                for item in self._purchase_order_list
+            source = self._purchase_order_list
+            hydrated = [
+                item if isinstance(item, PurchaseOrder) else PurchaseOrder(_entity_root=self._entity_root, **item)
+                for item in source
             ]
+            self._purchase_order_list = (SmartList(hydrated, facets=source.facets, total_count=source.total_count)
+                if isinstance(source, SmartList) else hydrated)
         if self._order_item_list:
             from models.order_item import OrderItem
-            self._order_item_list = [
-                item if isinstance(item, OrderItem) else OrderItem(**item)
-                for item in self._order_item_list
+            source = self._order_item_list
+            hydrated = [
+                item if isinstance(item, OrderItem) else OrderItem(_entity_root=self._entity_root, **item)
+                for item in source
             ]
+            self._order_item_list = (SmartList(hydrated, facets=source.facets, total_count=source.total_count)
+                if isinstance(source, SmartList) else hydrated)
         self._ledger_id = getattr(self, "id", None)
         if self._ledger_id is None:
             self._ledger_id = -next(self._teaql_temporary_ids)
@@ -112,13 +119,9 @@ class Tenant:
         # Validate the root reason before ID allocation or provider access.
         MutationIntent(self._comment)
         self._teaql_validate_input_graph(context, set())
-        # Reserve stable internal IDs before the transaction and before policy
-        # review. A relation to a new parent must have the same identity in the
-        # reviewed graph plan and in the commands eventually sent to SQL.
-        await self._teaql_reserve_graph_ids(context, set())
-        await self._teaql_ensure_business_ids(context)
         return await context.execute_graph_save(
-            lambda session: self._teaql_preflight_and_save(session.context, session), comment=self._comment)
+            lambda session: self._teaql_save_within_graph(session.context, session),
+            prepare=lambda session: self._teaql_prepare_graph(session.context, session), comment=self._comment)
 
     def _teaql_validate_input_graph(self, context, visited, parent_field=None):
         if id(self) in visited:
@@ -176,6 +179,7 @@ class Tenant:
             new_key = self._teaql_entity_key()
             self._entity_root.rekey(old_key, new_key)
             self._entity_root.set(new_key, "id", Value.I64(self.id))
+        await self._teaql_ensure_business_ids(context)
         for child in self._purchase_order_list:
             child._teaql_attach_root(self._entity_root)
             await child._teaql_reserve_graph_ids(context, visited)
@@ -183,11 +187,57 @@ class Tenant:
             child._teaql_attach_root(self._entity_root)
             await child._teaql_reserve_graph_ids(context, visited)
 
-    async def _teaql_preflight_and_save(self, context, session):
+    async def _teaql_prepare_graph(self, context, session):
+        # Complete all input/Fix checks before reserving any graph identity.
+        # Stable IDs then make the final policy plan and TraceScope concrete.
+        self._teaql_prepare_input_graph(context, set())
+        await self._teaql_reserve_graph_ids(context, set())
         self._teaql_preflight_graph(context, session)
-        return await self._teaql_save_within_graph(context, session)
 
-    def _teaql_build_command(self):
+    def _teaql_prepare_input_graph(self, context, visited):
+        if id(self) in visited:
+            return
+        visited.add(id(self))
+        if self._entity_root.has_pending(self._teaql_entity_key()):
+            _action, cmd = self._teaql_build_command()
+            try:
+                context._check_and_fix_mutation_input(cmd, deferred_fields=())
+            finally:
+                for field, value in getattr(cmd, "values", {}).items():
+                    if field not in ("id", "version"):
+                        self._entity_root.set(self._teaql_entity_key(), field, value)
+        for index, child in enumerate(self._purchase_order_list):
+            child._teaql_attach_root(self._entity_root)
+            # The object reference exists even before either endpoint has a stable ID.
+            # Do not confuse two absent IDs with an already-established association.
+            if getattr(child, "tenant", None) is not self:
+                child.update_tenant(self)
+            try:
+                child._teaql_prepare_input_graph(context, visited)
+            except CheckException as error:
+                prefix = ObjectLocation().property("purchase_order_list").index(index)
+                raise CheckException([
+                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message,
+                                entity_type=v.entity_type)
+                    for v in error.violations
+                ]) from error
+        for index, child in enumerate(self._order_item_list):
+            child._teaql_attach_root(self._entity_root)
+            # The object reference exists even before either endpoint has a stable ID.
+            # Do not confuse two absent IDs with an already-established association.
+            if getattr(child, "tenant", None) is not self:
+                child.update_tenant(self)
+            try:
+                child._teaql_prepare_input_graph(context, visited)
+            except CheckException as error:
+                prefix = ObjectLocation().property("order_item_list").index(index)
+                raise CheckException([
+                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message,
+                                entity_type=v.entity_type)
+                    for v in error.violations
+                ]) from error
+
+    def _teaql_scalar_payload(self):
         payload = {}
         if "id" in self._loaded_fields:
             payload["id"] = Value.I64(self.id)
@@ -198,6 +248,10 @@ class Tenant:
         if "version" in self._loaded_fields:
             payload["version"] = Value.I64(self.version)
 
+        return payload
+
+    def _teaql_build_command(self):
+        payload = self._teaql_scalar_payload()
         action = self._action
         if action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
@@ -205,11 +259,15 @@ class Tenant:
         if action == "Create":
             cmd = InsertCommand("Tenant", payload)
         elif action == "Update":
-            cmd = UpdateCommand("Tenant", Value.from_any(getattr(self, "id", None)), getattr(self, "version", None))
+            original_version = self._entity_root.original_version(self._teaql_entity_key())
+            cmd = UpdateCommand("Tenant", Value.from_any(getattr(self, "id", None)),
+                original_version if original_version is not None else getattr(self, "version", None))
             for key, value in payload.items():
                 if key not in ("id", "version"): cmd.value(key, value)
         else:
-            cmd = DeleteCommand("Tenant", Value.from_any(getattr(self, "id", None)), getattr(self, "version", None))
+            original_version = self._entity_root.original_version(self._teaql_entity_key())
+            cmd = DeleteCommand("Tenant", Value.from_any(getattr(self, "id", None)),
+                original_version if original_version is not None else getattr(self, "version", None))
         if action != "Create":
             cmd.old_values = LoadedScalarSnapshots.values(self)
         return action, cmd
@@ -227,16 +285,19 @@ class Tenant:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity")])
                 if "version" not in self._loaded_fields:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
-            _action, cmd = self._teaql_build_command()
+            action, cmd = self._teaql_build_command()
             try:
                 context.preflight_mutation(cmd)
             finally:
                 for field, value in getattr(cmd, "values", {}).items():
                     if field not in ("id", "version"):
                         self._entity_root.set(self._teaql_entity_key(), field, value)
+            session._remember_prepared_mutation(self, action, cmd)
         for index, child in enumerate(self._purchase_order_list):
             child._teaql_attach_root(self._entity_root)
-            child.update_tenant(self)
+            current = getattr(child, "tenant", None)
+            if getattr(current, "id", current) != self.id:
+                child.update_tenant(self)
             try:
                 child._teaql_preflight_graph(context, session, scope)
             except CheckException as error:
@@ -247,7 +308,9 @@ class Tenant:
                 ]) from error
         for index, child in enumerate(self._order_item_list):
             child._teaql_attach_root(self._entity_root)
-            child.update_tenant(self)
+            current = getattr(child, "tenant", None)
+            if getattr(current, "id", current) != self.id:
+                child.update_tenant(self)
             try:
                 child._teaql_preflight_graph(context, session, scope)
             except CheckException as error:
@@ -266,17 +329,12 @@ class Tenant:
         if not self._entity_root.has_pending(self._teaql_entity_key()):
             await self._teaql_cascade_children(context, session, scope)
             return self
-        action, cmd = self._teaql_build_command()
+        action, cmd = session._prepared_mutation(self)
 
 
         req = session.request(cmd, scope, self._entity_root, self._teaql_entity_key())
 
-        try:
-            context.check_and_fix_mutation(cmd)
-        finally:
-            for field, value in getattr(cmd, "values", {}).items():
-                if field not in ("id", "version"):
-                    self._entity_root.set(self._teaql_entity_key(), field, value)
+        # Execute the exact final checked command; no third Fix pass in SQL.
         context.mark_mutation_checked(cmd)
         service = context.require_resource("dataService")
         result = await service.mutate(context, req)
@@ -338,12 +396,14 @@ class Tenant:
 
     async def _teaql_cascade_children(self, context, session, scope):
         cascade_relations = []
-        cascade_relations.append(("purchase_order_list", self._purchase_order_list, "update_tenant"))
-        cascade_relations.append(("order_item_list", self._order_item_list, "update_tenant"))
-        for relation_name, children, updater in cascade_relations:
+        cascade_relations.append(("purchase_order_list", self._purchase_order_list, "update_tenant", "tenant"))
+        cascade_relations.append(("order_item_list", self._order_item_list, "update_tenant", "tenant"))
+        for relation_name, children, updater, member in cascade_relations:
             for index, child in enumerate(children):
                 child._teaql_attach_root(self._entity_root)
-                getattr(child, updater)(self)
+                current = getattr(child, member, None)
+                if getattr(current, "id", current) != self.id:
+                    getattr(child, updater)(self)
                 try:
                     await child._teaql_save_within_graph(context, session, scope)
                 except CheckException as error:
