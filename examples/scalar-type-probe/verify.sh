@@ -34,6 +34,7 @@ if [[ -z "${TEAQL_SCALAR_PROBE_DB:-}" ]]; then
 fi
 for round in 1 2; do
   python "$example_dir/main.py"
+  python "$example_dir/json_roundtrip.py"
 done
 verify_fixture
 echo "PASS Python generated scalar fixture twice on $TEAQL_SCALAR_PROBE_DB"

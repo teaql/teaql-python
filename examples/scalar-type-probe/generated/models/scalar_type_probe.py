@@ -1,15 +1,56 @@
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
+from teaql.core.list import SmartList
 from teaql.core.value import Value
 from teaql.core.request_intent import MutationIntent
 from teaql.core.projection_properties import ProjectionProperties
 from teaql.runtime.loaded_scalar_snapshot import LoadedScalarSnapshots
 from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
+from teaql.runtime import EntityJSONField, EntityJSONSchema, JsonFieldNamingProfile
+from importlib import import_module
 import itertools
 from models.type_platform import TypePlatform
 
 
 class ScalarTypeProbe:
+    _teaql_json_schema = EntityJSONSchema("ScalarTypeProbe", (
+        EntityJSONField("id", "id", "id"),
+        EntityJSONField("type_platform", "typePlatform", "reference", factory=lambda: TypePlatform),
+        EntityJSONField("required_string", "requiredString", "text"),
+        EntityJSONField("optional_string", "optionalString", "text"),
+        EntityJSONField("large_text", "largeText", "text"),
+        EntityJSONField("required_boolean", "requiredBoolean", "boolean"),
+        EntityJSONField("optional_boolean", "optionalBoolean", "boolean"),
+        EntityJSONField("required_integer", "requiredInteger", "integer"),
+        EntityJSONField("optional_integer", "optionalInteger", "integer"),
+        EntityJSONField("required_long", "requiredLong", "long"),
+        EntityJSONField("optional_long", "optionalLong", "long"),
+        EntityJSONField("required_decimal", "requiredDecimal", "decimal"),
+        EntityJSONField("optional_decimal", "optionalDecimal", "decimal"),
+        EntityJSONField("required_float", "requiredFloat", "float"),
+        EntityJSONField("optional_float", "optionalFloat", "float"),
+        EntityJSONField("required_double", "requiredDouble", "double"),
+        EntityJSONField("optional_double", "optionalDouble", "double"),
+        EntityJSONField("required_date", "requiredDate", "date"),
+        EntityJSONField("optional_date", "optionalDate", "date"),
+        EntityJSONField("required_time", "requiredTime", "time"),
+        EntityJSONField("optional_time", "optionalTime", "time"),
+        EntityJSONField("required_datetime", "requiredDatetime", "datetime"),
+        EntityJSONField("optional_datetime", "optionalDatetime", "datetime"),
+        EntityJSONField("create_time", "createTime", "datetime"),
+        EntityJSONField("update_time", "updateTime", "datetime"),
+        EntityJSONField("version", "version", "version"),
+    ), profile=JsonFieldNamingProfile.parse("camelCase"))
     _teaql_temporary_ids = itertools.count(1)
+
+    def to_json(self, *, profile=None):
+        """Typed model JSON; no query, mutation or transport authorization."""
+        return self._teaql_json_schema.dumps(self, profile=profile)
+
+    @classmethod
+    def from_json(cls, payload, *, profile=None):
+        """Hydrate only supplied fields into an independent mutation boundary."""
+        return cls._teaql_json_schema.loads(cls, payload, profile=profile)
+
     @classmethod
     def refer(cls, entity_id):
         return cls(id=entity_id)
@@ -253,13 +294,71 @@ class ScalarTypeProbe:
     async def save(self, context):
         # Validate the root reason before ID allocation or provider access.
         MutationIntent(self._comment)
-        # Reserve stable internal IDs before the transaction and before policy
-        # review. A relation to a new parent must have the same identity in the
-        # reviewed graph plan and in the commands eventually sent to SQL.
-        await self._teaql_reserve_graph_ids(context, set())
-        await self._teaql_ensure_business_ids(context)
+        self._teaql_validate_input_graph(context, set())
         return await context.execute_graph_save(
-            lambda session: self._teaql_preflight_and_save(session.context, session), comment=self._comment)
+            lambda session: self._teaql_save_within_graph(session.context, session),
+            prepare=lambda session: self._teaql_prepare_graph(session.context, session), comment=self._comment)
+
+    def _teaql_validate_input_graph(self, context, visited, parent_field=None):
+        if id(self) in visited:
+            return
+        visited.add(id(self))
+        if self._entity_root.has_pending(self._teaql_entity_key()):
+            if self._action == "Update":
+                if "id" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
+                if "typePlatform" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("type_platform"), message="Mutation requires a fully loaded entity")])
+                if "requiredString" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_string"), message="Mutation requires a fully loaded entity")])
+                if "optionalString" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_string"), message="Mutation requires a fully loaded entity")])
+                if "largeText" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("large_text"), message="Mutation requires a fully loaded entity")])
+                if "requiredBoolean" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_boolean"), message="Mutation requires a fully loaded entity")])
+                if "optionalBoolean" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_boolean"), message="Mutation requires a fully loaded entity")])
+                if "requiredInteger" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_integer"), message="Mutation requires a fully loaded entity")])
+                if "optionalInteger" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_integer"), message="Mutation requires a fully loaded entity")])
+                if "requiredLong" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_long"), message="Mutation requires a fully loaded entity")])
+                if "optionalLong" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_long"), message="Mutation requires a fully loaded entity")])
+                if "requiredDecimal" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_decimal"), message="Mutation requires a fully loaded entity")])
+                if "optionalDecimal" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_decimal"), message="Mutation requires a fully loaded entity")])
+                if "requiredFloat" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_float"), message="Mutation requires a fully loaded entity")])
+                if "optionalFloat" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_float"), message="Mutation requires a fully loaded entity")])
+                if "requiredDouble" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_double"), message="Mutation requires a fully loaded entity")])
+                if "optionalDouble" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_double"), message="Mutation requires a fully loaded entity")])
+                if "requiredDate" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_date"), message="Mutation requires a fully loaded entity")])
+                if "optionalDate" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_date"), message="Mutation requires a fully loaded entity")])
+                if "requiredTime" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_time"), message="Mutation requires a fully loaded entity")])
+                if "optionalTime" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_time"), message="Mutation requires a fully loaded entity")])
+                if "requiredDatetime" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_datetime"), message="Mutation requires a fully loaded entity")])
+                if "optionalDatetime" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_datetime"), message="Mutation requires a fully loaded entity")])
+                if "createTime" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity")])
+                if "updateTime" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity")])
+                if "version" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
+            _action, command = self._teaql_build_command()
+            context._validate_required_mutation_input(command, parent_field=parent_field)
 
     async def _teaql_ensure_business_ids(self, context):
         if self._action != "Create":
@@ -284,12 +383,29 @@ class ScalarTypeProbe:
             new_key = self._teaql_entity_key()
             self._entity_root.rekey(old_key, new_key)
             self._entity_root.set(new_key, "id", Value.I64(self.id))
+        await self._teaql_ensure_business_ids(context)
 
-    async def _teaql_preflight_and_save(self, context, session):
+    async def _teaql_prepare_graph(self, context, session):
+        # Complete all input/Fix checks before reserving any graph identity.
+        # Stable IDs then make the final policy plan and TraceScope concrete.
+        self._teaql_prepare_input_graph(context, set())
+        await self._teaql_reserve_graph_ids(context, set())
         self._teaql_preflight_graph(context, session)
-        return await self._teaql_save_within_graph(context, session)
 
-    def _teaql_build_command(self):
+    def _teaql_prepare_input_graph(self, context, visited):
+        if id(self) in visited:
+            return
+        visited.add(id(self))
+        if self._entity_root.has_pending(self._teaql_entity_key()):
+            _action, cmd = self._teaql_build_command()
+            try:
+                context._check_and_fix_mutation_input(cmd, deferred_fields=())
+            finally:
+                for field, value in getattr(cmd, "values", {}).items():
+                    if field not in ("id", "version"):
+                        self._entity_root.set(self._teaql_entity_key(), field, value)
+
+    def _teaql_scalar_payload(self):
         payload = {}
         if "id" in self._loaded_fields:
             payload["id"] = Value.I64(self.id)
@@ -373,18 +489,30 @@ class ScalarTypeProbe:
         if "version" in self._loaded_fields:
             payload["version"] = Value.I64(self.version)
 
+        return payload
+
+    def _teaql_build_command(self):
+        payload = self._teaql_scalar_payload()
         action = self._action
         if action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
+        if "type_platform" in payload:
+            reference = payload["type_platform"].val
+            if reference is not None and hasattr(reference, "id") and reference.id is not None:
+                payload["type_platform"] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("ScalarTypeProbe", payload)
         elif action == "Update":
-            cmd = UpdateCommand("ScalarTypeProbe", Value.from_any(getattr(self, "id", None)), getattr(self, "version", None))
+            original_version = self._entity_root.original_version(self._teaql_entity_key())
+            cmd = UpdateCommand("ScalarTypeProbe", Value.from_any(getattr(self, "id", None)),
+                original_version if original_version is not None else getattr(self, "version", None))
             for key, value in payload.items():
                 if key not in ("id", "version"): cmd.value(key, value)
         else:
-            cmd = DeleteCommand("ScalarTypeProbe", Value.from_any(getattr(self, "id", None)), getattr(self, "version", None))
+            original_version = self._entity_root.original_version(self._teaql_entity_key())
+            cmd = DeleteCommand("ScalarTypeProbe", Value.from_any(getattr(self, "id", None)),
+                original_version if original_version is not None else getattr(self, "version", None))
         if action != "Create":
             cmd.old_values = LoadedScalarSnapshots.values(self)
         return action, cmd
@@ -448,13 +576,14 @@ class ScalarTypeProbe:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity")])
                 if "version" not in self._loaded_fields:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
-            _action, cmd = self._teaql_build_command()
+            action, cmd = self._teaql_build_command()
             try:
                 context.preflight_mutation(cmd)
             finally:
                 for field, value in getattr(cmd, "values", {}).items():
                     if field not in ("id", "version"):
                         self._entity_root.set(self._teaql_entity_key(), field, value)
+            session._remember_prepared_mutation(self, action, cmd)
 
     async def _teaql_save_within_graph(self, context, session, parent=None):
         if parent is None:
@@ -465,17 +594,12 @@ class ScalarTypeProbe:
         if not self._entity_root.has_pending(self._teaql_entity_key()):
             await self._teaql_cascade_children(context, session, scope)
             return self
-        action, cmd = self._teaql_build_command()
+        action, cmd = session._prepared_mutation(self)
 
 
         req = session.request(cmd, scope, self._entity_root, self._teaql_entity_key())
 
-        try:
-            context.check_and_fix_mutation(cmd)
-        finally:
-            for field, value in getattr(cmd, "values", {}).items():
-                if field not in ("id", "version"):
-                    self._entity_root.set(self._teaql_entity_key(), field, value)
+        # Execute the exact final checked command; no third Fix pass in SQL.
         context.mark_mutation_checked(cmd)
         service = context.require_resource("dataService")
         result = await service.mutate(context, req)
@@ -675,10 +799,12 @@ class ScalarTypeProbe:
 
     async def _teaql_cascade_children(self, context, session, scope):
         cascade_relations = []
-        for relation_name, children, updater in cascade_relations:
+        for relation_name, children, updater, member in cascade_relations:
             for index, child in enumerate(children):
                 child._teaql_attach_root(self._entity_root)
-                getattr(child, updater)(self)
+                current = getattr(child, member, None)
+                if getattr(current, "id", current) != self.id:
+                    getattr(child, updater)(self)
                 try:
                     await child._teaql_save_within_graph(context, session, scope)
                 except CheckException as error:
@@ -903,10 +1029,13 @@ class ScalarTypeProbe:
         return self
     def update_type_platform(self, value):
         assigned_id = getattr(value, "id", value) if value else None
-        current_id = getattr(self.typePlatform, "id", self.typePlatform)
-        if "typePlatform" in self._loaded_fields and current_id == assigned_id:
+        current = self.typePlatform
+        current_id = getattr(current, "id", current)
+        if "typePlatform" in self._loaded_fields and current_id == assigned_id and (assigned_id is not None or current is value):
             return self
-        self.typePlatform = getattr(value, "id", value) if value else None
+        self.typePlatform = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
         self._loaded_fields.add("typePlatform")
-        self._entity_root.set(self._teaql_entity_key(), "type_platform", Value.from_any(self.typePlatform))
+        self._entity_root.set(self._teaql_entity_key(), "type_platform",
+            Value.Object(self.typePlatform) if self.typePlatform is not None and hasattr(self.typePlatform, "id")
+            else Value.from_any(self.typePlatform))
         return self

@@ -1501,8 +1501,7 @@ class ExecutableTypePlatformRequest:
 
     def new_entity(self, context) -> TypePlatform:
         request = self._request
-        if not request._comment or not request._comment.strip() or not request._purpose or not request._purpose.strip():
-            raise ValueError("Security audit failure: non-empty comment() and purpose() are required before new_entity()")
+        QueryIntent(request._comment, request._purpose)
         entity = context.initialize_entity("TypePlatform", TypePlatform())
         if not isinstance(entity, TypePlatform):
             raise TypeError("entity initializer returned an incompatible TypePlatform")
@@ -1510,10 +1509,9 @@ class ExecutableTypePlatformRequest:
 
     async def execute_for_result(self, context):
         self = self._request
-        if not self._purpose or not self._purpose.strip() or not self._comment or not self._comment.strip():
-            raise Exception("Security audit failure: comment() and purpose() must be called before execute_for_rows()")
+        req = QueryRequest(self.query, _comment=self._comment, _purpose=self._purpose)
+        req = context.prepare_query_request(req)
         service = context.require_resource("dataService")
-        req = QueryRequest(context.prepare_query(self.query), _comment=self._comment, _purpose=self._purpose)
         return await service.query(context, req)
 
     async def execute_for_rows(self, context):
