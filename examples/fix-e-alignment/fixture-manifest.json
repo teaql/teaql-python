@@ -1,0 +1,32 @@
+{
+  "schema": "teaql.generated-example-fixture/v1",
+  "language": "python",
+  "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
+  "generatedManifestSha256": "081388d2161626c267428c473a3d61ab448e1acf161a7b8b164234556ee399ba",
+  "producerReceiptSha256": "d96c2ac416faaf65064f24c5a50900a30e6788dae1c58636b3d1e28d38b4dc7b",
+  "producerSource": {
+    "commit": "e8924609aa88e88a1ca2af91289de025659205cd",
+    "diff": "966e5e6af31d096935302fc14fab18a5472d33bacdf3ef3247bc766a446cbb3c",
+    "status": "ac3d44d1d8bb7fb1aec308f4a03e418be8ca527822ec188020771b96e2234502",
+    "sourceContentsSha256": "ced56ce22cfc75928b56b3eb890a2ab470c74ab2f065ce79d07f9c6012574e0d"
+  },
+  "evaluatedScope": "python-lib-core",
+  "evaluationErrors": 0,
+  "evaluationWarnings": 4,
+  "files": {
+    "pyproject.toml": "df5a97996a6c312e64e8bdb58e9e79bfdda18cd0d0b03e8747bb8260836c321d",
+    "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "generated_search_models.py": "a1fc7d496d0ca1e789452df2d6d694641e3fd3017859133228fe9953975889ef",
+    "requests/tenant_request.py": "13a6a2951ebc9ddc985ad0d95bfac8178f5d69f2da4f5919ad7268156946f8d2",
+    "requests/purchase_order_request.py": "7a28004e64c185503a71907cb1f1e104e1824f4fcc3b3aa118019303e6aeebd0",
+    "requests/order_item_request.py": "e41c091d2ec87e86fa00495e59ef82018f7780ebc02553d7369b7a003b904119",
+    "Q.py": "110a04fe7434e902455505b6d9c76d433aed068a3279b22f9106742b6be685a3",
+    "teaql-i18n.json": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014",
+    "E.py": "3a1bb923330c41e3a56403cd46c558efbc02d76406c3d2c31ef959fd18fec680",
+    "models/tenant.py": "eb483f683dcdc63560ddb73d3215dafacc841b106eb25df63340ed97350f6662",
+    "models/purchase_order.py": "9d6057d5bfcdaa34e98f36f6658af45f781737d86ed38505eee90dc83f6637e9",
+    "models/order_item.py": "68d7f2405206cb4901d829cb7da45b85cbe37ab9ce799da38a877fa6809c6b85",
+    "runtime_module.py": "3c32f6d741df3e718c76a9741e336cde94e662b7424db2fb34656b0d29d2ddf3"
+  }
+}

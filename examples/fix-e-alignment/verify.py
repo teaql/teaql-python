@@ -16,8 +16,10 @@ def arguments():
     parser = argparse.ArgumentParser()
     parser.add_argument("--generated", type=Path, required=True)
     parser.add_argument("--database", type=Path, required=True)
+    parser.add_argument("--reuse-database", action="store_true",
+                        help="repeat the fixture on its existing database without deleting data")
     result = parser.parse_args()
-    if result.database.exists():
+    if result.database.exists() and not result.reuse_database:
         parser.error("Use a new SQLite path; never overwrite an existing database")
     return result
 

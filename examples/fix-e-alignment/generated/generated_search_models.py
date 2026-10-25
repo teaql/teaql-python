@@ -1,0 +1,90 @@
+from types import MappingProxyType
+
+# Generated trusted field/type metadata. Runtime owns parsing, binding and warnings.
+GENERATED_SEARCH_MODELS = MappingProxyType({
+    "Tenant": MappingProxyType({
+        "fields": MappingProxyType({
+           "id": "integer",
+           "name": "string",
+           "version": "integer",
+        }),
+        "query_fields": MappingProxyType({
+           "id": "id",
+           "name": "name",
+           "version": "version",
+        }),
+        "relations": MappingProxyType({
+            "purchaseOrderList": "PurchaseOrder",
+            "orderItemList": "OrderItem",
+        }),
+    }),
+    "PurchaseOrder": MappingProxyType({
+        "fields": MappingProxyType({
+           "id": "integer",
+           "tenant": "integer",
+           "contact_phone": "string",
+           "contactPhone": "string",
+           "internal_note": "string",
+           "internalNote": "string",
+           "create_time": "timestamp",
+           "createTime": "timestamp",
+           "update_time": "timestamp",
+           "updateTime": "timestamp",
+           "version": "integer",
+        }),
+        "query_fields": MappingProxyType({
+           "id": "id",
+           "tenant": "tenant",
+           "contact_phone": "contact_phone",
+           "contactPhone": "contact_phone",
+           "internal_note": "internal_note",
+           "internalNote": "internal_note",
+           "create_time": "create_time",
+           "createTime": "create_time",
+           "update_time": "update_time",
+           "updateTime": "update_time",
+           "version": "version",
+        }),
+        "relations": MappingProxyType({
+           "tenant": "Tenant",
+            "orderItemList": "OrderItem",
+        }),
+    }),
+    "OrderItem": MappingProxyType({
+        "fields": MappingProxyType({
+           "id": "integer",
+           "purchase_order": "integer",
+           "purchaseOrder": "integer",
+           "tenant": "integer",
+           "product_name": "string",
+           "productName": "string",
+           "unit_price": "decimal",
+           "unitPrice": "decimal",
+           "create_time": "timestamp",
+           "createTime": "timestamp",
+           "update_time": "timestamp",
+           "updateTime": "timestamp",
+           "version": "integer",
+        }),
+        "query_fields": MappingProxyType({
+           "id": "id",
+           "purchase_order": "purchase_order",
+           "purchaseOrder": "purchase_order",
+           "tenant": "tenant",
+           "product_name": "product_name",
+           "productName": "product_name",
+           "unit_price": "unit_price",
+           "unitPrice": "unit_price",
+           "create_time": "create_time",
+           "createTime": "create_time",
+           "update_time": "update_time",
+           "updateTime": "update_time",
+           "version": "version",
+        }),
+        "relations": MappingProxyType({
+           "purchase_order": "PurchaseOrder",
+           "purchaseOrder": "PurchaseOrder",
+           "tenant": "Tenant",
+        }),
+    }),
+})
