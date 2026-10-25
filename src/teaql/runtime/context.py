@@ -219,7 +219,7 @@ class UserContext:
         )
         return claims
 
-    async def execute_graph_save(self, work, *, comment=None):
+    async def execute_graph_save(self, work, *, comment=None, prepare=None):
         """Run ``work(session)``; never implicitly join another root save."""
         from teaql.core.request_intent import MutationIntent
         from .graph_session import GraphMutationSession
@@ -234,25 +234,36 @@ class UserContext:
             # generated entities do not initialize SDKs or create manual spans.
             return await observe_runtime_operation(
                 self._runtime_telemetry, RuntimeOperation('mutation', 'graph.save'),
-                lambda: self._execute_graph_transaction(work, intent, GraphMutationSession))
+                lambda: self._execute_graph_transaction(work, intent, GraphMutationSession, prepare))
 
-    async def _execute_graph_transaction(self, work, intent, session_type):
+    async def _execute_graph_transaction(self, work, intent, session_type, prepare=None):
         provider = self.require_resource("dataService")
         begin = getattr(provider, "begin", None)
         if not callable(begin):
             raise RuntimeError("Configured dataService does not support graph transactions")
-        transaction = await self._call_transaction_method(begin, self)
+        # Existing manual graph callbacks keep their transaction-first contract.
+        # Generated graphs explicitly prepare every input before stable-ID
+        # reservation and transaction admission, under the same owner/clock.
+        transaction = None if prepare is not None else await self._call_transaction_method(begin, self)
         guard = {'active': True}
         guard_token = self._graph_save_guard.set(guard)
         session = None
         try:
-            session = session_type(self, transaction, intent)
+            session = session_type(self, provider if prepare is not None else transaction, intent)
+            if prepare is not None:
+                session._preparing = True
+                await prepare(session)
+                session._preparing = False
+                transaction = await self._call_transaction_method(begin, self)
+                session.transaction = transaction
+                session.context._resources["dataService"] = transaction
             result = await work(session)
             session.context._mutation_policy.ensure_graph_complete()
             await self._finish_graph_transaction(transaction, "commit", session.context)
         except BaseException:
             try:
-                await self._finish_graph_transaction(transaction, "rollback", session.context if session else self)
+                if transaction is not None:
+                    await self._finish_graph_transaction(transaction, "rollback", session.context if session else self)
             except BaseException:
                 pass  # Preserve the original operation/commit failure.
             if session is not None:
@@ -788,6 +799,33 @@ class UserContext:
             self.translate_check_results(results)
             raise CheckException(results)
 
+    def _check_and_fix_mutation_input(self, mutation: Any, *, deferred_fields=()):
+        """Generated graph preparation, before IDs exist; not a write bypass.
+
+        Business-ID fields are assigned by their separate allocator after every
+        node's ordinary input has passed. Only their generated required checks
+        may wait; final whole-graph preflight runs the full Checker/Fix again.
+        No placeholder ID or business value is invented here.
+        """
+        from teaql.core.mutation import InsertCommand
+        from .i18n import CheckException
+        deferred = frozenset(deferred_fields)
+        if not isinstance(mutation, InsertCommand) or not deferred:
+            self.check_and_fix_mutation(mutation)
+            return
+        descriptor = self.entity(mutation.entity)
+        allowed = {prop.name for prop in getattr(descriptor, "properties", ())
+                   if prop.generated_on_insert and not prop._is_id and not prop._is_version}
+        if not deferred <= allowed:
+            raise ValueError("deferred field must be a generated insert default")
+        try:
+            self.check_and_fix_mutation(mutation)
+        except CheckException as error:
+            remaining = [item for item in error.violations
+                         if not (item.rule_id.lower() == "required" and item.location.model_path in deferred)]
+            if remaining:
+                raise CheckException(remaining) from error
+
     def with_business_clock(self, clock: BusinessClock) -> 'UserContext':
         if clock is None or not callable(getattr(clock, "now", None)):
             raise TypeError("business clock must provide now()")
@@ -912,6 +950,8 @@ class UserContext:
             self._audit_journal.require_active()
         if self._graph_session is not None:
             self._graph_session._require_active()
+            if self._graph_session._preparing:
+                raise RuntimeError("graph preparation cannot execute provider mutations")
             return
         guard = self._graph_save_guard.get()
         if guard is not None and guard['active']:

@@ -27,6 +27,8 @@ class GraphMutationSession:
         self._owner = object()
         self._active = True
         self._committed = False
+        self._preparing = False
+        self._prepared_mutations = {}
         self._commit_actions = []
         self._rollback_actions = []
         self._audits = []
@@ -48,6 +50,18 @@ class GraphMutationSession:
     def _require_active(self):
         if not self._active or self._committed:
             raise RuntimeError('graph mutation session is no longer writable')
+
+    def _remember_prepared_mutation(self, entity, action, command):
+        self._require_active()
+        # Keep the entity alive: an object ID alone is not an ownership token.
+        self._prepared_mutations[id(entity)] = (entity, action, command)
+
+    def _prepared_mutation(self, entity):
+        self._require_active()
+        prepared = self._prepared_mutations.get(id(entity))
+        if prepared is None or prepared[0] is not entity:
+            raise RuntimeError("entity mutation was not prepared in this invocation")
+        return prepared[1], prepared[2]
 
     def scope(self, key, parent=None, local_reason=None):
         self._require_active()
@@ -127,3 +141,5 @@ class GraphMutationSession:
         self._audits.clear()
         self._commit_actions.clear()
         self._rollback_actions.clear()
+        self._prepared_mutations.clear()
+        self._preparing = False
