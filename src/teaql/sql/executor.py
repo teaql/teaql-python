@@ -22,6 +22,7 @@ from teaql.core.mutation import (
 )
 from .types import CompiledQuery, SqlCompileError
 from .dialect import SqlDialect
+from .scalar_normalization import normalize_loaded_booleans
 from teaql.core.expr import (
     AndExpr, BetweenExpr, BinaryExpr, BinaryOp, ExprFunction, FunctionExpr, IsNotNullExpr,
     IsNullExpr, NotExpr, OrExpr, SubQueryExpr, ColumnExpr, ValueExpr,
@@ -169,6 +170,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         return 'postgres' if name == 'postgresql' else name
 
     def _normalize_loaded_scalars(self, rows, descriptor, query=None):
+        normalize_loaded_booleans(rows, descriptor, query)
         self._normalize_loaded_dates(rows, descriptor, query)
         decimal_properties = {prop.name: prop for prop in descriptor.properties
                               if prop.property_type == DataType.Decimal
