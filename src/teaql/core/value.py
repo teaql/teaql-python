@@ -163,21 +163,24 @@ class Value:
         return cls.Text(str(value))
 
     def try_i64(self) -> Optional[int]:
-        if self._data is None:
-            return None
-        if self._type_hint in (DataType.I64, DataType.U64) or isinstance(self._data, int) and not isinstance(self._data, bool):
-            return int(self._data)
-        if isinstance(self._data, Decimal):
-            try:
-                return int(self._data)
-            except Exception:
-                pass
-        return None
+        return self._try_integral(-(2**63), 2**63 - 1)
 
     def try_u64(self) -> Optional[int]:
-        val = self.try_i64()
-        if val is not None and val >= 0:
-            return val
+        return self._try_integral(0, 2**64 - 1)
+
+    def try_i32(self) -> Optional[int]:
+        return self._try_integral(-(2**31), 2**31 - 1)
+
+    def _try_integral(self, minimum: int, maximum: int) -> Optional[int]:
+        raw = self._data
+        # A type hint must not authorize bool, text or floating-point coercion.
+        if type(raw) is int:
+            return raw if minimum <= raw <= maximum else None
+        if isinstance(raw, Decimal) and raw.is_finite() and minimum <= raw <= maximum:
+            # Check range before conversion: an arbitrary exponent must not
+            # allocate an enormous Python int. Decimal comparison is exact.
+            if raw == raw.to_integral_value():
+                return int(raw)
         return None
 
     def try_decimal(self) -> Optional[Decimal]:

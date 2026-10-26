@@ -5,6 +5,7 @@ class PropertyDescriptor:
         self.column_name_val = name
         self._is_id = False
         self._is_version = False
+        self._is_int32 = False
         self.nullable = True
         self.generated_on_insert = False
         self.generated_on_update = False
@@ -23,6 +24,10 @@ class PropertyDescriptor:
         return self
     def is_version(self): 
         self._is_version = True
+        return self
+    def integer32(self):
+        """Model Integer uses the shared I64 carrier but a signed 32-bit domain."""
+        self._is_int32 = True
         return self
     def required(self):
         self.nullable = False

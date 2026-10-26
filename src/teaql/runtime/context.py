@@ -727,6 +727,9 @@ class UserContext:
         self.check_and_fix_record_at(entity, record, None)
 
     def check_and_fix_record_at(self, entity: str, record: Any, location: Any):
+        from .scalar_validation import finite_scalar_results, integral_scalar_results, pending_reference_values
+        descriptor = self.entity(entity)
+        pending = pending_reference_values(self, descriptor, record)
         registry = self.get_resource("checker_registry")
         results = []
         checker = registry.checker(entity) if registry else None
@@ -737,8 +740,10 @@ class UserContext:
         # Customer Fix may repair an input or introduce a different value. The
         # portable representation check therefore runs last, even when no
         # customer/generated checker is installed for this entity.
-        from .scalar_validation import finite_scalar_results
-        results.extend(finite_scalar_results(self.entity(entity), record, location))
+        still_pending = pending_reference_values(self, descriptor, record)
+        pending = {name: value for name, value in pending.items() if still_pending.get(name) is value}
+        results.extend(finite_scalar_results(descriptor, record, location))
+        results.extend(integral_scalar_results(descriptor, record, location, pending_references=pending))
             
         if results:
             self.translate_check_results(results)

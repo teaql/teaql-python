@@ -205,6 +205,22 @@ class SqlDialect(ABC):
                 
         return sql
 
+    @staticmethod
+    def _mutation_scalar_value(prop, raw):
+        value = Value.from_any(raw)
+        kind = prop.property_type
+        if value.is_null() or (kind not in (DataType.I64, DataType.U64)
+                and str(kind).lower() not in ("i64", "u64", "integer", "long")):
+            return value
+        unsigned = kind == DataType.U64 or str(kind).lower() == "u64"
+        integer = value.try_u64() if unsigned else (
+            value.try_i32() if prop._is_int32 or str(kind).lower() == "integer" else value.try_i64())
+        if integer is None:
+            raise ValueError(f"invalid integral mutation field {prop.name}")
+        # Exact Decimal integers are legal Fix output. Bind their integer
+        # value, not a scaled string which SQLite may store as rounded REAL.
+        return Value.U64(integer) if unsigned else Value.I64(integer)
+
     def compile_insert(self, entity: EntityDescriptor, command: InsertCommand) -> CompiledQuery:
         columns = []
         placeholders = []
@@ -213,7 +229,7 @@ class SqlDialect(ABC):
             prop_name = getattr(prop, 'name', None)
             if prop_name in command.values:
                 columns.append(self.quote_ident(prop.column_name_val))
-                val = Value.from_any(command.values[prop_name])
+                val = self._mutation_scalar_value(prop, command.values[prop_name])
                 if val._data is None:
                     ptype = getattr(prop, 'property_type', None) or getattr(prop, 'data_type', DataType.Text)
                     val = Value.TypedNull(ptype)
@@ -243,7 +259,7 @@ class SqlDialect(ABC):
                 continue
             prop_name = getattr(prop, 'name', None)
             if prop_name in command.values:
-                val = Value.from_any(command.values[prop_name])
+                val = self._mutation_scalar_value(prop, command.values[prop_name])
                 if val._data is None:
                     ptype = getattr(prop, 'property_type', None) or getattr(prop, 'data_type', DataType.Text)
                     val = Value.TypedNull(ptype)

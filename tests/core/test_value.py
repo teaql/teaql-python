@@ -10,16 +10,29 @@ def test_value_try_i64_accepts_representable_numeric_variants():
     assert Value.Decimal(Decimal("-42")).try_i64() == -42
 
 def test_value_try_i64_rejects_unsigned_overflow_and_unrelated_variants():
-    # Python int has arbitrary precision, so U64 to I64 conversion always works unless explicitly restricted.
-    # But since we map this directly and Python doesn't have true fixed-width types natively, 
-    # we simulate the semantic parity if needed, though in pure Python it naturally succeeds.
-    # To keep exact parity with Rust's u64::MAX -> i64 we should technically return None,
-    # but for Python, we can just let it return the int. Wait, to strictly adhere to parity, we can ignore the overflow case for Python or implement boundaries.
-    pass
-
+    assert Value.U64(2**64 - 1).try_i64() is None
+    assert Value.I64(2**63).try_i64() is None
+    assert Value.I64(-(2**63) - 1).try_i64() is None
     assert Value.F64(42.0).try_i64() is None
     assert Value.Text("42").try_i64() is None
     assert Value.Null().try_i64() is None
+
+@pytest.mark.parametrize("raw", [Decimal("12.75"), Decimal("-0.5"),
+    Decimal("NaN"), Decimal("sNaN"), Decimal("Infinity"), Decimal("-Infinity"),
+    Decimal("9223372036854775808"), Decimal("-9223372036854775809")])
+def test_integral_exactness_rejects_fractional_nonfinite_and_out_of_range_decimal(raw):
+    assert Value.Decimal(raw).try_i64() is None
+
+@pytest.mark.parametrize("raw", [True, False, "12", 12.5, None])
+def test_integral_exactness_type_hint_does_not_authorize_coercion(raw):
+    assert Value.I64(raw).try_i64() is None
+    assert Value.U64(raw).try_u64() is None
+
+def test_integral_exactness_unsigned_domain_is_not_narrowed_to_signed():
+    assert Value.Decimal(Decimal("18446744073709551615")).try_u64() == 2**64 - 1
+    assert Value.U64(2**64).try_u64() is None
+    assert Value.Decimal(Decimal("1.5")).try_u64() is None
+    assert Value.Decimal(Decimal("1E+1000000")).try_i64() is None
 
 def test_value_try_u64_accepts_representable_numeric_variants():
     assert Value.U64(0).try_u64() == 0
