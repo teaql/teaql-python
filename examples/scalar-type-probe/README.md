@@ -50,6 +50,28 @@ Entity JSON excludes query/facet metadata and does not replace transport
 authorization or the context-bound reference adapter. Cyclic graphs require an
 explicit reference representation rather than implicit database reads.
 
+## Canonical names and atomic graph saves
+
+`name_probe.py` runs eight `NAME-01`–`NAME-08` vectors against a separate
+`*.names.sqlite` file, twice without resetting it. It checks canonical model
+keys in the actual mutation ledger and Checker/policy inputs, physical column
+names, native Q/E methods, loaded/null/NotLoaded values, and typed nested JSON
+under all three naming profiles. Equal duplicate JSON keys are rejected.
+
+Twelve deliberately malformed ledger payloads and two required-value negatives
+must fail before provider calls or SQLite authorization activity. In particular,
+new-entity payload construction must not silently discard unknown ledger keys.
+The raw ledger access is explicit fault injection, not application API guidance.
+
+A real SQLite authorizer denies the second child UPDATE after the first UPDATE
+has executed. No commit audit may escape that rollback. The same loaded graph
+must retain its pending intent and retry successfully with two canonical audit
+events and the correct per-entity versions. The test connection reinstalls its
+authorizer before each execution so prepared-statement reuse cannot bypass the
+fault; production provider behavior is unchanged. No generated source is edited.
+This single-runtime example does not establish full cross-runtime schema parity
+or qualify a previously published package for the newer generator/runtime pair.
+
 SQLite exact Decimal columns use `TEAQL_DECIMAL_TEXT COLLATE TEAQL_DECIMAL`
 and a generated value check. The provider registers the collation, validator
 and exact SUM on every connection. SUM ignores SQL NULL and returns NULL for

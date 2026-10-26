@@ -304,6 +304,8 @@ class ScalarTypeProbe:
             return
         visited.add(id(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
+            ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
+            context._validate_mutation_fields("ScalarTypeProbe", ledger)
             if self._action == "Update":
                 if "id" not in self._loaded_fields:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])

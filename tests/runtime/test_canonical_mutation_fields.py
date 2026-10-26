@@ -179,3 +179,11 @@ def test_canonical_mutation_fields_preserve_explicit_nested_location():
     violation, = error.value.violations
     assert violation.location.model_path == "line_items[2].typePlatform"
     assert violation.location.instance_path == "/lineItems/2/typePlatform"
+
+
+def test_canonical_mutation_fields_raw_ledger_admission_does_not_invoke_checker_or_policy():
+    checker, policy = CheckerSpy(), PolicySpy()
+    ctx = context(checker, policy)
+    with pytest.raises(CheckException):
+        ctx._validate_mutation_fields("NameProbe", BAD_FIELDS[0])
+    assert checker.calls == [] and policy.calls == []

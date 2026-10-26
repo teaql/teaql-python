@@ -36,6 +36,7 @@ for round in 1 2; do
   python "$example_dir/main.py"
   python "$example_dir/json_roundtrip.py"
   python "$example_dir/integral_probe.py"
+  python "$example_dir/name_probe.py"
 done
 verify_fixture
 echo "PASS Python generated scalar fixture twice on $TEAQL_SCALAR_PROBE_DB"
