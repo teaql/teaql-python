@@ -191,6 +191,8 @@ class TypePlatform:
             return
         visited.add(id(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
+            ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
+            context._validate_mutation_fields("TypePlatform", ledger)
             _action, cmd = self._teaql_build_command()
             try:
                 context._check_and_fix_mutation_input(cmd, deferred_fields=())
