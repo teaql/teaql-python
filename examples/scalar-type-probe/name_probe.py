@@ -106,6 +106,14 @@ class AuditRecorder:
         self.events.append(event)
 
 
+class ObservedGraphService(ObservedService):
+    async def begin(self, *args, **kwargs):
+        transaction = await super().begin(*args, **kwargs)
+        observed = ObservedService(transaction)
+        observed.calls = self.calls
+        return observed
+
+
 def pending(row):
     return dict(dict(row._entity_root.current_change_set().changes()).get(row._teaql_entity_key(), {}))
 
@@ -135,7 +143,7 @@ async def main():
     observations = Observations()
     client = SQLiteTeaQLClient(database)
     client.transport = ObservedTransport(database, observations)
-    observed = ObservedService(client)
+    observed = ObservedGraphService(client)
     context = UserContext().install(GENERATED_RUNTIME_MODULE).insert_resource("dataService", observed)
     checker = CheckerRecorder(context.get_resource("checker_registry"))
     policy, audit = PolicyRecorder(), AuditRecorder()
@@ -311,7 +319,8 @@ async def main():
         assert [item["case"] for item in cases] == ["NAME-" + str(i).zfill(2) for i in range(1, 9)]
         report = dict(schema="teaql.python-generated-canonical-name-example/v1", passed=True, cases=cases,
                       childIds=[str(row.id) for row in rows], parentIds=[str(parent.id) for parent in parents],
-                      providerCalibrated=all(observed.calls[key] > 0 for key in ("query", "begin", "next_id")),
+                      providerCalibrated=all(observed.calls[key] > 0 for key in ("query", "mutate", "begin", "next_id")),
+                      calibratedProviderMethods=sorted(observed.calls), successfulProviderCalls=dict(observed.calls),
                       sqliteAuthorizerCalibrated=observations.authorizations > 0,
                       physicalSchemaCrossRuntimeAccepted=False)
         report_path = Path(database + "." + uuid4().hex + ".report.json")
