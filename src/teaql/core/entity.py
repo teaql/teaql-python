@@ -129,6 +129,25 @@ class EntityRoot:
                     return value
             return None
 
+    def _pending_values(self, key: EntityKey) -> Dict[str, Any]:
+        """Trusted admission view; values retain their original representation."""
+        with self._lock:
+            result = {}
+            for change_set in self._change_sets:
+                result.update(change_set._changes.get(key, {}))
+            return result
+
+    def _discard_fields(self, key: EntityKey, fields: Iterable[str]) -> None:
+        """Discard against a known baseline, not a domain scope rollback."""
+        with self._lock:
+            for change_set in self._change_sets:
+                values = change_set._changes.get(key)
+                if values is not None:
+                    for field in fields:
+                        values.pop(field, None)
+                    if not values:
+                        change_set._changes.pop(key, None)
+
     def mark_as_new(self, key: EntityKey) -> None:
         with self._lock:
             self._new_keys.add(key)

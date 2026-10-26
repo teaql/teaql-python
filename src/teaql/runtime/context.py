@@ -254,12 +254,14 @@ class UserContext:
                 session._preparing = True
                 await prepare(session)
                 session._preparing = False
-                transaction = await self._call_transaction_method(begin, self)
-                session.transaction = transaction
-                session.context._resources["dataService"] = transaction
+                if not session._empty_generated_plan:
+                    transaction = await self._call_transaction_method(begin, self)
+                    session.transaction = transaction
+                    session.context._resources["dataService"] = transaction
             result = await work(session)
             session.context._mutation_policy.ensure_graph_complete()
-            await self._finish_graph_transaction(transaction, "commit", session.context)
+            if transaction is not None:
+                await self._finish_graph_transaction(transaction, "commit", session.context)
         except BaseException:
             try:
                 if transaction is not None:
@@ -964,6 +966,8 @@ class UserContext:
             self._graph_session._require_active()
             if self._graph_session._preparing:
                 raise RuntimeError("graph preparation cannot execute provider mutations")
+            if self._graph_session._empty_generated_plan:
+                raise RuntimeError("a sealed empty graph cannot execute provider mutations")
             return
         guard = self._graph_save_guard.get()
         if guard is not None and guard['active']:

@@ -303,6 +303,7 @@ class ScalarTypeProbe:
         if id(self) in visited:
             return
         visited.add(id(self))
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("ScalarTypeProbe", ledger)
@@ -393,11 +394,13 @@ class ScalarTypeProbe:
         self._teaql_prepare_input_graph(context, set())
         await self._teaql_reserve_graph_ids(context, set())
         self._teaql_preflight_graph(context, session)
+        session._seal_generated_plan()
 
     def _teaql_prepare_input_graph(self, context, visited):
         if id(self) in visited:
             return
         visited.add(id(self))
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("ScalarTypeProbe", ledger)
@@ -833,7 +836,7 @@ class ScalarTypeProbe:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and self.id == value:
+        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
         self._loaded_fields.add("id")
@@ -841,7 +844,7 @@ class ScalarTypeProbe:
         return self
 
     def update_required_string(self, value):
-        if "requiredString" in self._loaded_fields and self.requiredString == value:
+        if "requiredString" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.requiredString, value):
             return self
         self.requiredString = value
         self._loaded_fields.add("requiredString")
@@ -849,7 +852,7 @@ class ScalarTypeProbe:
         return self
 
     def update_optional_string(self, value):
-        if "optionalString" in self._loaded_fields and self.optionalString == value:
+        if "optionalString" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.optionalString, value):
             return self
         self.optionalString = value
         self._loaded_fields.add("optionalString")
@@ -857,7 +860,7 @@ class ScalarTypeProbe:
         return self
 
     def update_large_text(self, value):
-        if "largeText" in self._loaded_fields and self.largeText == value:
+        if "largeText" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.largeText, value):
             return self
         self.largeText = value
         self._loaded_fields.add("largeText")
@@ -865,7 +868,7 @@ class ScalarTypeProbe:
         return self
 
     def update_required_boolean(self, value):
-        if "requiredBoolean" in self._loaded_fields and self.requiredBoolean == value:
+        if "requiredBoolean" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.requiredBoolean, value):
             return self
         self.requiredBoolean = value
         self._loaded_fields.add("requiredBoolean")
@@ -873,7 +876,7 @@ class ScalarTypeProbe:
         return self
 
     def update_optional_boolean(self, value):
-        if "optionalBoolean" in self._loaded_fields and self.optionalBoolean == value:
+        if "optionalBoolean" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.optionalBoolean, value):
             return self
         self.optionalBoolean = value
         self._loaded_fields.add("optionalBoolean")
@@ -881,7 +884,7 @@ class ScalarTypeProbe:
         return self
 
     def update_required_integer(self, value):
-        if "requiredInteger" in self._loaded_fields and self.requiredInteger == value:
+        if "requiredInteger" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.requiredInteger, value):
             return self
         self.requiredInteger = value
         self._loaded_fields.add("requiredInteger")
@@ -889,7 +892,7 @@ class ScalarTypeProbe:
         return self
 
     def update_optional_integer(self, value):
-        if "optionalInteger" in self._loaded_fields and self.optionalInteger == value:
+        if "optionalInteger" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.optionalInteger, value):
             return self
         self.optionalInteger = value
         self._loaded_fields.add("optionalInteger")
@@ -897,7 +900,7 @@ class ScalarTypeProbe:
         return self
 
     def update_required_long(self, value):
-        if "requiredLong" in self._loaded_fields and self.requiredLong == value:
+        if "requiredLong" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.requiredLong, value):
             return self
         self.requiredLong = value
         self._loaded_fields.add("requiredLong")
@@ -905,7 +908,7 @@ class ScalarTypeProbe:
         return self
 
     def update_optional_long(self, value):
-        if "optionalLong" in self._loaded_fields and self.optionalLong == value:
+        if "optionalLong" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.optionalLong, value):
             return self
         self.optionalLong = value
         self._loaded_fields.add("optionalLong")
@@ -913,7 +916,7 @@ class ScalarTypeProbe:
         return self
 
     def update_required_decimal(self, value):
-        if "requiredDecimal" in self._loaded_fields and self.requiredDecimal == value:
+        if "requiredDecimal" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.requiredDecimal, value):
             return self
         self.requiredDecimal = value
         self._loaded_fields.add("requiredDecimal")
@@ -921,7 +924,7 @@ class ScalarTypeProbe:
         return self
 
     def update_optional_decimal(self, value):
-        if "optionalDecimal" in self._loaded_fields and self.optionalDecimal == value:
+        if "optionalDecimal" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.optionalDecimal, value):
             return self
         self.optionalDecimal = value
         self._loaded_fields.add("optionalDecimal")
@@ -929,7 +932,7 @@ class ScalarTypeProbe:
         return self
 
     def update_required_float(self, value):
-        if "requiredFloat" in self._loaded_fields and self.requiredFloat == value:
+        if "requiredFloat" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.requiredFloat, value):
             return self
         self.requiredFloat = value
         self._loaded_fields.add("requiredFloat")
@@ -937,7 +940,7 @@ class ScalarTypeProbe:
         return self
 
     def update_optional_float(self, value):
-        if "optionalFloat" in self._loaded_fields and self.optionalFloat == value:
+        if "optionalFloat" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.optionalFloat, value):
             return self
         self.optionalFloat = value
         self._loaded_fields.add("optionalFloat")
@@ -945,7 +948,7 @@ class ScalarTypeProbe:
         return self
 
     def update_required_double(self, value):
-        if "requiredDouble" in self._loaded_fields and self.requiredDouble == value:
+        if "requiredDouble" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.requiredDouble, value):
             return self
         self.requiredDouble = value
         self._loaded_fields.add("requiredDouble")
@@ -953,7 +956,7 @@ class ScalarTypeProbe:
         return self
 
     def update_optional_double(self, value):
-        if "optionalDouble" in self._loaded_fields and self.optionalDouble == value:
+        if "optionalDouble" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.optionalDouble, value):
             return self
         self.optionalDouble = value
         self._loaded_fields.add("optionalDouble")
@@ -961,7 +964,7 @@ class ScalarTypeProbe:
         return self
 
     def update_required_date(self, value):
-        if "requiredDate" in self._loaded_fields and self.requiredDate == value:
+        if "requiredDate" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.requiredDate, value):
             return self
         self.requiredDate = value
         self._loaded_fields.add("requiredDate")
@@ -969,7 +972,7 @@ class ScalarTypeProbe:
         return self
 
     def update_optional_date(self, value):
-        if "optionalDate" in self._loaded_fields and self.optionalDate == value:
+        if "optionalDate" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.optionalDate, value):
             return self
         self.optionalDate = value
         self._loaded_fields.add("optionalDate")
@@ -977,7 +980,7 @@ class ScalarTypeProbe:
         return self
 
     def update_required_time(self, value):
-        if "requiredTime" in self._loaded_fields and self.requiredTime == value:
+        if "requiredTime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.requiredTime, value):
             return self
         self.requiredTime = value
         self._loaded_fields.add("requiredTime")
@@ -985,7 +988,7 @@ class ScalarTypeProbe:
         return self
 
     def update_optional_time(self, value):
-        if "optionalTime" in self._loaded_fields and self.optionalTime == value:
+        if "optionalTime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.optionalTime, value):
             return self
         self.optionalTime = value
         self._loaded_fields.add("optionalTime")
@@ -993,7 +996,7 @@ class ScalarTypeProbe:
         return self
 
     def update_required_datetime(self, value):
-        if "requiredDatetime" in self._loaded_fields and self.requiredDatetime == value:
+        if "requiredDatetime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.requiredDatetime, value):
             return self
         self.requiredDatetime = value
         self._loaded_fields.add("requiredDatetime")
@@ -1001,7 +1004,7 @@ class ScalarTypeProbe:
         return self
 
     def update_optional_datetime(self, value):
-        if "optionalDatetime" in self._loaded_fields and self.optionalDatetime == value:
+        if "optionalDatetime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.optionalDatetime, value):
             return self
         self.optionalDatetime = value
         self._loaded_fields.add("optionalDatetime")
@@ -1009,7 +1012,7 @@ class ScalarTypeProbe:
         return self
 
     def update_create_time(self, value):
-        if "createTime" in self._loaded_fields and self.createTime == value:
+        if "createTime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.createTime, value):
             return self
         self.createTime = value
         self._loaded_fields.add("createTime")
@@ -1017,7 +1020,7 @@ class ScalarTypeProbe:
         return self
 
     def update_update_time(self, value):
-        if "updateTime" in self._loaded_fields and self.updateTime == value:
+        if "updateTime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.updateTime, value):
             return self
         self.updateTime = value
         self._loaded_fields.add("updateTime")
@@ -1025,7 +1028,7 @@ class ScalarTypeProbe:
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and self.version == value:
+        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
         self._loaded_fields.add("version")
@@ -1035,7 +1038,7 @@ class ScalarTypeProbe:
         assigned_id = getattr(value, "id", value) if value else None
         current = self.typePlatform
         current_id = getattr(current, "id", current)
-        if "typePlatform" in self._loaded_fields and current_id == assigned_id and (assigned_id is not None or current is value):
+        if "typePlatform" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.typePlatform = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
         self._loaded_fields.add("typePlatform")

@@ -29,6 +29,7 @@ class GraphMutationSession:
         self._committed = False
         self._preparing = False
         self._prepared_mutations = {}
+        self._generated_plan_complete = False
         self._commit_actions = []
         self._rollback_actions = []
         self._audits = []
@@ -53,6 +54,8 @@ class GraphMutationSession:
 
     def _remember_prepared_mutation(self, entity, action, command):
         self._require_active()
+        if self._generated_plan_complete:
+            raise RuntimeError('cannot add mutations after the generated graph is sealed')
         # Keep the entity alive: an object ID alone is not an ownership token.
         self._prepared_mutations[id(entity)] = (entity, action, command)
 
@@ -62,6 +65,17 @@ class GraphMutationSession:
         if prepared is None or prepared[0] is not entity:
             raise RuntimeError("entity mutation was not prepared in this invocation")
         return prepared[1], prepared[2]
+
+    def _seal_generated_plan(self):
+        """Only generated traversal can attest that every reached node is known."""
+        self._require_active()
+        if not self._preparing or self._generated_plan_complete:
+            raise RuntimeError('generated graph may only be sealed once during preparation')
+        self._generated_plan_complete = True
+
+    @property
+    def _empty_generated_plan(self):
+        return self._generated_plan_complete and not self._prepared_mutations
 
     def scope(self, key, parent=None, local_reason=None):
         self._require_active()
@@ -142,4 +156,5 @@ class GraphMutationSession:
         self._commit_actions.clear()
         self._rollback_actions.clear()
         self._prepared_mutations.clear()
+        self._generated_plan_complete = False
         self._preparing = False

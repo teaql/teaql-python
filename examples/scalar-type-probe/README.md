@@ -72,6 +72,35 @@ fault; production provider behavior is unchanged. No generated source is edited.
 This single-runtime example does not establish full cross-runtime schema parity
 or qualify a previously published package for the newer generator/runtime pair.
 
+## Restore a known persisted field without writing
+
+```bash
+bash examples/scalar-type-probe/verify-restoration.sh
+```
+
+`restore_probe.py` runs eleven cases twice on one retained database. A known
+loaded value or loaded null restored after an intermediate edit no longer opens
+a transaction, executes SQL, invokes policy/audit or bumps version. The runtime
+first admits the raw model keys; it never discards an invalid equal input to make
+it pass. A NotLoaded original remains unknown and its partial modification still
+rejects. Normalized fields do not erase real remaining edits, child operations,
+deletion, typed versions, load state or immutable original snapshots.
+
+The same generated graph confirms an unchanged parent still saves its changed
+child, while a completely unchanged graph leaves the provider alone. A surviving
+edit receives managed `update_time` from the context's fixed Business Clock.
+Decimal scale and signed-zero mutation intent are not swallowed by Python's
+ordinary numeric equality. Decimal scale is checked after actual SQLite/Q/E
+readback; SQLite signed-zero bit preservation is explicitly **not** claimed.
+
+Provider counters are calibrated by successful calls, and a real SQLite
+authorizer/trace callback independently proves the no-I/O assertions. The
+complete example inventory includes this script. Generated fixture hashes stay
+unchanged across the two runs; regenerating from the updated Python template
+is required to receive the trusted baseline-normalization and graph-sealing hooks.
+Manual graph callbacks keep their explicit transaction behavior. This is not
+full mutation, dynamic-field or private artifact acceptance.
+
 SQLite exact Decimal columns use `TEAQL_DECIMAL_TEXT COLLATE TEAQL_DECIMAL`
 and a generated value check. The provider registers the collation, validator
 and exact SUM on every connection. SUM ignores SQL NULL and returns NULL for

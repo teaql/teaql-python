@@ -240,6 +240,84 @@ async def test_prepared_commands_are_invocation_owned_and_released():
     await context.execute_graph_save(another, comment="independent next invocation")
 
 
+@pytest.mark.asyncio
+async def test_sealed_generated_empty_plan_never_opens_or_finishes_a_transaction():
+    context, provider, events = fixture()
+    retained = []
+    async def prepare(graph):
+        retained.append(graph)
+        graph._seal_generated_plan()
+        assert graph._empty_generated_plan
+        with pytest.raises(RuntimeError, match='sealed'):
+            graph._remember_prepared_mutation(object(), 'Update', object())
+        with pytest.raises(RuntimeError, match='only be sealed once'):
+            graph._seal_generated_plan()
+    async def work(graph):
+        assert graph.transaction is provider
+        with pytest.raises(RuntimeError, match='sealed empty graph'):
+            graph.context._require_mutation_invocation()
+        events.append('unchanged view')
+        return 17
+    assert await context.execute_graph_save(work, prepare=prepare, comment='return unchanged generated graph') == 17
+    assert events == ['unchanged view']
+    assert not retained[0]._generated_plan_complete and retained[0]._prepared_mutations == {}
+    assert context.require_resource('dataService') is provider
+    assert context._graph_save_guard.get() is None and not context._graph_save_lock.locked()
+
+
+@pytest.mark.asyncio
+async def test_a_manual_empty_preparation_does_not_claim_complete_generated_traversal():
+    context, _, events = fixture()
+    async def prepare(graph):
+        pass
+    async def work(graph):
+        assert not graph._empty_generated_plan
+    await context.execute_graph_save(work, prepare=prepare, comment='preserve explicit manual transaction semantics')
+    assert events == ['begin', 'commit']
+
+
+@pytest.mark.asyncio
+async def test_one_remaining_prepared_child_prevents_empty_plan_shortcut():
+    context, _, events = fixture()
+    owner = object()
+    async def prepare(graph):
+        graph._remember_prepared_mutation(owner, 'Update', InsertCommand.new('Child'))
+        graph._seal_generated_plan()
+        assert not graph._empty_generated_plan
+    async def work(graph):
+        assert graph._prepared_mutation(owner)[0] == 'Update'
+        graph.context._require_mutation_invocation()
+    await context.execute_graph_save(work, prepare=prepare, comment='an unchanged parent still has a changed child')
+    assert events == ['begin', 'commit']
+
+
+@pytest.mark.asyncio
+async def test_failure_of_an_empty_generated_result_does_not_rollback_the_callers_provider():
+    context, _, events = fixture()
+    async def prepare(graph):
+        graph.after_rollback(lambda: events.append('owned cleanup'))
+        graph._seal_generated_plan()
+    async def work(graph):
+        raise ValueError('view traversal failed')
+    with pytest.raises(ValueError, match='view traversal failed'):
+        await context.execute_graph_save(work, prepare=prepare, comment='preserve an outer transaction on an empty plan')
+    assert events == ['owned cleanup']
+    async def retry(graph):
+        return 42
+    assert await context.execute_graph_save(retry, comment='retry an independent real transaction') == 42
+    assert events == ['owned cleanup', 'begin', 'commit']
+
+
+@pytest.mark.asyncio
+async def test_generated_plan_cannot_be_sealed_outside_preparation():
+    context, _, events = fixture()
+    async def work(graph):
+        with pytest.raises(RuntimeError, match='during preparation'):
+            graph._seal_generated_plan()
+    await context.execute_graph_save(work, comment='do not infer a complete graph from an arbitrary callback')
+    assert events == ['begin', 'commit']
+
+
 def test_deferred_fields_are_trusted_generated_insert_defaults_not_a_general_bypass():
     descriptor = (EntityDescriptor("Probe")
         .property(PropertyDescriptor("business_number").required().fixed_by_runtime(insert=True))

@@ -131,6 +131,7 @@ class TypePlatform:
         if id(self) in visited:
             return
         visited.add(id(self))
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("TypePlatform", ledger)
@@ -187,11 +188,13 @@ class TypePlatform:
         self._teaql_prepare_input_graph(context, set())
         await self._teaql_reserve_graph_ids(context, set())
         self._teaql_preflight_graph(context, session)
+        session._seal_generated_plan()
 
     def _teaql_prepare_input_graph(self, context, visited):
         if id(self) in visited:
             return
         visited.add(id(self))
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("TypePlatform", ledger)
@@ -395,7 +398,7 @@ class TypePlatform:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and self.id == value:
+        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
         self._loaded_fields.add("id")
@@ -403,7 +406,7 @@ class TypePlatform:
         return self
 
     def update_name(self, value):
-        if "name" in self._loaded_fields and self.name == value:
+        if "name" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.name, value):
             return self
         self.name = value
         self._loaded_fields.add("name")
@@ -411,7 +414,7 @@ class TypePlatform:
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and self.version == value:
+        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
         self._loaded_fields.add("version")

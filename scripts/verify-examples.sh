@@ -38,6 +38,7 @@ fi
 
 bash "$repo/examples/object-storage/verify.sh"
 bash "$repo/examples/scalar-type-probe/verify.sh"
+bash "$repo/examples/scalar-type-probe/verify-restoration.sh" "$evidence_directory/restoration.sqlite"
 python "$repo/examples/fix-e-alignment/verify-local.py"
 PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/conformance" -p 'test_sql_log_intent.py' -v

@@ -1,24 +1,31 @@
 {
   "schema": "teaql.generated-example-fixture/v1",
   "language": "python",
-  "generatorCommit": "c1ee15ddd561a8c25515e50ca0fef6038564e8f4",
-  "generatorSourceContentsSha256": "f769497df8a93c7d962c4a69bbb870c9d520d618d1fab81ccca658202dc37a4a",
-  "generatorTest": "CoreScalarFixtureExportTest,PythonScalarMetadataGenerationTest",
+  "generatorCommit": "0167a589d262a4620d337d4bcf69dd0fc25e6d0f",
+  "generatorSourceContentsSha256": "8c9ed41be50288d81d4c826ca0e36771d92e8423b06826ffda1f4b269d21d8a8",
+  "generatorSourceSnapshot": {
+    "commit": "0167a589d262a4620d337d4bcf69dd0fc25e6d0f",
+    "diff": "c3728b129b60c0e79e7bcbf3d938ba642e0831fd9e19aca98e1aeaaccbf17784",
+    "status": "fe9c6b18217b73024062e58e0042893c6c4a552176dc7564ca3e3c0eec4e4492",
+    "sourceContentsSha256": "8c9ed41be50288d81d4c826ca0e36771d92e8423b06826ffda1f4b269d21d8a8",
+    "assistExporterSha256": "2583414a9d656e89b43b85f1d4e993dcc774b74e2bed0f9b7120d7cb7ea47efd"
+  },
+  "generatorTest": "CoreScalarFixtureExportTest,CoreScalarAssistExportTest,PythonBaselineRestorationGenerationTest,PythonScalarMetadataGenerationTest,PythonEntityJsonGenerationTest",
   "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
-  "producerReceiptSha256": "c1239dc8234d7dd13827a14d9103c1abba5483d0d70a0e4b935ecb3eba7b7147",
-  "producerManifestSha256": "d63437252d3e5c2efdefb8822aa6152e47b9629ce8e84256d898638864c22b30",
+  "producerReceiptSha256": "871a82b25474b4ab6ef0eea8f2db93958618115f168a2dd887cfb15e2cd01fda",
+  "producerManifestSha256": "6a3746c57396fe0ed59bb0a3950a2b18de5c527c053696b0e14017487c23a25f",
   "files": {
+    "teaql-i18n.json": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163",
     "pyproject.toml": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
     "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "generated_search_models.py": "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19",
-    "models/type_platform.py": "c832a29e62a6659762901eb024e49d24deade8d59d1445996cf0e03f57ed0c2c",
-    "models/scalar_type_probe.py": "7b06c52572e1b5e00e8b59024a5cabef954709e8e9137df8146c17bdaee2600a",
-    "runtime_module.py": "967dbb7d790ccc07597787416d58afb6aaa3d0ec031f8ce33421c68248d57611",
-    "E.py": "5e6a69648c561528bf6168391e9d3b3c8946e0918425909ed64c27e6499974dc",
-    "Q.py": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
     "requests/type_platform_request.py": "aff77b54d44aae520dd88f9d9eef67992a2b322006cceebc6ce5cdd85e0afc42",
     "requests/scalar_type_probe_request.py": "0b50059754f203a58291512675d22fbf13ca942a31fbac95b7915542f5913581",
-    "teaql-i18n.json": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163"
+    "models/type_platform.py": "bd58f7c7f80a85fa19b2b4433ffb01f89fc64a985aa48bd1a1018ab40616ce78",
+    "models/scalar_type_probe.py": "7ae4c1e7556caa298ab112bc096349cc8a4b754c13f55b07cdcc7729ee5c2da3",
+    "E.py": "5e6a69648c561528bf6168391e9d3b3c8946e0918425909ed64c27e6499974dc",
+    "Q.py": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
+    "runtime_module.py": "967dbb7d790ccc07597787416d58afb6aaa3d0ec031f8ce33421c68248d57611"
   }
 }
