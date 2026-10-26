@@ -437,6 +437,15 @@ Install application-owned policies, ID/business-ID services, logging sinks,
 transports and other supported SPIs through trusted runtime/Context setup.
 Request JSON is not allowed to replace those trusted capabilities.
 
+For model-backed mutations, field keys in the ledger, Checker/Fix and policy
+plan use the semantic model's canonical vocabulary, not native or wire aliases.
+Unknown keys and duplicate logical/storage spellings fail with a structured,
+value-free `unknown_field` result before Checker or customer policy; Fix cannot
+introduce an unknown key either. The runtime does not silently rename or drop
+fields. Legacy/manual entities without field metadata keep their existing
+contract; their vocabulary is not invented by inspecting arbitrary object names.
+This mutation rule does not change the tolerant unknown-field search behavior.
+
 - [Runtime guide: modules, SPI and advanced verification](RUNTIME_GUIDE.md)
 - [Modules and providers](RUNTIME_GUIDE.md#3-available-modules)
 - [Mutation Policy example](examples/mutation-policy)

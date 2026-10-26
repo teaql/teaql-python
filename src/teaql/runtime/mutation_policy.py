@@ -334,6 +334,9 @@ class MutationPolicyRuntimeState:
 
     def review(self, context: Any, plan: MutationPlan) -> MutationGovernanceSnapshot:
         _validate_plan(plan)
+        from .canonical_fields import validate_canonical_fields
+        for operation in plan.operations:
+            validate_canonical_fields(context, operation.entity, operation.changed_values)
         policy = self.registry.resolve(plan.request_key) if self.registry else None
         if policy is None:
             source = MutationPolicySource.GENERATED_DEFAULT

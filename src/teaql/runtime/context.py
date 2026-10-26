@@ -728,6 +728,8 @@ class UserContext:
 
     def check_and_fix_record_at(self, entity: str, record: Any, location: Any):
         from .scalar_validation import finite_scalar_results, integral_scalar_results, pending_reference_values
+        from .canonical_fields import validate_canonical_fields
+        validate_canonical_fields(self, entity, record, location)
         descriptor = self.entity(entity)
         pending = pending_reference_values(self, descriptor, record)
         registry = self.get_resource("checker_registry")
@@ -737,6 +739,7 @@ class UserContext:
             if not isinstance(checker, Checker):
                 raise TypeError("checker registry returned an object without check_and_fix")
             checker.check_and_fix(self, record, location, results)
+        validate_canonical_fields(self, entity, record, location)
         # Customer Fix may repair an input or introduce a different value. The
         # portable representation check therefore runs last, even when no
         # customer/generated checker is installed for this entity.
