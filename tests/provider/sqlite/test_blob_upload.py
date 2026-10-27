@@ -77,12 +77,14 @@ class FixturePDFVerifier:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("image", [False, True], ids=["fixture-pdf", "real-jpeg"])
-async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, image):
+@pytest.mark.parametrize("case", ["fixture-pdf", "real-jpeg", "real-pdf"])
+async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, case):
     if os.environ.get("TEAQL_S3_TEST_BLOB_UPLOAD") != "1":
         pytest.skip("explicit S3-compatible Blob upload gate required")
-    if image and os.environ.get("TEAQL_S3_TEST_REAL_IMAGE") != "1":
+    if case == "real-jpeg" and os.environ.get("TEAQL_S3_TEST_REAL_IMAGE") != "1":
         pytest.skip("explicit production JPEG S3 gate required")
+    if case == "real-pdf" and os.environ.get("TEAQL_S3_TEST_REAL_PDF") != "1":
+        pytest.skip("explicit production PDF S3 gate required")
     endpoint = os.environ.get("TEAQL_S3_TEST_ENDPOINT")
     bucket = os.environ.get("TEAQL_S3_TEST_BUCKET")
     access = os.environ.get("TEAQL_S3_TEST_ACCESS_KEY")
@@ -104,25 +106,31 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, im
         SqliteDialect(), SqliteTransport(path), schema))
     actor.with_object_storage(provider).with_object_storage_observer(lambda event: None)
     catalog = SqliteBlobCatalog(SqliteTransport(path))
-    if image:
+    if case == "real-jpeg":
         from teaql_blob_reference.content_pillow import PillowBlobContentVerifier
-
-        class CountingImageVerifier:
-            def __init__(self):
-                self.inner = PillowBlobContentVerifier()
-                self.calls = 0
-
-            def verify(self, stream, extension, maximum_bytes):
-                self.calls += 1
-                return self.inner.verify(stream, extension, maximum_bytes)
-
-        authority, verifier = UploadAuthority(("jpg",)), CountingImageVerifier()
+        authority, parser = UploadAuthority(("jpg",)), PillowBlobContentVerifier()
         data = (Path(__file__).parents[2] / "fixtures" / "blob-sample.jpg").read_bytes()
         file_name, content_type = "sample.jpg", "image/jpeg"
+    elif case == "real-pdf":
+        from teaql_blob_reference.content_pypdf import PypdfBlobContentVerifier
+        authority, parser = UploadAuthority(("pdf",)), PypdfBlobContentVerifier()
+        data = (Path(__file__).parents[2] / "fixtures" / "blob-sample.pdf").read_bytes()
+        file_name, content_type = "sample.pdf", "application/pdf"
     else:
-        authority, verifier = UploadAuthority(), FixturePDFVerifier()
+        authority, parser = UploadAuthority(), FixturePDFVerifier()
         data = b"%PDF-1.7\nreal S3 Blob upload\n%%EOF"
         file_name, content_type = "report.pdf", "application/pdf"
+
+    class CountingVerifier:
+        def __init__(self, inner):
+            self.inner = inner
+            self.calls = 0
+
+        def verify(self, stream, extension, maximum_bytes):
+            self.calls += 1
+            return self.inner.verify(stream, extension, maximum_bytes)
+
+    verifier = CountingVerifier(parser)
     service = SqliteBlobUploadService(catalog, authority, verifier, 10_000)
     object_key = None
     try:
