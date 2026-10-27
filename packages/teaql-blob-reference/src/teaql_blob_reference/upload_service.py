@@ -113,6 +113,10 @@ class _CountingReader:
         self.stream.close()
 
 
+class _ReplayMismatch(Exception):
+    pass
+
+
 class SqliteBlobUploadService:
     """Host-invoked upload path; schema migration remains explicit."""
 
@@ -304,8 +308,6 @@ class SqliteBlobUploadService:
             raise RuntimeError("BLOB_UPLOAD_INCOMPLETE")
         try:
             row = await self._row(actor, upload_id, "Write")
-            if row["state"] != "initiated":
-                raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
             key = await self._object_key(actor, row)
             mime = blob_mime_for_extension(row["extension"])
             reader = _CountingReader(source, row["declared_size"])
@@ -317,19 +319,85 @@ class SqliteBlobUploadService:
                 # the authoritative row after this owner commits.
                 try:
                     current = await tx.fetch_all_sql(_query(
-                        "SELECT state,expires_ms,key FROM teaql_blob_upload "
+                        "SELECT state,expires_ms,key,written_sha256,written_etag FROM teaql_blob_upload "
                         "WHERE upload_id=? AND scope=?", Value.Text(upload_id),
                         Value.Text(row["scope"])))
                     catalog = await tx.fetch_all_sql(_query(
-                        "SELECT object_key,status FROM teaql_blob_catalog WHERE key=? AND scope=?",
+                        "SELECT object_key,status,content_version,content_type,size_bytes "
+                        "FROM teaql_blob_catalog WHERE key=? AND scope=?",
                         Value.Text(row["key"]), Value.Text(row["scope"])))
                 except Exception:
                     raise RuntimeError("BLOB_CATALOG_FAILED") from None
-                if (len(current) != 1 or current[0]["state"] != "initiated" or
-                        current[0]["key"] != row["key"] or
+                if (len(current) != 1 or current[0]["key"] != row["key"] or
                         current[0]["expires_ms"] != row["expires_ms"] or
-                        len(catalog) != 1 or catalog[0]["status"] != "initiated" or
+                        len(catalog) != 1 or
                         catalog[0]["object_key"] != key.value):
+                    raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
+                state = current[0]["state"]
+                if state in ("written", "completed"):
+                    recorded_sha = current[0]["written_sha256"]
+                    recorded_etag = current[0]["written_etag"]
+                    if (not isinstance(recorded_sha, str) or
+                            re.fullmatch(r"[0-9a-f]{64}", recorded_sha) is None or
+                            not isinstance(recorded_etag, str) or not recorded_etag or
+                            (state == "written" and catalog[0]["status"] != "initiated") or
+                            (state == "completed" and (
+                                catalog[0]["status"] not in ("uploaded_unbound", "available") or
+                                catalog[0]["content_version"] != recorded_etag or
+                                catalog[0]["content_type"] != mime or
+                                catalog[0]["size_bytes"] != row["declared_size"]))):
+                        raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
+                    await self._current(actor, target, "Write",
+                                        BlobUploadInput(row["file_name"], row["declared_size"]),
+                                        row["scope"])
+                    if self.now_ms() >= row["expires_ms"]:
+                        raise RuntimeError("BLOB_UPLOAD_EXPIRED")
+
+                    def verify_replay():
+                        try:
+                            while reader.read(65536):
+                                pass
+                            if (not reader.eof or reader.count != row["declared_size"] or
+                                    reader.digest.hexdigest() != recorded_sha):
+                                raise _ReplayMismatch()
+                            store = actor.object_storage("recheck written Blob upload")
+                            before = store.head(key)
+                            if (before is None or before.size != reader.count or
+                                    before.etag != recorded_etag or before.content_type != mime):
+                                raise _ReplayMismatch()
+                            digest, count = sha256(), 0
+                            with store.get(key) as content:
+                                if (content.metadata.size != before.size or
+                                        content.metadata.etag != before.etag or
+                                        content.metadata.content_type != mime):
+                                    raise _ReplayMismatch()
+                                while True:
+                                    block = content.stream.read(65536)
+                                    if not isinstance(block, bytes) or count + len(block) > reader.count:
+                                        raise _ReplayMismatch()
+                                    if not block:
+                                        break
+                                    digest.update(block)
+                                    count += len(block)
+                            after = store.head(key)
+                            if (count != reader.count or digest.hexdigest() != recorded_sha or
+                                    after is None or after.size != before.size or
+                                    after.etag != before.etag or after.content_type != mime):
+                                raise _ReplayMismatch()
+                            return count
+                        except _ReplayMismatch:
+                            raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT") from None
+                        except Exception:
+                            raise RuntimeError("BLOB_STORE_FAILED") from None
+
+                    count = await asyncio.to_thread(verify_replay)
+                    await self._current(actor, target, "Write",
+                                        BlobUploadInput(row["file_name"], row["declared_size"]),
+                                        row["scope"])
+                    if self.now_ms() >= row["expires_ms"]:
+                        raise RuntimeError("BLOB_UPLOAD_EXPIRED")
+                    return count
+                if state != "initiated" or catalog[0]["status"] != "initiated":
                     raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
                 await self._current(actor, target, "Write",
                                     BlobUploadInput(row["file_name"], row["declared_size"]),

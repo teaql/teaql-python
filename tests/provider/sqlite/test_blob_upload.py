@@ -126,8 +126,7 @@ async def test_upload_write_holds_sql_owner_across_file_io(tmp_path):
     finally:
         release.set()
     assert await first == len(data)
-    with pytest.raises(RuntimeError, match="BLOB_IDEMPOTENCY_CONFLICT"):
-        await second
+    assert await second == len(data)
     assert store.puts == 1
     async with aiosqlite.connect(path) as db:
         async with db.execute("SELECT state FROM teaql_blob_upload WHERE upload_id=?",
@@ -172,6 +171,86 @@ async def test_upload_confirmation_holds_sql_owner_through_parser_io(tmp_path):
     assert await second == session.reference
     assert await service.complete(actor, session.upload_id) == session.reference
     assert verifier.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_upload_write_commit_unknown_replays_only_same_bytes_and_generation(tmp_path):
+    path = str(tmp_path / "commit-unknown.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    file_store = FileObjectStorage(tmp_path / "private", os.urandom(32))
+
+    class CountingStore:
+        puts = 0
+
+        def __getattr__(self, name):
+            return getattr(file_store, name)
+
+        def put(self, invocation, key, content, options):
+            self.puts += 1
+            return file_store.put(invocation, key, content, options)
+
+    store = CountingStore()
+    actor = RuntimeModule.new().into_context().with_object_storage(store)
+    actor.with_object_storage_observer(lambda event: None)
+    authority, verifier = UploadAuthority(), FixturePDFVerifier()
+    service = SqliteBlobUploadService(catalog, authority, verifier, 10_000)
+    data = b"%PDF-1.7\nSQL commit succeeded, reply lost\n%%EOF"
+    session = await service.begin(actor, BlobUploadTarget("Asset", "1", "document"),
+                                  BlobUploadInput("report.pdf", len(data)), "unknown-write")
+    begin_sql = catalog.transport.begin_sql
+
+    class CommitThenFail:
+        def __init__(self, tx):
+            self.tx = tx
+
+        def __getattr__(self, name):
+            return getattr(self.tx, name)
+
+        async def commit_sql(self):
+            await self.tx.commit_sql()
+            raise OSError("PRIVATE-COMMIT-CANARY")
+
+    async def uncertain_begin():
+        return CommitThenFail(await begin_sql())
+
+    catalog.transport.begin_sql = uncertain_begin
+    try:
+        with pytest.raises(RuntimeError, match="^BLOB_CATALOG_FAILED$"):
+            await service.write(actor, session.upload_id, BytesIO(data))
+    finally:
+        catalog.transport.begin_sql = begin_sql
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT u.state,c.status,c.object_key,u.written_etag "
+                              "FROM teaql_blob_upload u JOIN teaql_blob_catalog c ON c.key=u.key "
+                              "WHERE u.upload_id=?", (session.upload_id,)) as cursor:
+            state, catalog_state, object_key, etag = await cursor.fetchone()
+    assert state == "written" and catalog_state == "initiated" and etag
+    assert store.puts == 1
+    authority.allowed = False
+    with pytest.raises(RuntimeError, match="^BLOB_UPLOAD_DENIED$"):
+        await service.write(actor, session.upload_id, BytesIO(data))
+    authority.allowed = True
+    with pytest.raises(RuntimeError, match="^BLOB_IDEMPOTENCY_CONFLICT$"):
+        await service.write(actor, session.upload_id, BytesIO(b"x" * len(data)))
+    class FailingSource(BytesIO):
+        def read(self, *_):
+            raise OSError("PRIVATE-SOURCE-CANARY")
+
+    with pytest.raises(RuntimeError, match="^BLOB_STORE_FAILED$") as failed:
+        await service.write(actor, session.upload_id, FailingSource(data))
+    assert "CANARY" not in str(failed.value)
+    assert await service.write(actor, session.upload_id, BytesIO(data)) == len(data)
+    assert store.puts == 1
+    assert actor.object_storage("check unchanged version").head(ObjectKey(object_key)).etag == etag
+    assert await service.complete(actor, session.upload_id) == session.reference
+    assert verifier.calls == 1
+    assert await service.write(actor, session.upload_id, BytesIO(data)) == len(data)
+    assert verifier.calls == 1 and store.puts == 1
+    actor.object_storage("replace generation").put_bytes(ObjectKey(object_key), data,
+        PutOptions(len(data), WriteMode.REPLACE, "application/pdf"))
+    with pytest.raises(RuntimeError, match="^BLOB_IDEMPOTENCY_CONFLICT$"):
+        await service.write(actor, session.upload_id, BytesIO(data))
 
 
 @pytest.mark.asyncio
