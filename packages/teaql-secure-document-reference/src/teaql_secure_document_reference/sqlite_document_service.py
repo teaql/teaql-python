@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
 import unicodedata
 from dataclasses import dataclass
 from typing import Any, Protocol
@@ -294,6 +295,7 @@ class CurrentBoundDocument:
 class VerifiedDocumentBlobSelection:
     target: BlobSelectionTarget
     stable_key: str
+    row_key: str
     entity_id: str
     expected_version: int
     next_version: int
@@ -302,9 +304,18 @@ class VerifiedDocumentBlobSelection:
         return "VerifiedDocumentBlobSelection[redacted]"
 
 
+@dataclass(frozen=True, repr=False)
+class DocumentBlobSelectionClaim:
+    target: BlobSelectionTarget
+    stable_key: str
+
+    def __repr__(self) -> str:
+        return "DocumentBlobSelectionClaim[redacted]"
+
+
 def _verified_selections(module: SecureDocumentReferenceModule,
                          principal: TrustedReferencePrincipal, issued: BoundDocumentSnapshot,
-                         command: SubmittedDocumentCommand) -> tuple[VerifiedDocumentBlobSelection, ...]:
+                         command: SubmittedDocumentCommand) -> tuple[DocumentBlobSelectionClaim, ...]:
     result = []
     seen = set()
     for selected in command.blob_selections or ():
@@ -317,20 +328,37 @@ def _verified_selections(module: SecureDocumentReferenceModule,
         seen.add(pair)
         claim = module.consume_blob_selection(principal, command.document_token,
                                               selected.token, target).document
-        if target.kind != "EXISTING_ROW":
-            _invalid("DOCUMENT_CAPABILITY_MISSING")
-        row = next((item for item in issued.snapshot.entities
-                    if item.row_key == target.target_key), None)
-        binding = next((item for item in issued.bindings
-                        if item.row_key == target.target_key and
-                        item.canonical_field == target.canonical_field), None)
-        if (row is None or binding is None or row.identity.entity_type != target.target_entity or
-                not binding.writable or binding.binding_version >= (1 << 63) - 1):
-            _invalid("DOCUMENT_PROJECTION_VIOLATION")
-        result.append(VerifiedDocumentBlobSelection(target, claim.stable_key,
-                      str(row.identity.id), binding.binding_version,
-                      binding.binding_version + 1))
+        result.append(DocumentBlobSelectionClaim(target, claim.stable_key))
     return tuple(result)
+
+
+def _mapped_existing(issued: BoundDocumentSnapshot,
+                     selection: DocumentBlobSelectionClaim) -> VerifiedDocumentBlobSelection:
+    target = selection.target
+    row = next((item for item in issued.snapshot.entities
+                if item.row_key == target.target_key), None)
+    binding = next((item for item in issued.bindings
+                    if item.row_key == target.target_key and
+                    item.canonical_field == target.canonical_field), None)
+    if (row is None or binding is None or row.identity.entity_type != target.target_entity or
+            not binding.writable or binding.binding_version >= (1 << 63) - 1):
+        _invalid("DOCUMENT_PROJECTION_VIOLATION")
+    return VerifiedDocumentBlobSelection(target, selection.stable_key, target.target_key,
+                                         str(row.identity.id), binding.binding_version,
+                                         binding.binding_version + 1)
+
+
+def _mapped_new(issued: BoundDocumentSnapshot, selection: DocumentBlobSelectionClaim,
+                resolved: tuple[str, str]) -> VerifiedDocumentBlobSelection:
+    if (type(resolved) is not tuple or len(resolved) != 2 or
+            not _text(resolved[0], 16384) or type(resolved[1]) is not str or
+            re.fullmatch(r"[1-9][0-9]*", resolved[1], re.ASCII) is None or
+            len(resolved[1]) > 20 or
+            int(resolved[1]) > (1 << 64) - 1 or
+            any(row.row_key == resolved[0] for row in issued.snapshot.entities)):
+        _invalid("DOCUMENT_PROJECTION_VIOLATION")
+    return VerifiedDocumentBlobSelection(selection.target, selection.stable_key,
+                                         resolved[0], resolved[1], 0, 1)
 
 
 class SQLiteContextBoundDocumentHost(Protocol):
@@ -340,6 +368,9 @@ class SQLiteContextBoundDocumentHost(Protocol):
     async def load(self, context, business_id: str, sql) -> CurrentBoundDocument: ...
     async def apply(self, context, issued: BoundDocumentSnapshot,
                     submitted: SubmittedDocumentCommand, sql) -> None: ...
+    async def resolve_new_blob_selection(self, context, issued: BoundDocumentSnapshot,
+            submitted: SubmittedDocumentCommand, selection: DocumentBlobSelectionClaim,
+            sql) -> tuple[str, str]: ...
     async def present(self, context, document: ContextualDocument) -> None: ...
 
 
@@ -445,8 +476,24 @@ class SQLiteContextBoundDocumentService:
                 binder = getattr(self.host, "bind_blob_selection", None)
                 if selections and not callable(binder):
                     _invalid("DOCUMENT_CAPABILITY_MISSING")
+                resolver = getattr(self.host, "resolve_new_blob_selection", None)
+                if any(s.target.kind == "NEW_CLIENT_KEY" for s in selections) and not callable(resolver):
+                    _invalid("DOCUMENT_CAPABILITY_MISSING")
                 await self.host.apply(context, issued, frozen, sql)
+                mapped = []
+                mapped_targets = set()
                 for selection in selections:
+                    if selection.target.kind == "EXISTING_ROW":
+                        bound = _mapped_existing(issued, selection)
+                    else:
+                        bound = _mapped_new(issued, selection,
+                            await resolver(context, issued, frozen, selection, sql))
+                    pair = (bound.row_key, bound.target.canonical_field)
+                    if pair in mapped_targets:
+                        _invalid("DOCUMENT_COMMAND_INVALID")
+                    mapped_targets.add(pair)
+                    mapped.append(bound)
+                for selection in mapped:
                     await binder(context, graph, selection, sql)
                 after = await self.host.load(context, frozen.business_id, sql)
                 _valid_current(after, frozen.business_id, aggregate_type, purpose)
@@ -457,14 +504,30 @@ class SQLiteContextBoundDocumentService:
                         next_scope.purpose != scope.purpose or
                         next_scope.aggregate_revision < scope.aggregate_revision):
                     _invalid("DOCUMENT_PROJECTION_VIOLATION")
-                for selection in selections:
+                for selection in mapped:
                     binding = next((item for item in after.document.bindings
-                        if item.row_key == selection.target.target_key and
+                        if item.row_key == selection.row_key and
                         item.canonical_field == selection.target.canonical_field), None)
                     if (binding is None or binding.entity_type != selection.target.target_entity or
                             binding.stable_key != selection.stable_key or
                             binding.binding_version != selection.next_version):
                         _invalid("DOCUMENT_PROJECTION_VIOLATION")
+                    if selection.target.kind == "NEW_CLIENT_KEY":
+                        child = next((row for row in after.document.snapshot.entities
+                                      if row.row_key == selection.row_key), None)
+                        if (child is None or child.identity.entity_type != selection.target.target_entity or
+                                str(child.identity.id) != selection.entity_id or
+                                selection.target.canonical_field not in child.writable_fields or
+                                not any(relation.completeness == "COMPLETE" and relation.writable and
+                                    "CREATE_CHILD" in relation.allowed_mutations and
+                                    selection.row_key in relation.row_keys and
+                                    any(previous.name == relation.name and
+                                        previous.completeness == "COMPLETE" and previous.writable and
+                                        "CREATE_CHILD" in previous.allowed_mutations and
+                                        selection.row_key not in previous.row_keys
+                                        for previous in issued.snapshot.relations)
+                                    for relation in after.document.snapshot.relations)):
+                            _invalid("DOCUMENT_PROJECTION_VIOLATION")
                 try:
                     await self.host.authorize(context, principal, next_scope, sql)
                 except Exception:

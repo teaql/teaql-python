@@ -19,7 +19,7 @@ from teaql_secure_document_reference import (
     BlobSelectionClaim, BlobSelectionTarget, BoundDocumentSnapshot,
     ContextualDocument, CurrentBoundDocument, DocumentBlobBindingSnapshot,
     DocumentBlobSelectionSubmission,
-    DocumentEntitySnapshot, DocumentSnapshot, ReferenceDocumentScope,
+    DocumentEntitySnapshot, DocumentRelationSnapshot, DocumentSnapshot, ReferenceDocumentScope,
     ReferenceIdentity, ReferenceKey, RoundTripReferenceError,
     SecureDocumentReferenceModule,
     SQLiteContextBoundDocumentService, SQLiteDocumentCommandJournal,
@@ -243,6 +243,161 @@ class BlobOrderHost(OrderHost):
                               BlobRef.from_sql(selection.stable_key),
                               selection.expected_version, selection.next_version, "Update"),
             Authorization(), lease=sql)
+
+
+class ChildBlobOrderHost(BlobOrderHost):
+    def __init__(self, catalog):
+        super().__init__(catalog)
+        self.wrong_resolve = False
+
+    async def load(self, context, business_id, sql):
+        current = await super().load(context, business_id, sql)
+        children = await sql.fetch_all_sql(CompiledQuery(
+            "SELECT id,version,blob_key FROM document_order_line WHERE order_id=? ORDER BY id",
+            [Value.I64(10)]))
+        entities = list(current.document.snapshot.entities)
+        bindings = list(current.document.bindings)
+        row_keys = []
+        for child in children:
+            row_key = f"line:{child['id']}"
+            row_keys.append(row_key)
+            actual = await sql.fetch_all_sql(CompiledQuery(
+                "SELECT key,version FROM teaql_blob_binding WHERE scope=? AND entity=? "
+                "AND entity_id=? AND field=?", [Value.Text("merchant:7"), Value.Text("OrderLine"),
+                    Value.Text(str(child["id"])), Value.Text("attachment")]))
+            assert len(actual) <= 1
+            binding = actual[0] if actual else {"key": None, "version": 0}
+            assert child["blob_key"] == binding["key"]
+            entities.append(DocumentEntitySnapshot(row_key,
+                ReferenceIdentity("OrderLine", child["id"], child["version"]),
+                frozenset({"attachment"}), frozenset({"attachment"}),
+                frozenset({"UPDATE"})))
+            bindings.append(DocumentBlobBindingSnapshot(row_key, "attachment", "OrderLine",
+                binding["key"], binding["version"], True, True))
+        relation = DocumentRelationSnapshot("lines", tuple(row_keys), "COMPLETE", True,
+                                            frozenset({"CREATE_CHILD"}))
+        snapshot = replace(current.document.snapshot, entities=tuple(entities),
+                           relations=(relation,))
+        return replace(current, document=BoundDocumentSnapshot(snapshot, tuple(bindings)))
+
+    async def apply(self, context, issued, submitted, sql):
+        await super().apply(context, issued, submitted, sql)
+        for selection in submitted.blob_selections or ():
+            if selection.kind != "NEW_CLIENT_KEY":
+                continue
+            assert selection.target_entity == "OrderLine" and selection.canonical_field == "attachment"
+            assert selection.target_key in {"client-line-1", "client-line-2"}
+            child_id = 21 if selection.target_key == "client-line-1" else 22
+            affected, _ = await sql.execute_sql(CompiledQuery(
+                "INSERT INTO document_order_line(id,order_id,client_key,version,blob_key) "
+                "VALUES (?,?,?,?,NULL)", [Value.I64(child_id), Value.I64(10),
+                    Value.Text(selection.target_key), Value.I64(1)]))
+            assert affected == 1
+
+    async def resolve_new_blob_selection(self, _context, _issued, _submitted, selection, sql):
+        if self.wrong_resolve:
+            return "order:10", "10"
+        children = await sql.fetch_all_sql(CompiledQuery(
+            "SELECT id FROM document_order_line WHERE order_id=? AND client_key=?",
+            [Value.I64(10), Value.Text(selection.target.target_key)]))
+        assert len(children) == 1
+        return f"line:{children[0]['id']}", str(children[0]["id"])
+
+    async def bind_blob_selection(self, context, graph, selection, sql):
+        if selection.target.kind != "NEW_CLIENT_KEY":
+            return await super().bind_blob_selection(context, graph, selection, sql)
+        assert selection.target.target_entity == "OrderLine" and selection.row_key == f"line:{selection.entity_id}"
+        affected, _ = await sql.execute_sql(CompiledQuery(
+            "UPDATE document_order_line SET blob_key=? WHERE id=?",
+            [Value.Text(selection.stable_key), Value.I64(int(selection.entity_id))]))
+        assert affected == 1
+
+        class Authorization:
+            def scope(self, _actor):
+                return "merchant:7"
+
+            async def authorize(self, _actor, target, _previous, next_ref, action):
+                return (target == BlobBindingTarget("OrderLine", selection.entity_id, "attachment")
+                        and next_ref == BlobRef.from_sql(selection.stable_key) and action == "Create")
+
+        await self.catalog.bind_in_graph(graph, graph.context,
+            BlobBindingChange(BlobBindingTarget("OrderLine", selection.entity_id, "attachment"),
+                              BlobRef.from_sql(selection.stable_key),
+                              selection.expected_version, selection.next_version, "Create"),
+            Authorization(), lease=sql)
+
+
+@pytest.mark.asyncio
+async def test_sqlite_new_child_blob_selection_commits_and_receipt_failure_rolls_back(tmp_path):
+    path, context, _old_host, old_service = await fixture(tmp_path)
+    async with aiosqlite.connect(path) as db:
+        await db.execute("ALTER TABLE document_order ADD COLUMN blob_key TEXT")
+        await db.execute("""CREATE TABLE document_order_line (
+            id INTEGER PRIMARY KEY, order_id INTEGER NOT NULL, client_key TEXT UNIQUE NOT NULL,
+            version INTEGER NOT NULL, blob_key TEXT)""")
+        await db.commit()
+    catalog = SqliteBlobCatalog(old_service.transport)
+    await catalog.ensure_schema()
+    await catalog.validate_schema()
+    async with aiosqlite.connect(path) as db:
+        for key in ("blob_C", "blob_D"):
+            await db.execute("""INSERT INTO teaql_blob_catalog
+                (key,scope,object_key,content_version,file_name,content_type,size_bytes,status)
+                VALUES (?,?,?,?,?,?,?,'uploaded_unbound')""",
+                (key, "merchant:7", "objects/" + key, "v1", key + ".pdf", "application/pdf", 3))
+        await db.commit()
+    host = ChildBlobOrderHost(catalog)
+    service = SQLiteContextBoundDocumentService(context, old_service.transport,
+        old_service.module, old_service.journal, host)
+
+    async def selected(opened, command_id, client_key, blob_key):
+        issued = service.module.consume_bound_document_snapshot(host.actor,
+            opened.document_token, "Order", "edit-order").document
+        target = BlobSelectionTarget(issued.snapshot.scope, "OrderLine", "attachment",
+                                     "NEW_CLIENT_KEY", client_key, command_id)
+        token = service.module.issue_blob_selection(host.actor, opened.document_token,
+            BlobSelectionClaim(target, blob_key), 60)
+        return DocumentBlobSelectionSubmission(token, "OrderLine", "attachment",
+                                               "NEW_CLIENT_KEY", client_key)
+
+    opened = await service.open(context, "Order", "ORD-10", "edit-order", 60)
+    command = SubmittedDocumentCommand("ORD-10", opened.document_token, "command-child-1",
+        {"quantity": 3}, (await selected(opened, "command-child-1", "client-line-1", "blob_C"),))
+    host.wrong_resolve = True
+    with pytest.raises(RuntimeError, match="DOCUMENT_PROJECTION_VIOLATION"):
+        await service.accept(context, "Order", "edit-order", command)
+    assert await row(path) == (1, 1) and await receipts(path) == 0
+    host.wrong_resolve = False
+    first = await service.accept(context, "Order", "edit-order", command)
+    assert (first.previous_revision, first.new_revision, first.replayed) == (1, 2, False)
+    assert (await service.accept(context, "Order", "edit-order", command)).replayed
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT id,version,blob_key FROM document_order_line") as cursor:
+            assert await cursor.fetchone() == (21, 1, "blob_C")
+        async with db.execute("SELECT key,version FROM teaql_blob_binding WHERE entity='OrderLine'") as cursor:
+            assert await cursor.fetchone() == ("blob_C", 1)
+        async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key='blob_C'") as cursor:
+            assert await cursor.fetchone() == ("available",)
+    assert await row(path) == (2, 3) and await receipts(path) == 1
+
+    opened = await service.open(context, "Order", "ORD-10", "edit-order", 60)
+    failed = SubmittedDocumentCommand("ORD-10", opened.document_token, "command-child-2",
+        {"quantity": 3}, (await selected(opened, "command-child-2", "client-line-2", "blob_D"),))
+    async with aiosqlite.connect(path) as db:
+        await db.execute("""CREATE TRIGGER reject_child_receipt BEFORE INSERT
+            ON teaql_document_command_receipt WHEN NEW.command_id='command-child-2'
+            BEGIN SELECT RAISE(ABORT, 'receipt rejected'); END""")
+        await db.commit()
+    with pytest.raises(RuntimeError, match="DOCUMENT_CATALOG_FAILED"):
+        await service.accept(context, "Order", "edit-order", failed)
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT COUNT(*) FROM document_order_line") as cursor:
+            assert await cursor.fetchone() == (1,)
+        async with db.execute("SELECT COUNT(*) FROM teaql_blob_binding WHERE entity_id='22'") as cursor:
+            assert await cursor.fetchone() == (0,)
+        async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key='blob_D'") as cursor:
+            assert await cursor.fetchone() == ("uploaded_unbound",)
+    assert await row(path) == (2, 3) and await receipts(path) == 1
 
 
 @pytest.mark.asyncio
