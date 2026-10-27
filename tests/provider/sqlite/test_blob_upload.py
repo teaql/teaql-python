@@ -175,6 +175,44 @@ async def test_upload_confirmation_holds_sql_owner_through_parser_io(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_upload_retry_recovers_only_identical_file_after_journal_rollback(tmp_path):
+    path = str(tmp_path / "recover.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    actor = RuntimeModule.new().into_context().with_object_storage(
+        FileObjectStorage(tmp_path / "private", os.urandom(32)))
+    actor.with_object_storage_observer(lambda event: None)
+    verifier = FixturePDFVerifier()
+    service = SqliteBlobUploadService(catalog, UploadAuthority(), verifier, 10_000)
+    data = b"%PDF-1.7\nrecover committed File content\n%%EOF"
+    session = await service.begin(actor, BlobUploadTarget("Asset", "1", "document"),
+                                  BlobUploadInput("report.pdf", len(data)), "recovery-request")
+    async with aiosqlite.connect(path) as db:
+        await db.execute("""CREATE TRIGGER reject_upload_write BEFORE UPDATE ON teaql_blob_upload
+            WHEN NEW.state='written' BEGIN SELECT RAISE(ABORT, 'injected'); END""")
+        await db.commit()
+    with pytest.raises(RuntimeError, match="BLOB_CATALOG_FAILED"):
+        await service.write(actor, session.upload_id, BytesIO(data))
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT c.object_key,u.state FROM teaql_blob_upload u "
+                              "JOIN teaql_blob_catalog c ON c.key=u.key WHERE u.upload_id=?",
+                              (session.upload_id,)) as cursor:
+            object_key, state = await cursor.fetchone()
+        assert state == "initiated"
+        await db.execute("DROP TRIGGER reject_upload_write")
+        await db.commit()
+    stored = actor.object_storage("check recovery candidate").head(ObjectKey(object_key))
+    assert stored is not None and stored.size == len(data)
+    with pytest.raises(RuntimeError, match="BLOB_STORE_FAILED"):
+        await service.write(actor, session.upload_id, BytesIO(b"x" * len(data)))
+    assert await service.write(actor, session.upload_id, BytesIO(data)) == len(data)
+    assert actor.object_storage("check recovered generation").head(
+        ObjectKey(object_key)).etag == stored.etag
+    assert await service.complete(actor, session.upload_id) == session.reference
+    assert verifier.calls == 1
+
+
+@pytest.mark.asyncio
 async def test_upload_real_sqlite_file_verifier_and_native_bind(tmp_path):
     path = str(tmp_path / "upload.db")
     descriptor = EntityDescriptor("Asset").table_name("asset")

@@ -19,7 +19,9 @@ import secrets
 import time
 
 from teaql.core.blob_ref import BlobFieldSpec, BlobRef, blob_mime_for_extension
-from teaql.core.object_storage import MAX_PUT_SIZE, ObjectKey, PutOptions, WriteMode
+from teaql.core.object_storage import (
+    MAX_PUT_SIZE, ObjectKey, PutOptions, StorageError, StorageErrorCode, WriteMode,
+)
 from teaql.core.value import Value
 from teaql.sql.executor import SqlTransactionTransport
 from teaql.sql.types import CompiledQuery
@@ -334,10 +336,49 @@ class SqliteBlobUploadService:
                                     row["scope"])
                 if self.now_ms() >= row["expires_ms"]:
                     raise RuntimeError("BLOB_UPLOAD_EXPIRED")
+                store = actor.object_storage("write Blob upload")
                 try:
                     metadata = await asyncio.to_thread(
-                        actor.object_storage("write Blob upload").put, key, reader,
+                        store.put, key, reader,
                         PutOptions(row["declared_size"], WriteMode.CREATE_ONLY, mime))
+                except StorageError as error:
+                    if error.code != StorageErrorCode.CONFLICT:
+                        raise RuntimeError("BLOB_STORE_FAILED") from None
+
+                    def recover_existing():
+                        # A prior put can have committed while its SQL promotion
+                        # rolled back. Only the same complete source may adopt it.
+                        if not reader.eof or reader.count != row["declared_size"]:
+                            raise RuntimeError("BLOB_STORE_FAILED")
+                        before = store.head(key)
+                        if (before is None or before.size != reader.count or
+                                before.content_type != mime or not before.etag):
+                            raise RuntimeError("BLOB_STORE_FAILED")
+                        digest, count = sha256(), 0
+                        with store.get(key) as content:
+                            if (content.metadata.size != before.size or
+                                    content.metadata.etag != before.etag or
+                                    content.metadata.content_type != mime):
+                                raise RuntimeError("BLOB_STORE_FAILED")
+                            while True:
+                                block = content.stream.read(65536)
+                                if not isinstance(block, bytes) or count + len(block) > reader.count:
+                                    raise RuntimeError("BLOB_STORE_FAILED")
+                                if not block:
+                                    break
+                                digest.update(block)
+                                count += len(block)
+                        after = store.head(key)
+                        if (count != reader.count or digest.hexdigest() != reader.digest.hexdigest()
+                                or after is None or after.size != before.size or
+                                after.etag != before.etag or after.content_type != mime):
+                            raise RuntimeError("BLOB_STORE_FAILED")
+                        return before
+
+                    try:
+                        metadata = await asyncio.to_thread(recover_existing)
+                    except Exception:
+                        raise RuntimeError("BLOB_STORE_FAILED") from None
                 except Exception:
                     raise RuntimeError("BLOB_STORE_FAILED") from None
                 await self._current(actor, target, "Write",
