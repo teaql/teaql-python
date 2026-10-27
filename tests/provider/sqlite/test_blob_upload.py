@@ -3,6 +3,7 @@
 from hashlib import sha256
 from io import BytesIO
 from threading import Event
+from uuid import uuid4
 import asyncio
 import os
 
@@ -64,6 +65,64 @@ class FixturePDFVerifier:
         assert data.startswith(b"%PDF-") and b"%%EOF" in data
         assert stream.read(1) == b""
         return BlobVerifiedContent(len(data), sha256(data).hexdigest(), "application/pdf")
+
+
+@pytest.mark.asyncio
+async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path):
+    if os.environ.get("TEAQL_S3_TEST_BLOB_UPLOAD") != "1":
+        pytest.skip("explicit S3-compatible Blob upload gate required")
+    endpoint = os.environ.get("TEAQL_S3_TEST_ENDPOINT")
+    bucket = os.environ.get("TEAQL_S3_TEST_BUCKET")
+    access = os.environ.get("TEAQL_S3_TEST_ACCESS_KEY")
+    secret = os.environ.get("TEAQL_S3_TEST_SECRET_KEY")
+    assert all((endpoint, bucket, access, secret)), "explicit S3 test configuration required"
+    from teaql.provider.s3 import S3ObjectStorage
+
+    provider = S3ObjectStorage.connect(bucket, endpoint_url=endpoint,
+                                       aws_access_key_id=access, aws_secret_access_key=secret)
+    actor = RuntimeModule.new().into_context().with_object_storage(provider)
+    actor.with_object_storage_observer(lambda event: None)
+    path = str(tmp_path / "s3-upload.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    authority, verifier = UploadAuthority(), FixturePDFVerifier()
+    service = SqliteBlobUploadService(catalog, authority, verifier, 10_000)
+    data = b"%PDF-1.7\nreal S3 Blob upload\n%%EOF"
+    object_key = None
+    try:
+        await catalog.ensure_schema()
+        session = await service.begin(actor, BlobUploadTarget("Asset", "1", "document"),
+                                      BlobUploadInput("report.pdf", len(data), "application/pdf"),
+                                      uuid4().hex)
+        async with aiosqlite.connect(path) as db:
+            async with db.execute("SELECT object_key FROM teaql_blob_catalog WHERE key=?",
+                                  (session.reference.key,)) as cursor:
+                object_key = ObjectKey((await cursor.fetchone())[0])
+        assert await service.write(actor, session.upload_id, BytesIO(data)) == len(data)
+        authority.allowed = False
+        with pytest.raises(RuntimeError, match="BLOB_UPLOAD_DENIED"):
+            await service.complete(actor, session.upload_id)
+        authority.allowed = True
+        assert await service.complete(actor, session.upload_id) == session.reference
+        assert await service.complete(actor, session.upload_id) == session.reference
+        assert verifier.calls == 1
+        assert await service.write(actor, session.upload_id, BytesIO(data)) == len(data)
+        store = actor.object_storage("verify completed S3 Blob upload")
+        assert store.get_bytes(object_key, 10_000) == data
+        head = store.head(object_key)
+        async with aiosqlite.connect(path) as db:
+            async with db.execute(
+                "SELECT status, content_type, size_bytes, content_version "
+                "FROM teaql_blob_catalog WHERE key=?", (session.reference.key,)
+            ) as cursor:
+                status, mime, size, version = await cursor.fetchone()
+        assert (status, mime, size, version) == (
+            "uploaded_unbound", "application/pdf", len(data), head.etag)
+    finally:
+        try:
+            if object_key is not None:
+                actor.object_storage("clean S3 Blob upload fixture").delete(object_key)
+        finally:
+            provider.close()
 
 
 @pytest.mark.asyncio
