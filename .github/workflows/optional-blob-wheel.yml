@@ -1,4 +1,4 @@
-name: Optional Blob wheel
+name: Optional reference wheels
 on:
   pull_request:
   push:
@@ -16,9 +16,12 @@ jobs:
       - run: python -m pip install --upgrade build
       - run: python -m pip install -e ".[test,object-storage-s3]"
       - run: python -m pip install --no-deps -e ./packages/teaql-blob-reference
+      - run: python -m pip install --no-deps -e ./packages/teaql-secure-document-reference
       - run: python -m pytest -q tests/provider/sqlite/test_blob_catalog_graph.py tests/provider/sqlite/test_file_blob_storage.py tests/provider/sqlite/test_blob_upload.py
+      - run: python -m pytest -q packages/teaql-secure-document-reference/tests
       - run: python -m build --wheel --no-isolation --outdir .artifacts/base .
       - run: python -m build --wheel --no-isolation --outdir .artifacts/blob ./packages/teaql-blob-reference
+      - run: python -m build --wheel --no-isolation --outdir .artifacts/secure ./packages/teaql-secure-document-reference
       - name: Check wheel isolation
         run: |
           python - <<'PY'
@@ -27,17 +30,28 @@ jobs:
 
           base = list(Path('.artifacts/base').glob('*.whl'))
           blob = list(Path('.artifacts/blob').glob('*.whl'))
-          assert len(base) == len(blob) == 1, (base, blob)
+          secure = list(Path('.artifacts/secure').glob('*.whl'))
+          assert len(base) == len(blob) == len(secure) == 1, (base, blob, secure)
           with ZipFile(base[0]) as wheel:
               entries = wheel.namelist()
               assert any(name.startswith('teaql/') for name in entries)
               assert not any(name.startswith('teaql_blob_reference/') for name in entries)
+              assert not any(name.startswith('teaql_secure_document_reference/') for name in entries)
           with ZipFile(blob[0]) as wheel:
               entries = wheel.namelist()
               assert any(name.startswith('teaql_blob_reference/') for name in entries)
               assert not any(name.startswith('teaql/') for name in entries)
+              assert not any(name.startswith('teaql_secure_document_reference/') for name in entries)
               for module in ('file_storage.py', 'sqlite_catalog.py', 'upload_service.py'):
                   name = f'teaql_blob_reference/{module}'
                   assert name in entries
                   assert wheel.read(name) == (Path('packages/teaql-blob-reference/src') / name).read_bytes()
+          with ZipFile(secure[0]) as wheel:
+              entries = wheel.namelist()
+              assert any(name.startswith('teaql_secure_document_reference/') for name in entries)
+              assert not any(name.startswith('teaql/') or name.startswith('teaql_blob_reference/') for name in entries)
+              for module in ('__init__.py', 'round_trip_reference.py', 'document_round_trip.py'):
+                  name = f'teaql_secure_document_reference/{module}'
+                  assert name in entries
+                  assert wheel.read(name) == (Path('packages/teaql-secure-document-reference/src') / name).read_bytes()
           PY
