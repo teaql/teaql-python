@@ -49,6 +49,14 @@ class GraphMutationSession:
         if not self._active or self._committed:
             raise RuntimeError('graph mutation session is no longer writable')
 
+    async def with_sql_transport(self, work):
+        """Borrow this graph's physical SQL transaction for an optional module."""
+        self._require_active()
+        owner = getattr(self.transaction, 'with_physical_sql', None)
+        if not callable(owner):
+            raise RuntimeError('BLOB_TRANSACTION_REQUIRED')
+        return await owner(work)
+
     def scope(self, key, parent=None, local_reason=None):
         self._require_active()
         if parent is None:

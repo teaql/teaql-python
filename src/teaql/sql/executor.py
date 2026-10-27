@@ -1390,6 +1390,27 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
         self._audit_journal = None
         self._audit_owner = None
         self._completed = False
+        self._rollback_only = False
+        self._physical_sql_active = False
+
+    async def with_physical_sql(self, work):
+        """Lend this physical SQL owner to an explicit graph module callback."""
+        if self._completed or self._rollback_only or self._physical_sql_active or not callable(work):
+            raise RuntimeError('BLOB_TRANSACTION_REQUIRED')
+        lease = _PhysicalSQLLease(self.transport)
+        self._physical_sql_active = True
+        try:
+            result = await work(lease)
+            if lease.failed:
+                self._rollback_only = True
+                raise RuntimeError('GRAPH_TRANSACTION_ROLLBACK_ONLY')
+            return result
+        except BaseException:
+            self._rollback_only = True
+            raise
+        finally:
+            lease.close()
+            self._physical_sql_active = False
 
     def capabilities(self) -> DataServiceCapabilities:
         return DataServiceCapabilities(
@@ -1410,6 +1431,8 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
         request.validate()
         if self._completed:
             raise RuntimeError('SQL transaction is already completed')
+        if self._rollback_only:
+            raise RuntimeError('GRAPH_TRANSACTION_ROLLBACK_ONLY')
         if context is not None:
             context._require_mutation_invocation()
             if context._graph_session is None:
@@ -1436,6 +1459,8 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
     async def commit(self, context: 'UserContext') -> None:
         if self._completed:
             raise RuntimeError('SQL transaction is already completed')
+        if self._rollback_only:
+            raise RuntimeError('GRAPH_TRANSACTION_ROLLBACK_ONLY')
         await self.transport.commit_sql()
         self._completed = True
         if self._audit_journal:
@@ -1446,3 +1471,31 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
             self._audit_journal.discard()
         self._completed = True
         await self.transport.rollback_sql()
+
+
+class _PhysicalSQLLease(SqlTransport):
+    def __init__(self, transport: SqlTransactionTransportTx):
+        self._transport = transport
+        self._active = True
+        self.failed = False
+
+    def close(self):
+        self._active = False
+
+    async def fetch_all_sql(self, query: CompiledQuery):
+        if not self._active:
+            raise RuntimeError('BLOB_TRANSACTION_REQUIRED')
+        try:
+            return await self._transport.fetch_all_sql(query)
+        except BaseException:
+            self.failed = True
+            raise
+
+    async def execute_sql(self, query: CompiledQuery):
+        if not self._active:
+            raise RuntimeError('BLOB_TRANSACTION_REQUIRED')
+        try:
+            return await self._transport.execute_sql(query)
+        except BaseException:
+            self.failed = True
+            raise
