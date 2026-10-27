@@ -16,6 +16,11 @@ _MIME = {
 }
 
 
+def blob_mime_for_extension(extension: str) -> str | None:
+    """Resolve only the frozen Blob format set; never trust client MIME."""
+    return _MIME.get(extension) if isinstance(extension, str) else None
+
+
 class BlobRef:
     """A Key identifies catalog state; it never conveys read or bind authority."""
 

@@ -16,7 +16,7 @@ jobs:
       - run: python -m pip install --upgrade build
       - run: python -m pip install -e ".[test,object-storage-s3]"
       - run: python -m pip install --no-deps -e ./packages/teaql-blob-reference
-      - run: python -m pytest -q tests/provider/sqlite/test_blob_catalog_graph.py tests/provider/sqlite/test_file_blob_storage.py
+      - run: python -m pytest -q tests/provider/sqlite/test_blob_catalog_graph.py tests/provider/sqlite/test_file_blob_storage.py tests/provider/sqlite/test_blob_upload.py
       - run: python -m build --wheel --no-isolation --outdir .artifacts/base .
       - run: python -m build --wheel --no-isolation --outdir .artifacts/blob ./packages/teaql-blob-reference
       - name: Check wheel isolation
@@ -36,4 +36,8 @@ jobs:
               entries = wheel.namelist()
               assert any(name.startswith('teaql_blob_reference/') for name in entries)
               assert not any(name.startswith('teaql/') for name in entries)
+              for module in ('file_storage.py', 'sqlite_catalog.py', 'upload_service.py'):
+                  name = f'teaql_blob_reference/{module}'
+                  assert name in entries
+                  assert wheel.read(name) == (Path('packages/teaql-blob-reference/src') / name).read_bytes()
           PY
