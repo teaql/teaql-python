@@ -89,6 +89,7 @@ class SqliteBlobCatalog:
                 FOREIGN KEY (key) REFERENCES teaql_blob_catalog(key))
             """,
             "CREATE INDEX IF NOT EXISTS teaql_blob_binding_key ON teaql_blob_binding(key)",
+            "CREATE UNIQUE INDEX IF NOT EXISTS teaql_blob_catalog_object_key ON teaql_blob_catalog(object_key)",
             """CREATE TABLE IF NOT EXISTS teaql_blob_upload (
                 upload_id TEXT PRIMARY KEY, scope TEXT NOT NULL, replay_key TEXT NOT NULL,
                 request_hash TEXT NOT NULL, key TEXT NOT NULL, entity TEXT NOT NULL,
@@ -124,6 +125,15 @@ class SqliteBlobCatalog:
             columns = await self.transport.fetch_all_sql(CompiledQuery("PRAGMA table_info(teaql_blob_binding)", []))
             names = {row["name"]: row for row in columns}
             if names["key"]["notnull"] != 0 or names["version"]["notnull"] != 1:
+                raise RuntimeError("BLOB_SCHEMA_MISSING")
+            indexes = await self.transport.fetch_all_sql(CompiledQuery(
+                "PRAGMA index_list(teaql_blob_catalog)", []))
+            if not any(row.get("name") == "teaql_blob_catalog_object_key"
+                       and row.get("unique") == 1 for row in indexes):
+                raise RuntimeError("BLOB_SCHEMA_MISSING")
+            index_columns = await self.transport.fetch_all_sql(CompiledQuery(
+                "PRAGMA index_info(teaql_blob_catalog_object_key)", []))
+            if len(index_columns) != 1 or index_columns[0].get("name") != "object_key":
                 raise RuntimeError("BLOB_SCHEMA_MISSING")
         except Exception:
             raise RuntimeError("BLOB_SCHEMA_MISSING") from None

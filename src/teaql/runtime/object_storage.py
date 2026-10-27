@@ -241,5 +241,8 @@ class ObjectStorage:
             return result
         return self._call("delete_if_version", delete)
 
+    def supports_version_conditional_delete(self) -> bool:
+        return callable(getattr(self._provider, "delete_if_version", None))
+
     def get_read_url(self, key, options=ReadUrlOptions()):
         return self._call("read_url", lambda: self._provider.get_read_url(self._invocation, key, options))

@@ -3,12 +3,17 @@
 from .sqlite_catalog import BlobBindingChange, BlobBindingTarget, BlobCatalogRead, SqliteBlobCatalog
 from .read_service import SqliteBlobResponseContributor
 from .module import BlobReferenceModule
+from .maintenance_service import (BlobMaintenanceAuthorization, BlobMaintenanceBatch,
+                                  BlobMaintenanceCursor, BlobMaintenanceOutcome,
+                                  SqliteBlobMaintenanceService)
 from .mutation_participant import SqliteBlobMutationParticipant
 from .file_storage import FileObjectStorage
 from .upload_service import (BlobUploadInput, BlobUploadSession, BlobUploadTarget,
                              BlobVerifiedContent, SqliteBlobUploadService)
 
 __all__ = ["BlobReferenceModule", "SqliteBlobMutationParticipant", "BlobBindingChange", "BlobBindingTarget", "BlobCatalogRead",
+           "BlobMaintenanceAuthorization", "BlobMaintenanceBatch", "BlobMaintenanceCursor",
+           "BlobMaintenanceOutcome", "SqliteBlobMaintenanceService",
            "SqliteBlobCatalog", "SqliteBlobResponseContributor", "FileObjectStorage",
            "BlobUploadInput", "BlobUploadSession", "BlobUploadTarget",
            "BlobVerifiedContent", "SqliteBlobUploadService"]

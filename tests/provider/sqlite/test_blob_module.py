@@ -16,7 +16,8 @@ from teaql.provider.sqlite.transport import SqliteTransport
 from teaql.runtime import RuntimeModule, validate_capabilities
 from teaql.sql.executor import SqlDataServiceExecutor
 from teaql_blob_reference import (
-    BlobReferenceModule, FileObjectStorage, SqliteBlobCatalog, SqliteBlobUploadService,
+    BlobReferenceModule, FileObjectStorage, SqliteBlobCatalog,
+    SqliteBlobMaintenanceService, SqliteBlobUploadService,
 )
 
 
@@ -57,6 +58,14 @@ class _BindingAuthority:
         return self.allowed and target.entity == "Asset" and target.field == "document"
 
 
+class _MaintenanceAuthority:
+    def scope(self, context):
+        return "tenant-a"
+
+    async def can_maintain(self, context, scope):
+        return scope == "tenant-a"
+
+
 class _SafeAuditSink:
     def __init__(self):
         self.events = []
@@ -72,12 +81,15 @@ async def test_blob_module_requires_provider_owner_and_catalog(tmp_path):
     catalog = SqliteBlobCatalog(transport)
     verifier = _Verifier()
     upload = SqliteBlobUploadService(catalog, _UploadAuthority(), verifier, 10_000)
-    module = BlobReferenceModule(catalog, upload, _ReadAuthority(), _BindingAuthority())
+    maintenance = SqliteBlobMaintenanceService(catalog, _MaintenanceAuthority())
+    module = BlobReferenceModule(catalog, upload, _ReadAuthority(), _BindingAuthority(),
+                                 maintenance=maintenance)
     context = RuntimeModule.new().require_capability("blob.v1").into_context()
     with pytest.raises(RuntimeError, match="BLOB_CAPABILITY_MISSING"):
         await validate_capabilities(context)
     module.install(context)
     assert context.get_resource("blob_response_contributor") is module.read
+    assert context.get_resource("blob_maintenance_service") is maintenance
     with pytest.raises(RuntimeError, match="BLOB_CAPABILITY_MISSING"):
         await module.ready(context)
     with pytest.raises(RuntimeError, match="BLOB_CAPABILITY_MISSING"):

@@ -220,6 +220,12 @@ class UserContext:
         )
         return claims
 
+    def require_no_active_graph_sql(self) -> None:
+        """Reject maintenance that would wait on its own graph SQL owner."""
+        guard = self._graph_save_guard.get()
+        if self._graph_session is not None or (guard is not None and guard["active"]):
+            raise RuntimeError("BLOB_TRANSACTION_REQUIRED")
+
     async def execute_graph_save(self, work, *, comment=None):
         """Run ``work(session)``; never implicitly join another root save."""
         from teaql.core.request_intent import MutationIntent

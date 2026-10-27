@@ -6,6 +6,7 @@ from .read_service import SqliteBlobResponseContributor
 from .mutation_participant import SqliteBlobMutationParticipant
 from .sqlite_catalog import SqliteBlobCatalog
 from .upload_service import SqliteBlobUploadService
+from .maintenance_service import SqliteBlobMaintenanceService
 
 
 class _BlobCapability:
@@ -18,6 +19,9 @@ class _BlobCapability:
         if context.get_resource("blob_response_contributor") is not self.module.read or \
                 context.get_resource("blob_mutation_participant") is not self.module.mutation or \
                 context.get_resource("object_storage_provider") is None:
+            raise RuntimeError("BLOB_CAPABILITY_MISSING")
+        if self.module.maintenance is not None and \
+                context.get_resource("blob_maintenance_service") is not self.module.maintenance:
             raise RuntimeError("BLOB_CAPABILITY_MISSING")
         owner = context.get_resource("dataService")
         if owner is None or not callable(getattr(owner, "begin", None)):
@@ -32,24 +36,31 @@ class BlobReferenceModule:
     """Host installs this module, then separately migrates and checks its catalog."""
 
     def __init__(self, catalog: SqliteBlobCatalog, upload: SqliteBlobUploadService,
-                 read_authorization, binding_authorization, maximum_url_seconds: int = 600):
+                 read_authorization, binding_authorization, maximum_url_seconds: int = 600,
+                 maintenance: SqliteBlobMaintenanceService | None = None):
         if not isinstance(catalog, SqliteBlobCatalog) or \
-                not isinstance(upload, SqliteBlobUploadService) or upload.catalog is not catalog:
+                not isinstance(upload, SqliteBlobUploadService) or upload.catalog is not catalog or \
+                maintenance is not None and (not isinstance(maintenance, SqliteBlobMaintenanceService)
+                                            or maintenance.catalog is not catalog):
             raise RuntimeError("BLOB_CAPABILITY_MISSING")
         self.catalog = catalog
         self.upload = upload
         self.mutation = SqliteBlobMutationParticipant(catalog, binding_authorization)
         self.read = SqliteBlobResponseContributor(catalog, read_authorization,
                                                    maximum_url_seconds)
+        self.maintenance = maintenance
 
     def install(self, context) -> None:
         if context is None or context.get_resource("blob_response_contributor") is not None or \
                 context.get_resource("blob_mutation_participant") is not None or \
+                (self.maintenance is not None and context.get_resource("blob_maintenance_service") is not None) or \
                 context.get_resource("teaql.runtime.capability:blob.v1") is not None:
             raise RuntimeError("BLOB_CAPABILITY_MISSING")
         install_runtime_capability(context, _BlobCapability(self))
         context.insert_resource("blob_response_contributor", self.read)
         context.insert_resource("blob_mutation_participant", self.mutation)
+        if self.maintenance is not None:
+            context.insert_resource("blob_maintenance_service", self.maintenance)
 
     async def ready(self, context) -> None:
         capability = context.get_resource("teaql.runtime.capability:blob.v1")
