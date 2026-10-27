@@ -1,11 +1,13 @@
 """Real SQLite catalog binding belongs to the native business graph owner."""
 
 import aiosqlite
+import os
 import pytest
 from datetime import datetime, timedelta, timezone
+from urllib.request import urlopen
 
 from teaql.core.blob_ref import BlobRef
-from teaql.core.object_storage import ObjectReadUrl
+from teaql.core.object_storage import ObjectKey, ObjectReadUrl, PutOptions, WriteMode
 from teaql.core.entity import EntityKey
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
 from teaql.core.mutation import InsertCommand
@@ -20,7 +22,8 @@ from teaql.runtime.view_preparation import (
 )
 from teaql.sql.executor import SqlDataServiceExecutor
 from teaql_blob_reference import (
-    BlobBindingChange, BlobBindingTarget, SqliteBlobCatalog, SqliteBlobResponseContributor,
+    BlobBindingChange, BlobBindingTarget, FileObjectStorage, SqliteBlobCatalog,
+    SqliteBlobResponseContributor,
 )
 
 
@@ -233,3 +236,62 @@ async def test_current_sqlite_binding_is_reread_before_view_url_signing(tmp_path
         await db.commit()
     with pytest.raises(RuntimeError, match="BLOB_READ_DENIED"):
         await catalog.current_read(slot)
+
+
+@pytest.mark.asyncio
+async def test_authorized_sqlite_view_projects_real_file_http_bytes_and_denies_revoked_refresh(tmp_path):
+    context, path, catalog = await fixture(tmp_path)
+    await catalog.ensure_schema()
+    provider = FileObjectStorage(tmp_path / "private", os.urandom(32))
+    try:
+        assert provider.start().startswith("http://127.0.0.1:")
+        context.with_object_storage(provider)
+        key = ObjectKey("objects/read-real")
+        data = b"%PDF-1x"
+        context.object_storage("publish current Blob").put_bytes(
+            key, data, PutOptions(len(data), WriteMode.CREATE_ONLY, "application/pdf"))
+        reference = BlobRef("blob_python_real_1")
+        async with aiosqlite.connect(path) as db:
+            await db.execute("INSERT INTO teaql_blob_catalog "
+                             "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status) "
+                             "VALUES (?,?,?,?,?,?,?,?)",
+                             (reference.key, "tenant-a", key.value, "v1", "report.pdf",
+                              "application/pdf", len(data), "uploaded_unbound"))
+            await db.commit()
+        change = BlobBindingChange(BlobBindingTarget("Asset", "1", "document"),
+                                   reference, 0, 1, "Create")
+        await context.execute_graph_save(
+            lambda graph: catalog.bind_in_graph(graph, graph.context, change, Authorization()),
+            comment="bind real file")
+        slot = AuthorizedBlobSlot(("document",), "Asset", "1", "document", "tenant-a", 1, reference)
+
+        class ReadAuthorization:
+            allowed = True
+
+            async def authorize(self, _context, _slot):
+                return self.allowed
+
+        class Authorizer:
+            async def authorize(self, _context, _result, _options):
+                return AuthorizedResponseGraph({"document": reference}, (slot,))
+
+        read_permission = ReadAuthorization()
+        context.insert_resource("response_graph_authorizer", Authorizer())
+        context.insert_resource("blob_response_contributor",
+                                SqliteBlobResponseContributor(catalog, read_permission))
+        options = ViewOptions("ordinary", "read_only",
+                              datetime.now(timezone.utc) + timedelta(seconds=60))
+        view = await ViewPreparationService().prepare(context, None, options)
+        link = view.presentation["document"]
+        assert link.startswith("http://127.0.0.1:") and key.value not in link
+        with urlopen(link, timeout=5) as response:
+            assert response.status == 200
+            assert response.read() == data
+            assert response.headers["Content-Type"] == "application/pdf"
+            assert response.headers["Content-Disposition"] == 'inline; filename="report.pdf"'
+        read_permission.allowed = False
+        with pytest.raises(ViewPreparationError) as denied:
+            await ViewPreparationService().prepare(context, None, options)
+        assert denied.value.code == "BLOB_READ_DENIED"
+    finally:
+        provider.close()
