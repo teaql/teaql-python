@@ -243,6 +243,20 @@ async def test_upload_write_commit_unknown_replays_only_same_bytes_and_generatio
     assert await service.write(actor, session.upload_id, BytesIO(data)) == len(data)
     assert store.puts == 1
     assert actor.object_storage("check unchanged version").head(ObjectKey(object_key)).etag == etag
+    catalog.transport.begin_sql = uncertain_begin
+    try:
+        with pytest.raises(RuntimeError, match="^BLOB_CATALOG_FAILED$"):
+            await service.complete(actor, session.upload_id)
+    finally:
+        catalog.transport.begin_sql = begin_sql
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT state FROM teaql_blob_upload WHERE upload_id=?",
+                              (session.upload_id,)) as cursor:
+            assert (await cursor.fetchone())[0] == "completed"
+    authority.allowed = False
+    with pytest.raises(RuntimeError, match="^BLOB_UPLOAD_DENIED$"):
+        await service.complete(actor, session.upload_id)
+    authority.allowed = True
     assert await service.complete(actor, session.upload_id) == session.reference
     assert verifier.calls == 1
     assert await service.write(actor, session.upload_id, BytesIO(data)) == len(data)
