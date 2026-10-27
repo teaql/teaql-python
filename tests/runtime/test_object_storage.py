@@ -1,4 +1,5 @@
 from datetime import timedelta, datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
@@ -165,6 +166,8 @@ def test_minio_real_signed_range_and_expiry():
         aws_access_key_id=access, aws_secret_access_key=secret)
     storage = UserContext().with_object_storage(provider).object_storage("F4 real S3-compatible Python")
     key = ObjectKey("f4/python/" + uuid4().hex)
+    create_key = ObjectKey("f4/python/create/" + uuid4().hex)
+    race_key = ObjectKey("f4/python/race/" + uuid4().hex)
     content = b"%PDF-1.7\nF4 real S3-compatible bytes\n%%EOF"
     try:
         written = storage.put_bytes(key, content, PutOptions(len(content), WriteMode.REPLACE, "application/pdf"))
@@ -182,8 +185,32 @@ def test_minio_real_signed_range_and_expiry():
         with pytest.raises(HTTPError) as expired:
             urlopen(ticket.url, timeout=5)
         assert expired.value.code == 403
+        if os.environ.get("TEAQL_S3_TEST_CREATE_ONLY") == "1":
+            create = PutOptions(len(content), WriteMode.CREATE_ONLY, "application/pdf")
+            created = storage.put_bytes(create_key, content, create)
+            assert_error(StorageErrorCode.CONFLICT,
+                         lambda: storage.put_bytes(create_key, b"x" * len(content), create))
+            assert storage.head(create_key).etag == created.etag
+            assert storage.get_bytes(create_key, 1024) == content
+            candidates = (content, b"y" * len(content))
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures = [pool.submit(storage.put_bytes, race_key, value, create)
+                           for value in candidates]
+                outcomes = []
+                for future in futures:
+                    try:
+                        future.result()
+                        outcomes.append("winner")
+                    except StorageError as error:
+                        assert error.code == StorageErrorCode.CONFLICT
+                        outcomes.append("conflict")
+            assert outcomes.count("winner") == outcomes.count("conflict") == 1
+            assert storage.get_bytes(race_key, 1024) == candidates[outcomes.index("winner")]
     finally:
         try:
             storage.delete(key)
+            if os.environ.get("TEAQL_S3_TEST_CREATE_ONLY") == "1":
+                storage.delete(create_key)
+                storage.delete(race_key)
         finally:
             provider.close()
