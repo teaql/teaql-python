@@ -1,8 +1,10 @@
 """Real SQLite/File upload confirmation; parser remains test-only."""
 
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from io import BytesIO
 from threading import Event
+from urllib.request import Request, urlopen
 from uuid import uuid4
 import asyncio
 import os
@@ -20,10 +22,15 @@ from teaql.provider.sqlite import SimpleSchemaProvider
 from teaql.provider.sqlite.dialect import SqliteDialect
 from teaql.provider.sqlite.transport import SqliteTransport
 from teaql.runtime import RuntimeModule
+from teaql.runtime.view_preparation import (
+    AuthorizedBlobSlot, AuthorizedResponseGraph, ViewOptions,
+    ViewPreparationError, ViewPreparationService,
+)
 from teaql.sql.executor import SqlDataServiceExecutor
 from teaql_blob_reference import (
     BlobBindingChange, BlobBindingTarget, BlobUploadInput, BlobUploadTarget,
-    BlobVerifiedContent, FileObjectStorage, SqliteBlobCatalog, SqliteBlobUploadService,
+    BlobVerifiedContent, FileObjectStorage, SqliteBlobCatalog, SqliteBlobResponseContributor,
+    SqliteBlobUploadService,
 )
 
 
@@ -80,15 +87,26 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path):
 
     provider = S3ObjectStorage.connect(bucket, endpoint_url=endpoint,
                                        aws_access_key_id=access, aws_secret_access_key=secret)
-    actor = RuntimeModule.new().into_context().with_object_storage(provider)
-    actor.with_object_storage_observer(lambda event: None)
     path = str(tmp_path / "s3-upload.db")
+    descriptor = EntityDescriptor("Asset").table_name("asset")
+    descriptor.property(PropertyDescriptor("id", DataType.I64).is_id())
+    descriptor.property(PropertyDescriptor("version", DataType.I64).is_version())
+    descriptor.property(PropertyDescriptor("name", DataType.Text))
+    schema = SimpleSchemaProvider()
+    schema.register_entity(descriptor)
+    actor = RuntimeModule.new().entity(descriptor).into_context()
+    actor.insert_resource("dataService", SqlDataServiceExecutor(
+        SqliteDialect(), SqliteTransport(path), schema))
+    actor.with_object_storage(provider).with_object_storage_observer(lambda event: None)
     catalog = SqliteBlobCatalog(SqliteTransport(path))
     authority, verifier = UploadAuthority(), FixturePDFVerifier()
     service = SqliteBlobUploadService(catalog, authority, verifier, 10_000)
     data = b"%PDF-1.7\nreal S3 Blob upload\n%%EOF"
     object_key = None
     try:
+        async with aiosqlite.connect(path) as db:
+            await db.execute("CREATE TABLE asset (id INTEGER PRIMARY KEY, version INTEGER, name TEXT)")
+            await db.commit()
         await catalog.ensure_schema()
         session = await service.begin(actor, BlobUploadTarget("Asset", "1", "document"),
                                       BlobUploadInput("report.pdf", len(data), "application/pdf"),
@@ -117,6 +135,59 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path):
                 status, mime, size, version = await cursor.fetchone()
         assert (status, mime, size, version) == (
             "uploaded_unbound", "application/pdf", len(data), head.etag)
+
+        async def bind(graph):
+            command = (InsertCommand.new("Asset").value("id", 1)
+                       .value("version", 1).value("name", "document"))
+            await graph.transaction.mutate(graph.context,
+                graph.request(command, graph.scope(EntityKey("Asset", 1))))
+            assert await catalog.bind_in_graph(graph, graph.context,
+                BlobBindingChange(BlobBindingTarget("Asset", "1", "document"),
+                                  session.reference, 0, 1, "Create"),
+                BindingAuthority()) == 1
+
+        await actor.execute_graph_save(bind, comment="bind S3 Blob in business graph")
+        async with aiosqlite.connect(path) as db:
+            async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key=?",
+                                  (session.reference.key,)) as cursor:
+                assert (await cursor.fetchone())[0] == "available"
+
+        class ReadAuthorization:
+            allowed = True
+            async def authorize(self, _context, _slot):
+                return self.allowed
+
+        class Authorizer:
+            version = 1
+            async def authorize(self, _context, _result, _options):
+                slot = AuthorizedBlobSlot(("document",), "Asset", "1", "document",
+                                          "tenant-a", self.version, session.reference)
+                return AuthorizedResponseGraph({"document": session.reference}, (slot,))
+
+        read_permission, authorizer = ReadAuthorization(), Authorizer()
+        actor.insert_resource("response_graph_authorizer", authorizer)
+        actor.insert_resource("blob_response_contributor",
+                              SqliteBlobResponseContributor(catalog, read_permission, 3))
+        options = ViewOptions("ordinary", "read_only",
+                              datetime.now(timezone.utc) + timedelta(seconds=60))
+        view = await ViewPreparationService().prepare(actor, None, options)
+        link = view.presentation["document"]
+        assert link.startswith("http") and view.cache_control == "private, no-store"
+        with urlopen(Request(link, headers={"Range": "bytes=0-7"}), timeout=5) as response:
+            assert response.status == 206 and response.read() == data[:8]
+            assert response.headers["Content-Type"] == "application/pdf"
+            assert "report.pdf" in response.headers["Content-Disposition"]
+        read_permission.allowed = False
+        with pytest.raises(ViewPreparationError) as denied:
+            await ViewPreparationService().prepare(actor, None, options)
+        assert denied.value.code == "BLOB_READ_DENIED"
+        read_permission.allowed = True
+        authorizer.version = 0
+        with pytest.raises(ViewPreparationError) as stale:
+            await ViewPreparationService().prepare(actor, None,
+                ViewOptions("ordinary", "committed",
+                            datetime.now(timezone.utc) + timedelta(seconds=60)))
+        assert (stale.value.code, stale.value.business_state) == ("BLOB_READ_DENIED", "committed")
     finally:
         try:
             if object_key is not None:
