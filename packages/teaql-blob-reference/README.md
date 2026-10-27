@@ -62,6 +62,6 @@ allows only the `pipe` protocol and bounds input bytes, frame count, video
 pixels, concurrent checks, child CPU time and address space, and wall time.
 The accepted MP3 profile is MPEG Layer III with fixed, non-free bitrate and a
 constant sample rate; MP4 must contain a supported `ftyp` brand, `moov`,
-`mdat`, and at least one decodable video stream. The adapter returns the SHA-256
+`mdat`, and at least one decodable non-cover-art video stream. The adapter returns the SHA-256
 of the original bytes and `audio/mpeg` or `video/mp4`. It is content validation,
 not malware scanning; ffprobe/ffmpeg themselves must be kept current.

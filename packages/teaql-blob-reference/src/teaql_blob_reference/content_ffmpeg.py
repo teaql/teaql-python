@@ -195,7 +195,7 @@ class FfmpegBlobContentVerifier:
             probe = self._run(self.ffprobe_path, (
                 "-v", "error", "-protocol_whitelist", "pipe", "-f", demuxer,
                 "-count_frames", "-show_entries",
-                "stream=codec_type,codec_name,nb_read_frames,width,height,sample_rate:format=format_name",
+                "stream=codec_type,codec_name,nb_read_frames,width,height,sample_rate:stream_disposition=attached_pic:format=format_name",
                 "-of", "json", "-i", "pipe:0"), data, True)
             if len(probe) > 65536:
                 raise RuntimeError("BLOB_FORMAT_NOT_ALLOWED")
@@ -217,6 +217,8 @@ class FfmpegBlobContentVerifier:
                     if ("mp4" not in result["format"]["format_name"]
                             or not 1 <= len(videos) <= 4
                             or any(item["codec_type"] not in ("video", "audio") for item in streams)
+                            or any(item.get("disposition", {}).get("attached_pic", 0) != 0
+                                   for item in videos)
                             or any(not 1 <= int(item["width"]) * int(item["height"]) <= self.maximum_video_pixels
                                    or not 1 <= int(item["nb_read_frames"]) <= self.maximum_frames
                                    for item in videos)):

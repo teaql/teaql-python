@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
+from shutil import which
 from threading import Event
 from urllib.request import Request, urlopen
 from uuid import uuid4
@@ -86,7 +87,7 @@ class FixturePDFVerifier:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("case", ["fixture-pdf", "real-jpeg", "real-pdf",
-                                  "real-docx", "real-xlsx"])
+                                  "real-docx", "real-xlsx", "real-mp3", "real-mp4"])
 async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, case):
     if os.environ.get("TEAQL_S3_TEST_BLOB_UPLOAD") != "1":
         pytest.skip("explicit S3-compatible Blob upload gate required")
@@ -96,6 +97,8 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
         pytest.skip("explicit production PDF S3 gate required")
     if case in ("real-docx", "real-xlsx") and os.environ.get("TEAQL_S3_TEST_REAL_OFFICE") != "1":
         pytest.skip("explicit production Office S3 gate required")
+    if case in ("real-mp3", "real-mp4") and os.environ.get("TEAQL_S3_TEST_REAL_MEDIA") != "1":
+        pytest.skip("explicit production media S3 gate required")
     endpoint = os.environ.get("TEAQL_S3_TEST_ENDPOINT")
     bucket = os.environ.get("TEAQL_S3_TEST_BUCKET")
     access = os.environ.get("TEAQL_S3_TEST_ACCESS_KEY")
@@ -145,6 +148,18 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
             workbook.save(output)
             content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         data, file_name = output.getvalue(), "sample." + extension
+    elif case in ("real-mp3", "real-mp4"):
+        from teaql_blob_reference.content_ffmpeg import FfmpegBlobContentVerifier
+        ffprobe, ffmpeg = which("ffprobe"), which("ffmpeg")
+        if not ffprobe or not ffmpeg:
+            pytest.skip("host FFmpeg command-line tools required")
+        extension = case.removeprefix("real-")
+        authority = UploadAuthority((extension,))
+        parser = FfmpegBlobContentVerifier(ffprobe, ffmpeg)
+        data = (Path(__file__).parents[2] / "fixtures" / "reference-modules" /
+                ("sample." + extension)).read_bytes()
+        file_name = "sample." + extension
+        content_type = "audio/mpeg" if extension == "mp3" else "video/mp4"
     else:
         authority, parser = UploadAuthority(), FixturePDFVerifier()
         data = b"%PDF-1.7\nreal S3 Blob upload\n%%EOF"

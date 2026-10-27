@@ -4,6 +4,7 @@ from hashlib import sha256
 from io import BytesIO
 from pathlib import Path
 from shutil import which
+from subprocess import DEVNULL, PIPE, run
 from threading import Event, Thread
 import os
 
@@ -92,6 +93,17 @@ def test_concurrent_admission_releases_slot(verifier):
         first.join(5)
     assert not first.is_alive()
     assert result[0].content_type == "audio/mpeg"
+
+
+def test_audio_only_mp4_is_not_a_video(verifier):
+    # Remux the shared MP3 into a structurally valid MP4 with no video track.
+    media = run((verifier.ffmpeg_path, "-nostdin", "-v", "error", "-f", "mp3",
+                 "-i", "pipe:0", "-vn", "-c:a", "copy", "-movflags",
+                 "frag_keyframe+empty_moov", "-f", "mp4", "pipe:1"),
+                input=media_fixture("mp3"), stdout=PIPE, stderr=DEVNULL,
+                timeout=10, check=True).stdout
+    with pytest.raises(RuntimeError, match="BLOB_FORMAT_NOT_ALLOWED"):
+        verifier.verify(BytesIO(media), "mp4", len(media))
 
 
 class MediaAuthority:
