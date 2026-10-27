@@ -138,7 +138,11 @@ def _prepared(command: SubmittedDocumentCommand) -> tuple[str, SubmittedDocument
     parts = [command.business_id, command.document_token, command.command_id, copied]
     if selections is not None:
         parts.append([selection.__dict__ for selection in selections])
-    return _hash_parts(*parts), SubmittedDocumentCommand(
+    encoded = json.dumps(parts, ensure_ascii=False, separators=(",", ":"),
+                         sort_keys=True).encode("utf-8")
+    if len(encoded) > _MAX_BYTES:
+        _invalid("DOCUMENT_COMMAND_INVALID")
+    return hashlib.sha256(encoded).hexdigest(), SubmittedDocumentCommand(
         command.business_id, command.document_token, command.command_id, copied, selections)
 
 

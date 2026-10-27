@@ -295,6 +295,11 @@ async def test_sqlite_document_blob_selection_shares_business_binding_and_receip
     assert replayed.replayed and host.mutations == 1
     with pytest.raises(RuntimeError, match="DOCUMENT_REPLAY_CONFLICT"):
         await service.accept(context, "Order", "edit-order", replace(command, blob_selections=None))
+    oversized = DocumentBlobSelectionSubmission("tqs1." + "A" * (256000 - 5),
+        "Order", "attachment", "EXISTING_ROW", "order:10")
+    with pytest.raises(RuntimeError, match="DOCUMENT_COMMAND_INVALID"):
+        await service.accept(context, "Order", "edit-order",
+            replace(command, blob_selections=(oversized,)))
 
     fresh = await open_document()
     wrong = SubmittedDocumentCommand("ORD-10", fresh.document_token, "command-wrong",
