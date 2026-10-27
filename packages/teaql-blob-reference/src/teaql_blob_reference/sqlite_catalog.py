@@ -199,7 +199,8 @@ class SqliteBlobCatalog:
             if change.next:
                 try:
                     available = await sql.fetch_all_sql(CompiledQuery(
-                        "SELECT key FROM teaql_blob_catalog WHERE key = ? AND scope = ? AND status = 'available'",
+                        "SELECT key FROM teaql_blob_catalog WHERE key = ? AND scope = ? "
+                        "AND status IN ('uploaded_unbound','available')",
                         [Value.Text(change.next.key), Value.Text(scope)]))
                 except Exception:
                     raise RuntimeError("BLOB_CATALOG_FAILED") from None
@@ -221,6 +222,25 @@ class SqliteBlobCatalog:
                 raise RuntimeError("BLOB_CATALOG_FAILED") from None
             if affected != 1:
                 raise RuntimeError("BLOB_BIND_DENIED")
+            if change.next:
+                try:
+                    promoted, _ = await sql.execute_sql(CompiledQuery(
+                        "UPDATE teaql_blob_catalog SET status = 'available' WHERE key = ? AND scope = ? "
+                        "AND status IN ('uploaded_unbound','available')",
+                        [Value.Text(change.next.key), Value.Text(scope)]))
+                except Exception:
+                    raise RuntimeError("BLOB_CATALOG_FAILED") from None
+                if promoted != 1:
+                    raise RuntimeError("BLOB_BIND_DENIED")
+            if previous and previous != change.next:
+                try:
+                    await sql.execute_sql(CompiledQuery(
+                        "UPDATE teaql_blob_catalog SET status = 'uploaded_unbound' "
+                        "WHERE key = ? AND scope = ? AND status = 'available' "
+                        "AND NOT EXISTS (SELECT 1 FROM teaql_blob_binding WHERE key = ?)",
+                        [Value.Text(previous.key), Value.Text(scope), Value.Text(previous.key)]))
+                except Exception:
+                    raise RuntimeError("BLOB_CATALOG_FAILED") from None
             return change.next_version
 
         return await graph.with_sql_transport(bind)

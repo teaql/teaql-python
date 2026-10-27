@@ -72,7 +72,7 @@ async def test_catalog_binding_same_graph_rollback_authority_tombstone_and_rebin
                          "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status) "
                          "VALUES (?,?,?,?,?,?,?,?)",
                          (reference.key, "tenant-a", "objects/1", "v1", "asset.pdf",
-                          "application/pdf", 7, "available"))
+                          "application/pdf", 7, "uploaded_unbound"))
         await db.commit()
     auth = Authorization()
 
@@ -96,6 +96,7 @@ async def test_catalog_binding_same_graph_rollback_authority_tombstone_and_rebin
 
     await context.execute_graph_save(lambda graph: save(graph, 1), comment="save asset")
     assert len(await all_rows(path, "asset")) == len(await all_rows(path, "teaql_blob_binding")) == 1
+    assert (await all_rows(path, "teaql_blob_catalog"))[0][-1] == "available"
     with pytest.raises(RuntimeError, match="abort graph"):
         await context.execute_graph_save(lambda graph: save(graph, 2, abort=True), comment="save asset")
     assert len(await all_rows(path, "asset")) == len(await all_rows(path, "teaql_blob_binding")) == 1
@@ -126,10 +127,21 @@ async def test_catalog_binding_same_graph_rollback_authority_tombstone_and_rebin
     await context.execute_graph_save(
         lambda graph: catalog.bind_in_graph(graph, graph.context, clear, auth), comment="clear binding")
     assert (await all_rows(path, "teaql_blob_binding"))[0][-2:] == (None, 2)
+    assert (await all_rows(path, "teaql_blob_catalog"))[0][-1] == "uploaded_unbound"
     rebind = BlobBindingChange(BlobBindingTarget("Asset", "1", "document"), reference, 2, 3, "Update")
     await context.execute_graph_save(
         lambda graph: catalog.bind_in_graph(graph, graph.context, rebind, auth), comment="rebind")
     assert (await all_rows(path, "teaql_blob_binding"))[0][-2:] == (reference.key, 3)
+    assert (await all_rows(path, "teaql_blob_catalog"))[0][-1] == "available"
+    await context.execute_graph_save(lambda graph: save(graph, 2), comment="bind second asset")
+    clear = BlobBindingChange(BlobBindingTarget("Asset", "1", "document"), None, 3, 4, "Update")
+    await context.execute_graph_save(
+        lambda graph: catalog.bind_in_graph(graph, graph.context, clear, auth), comment="clear first binding")
+    assert (await all_rows(path, "teaql_blob_catalog"))[0][-1] == "available"
+    clear = BlobBindingChange(BlobBindingTarget("Asset", "2", "document"), None, 1, 2, "Update")
+    await context.execute_graph_save(
+        lambda graph: catalog.bind_in_graph(graph, graph.context, clear, auth), comment="clear final binding")
+    assert (await all_rows(path, "teaql_blob_catalog"))[0][-1] == "uploaded_unbound"
 
 
 @pytest.mark.asyncio
