@@ -85,7 +85,8 @@ class FixturePDFVerifier:
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("case", ["fixture-pdf", "real-jpeg", "real-pdf"])
+@pytest.mark.parametrize("case", ["fixture-pdf", "real-jpeg", "real-pdf",
+                                  "real-docx", "real-xlsx"])
 async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, case):
     if os.environ.get("TEAQL_S3_TEST_BLOB_UPLOAD") != "1":
         pytest.skip("explicit S3-compatible Blob upload gate required")
@@ -93,6 +94,8 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
         pytest.skip("explicit production JPEG S3 gate required")
     if case == "real-pdf" and os.environ.get("TEAQL_S3_TEST_REAL_PDF") != "1":
         pytest.skip("explicit production PDF S3 gate required")
+    if case in ("real-docx", "real-xlsx") and os.environ.get("TEAQL_S3_TEST_REAL_OFFICE") != "1":
+        pytest.skip("explicit production Office S3 gate required")
     endpoint = os.environ.get("TEAQL_S3_TEST_ENDPOINT")
     bucket = os.environ.get("TEAQL_S3_TEST_BUCKET")
     access = os.environ.get("TEAQL_S3_TEST_ACCESS_KEY")
@@ -124,6 +127,24 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
         authority, parser = UploadAuthority(("pdf",)), PypdfBlobContentVerifier()
         data = (Path(__file__).parents[2] / "fixtures" / "blob-sample.pdf").read_bytes()
         file_name, content_type = "sample.pdf", "application/pdf"
+    elif case in ("real-docx", "real-xlsx"):
+        from teaql_blob_reference.content_office import OfficeBlobContentVerifier
+        extension = case.removeprefix("real-")
+        authority, parser = UploadAuthority((extension,)), OfficeBlobContentVerifier()
+        output = BytesIO()
+        if extension == "docx":
+            from docx import Document
+            document = Document()
+            document.add_paragraph("TeaQL S3 Office upload")
+            document.save(output)
+            content_type = "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+        else:
+            from openpyxl import Workbook
+            workbook = Workbook()
+            workbook.active["A1"] = "TeaQL S3 Office upload"
+            workbook.save(output)
+            content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+        data, file_name = output.getvalue(), "sample." + extension
     else:
         authority, parser = UploadAuthority(), FixturePDFVerifier()
         data = b"%PDF-1.7\nreal S3 Blob upload\n%%EOF"
@@ -139,7 +160,7 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
             return self.inner.verify(stream, extension, maximum_bytes)
 
     verifier = CountingVerifier(parser)
-    service = SqliteBlobUploadService(catalog, authority, verifier, 10_000)
+    service = SqliteBlobUploadService(catalog, authority, verifier, 100_000)
     object_key = None
     try:
         async with aiosqlite.connect(path) as db:
@@ -163,7 +184,7 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
         assert verifier.calls == 1
         assert await service.write(actor, session.upload_id, BytesIO(data)) == len(data)
         store = actor.object_storage("verify completed S3 Blob upload")
-        assert store.get_bytes(object_key, 10_000) == data
+        assert store.get_bytes(object_key, 100_000) == data
         head = store.head(object_key)
         async with aiosqlite.connect(path) as db:
             async with db.execute(
