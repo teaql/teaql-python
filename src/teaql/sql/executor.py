@@ -1423,6 +1423,11 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
             lease.close()
             self._physical_sql_active = False
 
+    def is_current_physical_sql_lease(self, lease):
+        return (not self._completed and self._physical_sql_active and
+                isinstance(lease, _PhysicalSQLLease) and lease._active and
+                lease._transport is self.transport)
+
     def capabilities(self) -> DataServiceCapabilities:
         return DataServiceCapabilities(
             query=True,

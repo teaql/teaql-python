@@ -7,6 +7,7 @@ import aiosqlite
 import pytest
 
 from teaql.core.value import Value
+from teaql.core.blob_ref import BlobRef
 from teaql.provider.sqlite.dialect import SqliteDialect
 from teaql.provider.sqlite.transport import SqliteTransport
 from teaql.runtime import RuntimeModule
@@ -15,12 +16,16 @@ from teaql.sql.executor import SqlDataServiceExecutor
 from teaql.sql.types import CompiledQuery
 from teaql.provider.sqlite import SimpleSchemaProvider
 from teaql_secure_document_reference import (
-    BoundDocumentSnapshot, ContextualDocument, CurrentBoundDocument,
+    BlobSelectionClaim, BlobSelectionTarget, BoundDocumentSnapshot,
+    ContextualDocument, CurrentBoundDocument, DocumentBlobBindingSnapshot,
+    DocumentBlobSelectionSubmission,
     DocumentEntitySnapshot, DocumentSnapshot, ReferenceDocumentScope,
-    ReferenceIdentity, ReferenceKey, SecureDocumentReferenceModule,
+    ReferenceIdentity, ReferenceKey, RoundTripReferenceError,
+    SecureDocumentReferenceModule,
     SQLiteContextBoundDocumentService, SQLiteDocumentCommandJournal,
     StaticReferenceKeyProvider, SubmittedDocumentCommand, TrustedReferencePrincipal,
 )
+from teaql_blob_reference import BlobBindingChange, BlobBindingTarget, SqliteBlobCatalog
 
 
 class OrderHost:
@@ -190,3 +195,137 @@ async def test_sqlite_document_journal_rejects_missing_replay_primary_key(tmp_pa
     await journal.ensure_schema()
     with pytest.raises(RuntimeError, match="DOCUMENT_SCHEMA_MISSING"):
         await journal.validate_schema()
+
+
+class BlobOrderHost(OrderHost):
+    def __init__(self, catalog):
+        super().__init__()
+        self.catalog = catalog
+
+    async def load(self, context, business_id, sql):
+        current = await super().load(context, business_id, sql)
+        rows = await sql.fetch_all_sql(CompiledQuery(
+            "SELECT blob_key FROM document_order WHERE business_id=?", [Value.Text(business_id)]))
+        bindings = await sql.fetch_all_sql(CompiledQuery(
+            "SELECT key,version FROM teaql_blob_binding WHERE scope=? AND entity=? "
+            "AND entity_id=? AND field=?", [Value.Text("merchant:7"), Value.Text("Order"),
+                Value.Text("10"), Value.Text("attachment")]))
+        assert len(rows) == 1 and len(bindings) <= 1
+        binding = bindings[0] if bindings else {"key": None, "version": 0}
+        assert rows[0]["blob_key"] == binding["key"]
+        entity = current.document.snapshot.entities[0]
+        entity = replace(entity, loaded_fields=frozenset({"attachment", "quantity"}),
+                         writable_fields=frozenset({"attachment", "quantity"}))
+        snapshot = replace(current.document.snapshot, entities=(entity,))
+        bound = DocumentBlobBindingSnapshot("order:10", "attachment", "Order",
+                                            binding["key"], binding["version"], True, True)
+        return replace(current, document=BoundDocumentSnapshot(snapshot, (bound,)))
+
+    async def bind_blob_selection(self, _context, graph, selection, sql):
+        assert (selection.target.target_entity, selection.target.target_key,
+                selection.target.canonical_field, selection.entity_id) == (
+                    "Order", "order:10", "attachment", "10")
+        affected, _ = await sql.execute_sql(CompiledQuery(
+            "UPDATE document_order SET blob_key=? WHERE id=?",
+            [Value.Text(selection.stable_key), Value.I64(10)]))
+        assert affected == 1
+
+        class Authorization:
+            def scope(self, _actor):
+                return "merchant:7"
+
+            async def authorize(self, _actor, target, _previous, next_ref, _action):
+                return (target == BlobBindingTarget("Order", "10", "attachment") and
+                        next_ref == BlobRef.from_sql(selection.stable_key))
+
+        await self.catalog.bind_in_graph(graph, graph.context,
+            BlobBindingChange(BlobBindingTarget("Order", "10", "attachment"),
+                              BlobRef.from_sql(selection.stable_key),
+                              selection.expected_version, selection.next_version, "Update"),
+            Authorization(), lease=sql)
+
+
+@pytest.mark.asyncio
+async def test_sqlite_document_blob_selection_shares_business_binding_and_receipt(tmp_path):
+    path, context, _old_host, old_service = await fixture(tmp_path)
+    async with aiosqlite.connect(path) as db:
+        await db.execute("ALTER TABLE document_order ADD COLUMN blob_key TEXT")
+        await db.commit()
+    catalog = SqliteBlobCatalog(old_service.transport)
+    await catalog.ensure_schema()
+    await catalog.validate_schema()
+    async with aiosqlite.connect(path) as db:
+        for key in ("blob_A", "blob_B"):
+            await db.execute("""INSERT INTO teaql_blob_catalog
+                (key,scope,object_key,content_version,file_name,content_type,size_bytes,status)
+                VALUES (?,?,?,?,?,?,?,'uploaded_unbound')""",
+                (key, "merchant:7", "objects/" + key, "v1", key + ".pdf", "application/pdf", 3))
+        await db.commit()
+    host = BlobOrderHost(catalog)
+    service = SQLiteContextBoundDocumentService(context, old_service.transport,
+        old_service.module, old_service.journal, host)
+
+    async def open_document():
+        return await service.open(context, "Order", "ORD-10", "edit-order", 60)
+
+    def selection(opened, command_id, key):
+        issued = service.module.consume_bound_document_snapshot(host.actor,
+            opened.document_token, "Order", "edit-order").document
+        target = BlobSelectionTarget(issued.snapshot.scope, "Order", "attachment",
+                                     "EXISTING_ROW", "order:10", command_id)
+        token = service.module.issue_blob_selection(host.actor, opened.document_token,
+            BlobSelectionClaim(target, key), 60)
+        return DocumentBlobSelectionSubmission(token, "Order", "attachment",
+                                               "EXISTING_ROW", "order:10")
+
+    opened = await open_document()
+    command = SubmittedDocumentCommand("ORD-10", opened.document_token, "command-1",
+        {"quantity": 3}, (selection(opened, "command-1", "blob_A"),))
+    first = await service.accept(context, "Order", "edit-order", command)
+    assert (first.previous_revision, first.new_revision, first.replayed) == (1, 2, False)
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT version,quantity,blob_key FROM document_order") as cursor:
+            assert await cursor.fetchone() == (2, 3, "blob_A")
+        async with db.execute("SELECT key,version FROM teaql_blob_binding") as cursor:
+            assert await cursor.fetchone() == ("blob_A", 1)
+        async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key='blob_A'") as cursor:
+            assert await cursor.fetchone() == ("available",)
+    assert await receipts(path) == 1
+    replayed = await service.accept(context, "Order", "edit-order", command)
+    assert replayed.replayed and host.mutations == 1
+    with pytest.raises(RuntimeError, match="DOCUMENT_REPLAY_CONFLICT"):
+        await service.accept(context, "Order", "edit-order", replace(command, blob_selections=None))
+
+    fresh = await open_document()
+    wrong = SubmittedDocumentCommand("ORD-10", fresh.document_token, "command-wrong",
+        {"quantity": 3}, (selection(fresh, "other-command", "blob_A"),))
+    with pytest.raises(RoundTripReferenceError, match="ROUND_TRIP_REFERENCE_SCOPE_MISMATCH"):
+        await service.accept(context, "Order", "edit-order", wrong)
+    duplicate = selection(fresh, "command-duplicate", "blob_A")
+    with pytest.raises(RuntimeError, match="DOCUMENT_COMMAND_INVALID"):
+        await service.accept(context, "Order", "edit-order", SubmittedDocumentCommand(
+            "ORD-10", fresh.document_token, "command-duplicate", {"quantity": 3},
+            (duplicate, duplicate)))
+    with pytest.raises(RuntimeError, match="BLOB_BIND_DENIED"):
+        await service.accept(context, "Order", "edit-order", SubmittedDocumentCommand(
+            "ORD-10", fresh.document_token, "command-missing", {"quantity": 3},
+            (selection(fresh, "command-missing", "blob_missing"),)))
+    assert await row(path) == (2, 3) and await receipts(path) == 1
+
+    async with aiosqlite.connect(path) as db:
+        await db.execute("""CREATE TRIGGER reject_selected_receipt BEFORE INSERT
+            ON teaql_document_command_receipt WHEN NEW.command_id='command-receipt-fail'
+            BEGIN SELECT RAISE(ABORT, 'receipt rejected'); END""")
+        await db.commit()
+    with pytest.raises(RuntimeError, match="DOCUMENT_CATALOG_FAILED"):
+        await service.accept(context, "Order", "edit-order", SubmittedDocumentCommand(
+            "ORD-10", fresh.document_token, "command-receipt-fail", {"quantity": 3},
+            (selection(fresh, "command-receipt-fail", "blob_B"),)))
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT version,quantity,blob_key FROM document_order") as cursor:
+            assert await cursor.fetchone() == (2, 3, "blob_A")
+        async with db.execute("SELECT key,version FROM teaql_blob_binding") as cursor:
+            assert await cursor.fetchone() == ("blob_A", 1)
+        async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key='blob_B'") as cursor:
+            assert await cursor.fetchone() == ("uploaded_unbound",)
+    assert await receipts(path) == 1

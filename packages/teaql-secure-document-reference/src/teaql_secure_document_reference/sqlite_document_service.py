@@ -13,7 +13,8 @@ from teaql.runtime.graph_session import GraphCommittedError
 from teaql.sql.types import CompiledQuery
 
 from .document_round_trip import (
-    BoundDocumentSnapshot, SecureDocumentReferenceModule, _bindings, _encode_snapshot,
+    BlobSelectionTarget, BoundDocumentSnapshot, SecureDocumentReferenceModule,
+    _bindings, _encode_snapshot,
 )
 from .round_trip_reference import ReferenceDocumentScope, TrustedReferencePrincipal
 
@@ -86,9 +87,22 @@ class SubmittedDocumentCommand:
     document_token: str
     command_id: str
     body: dict[str, Any]
+    blob_selections: tuple[DocumentBlobSelectionSubmission, ...] | None = None
 
     def __repr__(self) -> str:
         return "SubmittedDocumentCommand[redacted]"
+
+
+@dataclass(frozen=True, repr=False)
+class DocumentBlobSelectionSubmission:
+    token: str
+    target_entity: str
+    canonical_field: str
+    kind: str
+    target_key: str
+
+    def __repr__(self) -> str:
+        return "DocumentBlobSelectionSubmission[redacted]"
 
 
 @dataclass(frozen=True, repr=False)
@@ -108,9 +122,24 @@ def _prepared(command: SubmittedDocumentCommand) -> tuple[str, SubmittedDocument
             not _text(command.command_id, 256)):
         _invalid("DOCUMENT_COMMAND_INVALID")
     copied = _copy_body(command.body)
-    return _hash_parts(command.business_id, command.document_token,
-                       command.command_id, copied), SubmittedDocumentCommand(
-                           command.business_id, command.document_token, command.command_id, copied)
+    selections = command.blob_selections
+    if selections is not None:
+        if type(selections) is not tuple or len(selections) > 100:
+            _invalid("DOCUMENT_COMMAND_INVALID")
+        for selection in selections:
+            if (not isinstance(selection, DocumentBlobSelectionSubmission) or
+                    not all(_text(value, _MAX_BYTES if index == 0 else 16384)
+                            for index, value in enumerate((selection.token,
+                                selection.target_entity, selection.canonical_field,
+                                selection.target_key))) or
+                    selection.kind not in {"EXISTING_ROW", "NEW_CLIENT_KEY"}):
+                _invalid("DOCUMENT_COMMAND_INVALID")
+    # Keep the original digest for receipts written without selections.
+    parts = [command.business_id, command.document_token, command.command_id, copied]
+    if selections is not None:
+        parts.append([selection.__dict__ for selection in selections])
+    return _hash_parts(*parts), SubmittedDocumentCommand(
+        command.business_id, command.document_token, command.command_id, copied, selections)
 
 
 def _receipt(value: DocumentCommandReceipt) -> DocumentCommandReceipt:
@@ -257,6 +286,49 @@ class CurrentBoundDocument:
     lifetime_seconds: int
 
 
+@dataclass(frozen=True, repr=False)
+class VerifiedDocumentBlobSelection:
+    target: BlobSelectionTarget
+    stable_key: str
+    entity_id: str
+    expected_version: int
+    next_version: int
+
+    def __repr__(self) -> str:
+        return "VerifiedDocumentBlobSelection[redacted]"
+
+
+def _verified_selections(module: SecureDocumentReferenceModule,
+                         principal: TrustedReferencePrincipal, issued: BoundDocumentSnapshot,
+                         command: SubmittedDocumentCommand) -> tuple[VerifiedDocumentBlobSelection, ...]:
+    result = []
+    seen = set()
+    for selected in command.blob_selections or ():
+        target = BlobSelectionTarget(issued.snapshot.scope, selected.target_entity,
+                                     selected.canonical_field, selected.kind,
+                                     selected.target_key, command.command_id)
+        pair = (target.target_key, target.canonical_field)
+        if pair in seen:
+            _invalid("DOCUMENT_COMMAND_INVALID")
+        seen.add(pair)
+        claim = module.consume_blob_selection(principal, command.document_token,
+                                              selected.token, target).document
+        if target.kind != "EXISTING_ROW":
+            _invalid("DOCUMENT_CAPABILITY_MISSING")
+        row = next((item for item in issued.snapshot.entities
+                    if item.row_key == target.target_key), None)
+        binding = next((item for item in issued.bindings
+                        if item.row_key == target.target_key and
+                        item.canonical_field == target.canonical_field), None)
+        if (row is None or binding is None or row.identity.entity_type != target.target_entity or
+                not binding.writable or binding.binding_version >= (1 << 63) - 1):
+            _invalid("DOCUMENT_PROJECTION_VIOLATION")
+        result.append(VerifiedDocumentBlobSelection(target, claim.stable_key,
+                      str(row.identity.id), binding.binding_version,
+                      binding.binding_version + 1))
+    return tuple(result)
+
+
 class SQLiteContextBoundDocumentHost(Protocol):
     def principal(self, context) -> TrustedReferencePrincipal: ...
     async def authorize(self, context, principal: TrustedReferencePrincipal,
@@ -365,7 +437,13 @@ class SQLiteContextBoundDocumentService:
                 _valid_current(before, frozen.business_id, aggregate_type, purpose)
                 if _bound_fingerprint(before.document) != _bound_fingerprint(issued):
                     _invalid("DOCUMENT_REVISION_CONFLICT")
+                selections = _verified_selections(self.module, principal, issued, frozen)
+                binder = getattr(self.host, "bind_blob_selection", None)
+                if selections and not callable(binder):
+                    _invalid("DOCUMENT_CAPABILITY_MISSING")
                 await self.host.apply(context, issued, frozen, sql)
+                for selection in selections:
+                    await binder(context, graph, selection, sql)
                 after = await self.host.load(context, frozen.business_id, sql)
                 _valid_current(after, frozen.business_id, aggregate_type, purpose)
                 next_scope = after.document.snapshot.scope
@@ -375,6 +453,14 @@ class SQLiteContextBoundDocumentService:
                         next_scope.purpose != scope.purpose or
                         next_scope.aggregate_revision < scope.aggregate_revision):
                     _invalid("DOCUMENT_PROJECTION_VIOLATION")
+                for selection in selections:
+                    binding = next((item for item in after.document.bindings
+                        if item.row_key == selection.target.target_key and
+                        item.canonical_field == selection.target.canonical_field), None)
+                    if (binding is None or binding.entity_type != selection.target.target_entity or
+                            binding.stable_key != selection.stable_key or
+                            binding.binding_version != selection.next_version):
+                        _invalid("DOCUMENT_PROJECTION_VIOLATION")
                 try:
                     await self.host.authorize(context, principal, next_scope, sql)
                 except Exception:

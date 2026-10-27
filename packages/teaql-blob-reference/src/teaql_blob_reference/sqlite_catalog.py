@@ -157,7 +157,7 @@ class SqliteBlobCatalog:
         return BlobCatalogRead(*values, size)
 
     async def bind_in_graph(self, graph, actor, change: BlobBindingChange,
-                            authorization: BlobBindingAuthorization) -> int:
+                            authorization: BlobBindingAuthorization, *, lease=None) -> int:
         if graph is None or not callable(getattr(graph, "with_sql_transport", None)):
             raise RuntimeError("BLOB_TRANSACTION_REQUIRED")
 
@@ -256,4 +256,13 @@ class SqliteBlobCatalog:
                     raise RuntimeError("BLOB_CATALOG_FAILED") from None
             return change.next_version
 
+        if lease is not None:
+            if (actor is not graph.context or
+                    not callable(getattr(graph, "is_current_sql_lease", None)) or
+                    not graph.is_current_sql_lease(lease)):
+                raise RuntimeError("BLOB_TRANSACTION_REQUIRED")
+            # A secure-document journal already borrowed this physical lease.
+            # Reentering the owner here would reject or deadlock; its outer
+            # callback propagates failures and remains rollback-only.
+            return await bind(lease)
         return await graph.with_sql_transport(bind)
