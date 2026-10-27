@@ -11,6 +11,11 @@ from .document_round_trip import (
     DocumentSnapshot, PreparedBoundDocument, SecureDocumentAssembly,
     SecureDocumentReferenceModule, VerifiedDocument,
 )
+from .sqlite_document_service import (
+    AcceptedDocument, ContextualDocument, CurrentBoundDocument,
+    DocumentCommandReceipt, SQLiteContextBoundDocumentService,
+    SQLiteDocumentCommandJournal, SubmittedDocumentCommand,
+)
 
 __all__ = [
     "ContextBoundReferenceRuntime", "ReferenceDocumentScope", "ReferenceIdentity",
@@ -20,4 +25,7 @@ __all__ = [
     "DocumentBlobBindingSnapshot", "DocumentEntitySnapshot", "DocumentRelationSnapshot",
     "DocumentSnapshot", "PreparedBoundDocument", "SecureDocumentAssembly",
     "SecureDocumentReferenceModule", "VerifiedDocument",
+    "AcceptedDocument", "ContextualDocument", "CurrentBoundDocument",
+    "DocumentCommandReceipt", "SQLiteContextBoundDocumentService",
+    "SQLiteDocumentCommandJournal", "SubmittedDocumentCommand",
 ]
