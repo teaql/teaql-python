@@ -17,6 +17,7 @@ class DataType(Enum):
     Date = auto()
     Time = auto()
     Timestamp = auto()
+    BlobRef = auto()
 
 @dataclass
 class Timestamp:
@@ -86,6 +87,13 @@ class Value:
         return Value(v)
 
     @staticmethod
+    def Blob(v: 'BlobRef') -> 'Value':
+        from .blob_ref import BlobRef
+        if not isinstance(v, BlobRef):
+            raise ValueError("BLOB_REFERENCE_INVALID")
+        return Value(v.to_sql(), DataType.BlobRef)
+
+    @staticmethod
     def Json(v: Any) -> 'Value':
         return Value(v, DataType.Json)
 
@@ -126,8 +134,11 @@ class Value:
 
     @classmethod
     def from_any(cls, value: Any) -> 'Value':
+        from .blob_ref import BlobRef
         if isinstance(value, cls):
             return value
+        if isinstance(value, BlobRef):
+            return cls.Blob(value)
         if value is None:
             return cls.Null()
         if isinstance(value, bool):

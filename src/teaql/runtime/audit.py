@@ -30,14 +30,15 @@ class RawAuditEvent:
     mutation_governance: Any = None
     _intent_privacy: Any = field(default=None, repr=False, compare=False)
 
-    def safe(self, mask_fields: List[str], max_length: Optional[int]) -> "SafeAuditEvent":
+    def safe(self, mask_fields: List[str], max_length: Optional[int],
+             credential_fields=()) -> "SafeAuditEvent":
         from .log_privacy import REDACTED, credential_name, payload_has_credentials, plaintext_enabled, scrub, value_strings
         allow = plaintext_enabled()
         secrets = []
         fields = []
         for change in self.changes:
             value = None if change.new_value is None else str(getattr(change.new_value, "val", change.new_value))
-            credential = (credential_name(change.field)
+            credential = (change.field in credential_fields or credential_name(change.field)
                           or payload_has_credentials(change.new_value)
                           or payload_has_credentials(change.old_value))
             masked = credential or (change.field in mask_fields and not allow)

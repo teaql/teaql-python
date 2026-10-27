@@ -791,7 +791,9 @@ class UserContext:
         descriptor = self.entity(event.entity)
         mask_fields = getattr(descriptor, "audit_mask_fields_val", []) if descriptor else []
         max_len = getattr(descriptor, "audit_value_max_len_val", None) if descriptor else None
-        safe_event = event.safe(mask_fields, max_len)
+        credential_fields = {prop.name for prop in descriptor.properties
+                             if getattr(prop, "blob_spec", None) is not None} if descriptor else set()
+        safe_event = event.safe(mask_fields, max_len, credential_fields)
         if self._graph_session is not None:
             self._graph_session.queue_audit(event, safe_event)
             return

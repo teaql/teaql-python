@@ -42,7 +42,8 @@ jobs:
               assert any(name.startswith('teaql_blob_reference/') for name in entries)
               assert not any(name.startswith('teaql/') for name in entries)
               assert not any(name.startswith('teaql_secure_document_reference/') for name in entries)
-              for module in ('__init__.py', 'module.py', 'file_storage.py', 'sqlite_catalog.py', 'upload_service.py'):
+              for module in ('__init__.py', 'module.py', 'mutation_participant.py',
+                             'file_storage.py', 'sqlite_catalog.py', 'upload_service.py'):
                   name = f'teaql_blob_reference/{module}'
                   assert name in entries
                   assert wheel.read(name) == (Path('packages/teaql-blob-reference/src') / name).read_bytes()

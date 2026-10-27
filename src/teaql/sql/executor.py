@@ -1176,6 +1176,17 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             metadata = replace(metadata, statements=(metadata, read_metadata))
 
         if affected_rows > 0 and context is not None:
+            blob_fields = [prop for prop in entity_desc.properties
+                           if getattr(prop, 'blob_spec', None) is not None]
+            if blob_fields and (isinstance(req_data, (InsertCommand, DeleteCommand, RecoverCommand))
+                                or isinstance(req_data, UpdateCommand) and any(
+                                    prop.name in req_data.values for prop in blob_fields)):
+                participant = context.get_resource('blob_mutation_participant')
+                if not callable(getattr(participant, 'apply', None)):
+                    raise RuntimeError('BLOB_CAPABILITY_MISSING')
+                await participant.apply(context, entity_desc, req_data, persisted_record)
+
+        if affected_rows > 0 and context is not None:
             from teaql.runtime.audit import AuditFieldChange, MutationAuditKind, RawAuditEvent
             if isinstance(req_data, InsertCommand):
                 kind = MutationAuditKind.CREATED
