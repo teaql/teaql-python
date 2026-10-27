@@ -113,6 +113,12 @@ async def test_upload_real_sqlite_file_verifier_and_native_bind(tmp_path):
     authority.allowed = True
     reference = await service.complete(context, session.upload_id)
     assert reference == session.reference and verifier.calls == 1
+    assert await service.complete(context, session.upload_id) == reference
+    assert verifier.calls == 1
+    authority.allowed = False
+    with pytest.raises(RuntimeError, match="BLOB_UPLOAD_DENIED"):
+        await service.complete(context, session.upload_id)
+    authority.allowed = True
 
     async def bind(graph):
         command = (InsertCommand.new("Asset").value("id", 1)
@@ -128,6 +134,17 @@ async def test_upload_real_sqlite_file_verifier_and_native_bind(tmp_path):
         async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key=?",
                               (reference.key,)) as cursor:
             assert (await cursor.fetchone())[0] == "available"
+    assert await service.complete(context, session.upload_id) == reference
+    assert verifier.calls == 1
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT object_key FROM teaql_blob_catalog WHERE key=?",
+                              (reference.key,)) as cursor:
+            completed_key = (await cursor.fetchone())[0]
+    context.object_storage("replace completed generation").put_bytes(
+        ObjectKey(completed_key), data, PutOptions(len(data), WriteMode.REPLACE, "application/pdf"))
+    with pytest.raises(RuntimeError, match="BLOB_UPLOAD_INCOMPLETE"):
+        await service.complete(context, session.upload_id)
+    assert verifier.calls == 1
 
     second = await service.begin(context, target, input, "request-2")
     await service.write(context, second.upload_id, BytesIO(data))

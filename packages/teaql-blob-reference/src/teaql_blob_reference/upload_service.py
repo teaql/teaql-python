@@ -337,6 +337,47 @@ class SqliteBlobUploadService:
 
     async def complete(self, actor, upload_id: str) -> BlobRef:
         row = await self._row(actor, upload_id, "Confirm")
+        if row["state"] == "completed":
+            if (not isinstance(row["written_sha256"], str) or
+                    re.fullmatch(r"[0-9a-f]{64}", row["written_sha256"]) is None or
+                    not row["written_etag"]):
+                raise RuntimeError("BLOB_UPLOAD_INCOMPLETE")
+            try:
+                rows = await self.catalog.transport.fetch_all_sql(_query(
+                    "SELECT object_key,content_version,content_type,size_bytes,status "
+                    "FROM teaql_blob_catalog WHERE key=? AND scope=?",
+                    Value.Text(row["key"]), Value.Text(row["scope"])))
+                if len(rows) != 1:
+                    raise RuntimeError("BLOB_UPLOAD_INCOMPLETE")
+                catalog = rows[0]
+                mime = blob_mime_for_extension(row["extension"])
+                if (catalog["status"] not in ("uploaded_unbound", "available") or
+                        catalog["content_version"] != row["written_etag"] or
+                        catalog["content_type"] != mime or
+                        type(catalog["size_bytes"]) is not int or
+                        catalog["size_bytes"] != row["declared_size"]):
+                    raise RuntimeError("BLOB_UPLOAD_INCOMPLETE")
+                key = ObjectKey(catalog["object_key"])
+            except Exception:
+                raise RuntimeError("BLOB_UPLOAD_INCOMPLETE") from None
+
+            def recheck_stored():
+                try:
+                    metadata = actor.object_storage("recheck completed Blob upload").head(key)
+                    if (metadata is None or metadata.size != row["declared_size"] or
+                            metadata.etag != row["written_etag"]):
+                        raise RuntimeError("BLOB_UPLOAD_INCOMPLETE")
+                except Exception:
+                    raise RuntimeError("BLOB_UPLOAD_INCOMPLETE") from None
+
+            await asyncio.to_thread(recheck_stored)
+            target = BlobUploadTarget(row["entity"], row["entity_id"], row["field"])
+            await self._current(actor, target, "Confirm",
+                                BlobUploadInput(row["file_name"], row["declared_size"], mime),
+                                row["scope"])
+            if self.now_ms() >= row["expires_ms"]:
+                raise RuntimeError("BLOB_UPLOAD_EXPIRED")
+            return BlobRef(row["key"])
         if row["state"] != "written" or not row["written_sha256"] or not row["written_etag"]:
             raise RuntimeError("BLOB_UPLOAD_INCOMPLETE")
         key = await self._object_key(actor, row)
