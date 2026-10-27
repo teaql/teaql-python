@@ -65,6 +65,27 @@ class FixturePDFVerifier:
 
 
 @pytest.mark.asyncio
+async def test_expired_replay_key_cannot_recover_upload_session(tmp_path):
+    catalog = SqliteBlobCatalog(SqliteTransport(str(tmp_path / "expired.db")))
+    await catalog.ensure_schema()
+    clock = [1_700_000_000_000]
+    service = SqliteBlobUploadService(catalog, UploadAuthority(), FixturePDFVerifier(),
+                                      10_000, lease_seconds=1, now_ms=lambda: clock[0])
+    context = RuntimeModule.new().into_context()
+    target = BlobUploadTarget("Asset", "1", "document")
+    input = BlobUploadInput("report.pdf", 42)
+    first = await service.begin(context, target, input, "expired-request")
+    assert (await service.begin(context, target, input, "expired-request")).upload_id == first.upload_id
+    clock[0] = int(first.expires_at.timestamp() * 1000)
+    with pytest.raises(RuntimeError, match="BLOB_UPLOAD_EXPIRED"):
+        await service.begin(context, target, input, "expired-request")
+    second = await service.begin(context, target, input, "fresh-request")
+    assert second.upload_id != first.upload_id
+    with pytest.raises(RuntimeError, match="BLOB_UPLOAD_EXPIRED"):
+        await service.write(context, first.upload_id, BytesIO(b"x" * 42))
+
+
+@pytest.mark.asyncio
 async def test_upload_real_sqlite_file_verifier_and_native_bind(tmp_path):
     path = str(tmp_path / "upload.db")
     descriptor = EntityDescriptor("Asset").table_name("asset")

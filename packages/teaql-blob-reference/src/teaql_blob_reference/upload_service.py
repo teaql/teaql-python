@@ -214,8 +214,13 @@ class SqliteBlobUploadService:
                     raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
                 await self._current(actor, target, "Begin", normalized, scope)
                 try:
+                    expires_ms = row["expires_ms"]
+                    if type(expires_ms) is not int:
+                        raise RuntimeError("BLOB_CATALOG_FAILED")
+                    if self.now_ms() >= expires_ms:
+                        raise RuntimeError("BLOB_UPLOAD_EXPIRED")
                     return BlobUploadSession(row["upload_id"], BlobRef(row["key"]),
-                        datetime.fromtimestamp(row["expires_ms"] / 1000, timezone.utc))
+                        datetime.fromtimestamp(expires_ms / 1000, timezone.utc))
                 except (KeyError, TypeError, ValueError, OverflowError):
                     raise RuntimeError("BLOB_CATALOG_FAILED") from None
             reference = BlobRef("blob_" + _token())
@@ -319,12 +324,18 @@ class SqliteBlobUploadService:
             digest = reader.digest.hexdigest()
 
             async def work(tx):
+                now = self.now_ms()
+                if now >= row["expires_ms"]:
+                    raise RuntimeError("BLOB_UPLOAD_EXPIRED")
                 try:
                     affected, _ = await tx.execute_sql(_query(
                         "UPDATE teaql_blob_upload SET state='written', written_sha256=?, written_etag=? "
-                        "WHERE upload_id=? AND scope=? AND state='initiated'",
+                        "WHERE upload_id=? AND scope=? AND state='initiated' AND expires_ms > ? "
+                        "AND EXISTS (SELECT 1 FROM teaql_blob_catalog "
+                        "WHERE key=teaql_blob_upload.key AND scope=teaql_blob_upload.scope "
+                        "AND status='initiated')",
                         Value.Text(digest), Value.Text(metadata.etag),
-                        Value.Text(upload_id), Value.Text(row["scope"])))
+                        Value.Text(upload_id), Value.Text(row["scope"]), Value.I64(now)))
                 except Exception:
                     raise RuntimeError("BLOB_CATALOG_FAILED") from None
                 if affected != 1:
@@ -418,12 +429,15 @@ class SqliteBlobUploadService:
             raise RuntimeError("BLOB_UPLOAD_EXPIRED")
 
         async def work(tx):
+            now = self.now_ms()
+            if now >= row["expires_ms"]:
+                raise RuntimeError("BLOB_UPLOAD_EXPIRED")
             try:
                 affected, _ = await tx.execute_sql(_query(
                     "UPDATE teaql_blob_upload SET state='completed' WHERE upload_id=? AND scope=? "
-                    "AND state='written' AND written_sha256=? AND written_etag=?",
+                    "AND state='written' AND written_sha256=? AND written_etag=? AND expires_ms > ?",
                     Value.Text(upload_id), Value.Text(row["scope"]),
-                    Value.Text(row["written_sha256"]), Value.Text(row["written_etag"])))
+                    Value.Text(row["written_sha256"]), Value.Text(row["written_etag"]), Value.I64(now)))
                 if affected != 1:
                     raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
                 affected, _ = await tx.execute_sql(_query(
