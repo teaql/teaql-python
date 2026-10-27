@@ -761,6 +761,8 @@ class UserContext:
 
     def check_and_fix_mutation(self, mutation: Any):
         """Run generated fixes and checks before a mutation reaches a provider."""
+        from teaql.core.mutation_version import validate_mutation_versions
+        validate_mutation_versions(mutation)
         entity = getattr(mutation, "entity", None)
         record = getattr(mutation, "values", None)
         if not entity or record is None:
@@ -772,6 +774,7 @@ class UserContext:
         self.insert_resource("fix_operation", type(mutation).__name__.replace("Command", "").lower())
         try:
             self.check_and_fix_record(entity, record)
+            validate_mutation_versions(mutation)
         finally:
             if owns_fix_time:
                 self._resources.pop("fix_time", None)
@@ -787,7 +790,9 @@ class UserContext:
         here. It reads canonical model keys from trusted schema metadata.
         """
         from teaql.core.mutation import InsertCommand, UpdateCommand
+        from teaql.core.mutation_version import validate_mutation_versions
         from .i18n import CheckException, CheckResult, ObjectLocation
+        validate_mutation_versions(mutation)
         if not isinstance(mutation, (InsertCommand, UpdateCommand)):
             return
         descriptor = self.entity(mutation.entity)

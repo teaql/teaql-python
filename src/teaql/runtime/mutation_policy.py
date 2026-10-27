@@ -41,6 +41,7 @@ class MutationOperationKind(str, Enum):
     CREATE = "create"
     UPDATE = "update"
     DELETE = "delete"
+    HARD_DELETE = "hard_delete"
     RECOVER = "recover"
 
 
@@ -335,8 +336,11 @@ class MutationPolicyRuntimeState:
     def review(self, context: Any, plan: MutationPlan) -> MutationGovernanceSnapshot:
         _validate_plan(plan)
         from .canonical_fields import validate_canonical_fields
+        from teaql.core.mutation_version import next_mutation_version
         for operation in plan.operations:
             validate_canonical_fields(context, operation.entity, operation.changed_values)
+            if operation.kind == MutationOperationKind.RECOVER or operation.original_version is not None:
+                next_mutation_version(operation.kind, operation.original_version)
         policy = self.registry.resolve(plan.request_key) if self.registry else None
         if policy is None:
             source = MutationPolicySource.GENERATED_DEFAULT
@@ -495,7 +499,7 @@ def _operations_from_data(data: Any) -> list[MutationOperation]:
         )]
     if isinstance(data, DeleteCommand):
         return [MutationOperation(
-            MutationOperationKind.DELETE,
+            MutationOperationKind.DELETE if data.soft_delete else MutationOperationKind.HARD_DELETE,
             data.entity,
             _clone_value(data.id),
             data.expected_version_val,

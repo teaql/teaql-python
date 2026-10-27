@@ -111,3 +111,14 @@ to a 10,000-character plain representation before arithmetic or expansion.
 Existing NUMERIC/REAL or unqualified TEXT columns require an explicit migration;
 `ensure_schema()` rejects them before bootstrap. Previously rounded values
 cannot be recovered automatically. Raw SQL remains the caller's responsibility.
+# Checked optimistic versions
+
+Run `bash examples/scalar-type-probe/verify-version.sh /absolute/path/version.sqlite`
+from the repository root. It executes two rounds without resetting the database.
+The immutable generated Q/E/JSON/save library exercises exact signed-64 endpoints,
+loaded-null and non-null notes, zero-hook exhaustion rejection, whole-graph
+admission, unchanged exhausted children, and same-graph retry. A late child Fix
+must not reserve an ID before an exhausted parent rejects. Native tests separately
+exercise explicit recovery, versionless live-only deletion and physical removal.
+Direct SQL in this probe is restricted to deliberate boundary injection; ordinary
+writes use the generated audited mutation API.

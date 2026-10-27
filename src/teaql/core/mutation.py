@@ -145,6 +145,8 @@ class MutationRequest:
         MutationIntent(getattr(getattr(self, '_MutationRequest__intent', None), 'comment', None))
         if any(not isinstance(node, TraceNode) for node in self.trace_chain()):
             raise TypeError('MutationRequest trace must contain typed TraceNode values')
+        from .mutation_version import validate_mutation_versions
+        validate_mutation_versions(self._data)
 
     def with_root_intent(self, intent: MutationIntent) -> 'MutationRequest':
         return MutationRequest(self._data, comment=intent.comment).with_mutation_lineage(self.mutation_lineage)

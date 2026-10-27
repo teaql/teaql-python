@@ -18,6 +18,7 @@ from .mutation import (
     BatchInsertCommand, BatchUpdateCommand, MutationRequest
 )
 from .graph import GraphNode
+from .mutation_version import MutationVersionError, next_mutation_version
 from .request_intent import QueryIntent, MutationIntent, RequestIntentError
 from .request_tree import QueryOperation
 
@@ -57,6 +58,7 @@ __all__ = [
     "InsertCommand", "UpdateCommand", "DeleteCommand", "RecoverCommand",
     "BatchInsertCommand", "BatchUpdateCommand", "MutationRequest",
     "GraphNode",
+    "MutationVersionError", "next_mutation_version",
     "EntityDescriptor", "PropertyDescriptor", "SmartList", "TeaQLPage",
     "LoadState", "EvalResult", "SafeExpression",
     "BusinessIdAllocation", "BusinessIdAllocator", "BusinessIdDefinition",

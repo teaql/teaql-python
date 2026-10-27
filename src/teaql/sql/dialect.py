@@ -14,6 +14,7 @@ from teaql.core.expr import (
     BinaryOp, ExprFunction
 )
 from teaql.core.value import Value, DataType
+from teaql.core.mutation_version import next_mutation_version, validate_mutation_versions
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
 from .types import (
     DatabaseKind, CompiledQuery, SQLBindings, SqlCompileError,
@@ -244,6 +245,7 @@ class SqlDialect(ABC):
         return CompiledQuery(sql=sql, params=params)
 
     def compile_update(self, entity: EntityDescriptor, command: UpdateCommand) -> CompiledQuery:
+        validate_mutation_versions(command)
         id_property = next((p for p in getattr(entity, 'properties', [])
                             if getattr(p, '_is_id', False) or getattr(p, 'is_id_val', False)), None)
         if not id_property:
@@ -270,7 +272,7 @@ class SqlDialect(ABC):
         if command.expected_version_val is not None:
             if not version_property:
                 raise MissingVersionPropertyError(entity._name)
-            self.bind_field(params, Value.I64(command.expected_version_val + 1), entity, version_property.name)
+            self.bind_field(params, Value.I64(next_mutation_version("update", command.expected_version_val)), entity, version_property.name)
             assignments.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
             
         if not assignments:
@@ -288,6 +290,7 @@ class SqlDialect(ABC):
         return CompiledQuery(sql=sql, params=params)
         
     def compile_delete(self, entity: EntityDescriptor, command: DeleteCommand) -> CompiledQuery:
+        validate_mutation_versions(command)
         id_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_id_val', False) or getattr(p, '_is_id', False)), None)
         if not id_property:
             raise MissingIdPropertyError(entity._name)
@@ -300,7 +303,7 @@ class SqlDialect(ABC):
             if not version_property:
                 raise MissingVersionPropertyError(entity._name)
             if command.expected_version_val is not None:
-                self.bind_field(params, Value.I64(-(command.expected_version_val + 1)), entity, version_property.name)
+                self.bind_field(params, Value.I64(next_mutation_version("delete", command.expected_version_val)), entity, version_property.name)
             else:
                 self.bind_field(params, Value.I64(-1), entity, version_property.name)
                 
@@ -310,6 +313,8 @@ class SqlDialect(ABC):
             if command.expected_version_val is not None:
                 self.bind_field(params, Value.I64(command.expected_version_val), entity, version_property.name)
                 predicates.append(f"{self.quote_ident(version_property.column_name_val)} = {self.placeholder(len(params))}")
+            else:
+                predicates.append(f"{self.quote_ident(version_property.column_name_val)} > 0")
                 
             sql = f"UPDATE {self.quote_ident(table_name)} SET {self.quote_ident(version_property.column_name_val)} = {self.placeholder(1)} WHERE {' AND '.join(predicates)}"
             return CompiledQuery(sql=sql, params=params)
@@ -327,8 +332,7 @@ class SqlDialect(ABC):
         return CompiledQuery(sql=sql, params=params)
         
     def compile_recover(self, entity: EntityDescriptor, command: RecoverCommand) -> CompiledQuery:
-        if command.expected_version_val >= 0:
-            raise InvalidRecoverVersionError(command.expected_version_val)
+        next_version = next_mutation_version("recover", command.expected_version_val)
             
         id_property = next((p for p in getattr(entity, 'properties', []) if getattr(p, 'is_id_val', False) or getattr(p, '_is_id', False)), None)
         if not id_property:
@@ -339,7 +343,7 @@ class SqlDialect(ABC):
             raise MissingVersionPropertyError(entity._name)
             
         params = SQLBindings()
-        self.bind_field(params, Value.I64(-command.expected_version_val + 1), entity, version_property.name)
+        self.bind_field(params, Value.I64(next_version), entity, version_property.name)
         self.bind_field(params, command.id, entity, id_property.name)
         self.bind_field(params, Value.I64(command.expected_version_val), entity, version_property.name)
         

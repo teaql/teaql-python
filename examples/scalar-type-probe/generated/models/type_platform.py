@@ -185,7 +185,10 @@ class TypePlatform:
     async def _teaql_prepare_graph(self, context, session):
         # Complete all input/Fix checks before reserving any graph identity.
         # Stable IDs then make the final policy plan and TraceScope concrete.
+        self._teaql_validate_input_graph(context, set())
         self._teaql_prepare_input_graph(context, set())
+        # Fix may edit a sibling or its version; re-admit the whole graph before IDs.
+        self._teaql_validate_input_graph(context, set())
         await self._teaql_reserve_graph_ids(context, set())
         self._teaql_preflight_graph(context, session)
         session._seal_generated_plan()
