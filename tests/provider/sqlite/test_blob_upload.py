@@ -169,11 +169,8 @@ async def test_upload_confirmation_holds_sql_owner_through_parser_io(tmp_path):
     finally:
         release.set()
     assert await first == session.reference
-    try:
-        assert await second == session.reference
-    except RuntimeError as error:
-        assert str(error) == "BLOB_IDEMPOTENCY_CONFLICT"
-        assert await service.complete(actor, session.upload_id) == session.reference
+    assert await second == session.reference
+    assert await service.complete(actor, session.upload_id) == session.reference
     assert verifier.calls == 1
 
 

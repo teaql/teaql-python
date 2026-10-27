@@ -458,6 +458,15 @@ class SqliteBlobUploadService:
                     Value.Text(row["key"]), Value.Text(row["scope"])))
             except Exception:
                 raise RuntimeError("BLOB_CATALOG_FAILED") from None
+            if (len(current) == 1 and current[0]["state"] == "completed" and
+                    current[0]["expires_ms"] == row["expires_ms"] and
+                    current[0]["key"] == row["key"] and
+                    current[0]["written_sha256"] == row["written_sha256"] and
+                    current[0]["written_etag"] == row["written_etag"]):
+                # Another confirmer won the lease. Reenter the regular replay
+                # path after releasing this SQL owner so catalog, generation,
+                # authorization and expiry are checked against current state.
+                return None
             if (len(current) != 1 or current[0]["state"] != "written" or
                     current[0]["expires_ms"] != row["expires_ms"] or
                     current[0]["key"] != row["key"] or
@@ -500,4 +509,5 @@ class SqliteBlobUploadService:
             except Exception:
                 raise RuntimeError("BLOB_CATALOG_FAILED") from None
             return BlobRef(row["key"])
-        return await self._transaction(work)
+        result = await self._transaction(work)
+        return result if result is not None else await self.complete(actor, upload_id)
