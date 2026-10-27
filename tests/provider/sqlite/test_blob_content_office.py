@@ -61,9 +61,11 @@ def test_real_office_structure_content_and_limits(extension, mime):
                               b"<Types xmlns='http://schemas.openxmlformats.org/package/2006/content-types' />")
     wrong_relationship = replace_part(data, "_rels/.rels",
                                       b"<Relationships xmlns='http://schemas.openxmlformats.org/package/2006/relationships' />")
+    entity_document = replace_part(data, main,
+                                   b"<!DOCTYPE x [<!ENTITY x 'expanded'>]><x>&x;</x>")
     for invalid in (data[:-12], b"PK\x03\x04not Office", b"",
                     replace_part(data, main, b"<broken>"), wrong_type,
-                    wrong_relationship):
+                    wrong_relationship, entity_document):
         with pytest.raises(RuntimeError, match="BLOB_FORMAT_NOT_ALLOWED"):
             verifier.verify(BytesIO(invalid), extension, len(data) + 10000)
     with pytest.raises(RuntimeError, match="BLOB_FORMAT_NOT_ALLOWED"):

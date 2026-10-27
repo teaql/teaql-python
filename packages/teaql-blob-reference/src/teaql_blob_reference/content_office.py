@@ -72,6 +72,8 @@ class OfficeBlobContentVerifier:
                         continue
                     if part.file_size > self.maximum_decoded_bytes - decoded:
                         raise ValueError("Office decoded size")
+                    xml_part = part.filename.endswith((".xml", ".rels"))
+                    overlap = b""
                     with archive.open(part) as member:
                         while True:
                             block = member.read(65536)
@@ -80,6 +82,11 @@ class OfficeBlobContentVerifier:
                             decoded += len(block)
                             if decoded > self.maximum_decoded_bytes:
                                 raise ValueError("Office decoded size")
+                            if xml_part:
+                                scan = (overlap + block).upper()
+                                if b"<!DOCTYPE" in scan or b"<!ENTITY" in scan:
+                                    raise ValueError("Office XML entity declaration")
+                                overlap = scan[-16:]
                     # Reading through EOF also verifies the member's CRC.
                 types = ElementTree.fromstring(archive.read("[Content_Types].xml"))
                 main = "/" + _REQUIRED[extension]
