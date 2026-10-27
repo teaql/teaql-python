@@ -2,6 +2,8 @@
 
 from hashlib import sha256
 from io import BytesIO
+from threading import Event
+import asyncio
 import os
 
 import aiosqlite
@@ -83,6 +85,96 @@ async def test_expired_replay_key_cannot_recover_upload_session(tmp_path):
     assert second.upload_id != first.upload_id
     with pytest.raises(RuntimeError, match="BLOB_UPLOAD_EXPIRED"):
         await service.write(context, first.upload_id, BytesIO(b"x" * 42))
+
+
+@pytest.mark.asyncio
+async def test_upload_write_holds_sql_owner_across_file_io(tmp_path):
+    path = str(tmp_path / "locked.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    entered, release = Event(), Event()
+    file_store = FileObjectStorage(tmp_path / "private", os.urandom(32))
+
+    class BlockingStore:
+        puts = 0
+
+        def __getattr__(self, name):
+            return getattr(file_store, name)
+
+        def put(self, invocation, key, content, options):
+            self.puts += 1
+            result = file_store.put(invocation, key, content, options)
+            entered.set()
+            if not release.wait(5):
+                raise AssertionError("test did not release File write")
+            return result
+
+    store = BlockingStore()
+    actor = RuntimeModule.new().into_context().with_object_storage(store)
+    actor.with_object_storage_observer(lambda event: None)
+    service = SqliteBlobUploadService(catalog, UploadAuthority(), FixturePDFVerifier(), 10_000)
+    data = b"%PDF-1.7\nlocked upload\n%%EOF"
+    session = await service.begin(actor, BlobUploadTarget("Asset", "1", "document"),
+                                  BlobUploadInput("report.pdf", len(data)), "lock-request")
+    first = asyncio.create_task(service.write(actor, session.upload_id, BytesIO(data)))
+    second = None
+    try:
+        assert await asyncio.to_thread(entered.wait, 5)
+        second = asyncio.create_task(service.write(actor, session.upload_id, BytesIO(data)))
+        await asyncio.sleep(0.05)
+        assert not second.done(), "second writer bypassed the physical SQL owner"
+    finally:
+        release.set()
+    assert await first == len(data)
+    with pytest.raises(RuntimeError, match="BLOB_IDEMPOTENCY_CONFLICT"):
+        await second
+    assert store.puts == 1
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT state FROM teaql_blob_upload WHERE upload_id=?",
+                              (session.upload_id,)) as cursor:
+            assert (await cursor.fetchone())[0] == "written"
+
+
+@pytest.mark.asyncio
+async def test_upload_confirmation_holds_sql_owner_through_parser_io(tmp_path):
+    path = str(tmp_path / "confirm-locked.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    entered, release = Event(), Event()
+
+    class BlockingVerifier(FixturePDFVerifier):
+        def verify(self, stream, extension, maximum_bytes):
+            result = super().verify(stream, extension, maximum_bytes)
+            entered.set()
+            if not release.wait(5):
+                raise AssertionError("test did not release parser")
+            return result
+
+    verifier = BlockingVerifier()
+    actor = RuntimeModule.new().into_context().with_object_storage(
+        FileObjectStorage(tmp_path / "private", os.urandom(32)))
+    actor.with_object_storage_observer(lambda event: None)
+    service = SqliteBlobUploadService(catalog, UploadAuthority(), verifier, 10_000)
+    data = b"%PDF-1.7\nlocked confirmation\n%%EOF"
+    session = await service.begin(actor, BlobUploadTarget("Asset", "1", "document"),
+                                  BlobUploadInput("report.pdf", len(data)), "confirm-request")
+    await service.write(actor, session.upload_id, BytesIO(data))
+    first = asyncio.create_task(service.complete(actor, session.upload_id))
+    second = None
+    try:
+        assert await asyncio.to_thread(entered.wait, 5)
+        second = asyncio.create_task(service.complete(actor, session.upload_id))
+        await asyncio.sleep(0.05)
+        assert not second.done(), "second confirmation bypassed the physical SQL owner"
+    finally:
+        release.set()
+    assert await first == session.reference
+    try:
+        assert await second == session.reference
+    except RuntimeError as error:
+        assert str(error) == "BLOB_IDEMPOTENCY_CONFLICT"
+        assert await service.complete(actor, session.upload_id) == session.reference
+    assert verifier.calls == 1
 
 
 @pytest.mark.asyncio

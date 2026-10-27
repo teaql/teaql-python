@@ -307,26 +307,49 @@ class SqliteBlobUploadService:
             key = await self._object_key(actor, row)
             mime = blob_mime_for_extension(row["extension"])
             reader = _CountingReader(source, row["declared_size"])
-            try:
-                metadata = await asyncio.to_thread(
-                    actor.object_storage("write Blob upload").put, key, reader,
-                    PutOptions(row["declared_size"], WriteMode.CREATE_ONLY, mime))
-            except Exception:
-                raise RuntimeError("BLOB_STORE_FAILED") from None
             target = BlobUploadTarget(row["entity"], row["entity_id"], row["field"])
-            await self._current(actor, target, "Write",
-                                BlobUploadInput(row["file_name"], row["declared_size"]), row["scope"])
-            if self.now_ms() >= row["expires_ms"]:
-                raise RuntimeError("BLOB_UPLOAD_EXPIRED")
-            if (not reader.eof or reader.count != row["declared_size"] or
-                    metadata.size != reader.count or not metadata.etag):
-                raise RuntimeError("BLOB_UPLOAD_INCOMPLETE")
-            digest = reader.digest.hexdigest()
 
             async def work(tx):
+                # BEGIN IMMEDIATE remains owned until the File write and journal
+                # transition finish. A second writer or collector must recheck
+                # the authoritative row after this owner commits.
+                try:
+                    current = await tx.fetch_all_sql(_query(
+                        "SELECT state,expires_ms,key FROM teaql_blob_upload "
+                        "WHERE upload_id=? AND scope=?", Value.Text(upload_id),
+                        Value.Text(row["scope"])))
+                    catalog = await tx.fetch_all_sql(_query(
+                        "SELECT object_key,status FROM teaql_blob_catalog WHERE key=? AND scope=?",
+                        Value.Text(row["key"]), Value.Text(row["scope"])))
+                except Exception:
+                    raise RuntimeError("BLOB_CATALOG_FAILED") from None
+                if (len(current) != 1 or current[0]["state"] != "initiated" or
+                        current[0]["key"] != row["key"] or
+                        current[0]["expires_ms"] != row["expires_ms"] or
+                        len(catalog) != 1 or catalog[0]["status"] != "initiated" or
+                        catalog[0]["object_key"] != key.value):
+                    raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
+                await self._current(actor, target, "Write",
+                                    BlobUploadInput(row["file_name"], row["declared_size"]),
+                                    row["scope"])
+                if self.now_ms() >= row["expires_ms"]:
+                    raise RuntimeError("BLOB_UPLOAD_EXPIRED")
+                try:
+                    metadata = await asyncio.to_thread(
+                        actor.object_storage("write Blob upload").put, key, reader,
+                        PutOptions(row["declared_size"], WriteMode.CREATE_ONLY, mime))
+                except Exception:
+                    raise RuntimeError("BLOB_STORE_FAILED") from None
+                await self._current(actor, target, "Write",
+                                    BlobUploadInput(row["file_name"], row["declared_size"]),
+                                    row["scope"])
                 now = self.now_ms()
                 if now >= row["expires_ms"]:
                     raise RuntimeError("BLOB_UPLOAD_EXPIRED")
+                if (not reader.eof or reader.count != row["declared_size"] or
+                        metadata.size != reader.count or not metadata.etag):
+                    raise RuntimeError("BLOB_UPLOAD_INCOMPLETE")
+                digest = reader.digest.hexdigest()
                 try:
                     affected, _ = await tx.execute_sql(_query(
                         "UPDATE teaql_blob_upload SET state='written', written_sha256=?, written_etag=? "
@@ -340,8 +363,8 @@ class SqliteBlobUploadService:
                     raise RuntimeError("BLOB_CATALOG_FAILED") from None
                 if affected != 1:
                     raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
-            await self._transaction(work)
-            return reader.count
+                return reader.count
+            return await self._transaction(work)
         finally:
             with suppress(Exception):
                 source.close()
@@ -420,15 +443,39 @@ class SqliteBlobUploadService:
             except Exception:
                 raise RuntimeError("BLOB_UPLOAD_INCOMPLETE") from None
 
-        verified = await asyncio.to_thread(verify_stored)
         target = BlobUploadTarget(row["entity"], row["entity_id"], row["field"])
-        await self._current(actor, target, "Confirm",
-                            BlobUploadInput(row["file_name"], row["declared_size"],
-                                            verified.content_type), row["scope"])
-        if self.now_ms() >= row["expires_ms"]:
-            raise RuntimeError("BLOB_UPLOAD_EXPIRED")
 
         async def work(tx):
+            # Keep the same physical SQLite owner through parser I/O and both
+            # journal promotions. A concurrent confirmation rechecks after it.
+            try:
+                current = await tx.fetch_all_sql(_query(
+                    "SELECT state,expires_ms,key,written_sha256,written_etag "
+                    "FROM teaql_blob_upload WHERE upload_id=? AND scope=?",
+                    Value.Text(upload_id), Value.Text(row["scope"])))
+                catalog = await tx.fetch_all_sql(_query(
+                    "SELECT object_key,status FROM teaql_blob_catalog WHERE key=? AND scope=?",
+                    Value.Text(row["key"]), Value.Text(row["scope"])))
+            except Exception:
+                raise RuntimeError("BLOB_CATALOG_FAILED") from None
+            if (len(current) != 1 or current[0]["state"] != "written" or
+                    current[0]["expires_ms"] != row["expires_ms"] or
+                    current[0]["key"] != row["key"] or
+                    current[0]["written_sha256"] != row["written_sha256"] or
+                    current[0]["written_etag"] != row["written_etag"] or
+                    len(catalog) != 1 or catalog[0]["status"] != "initiated" or
+                    catalog[0]["object_key"] != key.value):
+                raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
+            await self._current(actor, target, "Confirm",
+                                BlobUploadInput(row["file_name"], row["declared_size"]),
+                                row["scope"])
+            now = self.now_ms()
+            if now >= row["expires_ms"]:
+                raise RuntimeError("BLOB_UPLOAD_EXPIRED")
+            verified = await asyncio.to_thread(verify_stored)
+            await self._current(actor, target, "Confirm",
+                                BlobUploadInput(row["file_name"], row["declared_size"],
+                                                verified.content_type), row["scope"])
             now = self.now_ms()
             if now >= row["expires_ms"]:
                 raise RuntimeError("BLOB_UPLOAD_EXPIRED")
@@ -452,5 +499,5 @@ class SqliteBlobUploadService:
                 raise
             except Exception:
                 raise RuntimeError("BLOB_CATALOG_FAILED") from None
-        await self._transaction(work)
-        return BlobRef(row["key"])
+            return BlobRef(row["key"])
+        return await self._transaction(work)
