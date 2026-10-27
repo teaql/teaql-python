@@ -1,6 +1,8 @@
 """Real local File/HTTP behavior for the independent optional wheel."""
 from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
+from io import BytesIO
+from threading import Event
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 import hashlib
@@ -67,6 +69,51 @@ def test_file_conditional_delete_fences_same_bytes_and_external_process(tmp_path
         if process.poll() is None:
             process.terminate()
         process.wait(timeout=5)
+
+
+def test_file_generation_sweep_waits_for_writer_and_preserves_current(tmp_path):
+    root = tmp_path / "objects"
+    writer_provider = FileObjectStorage(root, os.urandom(32))
+    sweep_provider = FileObjectStorage(root, os.urandom(32))
+    actor = UserContext().with_object_storage(writer_provider)
+    writer = actor.object_storage("write File generations")
+    key = ObjectKey("blob/generation-sweep")
+    data = b"same bytes"
+    first = writer.put_bytes(key, data, PutOptions(len(data), WriteMode.CREATE_ONLY))
+    second = writer.put_bytes(key, data, PutOptions(len(data), WriteMode.REPLACE))
+    assert first.etag != second.etag
+    key_hash = sweep_provider._hash(key)
+    old_path = sweep_provider._directory(key_hash) / ("data-" + first.etag.split(".")[-1])
+    assert old_path.is_file()
+
+    reading = Event()
+    proceed = Event()
+
+    class PausedSource(BytesIO):
+        def read(self, size=-1):
+            reading.set()
+            assert proceed.wait(5)
+            return super().read(size)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        replacing = pool.submit(writer_provider.put, None, key, PausedSource(data),
+                                PutOptions(len(data), WriteMode.REPLACE))
+        assert reading.wait(5)
+        sweeping = pool.submit(sweep_provider.sweep_old_generations, key)
+        time.sleep(0.1)
+        assert not sweeping.done()
+        assert old_path.is_file()
+        proceed.set()
+        third = replacing.result(timeout=5)
+        assert sweeping.result(timeout=5) == 2
+
+    assert sweep_provider.head(None, key).etag == third.etag
+    assert sweep_provider.sweep_old_generations(key) == 0
+    assert not old_path.exists()
+    current_path = sweep_provider._directory(key_hash) / ("data-" + third.etag.split(".")[-1])
+    assert current_path.is_file()
+    assert sweep_provider.delete_if_version(None, key, third.etag) == "deleted"
+    assert sweep_provider.sweep_old_generations(key) == 0
 
 
 def _status(url, *, method="GET", headers=None):

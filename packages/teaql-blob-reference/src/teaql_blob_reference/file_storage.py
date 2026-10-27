@@ -78,9 +78,9 @@ class FileObjectStorage:
         return self._root / key_hash[:2] / key_hash
 
     @contextmanager
-    def _manifest_lock(self, key_hash):
+    def _manifest_lock(self, key_hash, name="manifest.lock"):
         """Persistent OS lock: never remove the lock file while this root is in use."""
-        path = self._directory(key_hash) / "manifest.lock"
+        path = self._directory(key_hash) / name
         flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
         fd = None
         locked = False
@@ -176,6 +176,12 @@ class FileObjectStorage:
             directory.mkdir(mode=0o700, parents=True, exist_ok=True)
         except OSError:
             raise _error(StorageErrorCode.IO) from None
+        # The writer lock covers the data file before its manifest is published.
+        # A generation sweep takes this lock first and then the manifest lock.
+        with self._manifest_lock(key_hash, "writer.lock"):
+            return self._put_under_writer_lock(key, content, options, key_hash, directory)
+
+    def _put_under_writer_lock(self, key, content, options, key_hash, directory):
         version = _b64(secrets.token_bytes(24))
         data_path = directory / ("data-" + version)
         temp_path = directory / ("manifest-" + version)
@@ -292,6 +298,40 @@ class FileObjectStorage:
                 self._data_path(key_hash, manifest).unlink(missing_ok=True)
                 (self._directory(key_hash) / "manifest.json").unlink()
                 return "deleted"
+        except StorageError:
+            raise
+        except OSError:
+            raise _error(StorageErrorCode.IO) from None
+
+    def sweep_old_generations(self, key):
+        """Host-scheduled cleanup of inaccessible File generations for one key.
+
+        The caller owns the provider and must not mix pre-writer-lock process
+        versions on this root while sweeping. This never removes the current
+        manifest or its data file, even when the key was recreated.
+        """
+        if not self._root.exists():
+            return 0
+        self._private_root()
+        key_hash = self._hash(key)
+        directory = self._directory(key_hash)
+        if not directory.exists():
+            return 0
+        removed = 0
+        try:
+            with self._manifest_lock(key_hash, "writer.lock"):
+                with self._manifest_lock(key_hash):
+                    manifest = self._manifest(key_hash)
+                    current = "data-" + manifest["version"] if manifest else None
+                    for path in directory.iterdir():
+                        if path.name == current or not re.fullmatch(r"data-[A-Za-z0-9_-]{32}", path.name):
+                            continue
+                        info = path.lstat()
+                        if not stat.S_ISREG(info.st_mode):
+                            raise _error(StorageErrorCode.UNAVAILABLE)
+                        path.unlink()
+                        removed += 1
+            return removed
         except StorageError:
             raise
         except OSError:
