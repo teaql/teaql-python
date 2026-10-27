@@ -47,5 +47,21 @@ Office main content type and package relationship, then parses the Word body or
 every Excel worksheet under an element/cell count limit. It hashes original
 bytes and returns the precise Office MIME type. Construction is passive, and
 `validate_ready` requires both optional parsers. The in-process parsers do not
-provide hard CPU or process-memory isolation. Binary DOC/XLS, MP3 and MP4 still
-need production adapters.
+provide hard CPU or process-memory isolation. Binary DOC/XLS still need
+production adapters.
+
+For actual MP3/MP4 validation on POSIX hosts, inject
+`teaql_blob_reference.content_ffmpeg.FfmpegBlobContentVerifier` with absolute
+paths to trusted `ffprobe` and `ffmpeg` executables. The host installs and
+patches those binaries separately; this wheel does not bundle or fetch them.
+`validate_ready` checks availability when the module is activated. The adapter
+walks complete MP3 frames or top-level MP4 boxes before forcing the matching
+FFmpeg demuxer, probing decoded frame counts and stream properties, and fully
+decoding media from a pipe. Client filenames and URLs never reach FFmpeg. It
+allows only the `pipe` protocol and bounds input bytes, frame count, video
+pixels, concurrent checks, child CPU time and address space, and wall time.
+The accepted MP3 profile is MPEG Layer III with fixed, non-free bitrate and a
+constant sample rate; MP4 must contain a supported `ftyp` brand, `moov`,
+`mdat`, and at least one decodable video stream. The adapter returns the SHA-256
+of the original bytes and `audio/mpeg` or `video/mp4`. It is content validation,
+not malware scanning; ffprobe/ffmpeg themselves must be kept current.
