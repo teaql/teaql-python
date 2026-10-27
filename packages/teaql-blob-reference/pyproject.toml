@@ -15,6 +15,7 @@ dependencies = ["teaql==0.3.1"]
 [project.optional-dependencies]
 image = ["Pillow==12.3.0"]
 pdf = ["pypdf==6.21.3"]
+office = ["python-docx==1.2.0", "openpyxl==3.1.5"]
 
 [tool.setuptools.packages.find]
 where = ["src"]

@@ -25,3 +25,14 @@ cross-reference parsing, a real page tree and content operators, and bounded
 input, pages, decoded page content and concurrent work. It rejects encrypted
 PDFs. This is parser validation, not malware scanning or hard CPU/process
 isolation. The PDF fixture verifier used in older S3 tests remains test-only.
+
+For actual DOCX/XLSX parsing, install `teaql-blob-reference[office]` and inject
+`teaql_blob_reference.content_office.OfficeBlobContentVerifier`. The office extra
+pins python-docx 1.2.0 and openpyxl 3.1.5. The adapter checks every ZIP member
+and its CRC under input, decoded-byte and part-count limits, checks the expected
+Office main content type and package relationship, then parses the Word body or
+every Excel worksheet under an element/cell count limit. It hashes original
+bytes and returns the precise Office MIME type. Construction is passive, and
+`validate_ready` requires both optional parsers. The in-process parsers do not
+provide hard CPU or process-memory isolation. Binary DOC/XLS, MP3 and MP4 still
+need production adapters.
