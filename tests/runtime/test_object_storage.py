@@ -2,6 +2,11 @@ from datetime import timedelta, datetime, timezone
 from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+from uuid import uuid4
+import os
+import time
 import pytest
 import boto3
 from botocore.config import Config
@@ -146,3 +151,39 @@ def test_object_storage_real_sdk_http_errors_are_not_absence():
         server.shutdown()
         server.server_close()
         provider.close()
+
+
+def test_minio_real_signed_range_and_expiry():
+    """Explicit local S3-compatible gate; the host owns the disposable bucket."""
+    endpoint = os.environ.get("TEAQL_S3_TEST_ENDPOINT")
+    bucket = os.environ.get("TEAQL_S3_TEST_BUCKET")
+    access = os.environ.get("TEAQL_S3_TEST_ACCESS_KEY")
+    secret = os.environ.get("TEAQL_S3_TEST_SECRET_KEY")
+    if not all((endpoint, bucket, access, secret)):
+        pytest.skip("explicit S3-compatible endpoint, bucket and credentials required")
+    provider = S3ObjectStorage.connect(bucket, endpoint_url=endpoint,
+        aws_access_key_id=access, aws_secret_access_key=secret)
+    storage = UserContext().with_object_storage(provider).object_storage("F4 real S3-compatible Python")
+    key = ObjectKey("f4/python/" + uuid4().hex)
+    content = b"%PDF-1.7\nF4 real S3-compatible bytes\n%%EOF"
+    try:
+        written = storage.put_bytes(key, content, PutOptions(len(content), WriteMode.REPLACE, "application/pdf"))
+        head = storage.head(key)
+        assert head is not None and head.size == len(content)
+        assert head.etag == written.etag and head.content_type == "application/pdf"
+        assert storage.get_bytes(key, 1024) == content
+        ticket = storage.get_read_url(key, ReadUrlOptions(timedelta(seconds=2), "attachment", "report.pdf"))
+        # Do not log the signed URL or credentials.
+        with urlopen(Request(ticket.url, headers={"Range": "bytes=0-7"}), timeout=5) as response:
+            assert response.status == 206 and response.read() == content[:8]
+            assert response.headers["Content-Type"] == "application/pdf"
+            assert "report.pdf" in response.headers["Content-Disposition"]
+        time.sleep(max(0, ticket.expires_at.timestamp() - time.time() + 1.3))
+        with pytest.raises(HTTPError) as expired:
+            urlopen(ticket.url, timeout=5)
+        assert expired.value.code == 403
+    finally:
+        try:
+            storage.delete(key)
+        finally:
+            provider.close()
