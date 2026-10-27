@@ -20,6 +20,7 @@ class Stub:
     size = 3
     code = None
     seen = None
+    deletes = 0
     def head(self, invocation, key):
         self.seen = invocation
         if self.code:
@@ -30,6 +31,8 @@ class Stub:
         return ObjectMetadata(key, options.size)
     def get(self, invocation, key):
         return ObjectContent(ObjectMetadata(key, self.size), BytesIO(b"abc"))
+    def delete(self, invocation, key):
+        self.deletes += 1
 
 
 def assert_error(code, work):
@@ -54,6 +57,16 @@ def test_object_storage_context_and_error_semantics():
     for code in (StorageErrorCode.ACCESS_DENIED, StorageErrorCode.UNAVAILABLE):
         stub.code = code
         assert_error(code, lambda: storage.exists(key))
+
+def test_conditional_delete_refuses_blind_provider():
+    stub = Stub()
+    storage = UserContext().with_object_storage(stub).object_storage("collect old generation")
+    key = ObjectKey("PRIVATE-KEY-CANARY")
+    assert_error(StorageErrorCode.UNSUPPORTED,
+                 lambda: storage.delete_if_version(key, '"old-etag"'))
+    assert_error(StorageErrorCode.INVALID_INPUT,
+                 lambda: storage.delete_if_version(key, "*"))
+    assert stub.deletes == 0
 
 
 def test_object_storage_stream_bounds_ownership_and_completion():
@@ -168,6 +181,7 @@ def test_minio_real_signed_range_and_expiry():
     key = ObjectKey("f4/python/" + uuid4().hex)
     create_key = ObjectKey("f4/python/create/" + uuid4().hex)
     race_key = ObjectKey("f4/python/race/" + uuid4().hex)
+    conditional_key = ObjectKey("f2/python/conditional-delete/" + uuid4().hex)
     content = b"%PDF-1.7\nF4 real S3-compatible bytes\n%%EOF"
     try:
         written = storage.put_bytes(key, content, PutOptions(len(content), WriteMode.REPLACE, "application/pdf"))
@@ -206,11 +220,30 @@ def test_minio_real_signed_range_and_expiry():
                         outcomes.append("conflict")
             assert outcomes.count("winner") == outcomes.count("conflict") == 1
             assert storage.get_bytes(race_key, 1024) == candidates[outcomes.index("winner")]
+        if os.environ.get("TEAQL_S3_TEST_CONDITIONAL_DELETE") == "1":
+            first = storage.put_bytes(conditional_key, content,
+                PutOptions(len(content), WriteMode.CREATE_ONLY, "application/pdf"))
+            assert storage.delete_if_version(
+                conditional_key, '"00000000000000000000000000000000"') == "version_mismatch"
+            assert storage.head(conditional_key).etag == first.etag
+            replacement = b"next immutable generation"
+            second = storage.put_bytes(conditional_key, replacement,
+                PutOptions(len(replacement), WriteMode.REPLACE, "text/plain"))
+            assert storage.delete_if_version(conditional_key, first.etag) == "version_mismatch"
+            assert storage.head(conditional_key).etag == second.etag
+            assert storage.get_bytes(conditional_key, 1024) == replacement
+            assert storage.delete_if_version(conditional_key, second.etag) == "deleted"
+            assert storage.head(conditional_key) is None
+            assert storage.delete_if_version(conditional_key, second.etag) == "already_missing"
+            assert_error(StorageErrorCode.INVALID_INPUT,
+                         lambda: storage.delete_if_version(conditional_key, "*"))
     finally:
         try:
             storage.delete(key)
             if os.environ.get("TEAQL_S3_TEST_CREATE_ONLY") == "1":
                 storage.delete(create_key)
                 storage.delete(race_key)
+            if os.environ.get("TEAQL_S3_TEST_CONDITIONAL_DELETE") == "1":
+                storage.delete(conditional_key)
         finally:
             provider.close()
