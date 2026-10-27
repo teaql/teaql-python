@@ -549,6 +549,11 @@ class SqliteBlobUploadService:
                 if after is None or after.size != before.size or after.etag != before.etag:
                     raise RuntimeError("BLOB_UPLOAD_INCOMPLETE")
                 return verified
+            except RuntimeError as error:
+                if str(error) in ("BLOB_FORMAT_NOT_ALLOWED", "BLOB_SIZE_EXCEEDED",
+                                  "BLOB_VERIFICATION_BUSY", "BLOB_CAPABILITY_MISSING"):
+                    raise
+                raise RuntimeError("BLOB_UPLOAD_INCOMPLETE") from None
             except Exception:
                 raise RuntimeError("BLOB_UPLOAD_INCOMPLETE") from None
 

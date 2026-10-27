@@ -23,6 +23,9 @@ class _BlobCapability:
         if owner is None or not callable(getattr(owner, "begin", None)):
             raise RuntimeError("BLOB_CAPABILITY_MISSING")
         await self.module.catalog.validate_schema()
+        verifier_ready = getattr(self.module.upload.verifier, "validate_ready", None)
+        if callable(verifier_ready):
+            verifier_ready()
 
 
 class BlobReferenceModule:

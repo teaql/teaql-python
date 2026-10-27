@@ -12,6 +12,9 @@ license = "Apache-2.0"
 authors = [{ name = "TeaQL" }]
 dependencies = ["teaql==0.3.1"]
 
+[project.optional-dependencies]
+image = ["Pillow==12.3.0"]
+
 [tool.setuptools.packages.find]
 where = ["src"]
 include = ["teaql_blob_reference*"]

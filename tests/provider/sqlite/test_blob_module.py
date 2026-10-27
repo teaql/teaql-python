@@ -37,8 +37,14 @@ class _UploadAuthority:
 
 
 class _Verifier:
+    def __init__(self):
+        self.ready_calls = 0
+
     def verify(self, stream, extension, maximum_bytes):
         raise AssertionError("readiness must not parse content")
+
+    def validate_ready(self):
+        self.ready_calls += 1
 
 
 class _BindingAuthority:
@@ -64,7 +70,8 @@ async def test_blob_module_requires_provider_owner_and_catalog(tmp_path):
     path = str(tmp_path / "module.db")
     transport = SqliteTransport(path)
     catalog = SqliteBlobCatalog(transport)
-    upload = SqliteBlobUploadService(catalog, _UploadAuthority(), _Verifier(), 10_000)
+    verifier = _Verifier()
+    upload = SqliteBlobUploadService(catalog, _UploadAuthority(), verifier, 10_000)
     module = BlobReferenceModule(catalog, upload, _ReadAuthority(), _BindingAuthority())
     context = RuntimeModule.new().require_capability("blob.v1").into_context()
     with pytest.raises(RuntimeError, match="BLOB_CAPABILITY_MISSING"):
@@ -84,6 +91,7 @@ async def test_blob_module_requires_provider_owner_and_catalog(tmp_path):
         await module.ready(context)
     await catalog.ensure_schema()
     await module.ready(context)
+    assert verifier.ready_calls == 1
     await validate_capabilities(context)
     provider.close()
 
