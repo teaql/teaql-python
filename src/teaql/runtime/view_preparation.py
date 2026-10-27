@@ -214,14 +214,15 @@ class ViewPreparationService:
                 contributor = context.get_resource("blob_response_contributor")
                 if contributor is None:
                     _fail("BLOB_CAPABILITY_MISSING")
-                urls = await contributor.project_batch(context, graph, expiry)
+                ceiling = expiry
+                urls = await contributor.project_batch(context, graph, ceiling)
                 if len(urls) != len(graph.blob_slots):
                     _fail("BLOB_SIGN_FAILED")
                 for slot, signed in zip(graph.blob_slots, urls):
                     parsed = urlsplit(signed.url)
                     if (parsed.scheme not in ("http", "https") or not parsed.hostname
                             or not _future(signed.expires_at)
-                            or (expiry is not None and signed.expires_at > expiry)):
+                            or (ceiling is not None and signed.expires_at > ceiling)):
                         _fail("BLOB_SIGN_FAILED")
                     _replace(presentation, slot.path, signed.url)
                     expiry = _earlier(expiry, signed.expires_at)

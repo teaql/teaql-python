@@ -56,6 +56,39 @@ async def test_authorized_view_is_detached_and_governed_document_precedes_blob_u
 
 
 @pytest.mark.asyncio
+async def test_independent_url_lifetimes_use_original_ceiling_and_minimum():
+    first = BlobRef("blob_asset_1")
+    second = BlobRef("blob_asset_2")
+    ceiling = datetime.now(timezone.utc) + timedelta(seconds=90)
+    first_expiry = datetime.now(timezone.utc) + timedelta(seconds=20)
+    second_expiry = datetime.now(timezone.utc) + timedelta(seconds=40)
+
+    class Authorizer:
+        async def authorize(self, _context, _result, _options):
+            return AuthorizedResponseGraph({"first": first, "second": second}, (
+                AuthorizedBlobSlot(("first",), "Asset", "1", "first", "tenant-a", 4, first),
+                AuthorizedBlobSlot(("second",), "Asset", "1", "second", "tenant-a", 5, second),
+            ))
+
+    class Blob:
+        async def project_batch(self, _context, _graph, expiry):
+            assert expiry == ceiling
+            return (ProjectedBlobURL("https://files.example.invalid/first", first_expiry),
+                    ProjectedBlobURL("https://files.example.invalid/second", second_expiry))
+
+    context = UserContext()
+    context.insert_resource("response_graph_authorizer", Authorizer())
+    context.insert_resource("blob_response_contributor", Blob())
+    view = await ViewPreparationService().prepare(context, None,
+        ViewOptions(mode="ordinary", business_outcome="read_only", expires_at=ceiling))
+    assert view.expires_at == first_expiry
+    assert view.presentation == {
+        "first": "https://files.example.invalid/first",
+        "second": "https://files.example.invalid/second",
+    }
+
+
+@pytest.mark.asyncio
 async def test_unlisted_key_and_provider_failure_fail_closed_after_commit():
     reference = BlobRef("blob_private_canary")
 
