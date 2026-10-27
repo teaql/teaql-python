@@ -8,6 +8,9 @@ from .maintenance_service import (BlobMaintenanceAuthorization, BlobMaintenanceB
                                   SqliteBlobMaintenanceService)
 from .mutation_participant import SqliteBlobMutationParticipant
 from .file_storage import FileObjectStorage
+from .file_generation_maintenance import (BlobFileGenerationSweepBatch,
+                                          BlobFileGenerationSweepOutcome,
+                                          SqliteBlobFileGenerationSweepService)
 from .retention import BlobRetentionPolicy
 from .upload_service import (BlobUploadInput, BlobUploadSession, BlobUploadTarget,
                              BlobVerifiedContent, SqliteBlobUploadService)
@@ -15,6 +18,8 @@ from .upload_service import (BlobUploadInput, BlobUploadSession, BlobUploadTarge
 __all__ = ["BlobReferenceModule", "SqliteBlobMutationParticipant", "BlobBindingChange", "BlobBindingTarget", "BlobCatalogRead",
            "BlobMaintenanceAuthorization", "BlobMaintenanceBatch", "BlobMaintenanceCursor",
            "BlobMaintenanceOutcome", "SqliteBlobMaintenanceService",
+           "BlobFileGenerationSweepBatch", "BlobFileGenerationSweepOutcome",
+           "SqliteBlobFileGenerationSweepService",
            "SqliteBlobCatalog", "SqliteBlobResponseContributor", "FileObjectStorage",
            "BlobUploadInput", "BlobUploadSession", "BlobUploadTarget",
            "BlobVerifiedContent", "SqliteBlobUploadService", "BlobRetentionPolicy"]
