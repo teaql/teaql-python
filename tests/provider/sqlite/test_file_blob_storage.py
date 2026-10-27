@@ -36,7 +36,10 @@ def test_file_storage_exact_bytes_and_authenticated_http(tmp_path):
         assert provider.start().startswith("http://127.0.0.1:")
         options = PutOptions(len(content), WriteMode.CREATE_ONLY, "application/pdf")
         metadata = store.put_bytes(key, content, options)
-        assert metadata.etag == hashlib.sha256(content).hexdigest()
+        assert metadata.etag.startswith(hashlib.sha256(content).hexdigest() + ".")
+        same = store.put_bytes(key, content, PutOptions(len(content), WriteMode.REPLACE, "application/pdf"))
+        assert same.etag != metadata.etag
+        assert same.etag.startswith(hashlib.sha256(content).hexdigest() + ".")
         assert store.head(key).size == len(content)
         assert store.get_bytes(key, len(content)) == content
         with pytest.raises(StorageError) as conflict:

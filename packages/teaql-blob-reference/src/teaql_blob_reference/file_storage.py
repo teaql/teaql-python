@@ -100,7 +100,8 @@ class FileObjectStorage:
         return value
 
     def _metadata(self, key, manifest):
-        return ObjectMetadata(key, manifest["size"], manifest["content_type"], manifest["sha256"],
+        return ObjectMetadata(key, manifest["size"], manifest["content_type"],
+                              manifest["sha256"] + "." + manifest["version"],
                               datetime.fromisoformat(manifest["modified"]), manifest["metadata"])
 
     def _data_path(self, key_hash, manifest):
@@ -345,7 +346,7 @@ class FileObjectStorage:
                 handler.send_header("Accept-Ranges", "bytes")
                 handler.send_header("Cache-Control", "private, no-store")
                 handler.send_header("X-Content-Type-Options", "nosniff")
-                handler.send_header("ETag", '"' + manifest["sha256"] + '"')
+                handler.send_header("ETag", '"' + manifest["sha256"] + "." + manifest["version"] + '"')
                 if ticket["disposition"]:
                     handler.send_header("Content-Disposition", ticket["disposition"])
                 if partial:
