@@ -7,6 +7,7 @@ import unicodedata
 from teaql.core.blob_ref import BlobRef
 from teaql.core.value import Value
 from teaql.sql.types import CompiledQuery
+from teaql.runtime.view_preparation import AuthorizedBlobSlot
 
 
 @dataclass(frozen=True)
@@ -23,6 +24,15 @@ class BlobBindingChange:
     expected_version: int
     next_version: int
     action: str
+
+
+@dataclass(frozen=True)
+class BlobCatalogRead:
+    object_key: str
+    content_version: str
+    file_name: str
+    content_type: str
+    size_bytes: int
 
 
 class BlobBindingAuthorization(Protocol):
@@ -104,6 +114,34 @@ class SqliteBlobCatalog:
                 raise RuntimeError("BLOB_SCHEMA_MISSING")
         except Exception:
             raise RuntimeError("BLOB_SCHEMA_MISSING") from None
+
+    async def current_read(self, slot: AuthorizedBlobSlot) -> BlobCatalogRead:
+        """Reread the exact current binding; possession of the stable Key grants no read."""
+        if (not isinstance(slot, AuthorizedBlobSlot) or not _scope(slot.scope)
+                or not _name(slot.entity) or not _entity_id(slot.entity_id)
+                or not _name(slot.field) or type(slot.binding_version) is not int
+                or slot.binding_version < 1 or not isinstance(slot.reference, BlobRef)):
+            raise RuntimeError("BLOB_READ_DENIED")
+        try:
+            rows = await self.transport.fetch_all_sql(CompiledQuery(
+                "SELECT c.object_key,c.content_version,c.file_name,c.content_type,c.size_bytes "
+                "FROM teaql_blob_binding b JOIN teaql_blob_catalog c ON c.key = b.key "
+                "WHERE b.scope = ? AND b.entity = ? AND b.entity_id = ? AND b.field = ? "
+                "AND b.key = ? AND b.version = ? AND c.scope = b.scope AND c.status = 'available'",
+                [Value.Text(slot.scope), Value.Text(slot.entity), Value.Text(slot.entity_id),
+                 Value.Text(slot.field), Value.Text(slot.reference.key), Value.I64(slot.binding_version)]))
+        except Exception:
+            raise RuntimeError("BLOB_CATALOG_FAILED") from None
+        if len(rows) != 1:
+            raise RuntimeError("BLOB_READ_DENIED")
+        row = rows[0]
+        values = (row.get("object_key"), row.get("content_version"),
+                  row.get("file_name"), row.get("content_type"))
+        size = row.get("size_bytes")
+        if (any(not isinstance(value, str) or not value for value in values)
+                or type(size) is not int or size < 0):
+            raise RuntimeError("BLOB_CATALOG_FAILED")
+        return BlobCatalogRead(*values, size)
 
     async def bind_in_graph(self, graph, actor, change: BlobBindingChange,
                             authorization: BlobBindingAuthorization) -> int:
