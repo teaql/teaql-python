@@ -1,4 +1,5 @@
 """Optional private file store with an explicitly started authenticated local HTTP gateway."""
+from contextlib import contextmanager
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
@@ -12,6 +13,11 @@ import re
 import secrets
 import stat
 import time
+
+if os.name == "posix":
+    import fcntl
+elif os.name == "nt":
+    import msvcrt
 
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 
@@ -70,6 +76,53 @@ class FileObjectStorage:
 
     def _directory(self, key_hash):
         return self._root / key_hash[:2] / key_hash
+
+    @contextmanager
+    def _manifest_lock(self, key_hash):
+        """Persistent OS lock: never remove the lock file while this root is in use."""
+        path = self._directory(key_hash) / "manifest.lock"
+        flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_CLOEXEC", 0) | getattr(os, "O_NOFOLLOW", 0)
+        fd = None
+        locked = False
+        try:
+            fd = os.open(path, flags, 0o600)
+            info = os.fstat(fd)
+            if not stat.S_ISREG(info.st_mode) or (os.name == "posix" and info.st_mode & 0o077):
+                raise _error(StorageErrorCode.UNAVAILABLE)
+            if os.name == "nt":
+                if info.st_size == 0:
+                    os.write(fd, b"\0")
+            elif os.name != "posix":
+                raise _error(StorageErrorCode.UNSUPPORTED)
+            deadline = time.monotonic() + 30
+            while True:
+                try:
+                    if os.name == "posix":
+                        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    else:
+                        os.lseek(fd, 0, os.SEEK_SET)
+                        msvcrt.locking(fd, msvcrt.LK_NBLCK, 1)
+                    break
+                except OSError:
+                    if time.monotonic() >= deadline:
+                        raise _error(StorageErrorCode.TIMEOUT) from None
+                    time.sleep(0.02)
+            locked = True
+            yield
+        except StorageError:
+            raise
+        except OSError:
+            raise _error(StorageErrorCode.IO) from None
+        finally:
+            if fd is not None:
+                try:
+                    if locked and os.name == "posix":
+                        fcntl.flock(fd, fcntl.LOCK_UN)
+                    elif locked and os.name == "nt":
+                        os.lseek(fd, 0, os.SEEK_SET)
+                        msvcrt.locking(fd, msvcrt.LK_UNLCK, 1)
+                finally:
+                    os.close(fd)
 
     @staticmethod
     def _hash(key):
@@ -155,19 +208,20 @@ class FileObjectStorage:
                 output.flush()
                 os.fsync(output.fileno())
             destination = directory / "manifest.json"
-            if options.mode == WriteMode.CREATE_ONLY:
-                try:
-                    os.link(temp_path, destination)
-                except FileExistsError:
-                    raise _error(StorageErrorCode.CONFLICT) from None
-                published = True
-                try:
-                    temp_path.unlink(missing_ok=True)
-                except OSError:
-                    pass
-            else:
-                os.replace(temp_path, destination)
-                published = True
+            with self._manifest_lock(key_hash):
+                if options.mode == WriteMode.CREATE_ONLY:
+                    try:
+                        os.link(temp_path, destination)
+                    except FileExistsError:
+                        raise _error(StorageErrorCode.CONFLICT) from None
+                    published = True
+                    try:
+                        temp_path.unlink(missing_ok=True)
+                    except OSError:
+                        pass
+                else:
+                    os.replace(temp_path, destination)
+                    published = True
             return self._metadata(key, manifest)
         except StorageError:
             raise
@@ -198,6 +252,8 @@ class FileObjectStorage:
         return ObjectContent(self._metadata(key, manifest), stream)
 
     def head(self, invocation, key):
+        if not self._root.exists():
+            return None
         self._private_root()
         key_hash = self._hash(key)
         manifest = self._manifest(key_hash)
@@ -207,9 +263,37 @@ class FileObjectStorage:
         return self._metadata(key, manifest)
 
     def delete(self, invocation, key):
+        if not self._root.exists():
+            return
         self._private_root()
+        key_hash = self._hash(key)
+        if not self._directory(key_hash).exists():
+            return
         try:
-            (self._directory(self._hash(key)) / "manifest.json").unlink(missing_ok=True)
+            with self._manifest_lock(key_hash):
+                (self._directory(key_hash) / "manifest.json").unlink(missing_ok=True)
+        except OSError:
+            raise _error(StorageErrorCode.IO) from None
+
+    def delete_if_version(self, invocation, key, content_version):
+        if not self._root.exists():
+            return "already_missing"
+        self._private_root()
+        key_hash = self._hash(key)
+        if not self._directory(key_hash).exists():
+            return "already_missing"
+        try:
+            with self._manifest_lock(key_hash):
+                manifest = self._manifest(key_hash)
+                if manifest is None:
+                    return "already_missing"
+                if self._metadata(key, manifest).etag != content_version:
+                    return "version_mismatch"
+                self._data_path(key_hash, manifest).unlink(missing_ok=True)
+                (self._directory(key_hash) / "manifest.json").unlink()
+                return "deleted"
+        except StorageError:
+            raise
         except OSError:
             raise _error(StorageErrorCode.IO) from None
 

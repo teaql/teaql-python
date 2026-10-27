@@ -1,4 +1,4 @@
-"""Explicit SQLite/S3 cleanup of expired, uncompleted server-stream uploads."""
+"""Explicit SQLite cleanup of expired, uncompleted server-stream uploads."""
 
 from __future__ import annotations
 
@@ -233,18 +233,21 @@ class SqliteBlobMaintenanceService:
                 object_key = ObjectKey(claim["object_key"])
             except StorageError:
                 raise RuntimeError("BLOB_CATALOG_FAILED") from None
-            try:
-                observed = await asyncio.to_thread(store.head, object_key)
-            except Exception:
-                raise RuntimeError("BLOB_STORE_FAILED") from None
             version = claim["version"]
-            if observed is not None:
-                if (not _version(observed.etag) or version and observed.etag != version
-                        or claim["written_etag"] and observed.etag != claim["written_etag"]):
-                    raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
-                version = observed.etag
-                await self._authorize(actor, scope)
-                await self._capture(scope, claim, version, self._now())
+            if version and claim["written_etag"] and version != claim["written_etag"]:
+                raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
+            if not version:
+                try:
+                    observed = await asyncio.to_thread(store.head, object_key)
+                except Exception:
+                    raise RuntimeError("BLOB_STORE_FAILED") from None
+                if observed is not None:
+                    if (not _version(observed.etag)
+                            or claim["written_etag"] and observed.etag != claim["written_etag"]):
+                        raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
+                    version = observed.etag
+                    await self._authorize(actor, scope)
+                    await self._capture(scope, claim, version, self._now())
             await self._authorize(actor, scope)
             result = "already_missing"
             if version:

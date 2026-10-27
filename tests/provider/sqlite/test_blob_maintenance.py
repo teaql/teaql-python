@@ -8,7 +8,7 @@ import os
 from teaql.core.object_storage import ObjectKey, ObjectMetadata, PutOptions, WriteMode
 from teaql.provider.sqlite.transport import SqliteTransport
 from teaql.runtime import RuntimeModule
-from teaql_blob_reference import SqliteBlobCatalog, SqliteBlobMaintenanceService
+from teaql_blob_reference import FileObjectStorage, SqliteBlobCatalog, SqliteBlobMaintenanceService
 
 
 class _MaintenanceAuthority:
@@ -74,6 +74,55 @@ async def _status(path, key):
 
 
 @pytest.mark.asyncio
+async def test_real_sqlite_file_maintenance_recovers_receipt_and_partial_data(tmp_path):
+    path = str(tmp_path / "file-maintenance.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    provider = FileObjectStorage(tmp_path / "file-objects", os.urandom(32))
+    actor = RuntimeModule.new().into_context()
+    actor.with_object_storage(provider).with_object_storage_observer(lambda event: None)
+    store = actor.object_storage("real File expired Blob maintenance")
+    service = SqliteBlobMaintenanceService(catalog, _MaintenanceAuthority(), 10, lambda: 10000)
+    content = b"%PDF-"
+    key = ObjectKey("objects/blob_file_receipt")
+    store.put_bytes(key, content, PutOptions(len(content), WriteMode.CREATE_ONLY))
+    await _seed(path, "blob_file_receipt", state="initiated")
+    async with aiosqlite.connect(path) as db:
+        await db.execute("""CREATE TRIGGER fail_file_receipt BEFORE UPDATE OF status ON teaql_blob_catalog
+            WHEN NEW.status='deleted' BEGIN SELECT RAISE(ABORT,'receipt failure'); END""")
+        await db.commit()
+    failed = await service.run_batch(actor)
+    assert [(o.reference.key, o.status) for o in failed.outcomes] == [("blob_file_receipt", "failed")]
+    assert await _status(path, "blob_file_receipt") == "deleting"
+    assert store.head(key) is None
+    async with aiosqlite.connect(path) as db:
+        await db.execute("DROP TRIGGER fail_file_receipt")
+        await db.commit()
+    retry = await service.run_batch(actor)
+    assert [(o.reference.key, o.status) for o in retry.outcomes] == [
+        ("blob_file_receipt", "already_missing")]
+    assert await _status(path, "blob_file_receipt") == "deleted"
+
+    stale_key = ObjectKey("objects/blob_file_stale")
+    old = store.put_bytes(stale_key, content, PutOptions(len(content), WriteMode.CREATE_ONLY))
+    await _seed(path, "blob_file_stale", state="initiated", version=old.etag)
+    newer = store.put_bytes(stale_key, content, PutOptions(len(content), WriteMode.REPLACE))
+    stale = await service.run_batch(actor)
+    assert [(o.reference.key, o.status) for o in stale.outcomes] == [
+        ("blob_file_stale", "version_conflict")]
+    assert store.head(stale_key).etag == newer.etag
+
+    partial_key = ObjectKey("objects/blob_file_partial")
+    partial = store.put_bytes(partial_key, content, PutOptions(len(content), WriteMode.CREATE_ONLY))
+    await _seed(path, "blob_file_partial", state="initiated", version=partial.etag)
+    manifest = provider._manifest(provider._hash(partial_key))
+    provider._data_path(provider._hash(partial_key), manifest).unlink()
+    recovered = await service.run_batch(actor)
+    assert ("blob_file_partial", "deleted") in [(o.reference.key, o.status) for o in recovered.outcomes]
+    assert await _status(path, "blob_file_partial") == "deleted"
+
+
+@pytest.mark.asyncio
 async def test_expired_upload_maintenance_claim_scope_version_and_recovery(tmp_path):
     path = str(tmp_path / "maintenance.db")
     catalog = SqliteBlobCatalog(SqliteTransport(path))
@@ -107,7 +156,7 @@ async def test_expired_upload_maintenance_claim_scope_version_and_recovery(tmp_p
     second = await service.run_batch(actor, first.next)
     assert [(o.reference.key, o.status) for o in second.outcomes] == [
         ("blob_written", "deleted")]
-    assert store.deletes == 1
+    assert store.deletes == 2  # the stale pinned version is refused by conditional deletion
     assert store.objects["objects/blob_race"] == "etag-new"
     for key, expected in {"blob_absent": "deleted", "blob_race": "deleting",
                           "blob_written": "deleted", "blob_completed": "uploaded_unbound",

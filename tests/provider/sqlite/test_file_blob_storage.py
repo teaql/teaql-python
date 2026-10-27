@@ -1,9 +1,12 @@
 """Real local File/HTTP behavior for the independent optional wheel."""
+from concurrent.futures import ThreadPoolExecutor
 from datetime import timedelta
 from urllib.error import HTTPError
 from urllib.request import Request, urlopen
 import hashlib
 import os
+import subprocess
+import sys
 import time
 
 import pytest
@@ -13,6 +16,57 @@ from teaql.core.object_storage import (
     ObjectKey, PutOptions, ReadUrlOptions, StorageError, StorageErrorCode, WriteMode,
 )
 from teaql.runtime import UserContext
+
+
+def test_file_conditional_delete_fences_same_bytes_and_external_process(tmp_path):
+    root = tmp_path / "objects"
+    first = FileObjectStorage(root, os.urandom(32))
+    second = FileObjectStorage(root, os.urandom(32))
+    actor = UserContext().with_object_storage(first).with_object_storage_observer(lambda event: None)
+    writer = actor.object_storage("write File generation")
+    actor.with_object_storage(second)
+    collector = actor.object_storage("delete File generation")
+    key = ObjectKey("blob/same-bytes")
+    assert collector.head(key) is None
+    assert collector.delete_if_version(key, "absent") == "already_missing"
+    data = b"same bytes"
+    old = writer.put_bytes(key, data, PutOptions(len(data), WriteMode.CREATE_ONLY))
+    current = writer.put_bytes(key, data, PutOptions(len(data), WriteMode.REPLACE))
+    assert old.etag != current.etag
+    assert collector.delete_if_version(key, old.etag) == "version_mismatch"
+    assert collector.get_bytes(key, len(data)) == data
+    assert collector.delete_if_version(key, current.etag) == "deleted"
+    assert collector.head(key) is None
+    assert collector.delete_if_version(key, current.etag) == "already_missing"
+    key_hash = second._hash(key)
+    assert not (second._directory(key_hash) / ("data-" + current.etag.split(".")[-1])).exists()
+
+    if os.name != "posix":
+        return
+    locked_key = ObjectKey("blob/external-lock")
+    written = writer.put_bytes(locked_key, data, PutOptions(len(data), WriteMode.CREATE_ONLY))
+    lock_path = second._directory(second._hash(locked_key)) / "manifest.lock"
+    marker = tmp_path / "locked"
+    script = ("import fcntl, os, sys, time; "
+              "fd=os.open(sys.argv[1], os.O_RDWR); fcntl.flock(fd, fcntl.LOCK_EX); "
+              "open(sys.argv[2], 'w').close(); time.sleep(2)")
+    process = subprocess.Popen([sys.executable, "-c", script, str(lock_path), str(marker)])
+    try:
+        for _ in range(100):
+            if marker.exists():
+                break
+            time.sleep(0.01)
+        assert marker.exists() and process.poll() is None
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            pending = pool.submit(collector.delete_if_version, locked_key, written.etag)
+            time.sleep(0.1)
+            assert process.poll() is None and not pending.done()
+            assert process.wait(timeout=5) == 0
+            assert pending.result(timeout=5) == "deleted"
+    finally:
+        if process.poll() is None:
+            process.terminate()
+        process.wait(timeout=5)
 
 
 def _status(url, *, method="GET", headers=None):
