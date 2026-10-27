@@ -357,3 +357,67 @@ async def test_real_s3_expired_upload_maintenance_delete_recovery_and_stale_vers
     finally:
         for key in keys:
             store.delete(key)
+
+
+@pytest.mark.asyncio
+async def test_real_s3_completed_retention_selects_only_eligible_server_stream_objects(tmp_path):
+    if os.environ.get("TEAQL_S3_TEST_BLOB_MAINTENANCE") != "1":
+        pytest.skip("explicit disposable S3 maintenance gate required")
+    endpoint = os.environ.get("TEAQL_S3_TEST_ENDPOINT")
+    bucket = os.environ.get("TEAQL_S3_TEST_BUCKET")
+    access = os.environ.get("TEAQL_S3_TEST_ACCESS_KEY")
+    secret = os.environ.get("TEAQL_S3_TEST_SECRET_KEY")
+    assert all((endpoint, bucket, access, secret)), "disposable S3 configuration required"
+    from teaql.provider.s3 import S3ObjectStorage
+    provider = S3ObjectStorage.connect(bucket, endpoint_url=endpoint,
+                                       aws_access_key_id=access, aws_secret_access_key=secret)
+    actor = RuntimeModule.new().into_context()
+    actor.with_object_storage(provider).with_object_storage_observer(lambda event: None)
+    store = actor.object_storage("real S3 completed Blob retention")
+    path = str(tmp_path / "s3-completed-retention.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    service = SqliteBlobMaintenanceService(catalog, _MaintenanceAuthority(), 10, lambda: 10000)
+    prefix = uuid4().hex
+    keys = []
+
+    async def seed(suffix, status="uploaded_unbound", last_unbound=None,
+                   floor=None, profile="default", mode="server_stream", bound=False):
+        reference = "blob_" + prefix + "_" + suffix
+        key = ObjectKey("objects/" + reference)
+        keys.append(key)
+        content = ("%PDF-1.7\n" + suffix + "\n%%EOF").encode()
+        created = store.put_bytes(key, content, PutOptions(len(content), WriteMode.CREATE_ONLY))
+        await _seed(path, reference, state="completed", version=created.etag,
+                    written_etag=created.etag, bound=bound)
+        async with aiosqlite.connect(path) as db:
+            await db.execute("UPDATE teaql_blob_catalog SET status=?,completed_at_ms=9000,"
+                             "last_unbound_at_ms=?,policy_profile=?,upload_mode=?,"
+                             "unbound_retention_seconds=1,effective_unref_seconds=2,"
+                             "retention_floor_until_ms=?,content_type='application/pdf',size_bytes=? "
+                             "WHERE key=?", (status, last_unbound, profile, mode, floor,
+                                             len(content), reference))
+            await db.execute("UPDATE teaql_blob_upload SET declared_size=? WHERE key=?",
+                             (len(content), reference))
+            await db.commit()
+        return reference, key
+
+    try:
+        expired = await seed("expired")
+        former = await seed("former", "available", 7000, 10000)
+        active = await seed("active", "available", bound=True)
+        floored = await seed("floored", "available", 7000, 20000)
+        legacy = await seed("legacy", profile=None)
+        direct = await seed("direct", mode="direct")
+        batch = await service.run_batch(actor)
+        assert [(item.reference.key, item.status) for item in batch.outcomes] == [
+            (expired[0], "deleted"), (former[0], "deleted")]
+        for reference, key in (expired, former):
+            assert store.head(key) is None
+            assert await _status(path, reference) == "deleted"
+        for reference, key in (active, floored, legacy, direct):
+            assert store.head(key) is not None
+            assert await _status(path, reference) != "deleted"
+    finally:
+        for key in keys:
+            store.delete(key)
