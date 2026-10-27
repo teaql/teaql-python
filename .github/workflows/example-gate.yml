@@ -21,6 +21,7 @@ jobs:
           python-version: '3.10'
           cache: pip
       - run: pip install -e ".[test,telemetry,object-storage-s3]"
+      - run: pip install --no-deps -e ./packages/teaql-blob-reference
       - name: Start dedicated S3 example fixture
         run: |
           docker run -d --name teaql-python-example-s3 \
