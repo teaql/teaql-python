@@ -123,6 +123,83 @@ async def test_real_sqlite_file_maintenance_recovers_receipt_and_partial_data(tm
 
 
 @pytest.mark.asyncio
+async def test_real_file_completed_retention_claim_and_generation_fences(tmp_path):
+    path = str(tmp_path / "completed-retention.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    provider = FileObjectStorage(tmp_path / "completed-objects", os.urandom(32))
+    actor = RuntimeModule.new().into_context()
+    actor.with_object_storage(provider).with_object_storage_observer(lambda event: None)
+    store = actor.object_storage("real File completed retention")
+    service = SqliteBlobMaintenanceService(catalog, _MaintenanceAuthority(), 100, lambda: 10000)
+    content = b"%PDF-1.7\nretained\n%%EOF"
+
+    async def seed(name, *, status="uploaded_unbound", completed=9000,
+                   last_unbound=None, floor=None, profile="default", mode="server_stream",
+                   bound=False):
+        key = ObjectKey("objects/" + name)
+        created = store.put_bytes(key, content, PutOptions(len(content), WriteMode.CREATE_ONLY))
+        await _seed(path, name, state="completed", version=created.etag,
+                    written_etag=created.etag, bound=bound)
+        async with aiosqlite.connect(path) as db:
+            await db.execute("UPDATE teaql_blob_catalog SET status=?,completed_at_ms=?,"
+                             "last_unbound_at_ms=?,policy_profile=?,upload_mode=?,"
+                             "unbound_retention_seconds=1,effective_unref_seconds=2,"
+                             "retention_floor_until_ms=?,content_type='application/pdf',size_bytes=? "
+                             "WHERE key=?", (status, completed, last_unbound, profile, mode,
+                                            floor, len(content), name))
+            await db.commit()
+        return key, created.etag
+
+    expired, _ = await seed("blob_completed_expired")
+    formerly_bound, _ = await seed("blob_completed_formerly_bound", status="available",
+                                   last_unbound=7000, floor=10000)
+    active, _ = await seed("blob_completed_active", status="available", bound=True)
+    floored, _ = await seed("blob_completed_floor", status="available",
+                            last_unbound=7000, floor=20000)
+    legacy, _ = await seed("blob_completed_legacy", profile=None)
+    direct, _ = await seed("blob_completed_direct", mode="direct")
+    batch = await service.run_batch(actor)
+    assert [(result.reference.key, result.status) for result in batch.outcomes] == [
+        ("blob_completed_expired", "deleted"),
+        ("blob_completed_formerly_bound", "deleted")]
+    assert store.head(expired) is None and store.head(formerly_bound) is None
+    for name, key in (("blob_completed_active", active), ("blob_completed_floor", floored),
+                      ("blob_completed_legacy", legacy), ("blob_completed_direct", direct)):
+        assert await _status(path, name) != "deleted" and store.head(key) is not None
+
+    stale_key, stale_version = await seed("blob_completed_stale")
+    replacement = store.put_bytes(stale_key, content, PutOptions(len(content), WriteMode.REPLACE))
+    assert replacement.etag != stale_version
+    stale = await service.run_batch(actor)
+    assert [(result.reference.key, result.status) for result in stale.outcomes] == [
+        ("blob_completed_stale", "version_conflict")]
+    assert store.head(stale_key).etag == replacement.etag
+    assert await _status(path, "blob_completed_stale") == "deleting"
+
+    retry_key, _ = await seed("blob_completed_retry")
+    async with aiosqlite.connect(path) as db:
+        await db.execute("""CREATE TRIGGER fail_completed_receipt BEFORE UPDATE OF status
+            ON teaql_blob_catalog WHEN NEW.status='deleted' AND OLD.key='blob_completed_retry'
+            BEGIN SELECT RAISE(ABORT,'receipt failure'); END""")
+        await db.commit()
+    failed = await service.run_batch(actor)
+    assert [(result.reference.key, result.status) for result in failed.outcomes] == [
+        ("blob_completed_retry", "failed"),
+        ("blob_completed_stale", "version_conflict")]
+    assert await _status(path, "blob_completed_retry") == "deleting"
+    assert store.head(retry_key) is None
+    async with aiosqlite.connect(path) as db:
+        await db.execute("DROP TRIGGER fail_completed_receipt")
+        await db.commit()
+    recovered = await service.run_batch(actor)
+    assert [(result.reference.key, result.status) for result in recovered.outcomes] == [
+        ("blob_completed_retry", "already_missing"),
+        ("blob_completed_stale", "version_conflict")]
+    assert await _status(path, "blob_completed_retry") == "deleted"
+
+
+@pytest.mark.asyncio
 async def test_expired_upload_maintenance_claim_scope_version_and_recovery(tmp_path):
     path = str(tmp_path / "maintenance.db")
     catalog = SqliteBlobCatalog(SqliteTransport(path))

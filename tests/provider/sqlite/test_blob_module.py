@@ -1,6 +1,7 @@
 """The optional Blob assembly fails closed until the owner and catalog are ready."""
 
 import os
+import time
 
 import aiosqlite
 import pytest
@@ -16,7 +17,7 @@ from teaql.provider.sqlite.transport import SqliteTransport
 from teaql.runtime import RuntimeModule, validate_capabilities
 from teaql.sql.executor import SqlDataServiceExecutor
 from teaql_blob_reference import (
-    BlobReferenceModule, FileObjectStorage, SqliteBlobCatalog,
+    BlobReferenceModule, BlobRetentionPolicy, FileObjectStorage, SqliteBlobCatalog,
     SqliteBlobMaintenanceService, SqliteBlobUploadService,
 )
 
@@ -56,6 +57,10 @@ class _BindingAuthority:
 
     async def authorize(self, context, target, previous, next_ref, action):
         return self.allowed and target.entity == "Asset" and target.field == "document"
+
+    async def current_policy_on_lease(self, context, lease, target):
+        assert lease is not None
+        return BlobRetentionPolicy("default", "server_stream", 86400, 604800, 3600)
 
 
 class _MaintenanceAuthority:
@@ -139,10 +144,12 @@ async def test_native_mutation_binds_blob_in_same_sqlite_graph(tmp_path):
         await db.execute("CREATE TABLE asset (id INTEGER PRIMARY KEY, version INTEGER, document TEXT)")
         for key in ("blob_native_one", "blob_native_two"):
             await db.execute("INSERT INTO teaql_blob_catalog "
-                "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status) "
-                "VALUES (?,?,?,?,?,?,?,?)",
+                "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,"
+                "completed_at_ms,policy_profile,upload_mode,unbound_retention_seconds,effective_unref_seconds) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                 (key, "tenant-a", f"objects/{key}", "v1", "report.pdf",
-                 "application/pdf", 7, "uploaded_unbound"))
+                 "application/pdf", 7, "uploaded_unbound", time.time_ns() // 1_000_000,
+                 "default", "server_stream", 86400, 604800))
         await db.commit()
     authority = _BindingAuthority()
     upload = SqliteBlobUploadService(catalog, _UploadAuthority(), _Verifier(), 10_000)
@@ -174,7 +181,7 @@ async def test_native_mutation_binds_blob_in_same_sqlite_graph(tmp_path):
         async with db.execute("SELECT key,version FROM teaql_blob_binding") as cursor:
             assert await cursor.fetchone() == (second.key, 2)
         async with db.execute("SELECT key,status FROM teaql_blob_catalog ORDER BY key") as cursor:
-            assert await cursor.fetchall() == [(first.key, "uploaded_unbound"),
+            assert await cursor.fetchall() == [(first.key, "available"),
                                               (second.key, "available")]
 
     authority.allowed = False
@@ -205,7 +212,7 @@ async def test_native_mutation_binds_blob_in_same_sqlite_graph(tmp_path):
             assert await cursor.fetchone() == (None, 5)
         async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key=?",
                               (second.key,)) as cursor:
-            assert await cursor.fetchone() == ("uploaded_unbound",)
+            assert await cursor.fetchone() == ("available",)
     await save(InsertCommand.new("Asset").value("id", 2), "create empty", asset_id=2)
     async with aiosqlite.connect(path) as db:
         async with db.execute("SELECT key,version FROM teaql_blob_binding WHERE entity_id='2'") as cursor:

@@ -29,7 +29,7 @@ from teaql.runtime.view_preparation import (
 )
 from teaql.sql.executor import SqlDataServiceExecutor
 from teaql_blob_reference import (
-    BlobBindingChange, BlobBindingTarget, BlobUploadInput, BlobUploadTarget,
+    BlobBindingChange, BlobBindingTarget, BlobRetentionPolicy, BlobUploadInput, BlobUploadTarget,
     BlobVerifiedContent, FileObjectStorage, SqliteBlobCatalog, SqliteBlobResponseContributor,
     SqliteBlobUploadService,
 )
@@ -51,6 +51,10 @@ class UploadAuthority:
         return (self.allowed and target.entity == "Asset" and target.field == "document"
                 and action in ("Begin", "Write", "Confirm"))
 
+    async def current_policy_on_lease(self, _context, lease, _target):
+        assert lease is not None
+        return BlobRetentionPolicy("default", "server_stream", 86400, 604800, 3600)
+
 
 class BindingAuthority:
     def scope(self, _context):
@@ -58,6 +62,10 @@ class BindingAuthority:
 
     async def authorize(self, _context, target, _previous, _next, action):
         return target.entity == "Asset" and target.field == "document" and action == "Create"
+
+    async def current_policy_on_lease(self, _context, lease, _target):
+        assert lease is not None
+        return BlobRetentionPolicy("default", "server_stream", 86400, 604800, 3600)
 
 
 class FixturePDFVerifier:

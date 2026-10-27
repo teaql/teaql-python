@@ -2,12 +2,15 @@
 
 from dataclasses import dataclass
 from typing import Protocol
+import time
 import unicodedata
 
 from teaql.core.blob_ref import BlobRef
 from teaql.core.value import Value
 from teaql.sql.types import CompiledQuery
 from teaql.runtime.view_preparation import AuthorizedBlobSlot
+from .retention import (BlobRetentionPolicy, require_bindable, retention_deadline,
+                        unreferenced_eligible_at, valid_seconds, valid_time)
 
 
 @dataclass(frozen=True)
@@ -43,6 +46,11 @@ class BlobBindingAuthorization(Protocol):
                         action: str) -> bool: ...
 
 
+class BlobBindingPolicyAuthorization(Protocol):
+    async def current_policy_on_lease(self, context, lease,
+                                      target: BlobBindingTarget) -> BlobRetentionPolicy: ...
+
+
 def _name(value):
     return (isinstance(value, str) and value and value == value.strip()
             and len(value) <= 128 and not any(unicodedata.category(ch) == "Cc" for ch in value))
@@ -67,11 +75,12 @@ def _entity_id(value):
 class SqliteBlobCatalog:
     """SQLite-only catalog; install and schema migration are separate host actions."""
 
-    def __init__(self, transport):
+    def __init__(self, transport, now_ms=None):
         if (transport is None or not callable(getattr(transport, "execute_sql", None))
                 or not callable(getattr(transport, "fetch_all_sql", None))):
             raise RuntimeError("BLOB_CAPABILITY_MISSING")
         self.transport = transport
+        self.now_ms = now_ms or (lambda: time.time_ns() // 1_000_000)
 
     async def ensure_schema(self):
         statements = (
@@ -79,6 +88,9 @@ class SqliteBlobCatalog:
                 key TEXT PRIMARY KEY, scope TEXT NOT NULL, object_key TEXT NOT NULL,
                 content_version TEXT NOT NULL, file_name TEXT NOT NULL,
                 content_type TEXT NOT NULL, size_bytes BIGINT NOT NULL,
+                completed_at_ms BIGINT, last_unbound_at_ms BIGINT,
+                policy_profile TEXT, upload_mode TEXT, unbound_retention_seconds BIGINT,
+                effective_unref_seconds BIGINT, retention_floor_until_ms BIGINT,
                 status TEXT NOT NULL CHECK (status IN
                   ('initiated','uploaded_unbound','available','deleting','deleted')))
             """,
@@ -106,10 +118,37 @@ class SqliteBlobCatalog:
                 await self.transport.execute_sql(CompiledQuery(sql, []))
             except Exception:
                 raise RuntimeError("BLOB_CATALOG_FAILED") from None
+        # Existing catalogs have no trusted policy provenance. Keep the added
+        # columns NULL: a migration cannot infer a host authorization decision.
+        columns = (
+            ("completed_at_ms", "BIGINT"), ("last_unbound_at_ms", "BIGINT"),
+            ("policy_profile", "TEXT"), ("upload_mode", "TEXT"),
+            ("unbound_retention_seconds", "BIGINT"),
+            ("effective_unref_seconds", "BIGINT"),
+            ("retention_floor_until_ms", "BIGINT"),
+        )
+        for name, kind in columns:
+            try:
+                rows = await self.transport.fetch_all_sql(CompiledQuery(
+                    "PRAGMA table_info(teaql_blob_catalog)", []))
+                if name not in {row["name"] for row in rows}:
+                    try:
+                        await self.transport.execute_sql(CompiledQuery(
+                            f"ALTER TABLE teaql_blob_catalog ADD COLUMN {name} {kind}", []))
+                    except Exception:
+                        # A concurrent migrator may have added the column.
+                        rows = await self.transport.fetch_all_sql(CompiledQuery(
+                            "PRAGMA table_info(teaql_blob_catalog)", []))
+                        if name not in {row["name"] for row in rows}:
+                            raise
+            except Exception:
+                raise RuntimeError("BLOB_CATALOG_FAILED") from None
 
     async def validate_schema(self):
         for sql in (
-            "SELECT key, scope, object_key, content_version, file_name, content_type, size_bytes, status "
+            "SELECT key, scope, object_key, content_version, file_name, content_type, size_bytes, "
+            "completed_at_ms, last_unbound_at_ms, policy_profile, upload_mode, "
+            "unbound_retention_seconds, effective_unref_seconds, retention_floor_until_ms, status "
             "FROM teaql_blob_catalog WHERE 1 = 0",
             "SELECT scope, entity, entity_id, field, key, version "
             "FROM teaql_blob_binding WHERE 1 = 0",
@@ -222,13 +261,50 @@ class SqliteBlobCatalog:
             if change.next:
                 try:
                     available = await sql.fetch_all_sql(CompiledQuery(
-                        "SELECT key FROM teaql_blob_catalog WHERE key = ? AND scope = ? "
+                        "SELECT key,status,completed_at_ms,last_unbound_at_ms,policy_profile,"
+                        "upload_mode,unbound_retention_seconds,effective_unref_seconds,"
+                        "retention_floor_until_ms FROM teaql_blob_catalog WHERE key = ? AND scope = ? "
                         "AND status IN ('uploaded_unbound','available')",
                         [Value.Text(change.next.key), Value.Text(scope)]))
                 except Exception:
                     raise RuntimeError("BLOB_CATALOG_FAILED") from None
                 if len(available) != 1:
                     raise RuntimeError("BLOB_BIND_DENIED")
+                blob = available[0]
+                current = getattr(authorization, "current_policy_on_lease", None)
+                if (not callable(current) or not _scope(blob.get("policy_profile"))
+                        or blob.get("upload_mode") != "server_stream"
+                        or not valid_time(blob.get("completed_at_ms"))
+                        or not valid_seconds(blob.get("unbound_retention_seconds"))
+                        or not valid_seconds(blob.get("effective_unref_seconds"))):
+                    raise RuntimeError("BLOB_BIND_DENIED")
+                try:
+                    policy = await current(actor, sql, target)
+                except Exception:
+                    raise RuntimeError("BLOB_BIND_DENIED") from None
+                if not isinstance(policy, BlobRetentionPolicy) or policy.upload_mode != "server_stream":
+                    raise RuntimeError("BLOB_BIND_DENIED")
+                now = self.now_ms()
+                if not valid_time(now):
+                    raise RuntimeError("BLOB_POLICY_INVALID")
+                eligible_at = None
+                if blob["status"] == "available":
+                    try:
+                        bound = await sql.fetch_all_sql(CompiledQuery(
+                            "SELECT 1 FROM teaql_blob_binding WHERE key = ? LIMIT 1",
+                            [Value.Text(change.next.key)]))
+                    except Exception:
+                        raise RuntimeError("BLOB_CATALOG_FAILED") from None
+                    if not bound:
+                        last_unbound = blob.get("last_unbound_at_ms")
+                        floor = blob.get("retention_floor_until_ms")
+                        if not valid_time(last_unbound) or floor is not None and not valid_time(floor):
+                            raise RuntimeError("BLOB_BIND_DENIED")
+                        eligible_at = unreferenced_eligible_at(
+                            last_unbound, blob["effective_unref_seconds"], floor)
+                require_bindable(blob["status"], now, blob["completed_at_ms"],
+                                 blob["unbound_retention_seconds"], eligible_at)
+                accepted_floor = retention_deadline(now, policy.minimum_retention_seconds)
             key = Value.Text(change.next.key) if change.next else Value.Null()
             try:
                 if row:
@@ -248,20 +324,37 @@ class SqliteBlobCatalog:
             if change.next:
                 try:
                     promoted, _ = await sql.execute_sql(CompiledQuery(
-                        "UPDATE teaql_blob_catalog SET status = 'available' WHERE key = ? AND scope = ? "
+                        "UPDATE teaql_blob_catalog SET status = 'available', last_unbound_at_ms = NULL "
+                        "WHERE key = ? AND scope = ? "
                         "AND status IN ('uploaded_unbound','available')",
                         [Value.Text(change.next.key), Value.Text(scope)]))
                 except Exception:
                     raise RuntimeError("BLOB_CATALOG_FAILED") from None
                 if promoted != 1:
                     raise RuntimeError("BLOB_BIND_DENIED")
+                try:
+                    retained, _ = await sql.execute_sql(CompiledQuery(
+                        "UPDATE teaql_blob_catalog SET "
+                        "effective_unref_seconds=MAX(effective_unref_seconds,?), "
+                        "retention_floor_until_ms=CASE WHEN retention_floor_until_ms IS NULL "
+                        "OR retention_floor_until_ms<? THEN ? ELSE retention_floor_until_ms END "
+                        "WHERE key=? AND scope=? AND upload_mode='server_stream' "
+                        "AND effective_unref_seconds IS NOT NULL",
+                        [Value.I64(policy.unreferenced_retention_seconds),
+                         Value.I64(accepted_floor), Value.I64(accepted_floor),
+                         Value.Text(change.next.key), Value.Text(scope)]))
+                except Exception:
+                    raise RuntimeError("BLOB_CATALOG_FAILED") from None
+                if retained != 1:
+                    raise RuntimeError("BLOB_BIND_DENIED")
             if previous and previous != change.next:
                 try:
                     await sql.execute_sql(CompiledQuery(
-                        "UPDATE teaql_blob_catalog SET status = 'uploaded_unbound' "
+                        "UPDATE teaql_blob_catalog SET last_unbound_at_ms = ? "
                         "WHERE key = ? AND scope = ? AND status = 'available' "
                         "AND NOT EXISTS (SELECT 1 FROM teaql_blob_binding WHERE key = ?)",
-                        [Value.Text(previous.key), Value.Text(scope), Value.Text(previous.key)]))
+                        [Value.I64(self.now_ms()), Value.Text(previous.key),
+                         Value.Text(scope), Value.Text(previous.key)]))
                 except Exception:
                     raise RuntimeError("BLOB_CATALOG_FAILED") from None
             return change.next_version

@@ -8,6 +8,7 @@ from .maintenance_service import (BlobMaintenanceAuthorization, BlobMaintenanceB
                                   SqliteBlobMaintenanceService)
 from .mutation_participant import SqliteBlobMutationParticipant
 from .file_storage import FileObjectStorage
+from .retention import BlobRetentionPolicy
 from .upload_service import (BlobUploadInput, BlobUploadSession, BlobUploadTarget,
                              BlobVerifiedContent, SqliteBlobUploadService)
 
@@ -16,4 +17,4 @@ __all__ = ["BlobReferenceModule", "SqliteBlobMutationParticipant", "BlobBindingC
            "BlobMaintenanceOutcome", "SqliteBlobMaintenanceService",
            "SqliteBlobCatalog", "SqliteBlobResponseContributor", "FileObjectStorage",
            "BlobUploadInput", "BlobUploadSession", "BlobUploadTarget",
-           "BlobVerifiedContent", "SqliteBlobUploadService"]
+           "BlobVerifiedContent", "SqliteBlobUploadService", "BlobRetentionPolicy"]

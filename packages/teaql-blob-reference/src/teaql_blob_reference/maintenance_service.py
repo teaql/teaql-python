@@ -15,6 +15,8 @@ from teaql.sql.executor import SqlTransactionTransport
 from teaql.sql.types import CompiledQuery
 
 from .sqlite_catalog import SqliteBlobCatalog, _scope
+from .retention import (retention_deadline, unreferenced_eligible_at,
+                        valid_seconds, valid_time)
 
 
 class BlobMaintenanceAuthorization(Protocol):
@@ -85,7 +87,7 @@ class SqliteBlobMaintenanceService:
 
     def _now(self) -> int:
         value = self.now_ms()
-        if type(value) is not int or value < 0:
+        if not valid_time(value):
             raise RuntimeError("BLOB_POLICY_INVALID")
         return value
 
@@ -111,7 +113,10 @@ class SqliteBlobMaintenanceService:
     async def _row(self, sql, scope: str, key: str):
         try:
             rows = await sql.fetch_all_sql(_query(
-                "SELECT c.object_key,c.content_version,c.status,u.state,u.expires_ms,u.written_etag "
+                "SELECT c.object_key,c.content_version,c.status,c.completed_at_ms,"
+                "c.last_unbound_at_ms,c.policy_profile,c.upload_mode,"
+                "c.unbound_retention_seconds,c.effective_unref_seconds,"
+                "c.retention_floor_until_ms,u.state,u.expires_ms,u.written_etag "
                 "FROM teaql_blob_catalog c JOIN teaql_blob_upload u "
                 "ON u.key=c.key AND u.scope=c.scope WHERE c.scope=? AND c.key=?",
                 Value.Text(scope), Value.Text(key)))
@@ -135,13 +140,41 @@ class SqliteBlobMaintenanceService:
             raise RuntimeError("BLOB_CATALOG_FAILED")
         return {"key": key, "object_key": object_key, "version": version,
                 "status": row["status"], "state": row["state"],
-                "expires_ms": row["expires_ms"], "written_etag": written}
+                "expires_ms": row["expires_ms"], "written_etag": written,
+                "completed_at_ms": row["completed_at_ms"],
+                "last_unbound_at_ms": row["last_unbound_at_ms"],
+                "policy_profile": row["policy_profile"], "upload_mode": row["upload_mode"],
+                "unbound_retention_seconds": row["unbound_retention_seconds"],
+                "effective_unref_seconds": row["effective_unref_seconds"],
+                "retention_floor_until_ms": row["retention_floor_until_ms"]}
 
     @staticmethod
     def _eligible(row, now):
-        return (row is not None and row["expires_ms"] <= now
-                and row["state"] in ("initiated", "written")
-                and row["status"] in ("initiated", "deleting"))
+        if row is None:
+            return False
+        if row["state"] in ("initiated", "written"):
+            return (row["expires_ms"] <= now and row["status"] in ("initiated", "deleting"))
+        if row["state"] != "completed" or row["status"] not in (
+                "uploaded_unbound", "available", "deleting"):
+            return False
+        if (not _scope(row["policy_profile"]) or row["upload_mode"] != "server_stream"
+                or not valid_time(row["completed_at_ms"])
+                or not valid_seconds(row["unbound_retention_seconds"])
+                or not valid_seconds(row["effective_unref_seconds"])
+                or not _version(row["version"])):
+            return False
+        last = row["last_unbound_at_ms"]
+        floor = row["retention_floor_until_ms"]
+        if last is None:
+            if row["status"] == "available":
+                return False
+            deadline = retention_deadline(row["completed_at_ms"],
+                                          row["unbound_retention_seconds"])
+        else:
+            if not valid_time(last) or floor is not None and not valid_time(floor):
+                return False
+            deadline = unreferenced_eligible_at(last, row["effective_unref_seconds"], floor)
+        return now >= deadline
 
     async def _count(self, sql, statement, key):
         try:
@@ -163,12 +196,12 @@ class SqliteBlobMaintenanceService:
                                        row["object_key"])
             if owners != 1:
                 raise RuntimeError("BLOB_CATALOG_FAILED")
-            if row["status"] == "initiated":
+            if row["status"] != "deleting":
                 try:
                     affected, _ = await sql.execute_sql(_query(
                         "UPDATE teaql_blob_catalog SET status='deleting' "
-                        "WHERE key=? AND scope=? AND status='initiated'",
-                        Value.Text(key), Value.Text(scope)))
+                        "WHERE key=? AND scope=? AND status=?",
+                        Value.Text(key), Value.Text(scope), Value.Text(row["status"])))
                 except Exception:
                     raise RuntimeError("BLOB_CATALOG_FAILED") from None
                 if affected != 1:
@@ -290,11 +323,20 @@ class SqliteBlobMaintenanceService:
             rows = await self.catalog.transport.fetch_all_sql(_query(
                 "SELECT DISTINCT c.key FROM teaql_blob_catalog c JOIN teaql_blob_upload u "
                 "ON u.key=c.key AND u.scope=c.scope WHERE c.scope=? AND c.key>? "
-                "AND u.expires_ms<=? AND u.state IN ('initiated','written') "
-                "AND c.status IN ('initiated','deleting') "
+                "AND ((u.expires_ms<=? AND u.state IN ('initiated','written') "
+                "AND c.status IN ('initiated','deleting')) OR "
+                "(u.state='completed' AND c.upload_mode='server_stream' "
+                "AND c.policy_profile IS NOT NULL AND c.completed_at_ms IS NOT NULL "
+                "AND c.content_version<>'' AND (c.status='deleting' OR "
+                "(c.status='uploaded_unbound' AND c.last_unbound_at_ms IS NULL "
+                "AND c.completed_at_ms+c.unbound_retention_seconds*1000<=?) OR "
+                "(c.status='available' AND c.last_unbound_at_ms IS NOT NULL "
+                "AND c.last_unbound_at_ms+c.effective_unref_seconds*1000<=? "
+                "AND (c.retention_floor_until_ms IS NULL OR c.retention_floor_until_ms<=?))))) "
                 "AND NOT EXISTS (SELECT 1 FROM teaql_blob_binding b WHERE b.key=c.key) "
                 "ORDER BY c.key LIMIT ?", Value.Text(scope), Value.Text(after),
-                Value.I64(now), Value.I64(self.batch_size)))
+                Value.I64(now), Value.I64(now), Value.I64(now), Value.I64(now),
+                Value.I64(self.batch_size)))
         except Exception:
             raise RuntimeError("BLOB_CATALOG_FAILED") from None
         keys = []

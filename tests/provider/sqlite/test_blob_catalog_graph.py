@@ -22,7 +22,7 @@ from teaql.runtime.view_preparation import (
 )
 from teaql.sql.executor import SqlDataServiceExecutor
 from teaql_blob_reference import (
-    BlobBindingChange, BlobBindingTarget, FileObjectStorage, SqliteBlobCatalog,
+    BlobBindingChange, BlobBindingTarget, BlobRetentionPolicy, FileObjectStorage, SqliteBlobCatalog,
     SqliteBlobResponseContributor,
 )
 
@@ -37,6 +37,10 @@ class Authorization:
 
     async def authorize(self, _context, _target, _previous, _next, _action):
         return self.allowed
+
+    async def current_policy_on_lease(self, _context, lease, _target):
+        assert lease is not None
+        return BlobRetentionPolicy("default", "server_stream", 86400, 604800, 3600)
 
 
 async def fixture(tmp_path):
@@ -53,7 +57,8 @@ async def fixture(tmp_path):
     async with aiosqlite.connect(path) as db:
         await db.execute("CREATE TABLE asset (id INTEGER PRIMARY KEY, version INTEGER, name TEXT)")
         await db.commit()
-    return context, path, SqliteBlobCatalog(SqliteTransport(path))
+    return context, path, SqliteBlobCatalog(SqliteTransport(path),
+                                            now_ms=lambda: 1_700_000_000_000)
 
 
 async def all_rows(path, table):
@@ -72,10 +77,12 @@ async def test_catalog_binding_same_graph_rollback_authority_tombstone_and_rebin
     reference = BlobRef("blob_python_catalog_1")
     async with aiosqlite.connect(path) as db:
         await db.execute("INSERT INTO teaql_blob_catalog "
-                         "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status) "
-                         "VALUES (?,?,?,?,?,?,?,?)",
+                         "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,"
+                         "completed_at_ms,policy_profile,upload_mode,unbound_retention_seconds,effective_unref_seconds) "
+                         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                          (reference.key, "tenant-a", "objects/1", "v1", "asset.pdf",
-                          "application/pdf", 7, "uploaded_unbound"))
+                          "application/pdf", 7, "uploaded_unbound", 1_700_000_000_000,
+                          "default", "server_stream", 86400, 604800))
         await db.commit()
     auth = Authorization()
 
@@ -130,7 +137,7 @@ async def test_catalog_binding_same_graph_rollback_authority_tombstone_and_rebin
     await context.execute_graph_save(
         lambda graph: catalog.bind_in_graph(graph, graph.context, clear, auth), comment="clear binding")
     assert (await all_rows(path, "teaql_blob_binding"))[0][-2:] == (None, 2)
-    assert (await all_rows(path, "teaql_blob_catalog"))[0][-1] == "uploaded_unbound"
+    assert (await all_rows(path, "teaql_blob_catalog"))[0][-1] == "available"
     rebind = BlobBindingChange(BlobBindingTarget("Asset", "1", "document"), reference, 2, 3, "Update")
     await context.execute_graph_save(
         lambda graph: catalog.bind_in_graph(graph, graph.context, rebind, auth), comment="rebind")
@@ -144,7 +151,7 @@ async def test_catalog_binding_same_graph_rollback_authority_tombstone_and_rebin
     clear = BlobBindingChange(BlobBindingTarget("Asset", "2", "document"), None, 1, 2, "Update")
     await context.execute_graph_save(
         lambda graph: catalog.bind_in_graph(graph, graph.context, clear, auth), comment="clear final binding")
-    assert (await all_rows(path, "teaql_blob_catalog"))[0][-1] == "uploaded_unbound"
+    assert (await all_rows(path, "teaql_blob_catalog"))[0][-1] == "available"
 
 
 @pytest.mark.asyncio
@@ -161,16 +168,109 @@ async def test_catalog_rejects_old_not_null_binding_schema(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_binding_enforces_retention_deadline_and_longest_accepted_floor(tmp_path):
+    context, path, catalog = await fixture(tmp_path)
+    await catalog.ensure_schema()
+    clock = [1_700_000_000_000]
+    catalog.now_ms = lambda: clock[0]
+    expired, live = BlobRef("blob_expired_policy"), BlobRef("blob_live_policy")
+    async with aiosqlite.connect(path) as db:
+        for reference, completed in ((expired, clock[0] - 86_400_000),
+                                     (live, clock[0] - 1000)):
+            await db.execute("INSERT INTO teaql_blob_catalog "
+                "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,"
+                "completed_at_ms,policy_profile,upload_mode,unbound_retention_seconds,effective_unref_seconds) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (reference.key, "tenant-a", "objects/" + reference.key, "v1", "report.pdf",
+                 "application/pdf", 7, "uploaded_unbound", completed,
+                 "default", "server_stream", 86400, 3600))
+        await db.commit()
+
+    class ChangingAuthorization(Authorization):
+        def __init__(self):
+            super().__init__()
+            self.policy = BlobRetentionPolicy("default", "server_stream", 86400, 604800, 3600)
+
+        async def current_policy_on_lease(self, _context, lease, _target):
+            assert lease is not None
+            return self.policy
+
+    authority = ChangingAuthorization()
+    first = BlobBindingTarget("Asset", "1", "document")
+    second = BlobBindingTarget("Asset", "2", "document")
+
+    async def change(target, next_ref, before, after, action):
+        return await context.execute_graph_save(
+            lambda graph: catalog.bind_in_graph(graph, graph.context,
+                BlobBindingChange(target, next_ref, before, after, action), authority),
+            comment="retention binding")
+
+    with pytest.raises(RuntimeError, match="BLOB_REFERENCE_EXPIRED"):
+        await change(first, expired, 0, 1, "Create")
+    await change(first, live, 0, 1, "Create")
+    authority.policy = BlobRetentionPolicy("longer", "server_stream", 86400, 2592000, 2678400)
+    await change(second, live, 0, 1, "Create")
+    await change(first, None, 1, 2, "Update")
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT effective_unref_seconds,retention_floor_until_ms,"
+                              "last_unbound_at_ms FROM teaql_blob_catalog WHERE key=?",
+                              (live.key,)) as cursor:
+            seconds, floor, last_unbound = await cursor.fetchone()
+            assert seconds == 2592000 and floor == clock[0] + 2_678_400_000
+            assert last_unbound is None
+    await change(second, None, 1, 2, "Update")
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT status,last_unbound_at_ms FROM teaql_blob_catalog WHERE key=?",
+                              (live.key,)) as cursor:
+            assert await cursor.fetchone() == ("available", clock[0])
+    authority.policy = BlobRetentionPolicy("shorter", "server_stream", 86400, 3600, 0)
+    clock[0] = floor - 1
+    await change(first, live, 2, 3, "Update")
+    await change(first, None, 3, 4, "Update")
+    clock[0] = floor
+    # The accepted maximum still protects this object beyond the old floor.
+    await change(first, live, 4, 5, "Update")
+    await change(first, None, 5, 6, "Update")
+    clock[0] += 2_592_000_000
+    with pytest.raises(RuntimeError, match="BLOB_REFERENCE_EXPIRED"):
+        await change(first, live, 6, 7, "Update")
+
+
+@pytest.mark.asyncio
+async def test_new_binding_rejects_legacy_unknown_policy_row(tmp_path):
+    context, path, catalog = await fixture(tmp_path)
+    await catalog.ensure_schema()
+    reference = BlobRef("blob_legacy_unknown")
+    async with aiosqlite.connect(path) as db:
+        await db.execute("INSERT INTO teaql_blob_catalog "
+                         "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status) "
+                         "VALUES (?,?,?,?,?,?,?,?)",
+                         (reference.key, "tenant-a", "objects/legacy", "v1", "legacy.pdf",
+                          "application/pdf", 5, "uploaded_unbound"))
+        await db.commit()
+    with pytest.raises(RuntimeError, match="^BLOB_BIND_DENIED$"):
+        await context.execute_graph_save(
+            lambda graph: catalog.bind_in_graph(graph, graph.context,
+                BlobBindingChange(BlobBindingTarget("Asset", "1", "document"),
+                                  reference, 0, 1, "Create"), Authorization()),
+            comment="deny legacy unknown policy")
+    assert await all_rows(path, "teaql_blob_binding") == []
+
+
+@pytest.mark.asyncio
 async def test_current_sqlite_binding_is_reread_before_view_url_signing(tmp_path):
     context, path, catalog = await fixture(tmp_path)
     await catalog.ensure_schema()
     reference = BlobRef("blob_python_read_1")
     async with aiosqlite.connect(path) as db:
         await db.execute("INSERT INTO teaql_blob_catalog "
-                         "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status) "
-                         "VALUES (?,?,?,?,?,?,?,?)",
+                         "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,"
+                         "completed_at_ms,last_unbound_at_ms,policy_profile,upload_mode,"
+                         "unbound_retention_seconds,effective_unref_seconds) "
+                         "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                          (reference.key, "tenant-a", "objects/read-1", "v1", "report.pdf",
-                          "application/pdf", 7, "available"))
+                          "application/pdf", 7, "available", 1_700_000_000_000,
+                          1_700_000_000_000, "default", "server_stream", 86400, 604800))
         await db.commit()
     auth = Authorization()
     change = BlobBindingChange(BlobBindingTarget("Asset", "1", "document"), reference, 0, 1, "Create")
@@ -253,10 +353,12 @@ async def test_authorized_sqlite_view_projects_real_file_http_bytes_and_denies_r
         reference = BlobRef("blob_python_real_1")
         async with aiosqlite.connect(path) as db:
             await db.execute("INSERT INTO teaql_blob_catalog "
-                             "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status) "
-                             "VALUES (?,?,?,?,?,?,?,?)",
+                             "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,"
+                             "completed_at_ms,policy_profile,upload_mode,unbound_retention_seconds,effective_unref_seconds) "
+                             "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                              (reference.key, "tenant-a", key.value, "v1", "report.pdf",
-                              "application/pdf", len(data), "uploaded_unbound"))
+                              "application/pdf", len(data), "uploaded_unbound", 1_700_000_000_000,
+                              "default", "server_stream", 86400, 604800))
             await db.commit()
         change = BlobBindingChange(BlobBindingTarget("Asset", "1", "document"),
                                    reference, 0, 1, "Create")

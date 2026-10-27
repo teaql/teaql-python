@@ -27,6 +27,7 @@ from teaql.sql.executor import SqlTransactionTransport
 from teaql.sql.types import CompiledQuery
 
 from .sqlite_catalog import SqliteBlobCatalog, _entity_id, _name, _scope
+from .retention import BlobRetentionPolicy, valid_time
 
 
 @dataclass(frozen=True)
@@ -65,6 +66,13 @@ class BlobUploadAuthorization(Protocol):
     def field(self, context, target: BlobUploadTarget) -> BlobFieldSpec: ...
     async def authorize(self, context, target: BlobUploadTarget, action: str,
                         input: BlobUploadInput) -> bool: ...
+
+
+class BlobUploadPolicyAuthorization(Protocol):
+    """Optional trusted policy lookup on the physical begin-upload SQL lease."""
+
+    async def current_policy_on_lease(self, context, lease: SqlTransactionTransport,
+                                      target: BlobUploadTarget) -> BlobRetentionPolicy: ...
 
 
 class BlobContentVerifier(Protocol):
@@ -194,6 +202,22 @@ class SqliteBlobUploadService:
                 with suppress(Exception):
                     await tx.rollback_sql()
 
+    async def _policy_on_lease(self, actor, tx, target):
+        current = getattr(self.authorization, "current_policy_on_lease", None)
+        if current is None:
+            return None
+        if not callable(current):
+            raise RuntimeError("BLOB_POLICY_INVALID")
+        try:
+            policy = await current(actor, tx, target)
+        except Exception:
+            raise RuntimeError("BLOB_POLICY_INVALID") from None
+        if not isinstance(policy, BlobRetentionPolicy):
+            raise RuntimeError("BLOB_POLICY_INVALID")
+        if policy.upload_mode != "server_stream":
+            raise RuntimeError("BLOB_CAPABILITY_MISSING")
+        return policy
+
     async def begin(self, actor, target: BlobUploadTarget, input: BlobUploadInput,
                     replay_key: str) -> BlobUploadSession:
         normalized, extension = self._normalize(input)
@@ -234,13 +258,20 @@ class SqliteBlobUploadService:
             object_key = "blob/" + _token()
             expires_ms = self.now_ms() + self.lease_seconds * 1000
             await self._current(actor, target, "Begin", normalized, scope)
+            policy = await self._policy_on_lease(actor, tx, target)
+            profile = Value.Text(policy.profile) if policy else Value.Null()
+            mode = Value.Text(policy.upload_mode) if policy else Value.Null()
+            unbound = Value.I64(policy.unbound_retention_seconds) if policy else Value.Null()
+            unreferenced = Value.I64(policy.unreferenced_retention_seconds) if policy else Value.Null()
             try:
                 await tx.execute_sql(_query(
                     "INSERT INTO teaql_blob_catalog "
-                    "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status) "
-                    "VALUES (?,?,?,?,?,?,?,?)", Value.Text(reference.key), Value.Text(scope),
+                    "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,"
+                    "policy_profile,upload_mode,unbound_retention_seconds,effective_unref_seconds) "
+                    "VALUES (?,?,?,?,?,?,?,?,?,?,?,?)", Value.Text(reference.key), Value.Text(scope),
                     Value.Text(object_key), Value.Text(""), Value.Text(normalized.file_name),
-                    Value.Text(""), Value.I64(0), Value.Text("initiated")))
+                    Value.Text(""), Value.I64(0), Value.Text("initiated"),
+                    profile, mode, unbound, unreferenced))
                 await tx.execute_sql(_query(
                     "INSERT INTO teaql_blob_upload "
                     "(upload_id,scope,replay_key,request_hash,key,entity,entity_id,field,file_name,"
@@ -593,14 +624,14 @@ class SqliteBlobUploadService:
                                 BlobUploadInput(row["file_name"], row["declared_size"]),
                                 row["scope"])
             now = self.now_ms()
-            if now >= row["expires_ms"]:
+            if not valid_time(now) or now >= row["expires_ms"]:
                 raise RuntimeError("BLOB_UPLOAD_EXPIRED")
             verified = await asyncio.to_thread(verify_stored)
             await self._current(actor, target, "Confirm",
                                 BlobUploadInput(row["file_name"], row["declared_size"],
                                                 verified.content_type), row["scope"])
             now = self.now_ms()
-            if now >= row["expires_ms"]:
+            if not valid_time(now) or now >= row["expires_ms"]:
                 raise RuntimeError("BLOB_UPLOAD_EXPIRED")
             try:
                 affected, _ = await tx.execute_sql(_query(
@@ -612,9 +643,10 @@ class SqliteBlobUploadService:
                     raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
                 affected, _ = await tx.execute_sql(_query(
                     "UPDATE teaql_blob_catalog SET content_version=?,content_type=?,size_bytes=?, "
-                    "status='uploaded_unbound' WHERE key=? AND scope=? AND status='initiated'",
+                    "completed_at_ms=?,status='uploaded_unbound' "
+                    "WHERE key=? AND scope=? AND status='initiated'",
                     Value.Text(row["written_etag"]), Value.Text(verified.content_type),
-                    Value.I64(verified.size_bytes), Value.Text(row["key"]),
+                    Value.I64(verified.size_bytes), Value.I64(now), Value.Text(row["key"]),
                     Value.Text(row["scope"])))
                 if affected != 1:
                     raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
