@@ -101,6 +101,7 @@ _default_id_set_store = InMemoryIdSetStore()
 class UserContext:
     def __init__(self):
         self._resources: Dict[str, Any] = {}
+        self._required_capabilities: frozenset[str] = frozenset()
         self._resources["sql_log_options"] = SqlLogOptions.all()
         self._resources["diagnostic_sql_log_sink"] = TextDiagnosticSqlLogSink()
         self._metadata: Optional[Any] = None
@@ -237,6 +238,8 @@ class UserContext:
                 lambda: self._execute_graph_transaction(work, intent, GraphMutationSession))
 
     async def _execute_graph_transaction(self, work, intent, session_type):
+        from .capability import validate_capabilities
+        await validate_capabilities(self)
         provider = self.require_resource("dataService")
         begin = getattr(provider, "begin", None)
         if not callable(begin):
@@ -618,6 +621,8 @@ class UserContext:
         self.with_schema_provider(provider)
 
     async def ensure_schema(self):
+        from .capability import validate_capabilities
+        await validate_capabilities(self)
         provider = self.get_resource("schema_provider")
         if provider:
             from ._schema_capability import SCHEMA_CAPABILITY
