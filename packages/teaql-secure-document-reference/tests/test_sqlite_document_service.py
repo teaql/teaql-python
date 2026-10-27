@@ -2,6 +2,7 @@
 
 from dataclasses import replace
 from datetime import datetime, timezone
+import time
 
 import aiosqlite
 import pytest
@@ -25,7 +26,8 @@ from teaql_secure_document_reference import (
     SQLiteContextBoundDocumentService, SQLiteDocumentCommandJournal,
     StaticReferenceKeyProvider, SubmittedDocumentCommand, TrustedReferencePrincipal,
 )
-from teaql_blob_reference import BlobBindingChange, BlobBindingTarget, SqliteBlobCatalog
+from teaql_blob_reference import (BlobBindingChange, BlobBindingTarget,
+                                  BlobRetentionPolicy, SqliteBlobCatalog)
 
 
 class OrderHost:
@@ -234,6 +236,10 @@ class BlobOrderHost(OrderHost):
             def scope(self, _actor):
                 return "merchant:7"
 
+            async def current_policy_on_lease(self, _actor, lease, _target):
+                assert lease is sql
+                return BlobRetentionPolicy("default", "server_stream", 86400, 604800, 3600)
+
             async def authorize(self, _actor, target, _previous, next_ref, _action):
                 return (target == BlobBindingTarget("Order", "10", "attachment") and
                         next_ref == BlobRef.from_sql(selection.stable_key))
@@ -316,6 +322,10 @@ class ChildBlobOrderHost(BlobOrderHost):
             def scope(self, _actor):
                 return "merchant:7"
 
+            async def current_policy_on_lease(self, _actor, lease, _target):
+                assert lease is sql
+                return BlobRetentionPolicy("default", "server_stream", 86400, 604800, 3600)
+
             async def authorize(self, _actor, target, _previous, next_ref, action):
                 return (target == BlobBindingTarget("OrderLine", selection.entity_id, "attachment")
                         and next_ref == BlobRef.from_sql(selection.stable_key) and action == "Create")
@@ -342,9 +352,11 @@ async def test_sqlite_new_child_blob_selection_commits_and_receipt_failure_rolls
     async with aiosqlite.connect(path) as db:
         for key in ("blob_C", "blob_D"):
             await db.execute("""INSERT INTO teaql_blob_catalog
-                (key,scope,object_key,content_version,file_name,content_type,size_bytes,status)
-                VALUES (?,?,?,?,?,?,?,'uploaded_unbound')""",
-                (key, "merchant:7", "objects/" + key, "v1", key + ".pdf", "application/pdf", 3))
+                (key,scope,object_key,content_version,file_name,content_type,size_bytes,status,
+                 completed_at_ms,policy_profile,upload_mode,unbound_retention_seconds,effective_unref_seconds)
+                VALUES (?,?,?,?,?,?,?,'uploaded_unbound',?,?,?,?,?)""",
+                (key, "merchant:7", "objects/" + key, "v1", key + ".pdf", "application/pdf", 3,
+                 time.time_ns() // 1_000_000, "default", "server_stream", 86400, 604800))
         await db.commit()
     host = ChildBlobOrderHost(catalog)
     service = SQLiteContextBoundDocumentService(context, old_service.transport,
@@ -412,9 +424,11 @@ async def test_sqlite_document_blob_selection_shares_business_binding_and_receip
     async with aiosqlite.connect(path) as db:
         for key in ("blob_A", "blob_B"):
             await db.execute("""INSERT INTO teaql_blob_catalog
-                (key,scope,object_key,content_version,file_name,content_type,size_bytes,status)
-                VALUES (?,?,?,?,?,?,?,'uploaded_unbound')""",
-                (key, "merchant:7", "objects/" + key, "v1", key + ".pdf", "application/pdf", 3))
+                (key,scope,object_key,content_version,file_name,content_type,size_bytes,status,
+                 completed_at_ms,policy_profile,upload_mode,unbound_retention_seconds,effective_unref_seconds)
+                VALUES (?,?,?,?,?,?,?,'uploaded_unbound',?,?,?,?,?)""",
+                (key, "merchant:7", "objects/" + key, "v1", key + ".pdf", "application/pdf", 3,
+                 time.time_ns() // 1_000_000, "default", "server_stream", 86400, 604800))
         await db.commit()
     host = BlobOrderHost(catalog)
     service = SQLiteContextBoundDocumentService(context, old_service.transport,
