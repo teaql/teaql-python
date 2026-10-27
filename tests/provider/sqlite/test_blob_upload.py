@@ -3,6 +3,7 @@
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from io import BytesIO
+from pathlib import Path
 from threading import Event
 from urllib.request import Request, urlopen
 from uuid import uuid4
@@ -35,15 +36,16 @@ from teaql_blob_reference import (
 
 
 class UploadAuthority:
-    def __init__(self):
+    def __init__(self, extensions=("pdf",)):
         self.current_scope = "tenant-a"
         self.allowed = True
+        self.extensions = extensions
 
     def scope(self, _context):
         return self.current_scope
 
     def field(self, _context, _target):
-        return BlobFieldSpec("Asset", "document", ["pdf"], True, "default")
+        return BlobFieldSpec("Asset", "document", self.extensions, True, "default")
 
     async def authorize(self, _context, target, action, _input):
         return (self.allowed and target.entity == "Asset" and target.field == "document"
@@ -75,9 +77,12 @@ class FixturePDFVerifier:
 
 
 @pytest.mark.asyncio
-async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path):
+@pytest.mark.parametrize("image", [False, True], ids=["fixture-pdf", "real-jpeg"])
+async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, image):
     if os.environ.get("TEAQL_S3_TEST_BLOB_UPLOAD") != "1":
         pytest.skip("explicit S3-compatible Blob upload gate required")
+    if image and os.environ.get("TEAQL_S3_TEST_REAL_IMAGE") != "1":
+        pytest.skip("explicit production JPEG S3 gate required")
     endpoint = os.environ.get("TEAQL_S3_TEST_ENDPOINT")
     bucket = os.environ.get("TEAQL_S3_TEST_BUCKET")
     access = os.environ.get("TEAQL_S3_TEST_ACCESS_KEY")
@@ -99,9 +104,26 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path):
         SqliteDialect(), SqliteTransport(path), schema))
     actor.with_object_storage(provider).with_object_storage_observer(lambda event: None)
     catalog = SqliteBlobCatalog(SqliteTransport(path))
-    authority, verifier = UploadAuthority(), FixturePDFVerifier()
+    if image:
+        from teaql_blob_reference.content_pillow import PillowBlobContentVerifier
+
+        class CountingImageVerifier:
+            def __init__(self):
+                self.inner = PillowBlobContentVerifier()
+                self.calls = 0
+
+            def verify(self, stream, extension, maximum_bytes):
+                self.calls += 1
+                return self.inner.verify(stream, extension, maximum_bytes)
+
+        authority, verifier = UploadAuthority(("jpg",)), CountingImageVerifier()
+        data = (Path(__file__).parents[2] / "fixtures" / "blob-sample.jpg").read_bytes()
+        file_name, content_type = "sample.jpg", "image/jpeg"
+    else:
+        authority, verifier = UploadAuthority(), FixturePDFVerifier()
+        data = b"%PDF-1.7\nreal S3 Blob upload\n%%EOF"
+        file_name, content_type = "report.pdf", "application/pdf"
     service = SqliteBlobUploadService(catalog, authority, verifier, 10_000)
-    data = b"%PDF-1.7\nreal S3 Blob upload\n%%EOF"
     object_key = None
     try:
         async with aiosqlite.connect(path) as db:
@@ -109,7 +131,7 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path):
             await db.commit()
         await catalog.ensure_schema()
         session = await service.begin(actor, BlobUploadTarget("Asset", "1", "document"),
-                                      BlobUploadInput("report.pdf", len(data), "application/pdf"),
+                                      BlobUploadInput(file_name, len(data), content_type),
                                       uuid4().hex)
         async with aiosqlite.connect(path) as db:
             async with db.execute("SELECT object_key FROM teaql_blob_catalog WHERE key=?",
@@ -134,7 +156,7 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path):
             ) as cursor:
                 status, mime, size, version = await cursor.fetchone()
         assert (status, mime, size, version) == (
-            "uploaded_unbound", "application/pdf", len(data), head.etag)
+            "uploaded_unbound", content_type, len(data), head.etag)
 
         async def bind(graph):
             command = (InsertCommand.new("Asset").value("id", 1)
@@ -175,8 +197,8 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path):
         assert link.startswith("http") and view.cache_control == "private, no-store"
         with urlopen(Request(link, headers={"Range": "bytes=0-7"}), timeout=5) as response:
             assert response.status == 206 and response.read() == data[:8]
-            assert response.headers["Content-Type"] == "application/pdf"
-            assert "report.pdf" in response.headers["Content-Disposition"]
+            assert response.headers["Content-Type"] == content_type
+            assert file_name in response.headers["Content-Disposition"]
         read_permission.allowed = False
         with pytest.raises(ViewPreparationError) as denied:
             await ViewPreparationService().prepare(actor, None, options)
