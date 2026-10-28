@@ -10,6 +10,7 @@ from urllib.request import Request, urlopen
 from uuid import uuid4
 import asyncio
 import os
+import time
 
 import aiosqlite
 import pytest
@@ -17,7 +18,7 @@ import pytest
 from teaql.core.blob_ref import BlobFieldSpec
 from teaql.core.entity import EntityKey
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
-from teaql.core.mutation import InsertCommand
+from teaql.core.mutation import InsertCommand, UpdateCommand
 from teaql.core.object_storage import ObjectContent, ObjectKey, PutOptions, WriteMode
 from teaql.core.value import DataType
 from teaql.provider.sqlite import SimpleSchemaProvider
@@ -34,7 +35,7 @@ from teaql_blob_reference import (
     BlobBindingChange, BlobBindingTarget, BlobRetentionPolicy, BlobUploadAuthorizationState,
     BlobUploadInput, BlobUploadTarget,
     BlobVerifiedContent, FileObjectStorage, SqliteBlobCatalog, SqliteBlobResponseContributor,
-    SqliteBlobUploadService,
+    SqliteBlobMaintenanceService, SqliteBlobUploadService,
 )
 
 
@@ -239,14 +240,14 @@ async def test_upload_confirm_close_failure_rolls_back_and_retries(tmp_path):
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("case", ["fixture-pdf", "real-jpeg", "real-pdf",
+@pytest.mark.parametrize("case", ["fixture-pdf", "real-jpg", "real-jpeg", "real-png", "real-pdf",
                                   "real-docx", "real-xlsx", "real-doc", "real-xls",
                                   "real-mp3", "real-mp4"])
 async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, case):
     if os.environ.get("TEAQL_S3_TEST_BLOB_UPLOAD") != "1":
         pytest.skip("explicit S3-compatible Blob upload gate required")
-    if case == "real-jpeg" and os.environ.get("TEAQL_S3_TEST_REAL_IMAGE") != "1":
-        pytest.skip("explicit production JPEG S3 gate required")
+    if case in ("real-jpg", "real-jpeg", "real-png") and os.environ.get("TEAQL_S3_TEST_REAL_IMAGE") != "1":
+        pytest.skip("explicit production image S3 gate required")
     if case == "real-pdf" and os.environ.get("TEAQL_S3_TEST_REAL_PDF") != "1":
         pytest.skip("explicit production PDF S3 gate required")
     if case in ("real-docx", "real-xlsx") and os.environ.get("TEAQL_S3_TEST_REAL_OFFICE") != "1":
@@ -269,18 +270,23 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
     descriptor.property(PropertyDescriptor("id", DataType.I64).is_id())
     descriptor.property(PropertyDescriptor("version", DataType.I64).is_version())
     descriptor.property(PropertyDescriptor("name", DataType.Text))
+    descriptor.property(PropertyDescriptor("document", DataType.Text))
     schema = SimpleSchemaProvider()
     schema.register_entity(descriptor)
     actor = RuntimeModule.new().entity(descriptor).into_context()
     actor.insert_resource("dataService", SqlDataServiceExecutor(
         SqliteDialect(), SqliteTransport(path), schema))
     actor.with_object_storage(provider).with_object_storage_observer(lambda event: None)
-    catalog = SqliteBlobCatalog(SqliteTransport(path))
-    if case == "real-jpeg":
+    clock = [time.time_ns() // 1_000_000]
+    catalog = SqliteBlobCatalog(SqliteTransport(path), now_ms=lambda: clock[0])
+    if case in ("real-jpg", "real-jpeg", "real-png"):
         from teaql_blob_reference.content_pillow import PillowBlobContentVerifier
-        authority, parser = UploadAuthority(("jpg",)), PillowBlobContentVerifier()
-        data = (Path(__file__).parents[2] / "fixtures" / "blob-sample.jpg").read_bytes()
-        file_name, content_type = "sample.jpg", "image/jpeg"
+        extension = case.removeprefix("real-")
+        authority, parser = UploadAuthority((extension,)), PillowBlobContentVerifier()
+        fixture = "png" if extension == "png" else "jpg"
+        data = (Path(__file__).parents[2] / "fixtures" / ("blob-sample." + fixture)).read_bytes()
+        file_name = "sample." + extension
+        content_type = "image/png" if extension == "png" else "image/jpeg"
     elif case == "real-pdf":
         from teaql_blob_reference.content_pypdf import PypdfBlobContentVerifier
         authority, parser = UploadAuthority(("pdf",)), PypdfBlobContentVerifier()
@@ -348,11 +354,12 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
             return self.inner.verify(stream, extension, maximum_bytes)
 
     verifier = CountingVerifier(parser)
-    service = SqliteBlobUploadService(catalog, authority, verifier, 100_000)
+    service = SqliteBlobUploadService(catalog, authority, verifier, 100_000,
+                                      now_ms=lambda: clock[0])
     object_key = None
     try:
         async with aiosqlite.connect(path) as db:
-            await db.execute("CREATE TABLE asset (id INTEGER PRIMARY KEY, version INTEGER, name TEXT)")
+            await db.execute("CREATE TABLE asset (id INTEGER PRIMARY KEY, version INTEGER, name TEXT, document TEXT)")
             await db.commit()
         await catalog.ensure_schema()
         session = await service.begin(actor, BlobUploadTarget("Asset", "1", "document"),
@@ -383,18 +390,31 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
         assert (status, mime, size, version) == (
             "uploaded_unbound", content_type, len(data), head.etag)
 
+        class LifecycleBindingAuthority(BindingAuthority):
+            async def authorize(self, _context, target, previous, next_ref, action):
+                return (target == BlobBindingTarget("Asset", "1", "document")
+                        and ((action == "Create" and previous is None
+                              and next_ref == session.reference)
+                             or (action == "Update" and previous == session.reference
+                                 and next_ref is None)))
+
+        binding_authority = LifecycleBindingAuthority()
+
         async def bind(graph):
             command = (InsertCommand.new("Asset").value("id", 1)
-                       .value("version", 1).value("name", "document"))
+                       .value("version", 1).value("name", "document")
+                       .value("document", session.reference.key))
             await graph.transaction.mutate(graph.context,
                 graph.request(command, graph.scope(EntityKey("Asset", 1))))
             assert await catalog.bind_in_graph(graph, graph.context,
                 BlobBindingChange(BlobBindingTarget("Asset", "1", "document"),
                                   session.reference, 0, 1, "Create"),
-                BindingAuthority()) == 1
+                binding_authority) == 1
 
         await actor.execute_graph_save(bind, comment="bind S3 Blob in business graph")
         async with aiosqlite.connect(path) as db:
+            async with db.execute("SELECT document,version FROM asset WHERE id=1") as cursor:
+                assert await cursor.fetchone() == (session.reference.key, 1)
             async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key=?",
                                   (session.reference.key,)) as cursor:
                 assert (await cursor.fetchone())[0] == "available"
@@ -435,6 +455,61 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
                 ViewOptions("ordinary", "committed",
                             datetime.now(timezone.utc) + timedelta(seconds=60)))
         assert (stale.value.code, stale.value.business_state) == ("BLOB_READ_DENIED", "committed")
+        if os.environ.get("TEAQL_S3_TEST_END_TO_END_GC") == "1":
+            async def unbind(graph):
+                command = (UpdateCommand.new("Asset", 1).expected_version(1)
+                           .value("document", None))
+                await graph.transaction.mutate(graph.context,
+                    graph.request(command, graph.scope(EntityKey("Asset", 1))))
+                assert await catalog.bind_in_graph(graph, graph.context,
+                    BlobBindingChange(BlobBindingTarget("Asset", "1", "document"),
+                                      None, 1, 2, "Update"), binding_authority) == 2
+
+            await actor.execute_graph_save(unbind, comment="unbind S3 Blob in business graph")
+            async with aiosqlite.connect(path) as db:
+                async with db.execute("SELECT document,version FROM asset WHERE id=1") as cursor:
+                    assert await cursor.fetchone() == (None, 2)
+                async with db.execute("SELECT key,version FROM teaql_blob_binding WHERE "
+                                      "scope='tenant-a' AND entity='Asset' AND entity_id='1' "
+                                      "AND field='document'") as cursor:
+                    assert await cursor.fetchone() == (None, 2)
+                async with db.execute(
+                    "SELECT status,last_unbound_at_ms,effective_unref_seconds,"
+                    "retention_floor_until_ms FROM teaql_blob_catalog WHERE key=?",
+                    (session.reference.key,)
+                ) as cursor:
+                    status, last_unbound, effective, floor = await cursor.fetchone()
+            assert status == "available" and last_unbound == clock[0]
+            assert effective == 604800 and floor >= clock[0] + 3600 * 1000
+            authorizer.version = 1
+            with pytest.raises(ViewPreparationError) as unbound_view:
+                await ViewPreparationService().prepare(actor, None, options)
+            assert unbound_view.value.code == "BLOB_READ_DENIED"
+
+            class MaintenanceAuthority:
+                def scope(self, _context):
+                    return "tenant-a"
+
+                async def can_maintain(self, _context, scope):
+                    return scope == "tenant-a"
+
+            maintenance = SqliteBlobMaintenanceService(
+                catalog, MaintenanceAuthority(), 10, now_ms=lambda: clock[0])
+            deadline = max(last_unbound + effective * 1000, floor)
+            clock[0] = deadline - 1
+            assert (await maintenance.run_batch(actor)).outcomes == ()
+            assert store.head(object_key) is not None
+            clock[0] = deadline
+            collected = await maintenance.run_batch(actor)
+            assert [(item.reference, item.status) for item in collected.outcomes] == [
+                (session.reference, "deleted")]
+            assert store.head(object_key) is None
+            async with aiosqlite.connect(path) as db:
+                async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key=?",
+                                      (session.reference.key,)) as cursor:
+                    assert (await cursor.fetchone())[0] == "deleted"
+            print("PASS Python " + case +
+                  " S3 upload/confirm/graph bind/authorized view/unbind/retention GC")
     finally:
         try:
             if object_key is not None:
