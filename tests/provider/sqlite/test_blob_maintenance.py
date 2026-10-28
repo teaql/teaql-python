@@ -74,6 +74,46 @@ async def _status(path, key):
 
 
 @pytest.mark.asyncio
+async def test_expired_direct_uploads_are_not_collected_without_quiescence(tmp_path):
+    path = str(tmp_path / "direct-maintenance.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    provider = FileObjectStorage(tmp_path / "direct-objects", os.urandom(32))
+    actor = RuntimeModule.new().into_context()
+    actor.with_object_storage(provider).with_object_storage_observer(lambda event: None)
+    store = actor.object_storage("direct upload maintenance guard")
+    service = SqliteBlobMaintenanceService(catalog, _MaintenanceAuthority(), 10, lambda: 10000)
+    for name, state, status in (
+        ("blob_direct_initiated", "initiated", "initiated"),
+        ("blob_direct_written", "written", "initiated"),
+        ("blob_direct_deleting", "initiated", "deleting"),
+    ):
+        key = ObjectKey("objects/" + name)
+        created = store.put_bytes(key, b"%PDF-1.7\n", PutOptions(9, WriteMode.CREATE_ONLY))
+        await _seed(path, name, state=state,
+                    written_etag=created.etag if state == "written" else None)
+        async with aiosqlite.connect(path) as db:
+            await db.execute("UPDATE teaql_blob_catalog SET upload_mode=?,status=? WHERE key=?",
+                             ("direct", status, name))
+            await db.commit()
+    legacy = ObjectKey("objects/blob_legacy_stream")
+    store.put_bytes(legacy, b"%PDF-1.7\n", PutOptions(9, WriteMode.CREATE_ONLY))
+    await _seed(path, "blob_legacy_stream", state="initiated")
+
+    batch = await service.run_batch(actor)
+    assert [(item.reference.key, item.status) for item in batch.outcomes] == [
+        ("blob_legacy_stream", "deleted")]
+    assert store.head(legacy) is None
+    for name, _, status in (
+        ("blob_direct_initiated", "initiated", "initiated"),
+        ("blob_direct_written", "written", "initiated"),
+        ("blob_direct_deleting", "initiated", "deleting"),
+    ):
+        assert await _status(path, name) == status
+        assert store.head(ObjectKey("objects/" + name)) is not None
+
+
+@pytest.mark.asyncio
 async def test_real_sqlite_file_maintenance_recovers_receipt_and_partial_data(tmp_path):
     path = str(tmp_path / "file-maintenance.db")
     catalog = SqliteBlobCatalog(SqliteTransport(path))

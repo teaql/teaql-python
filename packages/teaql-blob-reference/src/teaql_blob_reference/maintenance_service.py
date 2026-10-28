@@ -153,7 +153,11 @@ class SqliteBlobMaintenanceService:
         if row is None:
             return False
         if row["state"] in ("initiated", "written"):
-            return (row["expires_ms"] <= now and row["status"] in ("initiated", "deleting"))
+            # NULL is a pre-upload-mode server-stream session; explicit direct
+            # uploads need independent quiescence proof before object deletion.
+            return (row["upload_mode"] in (None, "server_stream")
+                    and row["expires_ms"] <= now
+                    and row["status"] in ("initiated", "deleting"))
         if row["state"] != "completed" or row["status"] not in (
                 "uploaded_unbound", "available", "deleting"):
             return False
@@ -324,7 +328,8 @@ class SqliteBlobMaintenanceService:
                 "SELECT DISTINCT c.key FROM teaql_blob_catalog c JOIN teaql_blob_upload u "
                 "ON u.key=c.key AND u.scope=c.scope WHERE c.scope=? AND c.key>? "
                 "AND ((u.expires_ms<=? AND u.state IN ('initiated','written') "
-                "AND c.status IN ('initiated','deleting')) OR "
+                "AND c.status IN ('initiated','deleting') "
+                "AND (c.upload_mode IS NULL OR c.upload_mode='server_stream')) OR "
                 "(u.state='completed' AND c.upload_mode='server_stream' "
                 "AND c.policy_profile IS NOT NULL AND c.completed_at_ms IS NOT NULL "
                 "AND c.content_version<>'' AND (c.status='deleting' OR "
