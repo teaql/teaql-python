@@ -4,6 +4,7 @@ from datetime import datetime, timedelta
 from enum import Enum
 from types import MappingProxyType
 from typing import BinaryIO, Mapping, Optional
+from urllib.parse import quote
 import unicodedata
 
 MAX_PUT_SIZE = 5 * 1024**3
@@ -116,14 +117,25 @@ class ReadUrlOptions:
         if self.disposition not in (None, "inline", "attachment"):
             raise StorageError(StorageErrorCode.INVALID_INPUT)
         if self.filename is not None:
-            _header(self.filename)
-            if self.disposition is None or any(c in self.filename for c in '/\\"'):
+            try:
+                valid_length = 0 < len(self.filename.encode("utf-8")) <= 1024
+            except (AttributeError, UnicodeEncodeError):
+                valid_length = False
+            if (self.disposition is None or not valid_length or
+                    any(c in '/\\"' or ord(c) < 32 or 127 <= ord(c) <= 159
+                        for c in self.filename)):
                 raise StorageError(StorageErrorCode.INVALID_INPUT)
 
     def content_disposition(self):
         if self.disposition is None:
             return None
-        return self.disposition + (f'; filename="{self.filename}"' if self.filename is not None else "")
+        if self.filename is None:
+            return self.disposition
+        if all(ord(c) <= 126 for c in self.filename):
+            return f'{self.disposition}; filename="{self.filename}"'
+        fallback = "".join(c if ord(c) <= 126 else "_" for c in self.filename)
+        return (f'{self.disposition}; filename="{fallback}"; '
+                f"filename*=UTF-8''{quote(self.filename, safe='')}")
 
     def __repr__(self):
         return "ReadUrlOptions[details=masked]"

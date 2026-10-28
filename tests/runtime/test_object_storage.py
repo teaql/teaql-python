@@ -99,6 +99,16 @@ def test_object_storage_options_and_private_representations():
     for seconds in (0, -1, 0.5, 604801):
         assert_error(StorageErrorCode.INVALID_INPUT, lambda: ReadUrlOptions(timedelta(seconds=seconds)))
     assert_error(StorageErrorCode.INVALID_INPUT, lambda: ReadUrlOptions(filename="bad\nname", disposition="attachment"))
+    assert_error(StorageErrorCode.INVALID_INPUT, lambda: ReadUrlOptions(filename="bad\r\nname", disposition="attachment"))
+    assert_error(StorageErrorCode.INVALID_INPUT, lambda: ReadUrlOptions(filename="bad/name", disposition="attachment"))
+    assert_error(StorageErrorCode.INVALID_INPUT, lambda: ReadUrlOptions(filename="\ud800", disposition="attachment"))
+    assert ReadUrlOptions(disposition="inline", filename="sample.jpg").content_disposition() == (
+        'inline; filename="sample.jpg"')
+    unicode_disposition = ReadUrlOptions(
+        disposition="inline", filename="报告 & 📄\u2028mid\u2029x.jpg").content_disposition()
+    assert unicode_disposition.startswith('inline; filename="__ & _')
+    assert "filename*=UTF-8''%E6%8A%A5%E5%91%8A%20%26%20%F0%9F%93%84" in unicode_disposition
+    assert "\r" not in unicode_disposition and "\n" not in unicode_disposition
     assert "CANARY" not in repr(ObjectKey("PRIVATE-KEY-CANARY"))
     assert "CANARY" not in repr(ObjectReadUrl("PRIVATE-URL-CANARY", None))
     options = PutOptions(0, WriteMode.CREATE_ONLY, metadata={"tag": "PRIVATE-METADATA-CANARY"})
