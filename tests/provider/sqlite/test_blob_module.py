@@ -7,7 +7,7 @@ import aiosqlite
 import pytest
 
 from teaql.core.blob_ref import BlobFieldSpec, BlobRef
-from teaql.core.entity import EntityKey
+from teaql.core.entity import EntityKey, EntityRoot
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
 from teaql.core.mutation import DeleteCommand, InsertCommand, UpdateCommand
 from teaql.core.value import DataType
@@ -219,4 +219,61 @@ async def test_native_mutation_binds_blob_in_same_sqlite_graph(tmp_path):
             assert await cursor.fetchone() == (None, 1)
     await save(DeleteCommand.new("Asset", 2).expected_version(1).hard_delete(),
                "delete empty", asset_id=2)
+
+    ledger_ref = BlobRef("blob_native_ledger")
+    async with aiosqlite.connect(path) as db:
+        await db.execute("INSERT INTO teaql_blob_catalog "
+            "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,"
+            "completed_at_ms,policy_profile,upload_mode,unbound_retention_seconds,effective_unref_seconds) "
+            "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+            (ledger_ref.key, "tenant-a", "objects/ledger", "v1", "ledger.pdf",
+             "application/pdf", 7, "uploaded_unbound", time.time_ns() // 1_000_000,
+             "default", "server_stream", 86400, 604800))
+        await db.commit()
+
+    async def save_allocated_ledger(abort):
+        ledger = EntityRoot()
+        provisional = EntityKey("Asset", -1)
+        ledger.mark_as_new(provisional)
+        ledger.set(provisional, "document", ledger_ref)
+
+        async def work(graph):
+            allocated = await graph.transaction.next_id("Asset")
+            assert type(allocated) is int and allocated > 0
+            actual = EntityKey("Asset", allocated)
+            ledger.rekey(provisional, actual)
+            command = (InsertCommand.new("Asset").value("id", allocated)
+                       .value("document", ledger_ref))
+            result = await graph.transaction.mutate(graph.context,
+                graph.request(command, graph.scope(actual), ledger, actual))
+            assert getattr(result.generated_values["id"], "val") == allocated
+            assert ledger.get(actual, "document") == ledger_ref
+            if abort:
+                raise RuntimeError("outer owner rejected")
+            return allocated
+
+        return await context.execute_graph_save(work, comment="save allocated ledger Blob")
+
+    with pytest.raises(RuntimeError, match="outer owner rejected"):
+        await save_allocated_ledger(True)
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT COUNT(*) FROM asset WHERE document=?",
+                              (ledger_ref.key,)) as cursor:
+            assert await cursor.fetchone() == (0,)
+        async with db.execute("SELECT COUNT(*) FROM teaql_blob_binding WHERE key=?",
+                              (ledger_ref.key,)) as cursor:
+            assert await cursor.fetchone() == (0,)
+        async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key=?",
+                              (ledger_ref.key,)) as cursor:
+            assert await cursor.fetchone() == ("uploaded_unbound",)
+    allocated = await save_allocated_ledger(False)
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT document FROM asset WHERE id=?", (allocated,)) as cursor:
+            assert await cursor.fetchone() == (ledger_ref.key,)
+        async with db.execute("SELECT key FROM teaql_blob_binding WHERE entity_id=?",
+                              (str(allocated),)) as cursor:
+            assert await cursor.fetchone() == (ledger_ref.key,)
+        async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key=?",
+                              (ledger_ref.key,)) as cursor:
+            assert await cursor.fetchone() == ("available",)
     store.close()
