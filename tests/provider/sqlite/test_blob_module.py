@@ -2,6 +2,8 @@
 
 import os
 import time
+from hashlib import sha256
+from io import BytesIO
 
 import aiosqlite
 import pytest
@@ -10,6 +12,7 @@ from teaql.core.blob_ref import BlobFieldSpec, BlobRef
 from teaql.core.entity import EntityKey, EntityRoot
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
 from teaql.core.mutation import DeleteCommand, InsertCommand, UpdateCommand
+from teaql.core.object_storage import ObjectKey
 from teaql.core.value import DataType
 from teaql.provider.sqlite import SimpleSchemaProvider
 from teaql.provider.sqlite.dialect import SqliteDialect
@@ -18,6 +21,7 @@ from teaql.runtime import RuntimeModule, validate_capabilities
 from teaql.sql.executor import SqlDataServiceExecutor
 from teaql_blob_reference import (
     BlobReferenceModule, BlobRetentionPolicy, FileObjectStorage, SqliteBlobCatalog,
+    BlobUploadInput, BlobUploadTarget, BlobVerifiedContent,
     SqliteBlobMaintenanceService, SqliteBlobUploadService,
 )
 
@@ -411,5 +415,156 @@ async def test_native_blob_multi_entity_graph_rolls_back_together(tmp_path):
                     (str(committed[1]), "legacy_document", refs[2].key)]
             async with db.execute("SELECT key,status FROM teaql_blob_catalog ORDER BY key") as cursor:
                 assert await cursor.fetchall() == [(ref.key, "available") for ref in refs]
+    finally:
+        store.close()
+
+
+@pytest.mark.asyncio
+async def test_native_shared_blob_final_unbind_controls_file_retention(tmp_path):
+    path = str(tmp_path / "shared-native.db")
+    descriptor = EntityDescriptor("Asset").table_name("asset")
+    descriptor.property(PropertyDescriptor("id", DataType.I64).is_id())
+    descriptor.property(PropertyDescriptor("version", DataType.I64).is_version())
+    descriptor.property(PropertyDescriptor("document", DataType.Text).blob(
+        BlobFieldSpec("Asset", "document", ["pdf"], True, "default")))
+    schema = SimpleSchemaProvider()
+    schema.register_entity(descriptor)
+    context = RuntimeModule.new().entity(descriptor).require_capability("blob.v1").into_context()
+    context.insert_resource("dataService", SqlDataServiceExecutor(
+        SqliteDialect(), SqliteTransport(path), schema))
+    context.disable_sql_log()
+    store = FileObjectStorage(tmp_path / "shared-private", os.urandom(32))
+    context.with_object_storage(store).with_object_storage_observer(lambda event: None)
+    clock = [1_700_000_000_000]
+    catalog = SqliteBlobCatalog(SqliteTransport(path), now_ms=lambda: clock[0])
+    policy = BlobRetentionPolicy("default", "server_stream", 10, 20, 0)
+
+    class UploadAuthority:
+        def scope(self, _context):
+            return "tenant-a"
+
+        def field(self, _context, _target):
+            return BlobFieldSpec("Asset", "document", ["pdf"], True, "default")
+
+        async def authorize(self, _context, target, action, _input):
+            return target.entity == "Asset" and target.field == "document" and action in (
+                "Begin", "Write", "Confirm")
+
+        async def current_policy_on_lease(self, _context, lease, _target):
+            assert lease is not None
+            return policy
+
+    class BindingAuthority(_BindingAuthority):
+        async def current_policy_on_lease(self, _context, lease, _target):
+            assert lease is not None
+            return policy
+
+    class FixtureVerifier:
+        def verify(self, stream, extension, maximum_bytes):
+            data = stream.read(maximum_bytes + 1)
+            assert extension == "pdf" and len(data) <= maximum_bytes
+            assert data.startswith(b"%PDF-") and b"%%EOF" in data
+            assert stream.read(1) == b""
+            return BlobVerifiedContent(len(data), sha256(data).hexdigest(), "application/pdf")
+
+    upload = SqliteBlobUploadService(catalog, UploadAuthority(), FixtureVerifier(), 10_000,
+                                     now_ms=lambda: clock[0])
+    maintenance = SqliteBlobMaintenanceService(catalog, _MaintenanceAuthority(),
+                                               now_ms=lambda: clock[0])
+    module = BlobReferenceModule(catalog, upload, _ReadAuthority(), BindingAuthority(),
+                                 maintenance=maintenance)
+    async with aiosqlite.connect(path) as db:
+        await db.execute("CREATE TABLE asset (id INTEGER PRIMARY KEY, version INTEGER, document TEXT)")
+        await db.commit()
+    await catalog.ensure_schema()
+    module.install(context)
+    await module.ready(context)
+
+    async def row(sql, params=()):
+        async with aiosqlite.connect(path) as db:
+            async with db.execute(sql, params) as cursor:
+                return await cursor.fetchone()
+
+    try:
+        data = b"%PDF-1.7\nshared native Blob\n%%EOF"
+        session = await upload.begin(context, BlobUploadTarget("Asset", "1", "document"),
+                                     BlobUploadInput("shared.pdf", len(data), "application/pdf"),
+                                     "shared-native-blob")
+        assert await upload.write(context, session.upload_id, BytesIO(data)) == len(data)
+        assert await upload.complete(context, session.upload_id) == session.reference
+        object_key = ObjectKey((await row("SELECT object_key FROM teaql_blob_catalog WHERE key=?",
+                                          (session.reference.key,)))[0])
+        object_store = context.object_storage("shared native Blob graph")
+        assert object_store.head(object_key) is not None
+
+        ledger = EntityRoot()
+        provisional = [EntityKey("Asset", -1), EntityKey("Asset", -2)]
+        for key in provisional:
+            ledger.mark_as_new(key)
+            ledger.set(key, "document", session.reference)
+
+        async def bind(graph):
+            ids = []
+            for key in provisional:
+                allocated = await graph.transaction.next_id("Asset")
+                actual = EntityKey("Asset", allocated)
+                ledger.rekey(key, actual)
+                command = (InsertCommand.new("Asset").value("id", allocated)
+                           .value("document", ledger.get(actual, "document")))
+                await graph.transaction.mutate(graph.context,
+                    graph.request(command, graph.scope(actual), ledger, actual))
+                ids.append(allocated)
+            return ids
+
+        ids = await context.execute_graph_save(bind, comment="bind shared Blob in two native rows")
+        assert len(ids) == 2
+        assert await row("SELECT COUNT(*) FROM teaql_blob_binding WHERE key=?",
+                         (session.reference.key,)) == (2,)
+        assert await row("SELECT status,last_unbound_at_ms FROM teaql_blob_catalog WHERE key=?",
+                         (session.reference.key,)) == ("available", None)
+
+        clock[0] += 40_000
+
+        async def unbind(id, outer_reject=False):
+            async def work(graph):
+                command = UpdateCommand.new("Asset", id).value("document", None)
+                await graph.transaction.mutate(graph.context,
+                    graph.request(command, graph.scope(EntityKey("Asset", id))))
+                if outer_reject:
+                    raise RuntimeError("outer owner rejected final unbind")
+            await context.execute_graph_save(work, comment="unbind shared Blob row")
+
+        await unbind(ids[0])
+        assert await row("SELECT COUNT(*) FROM teaql_blob_binding WHERE key=?",
+                         (session.reference.key,)) == (1,)
+        assert await row("SELECT last_unbound_at_ms FROM teaql_blob_catalog WHERE key=?",
+                         (session.reference.key,)) == (None,)
+        assert (await maintenance.run_batch(context)).outcomes == ()
+        assert object_store.head(object_key) is not None
+
+        with pytest.raises(RuntimeError, match="outer owner rejected final unbind"):
+            await unbind(ids[1], outer_reject=True)
+        assert await row("SELECT document FROM asset WHERE id=?", (ids[1],)) == (session.reference.key,)
+        assert await row("SELECT COUNT(*) FROM teaql_blob_binding WHERE key=?",
+                         (session.reference.key,)) == (1,)
+        assert await row("SELECT last_unbound_at_ms FROM teaql_blob_catalog WHERE key=?",
+                         (session.reference.key,)) == (None,)
+        assert (await maintenance.run_batch(context)).outcomes == ()
+
+        await unbind(ids[1])
+        assert await row("SELECT COUNT(*) FROM teaql_blob_binding WHERE key=?",
+                         (session.reference.key,)) == (0,)
+        assert await row("SELECT last_unbound_at_ms FROM teaql_blob_catalog WHERE key=?",
+                         (session.reference.key,)) == (clock[0],)
+        clock[0] += 19_999
+        assert (await maintenance.run_batch(context)).outcomes == ()
+        assert object_store.head(object_key) is not None
+        clock[0] += 1
+        batch = await maintenance.run_batch(context)
+        assert [(item.reference.key, item.status) for item in batch.outcomes] == [
+            (session.reference.key, "deleted")]
+        assert object_store.head(object_key) is None
+        assert await row("SELECT status FROM teaql_blob_catalog WHERE key=?",
+                         (session.reference.key,)) == ("deleted",)
     finally:
         store.close()
