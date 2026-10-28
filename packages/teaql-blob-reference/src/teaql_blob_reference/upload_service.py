@@ -45,6 +45,15 @@ class BlobUploadInput:
 
 
 @dataclass(frozen=True)
+class BlobUploadAuthorizationState:
+    """Current scope, field and permission read on the upload's SQL lease."""
+
+    scope: str
+    field: BlobFieldSpec
+    allowed: bool
+
+
+@dataclass(frozen=True)
 class BlobVerifiedContent:
     size_bytes: int
     sha256: str
@@ -73,6 +82,14 @@ class BlobUploadPolicyAuthorization(Protocol):
 
     async def current_policy_on_lease(self, context, lease: SqlTransactionTransport,
                                       target: BlobUploadTarget) -> BlobRetentionPolicy: ...
+
+
+class BlobUploadLeaseAuthorization(Protocol):
+    """Optional host authorization on the physical upload transaction."""
+
+    async def current_on_lease(self, context, lease: SqlTransactionTransport,
+                               target: BlobUploadTarget, action: str,
+                               input: BlobUploadInput) -> BlobUploadAuthorizationState: ...
 
 
 class BlobContentVerifier(Protocol):
@@ -163,20 +180,27 @@ class SqliteBlobUploadService:
             raise RuntimeError("BLOB_FORMAT_NOT_ALLOWED")
         return BlobUploadInput(name, input.declared_size, declared), extension
 
-    async def _current(self, actor, target, action, input, expected_scope=None):
+    async def _current(self, actor, target, action, input, expected_scope=None, lease=None):
         if (actor is None or not isinstance(target, BlobUploadTarget)
                 or not _name(target.entity) or not _name(target.field)
                 or target.entity_id != "" and not _entity_id(target.entity_id)):
             raise RuntimeError("BLOB_REFERENCE_INVALID")
         try:
-            scope = self.authorization.scope(actor)
-            field = self.authorization.field(actor, target)
-            allowed = await self.authorization.authorize(actor, target, action, input)
+            current_on_lease = getattr(self.authorization, "current_on_lease", None)
+            if lease is not None and current_on_lease is not None:
+                state = await current_on_lease(actor, lease, target, action, input)
+                if not isinstance(state, BlobUploadAuthorizationState):
+                    raise TypeError("invalid upload authorization state")
+                scope, field, allowed = state.scope, state.field, state.allowed
+            else:
+                scope = self.authorization.scope(actor)
+                field = self.authorization.field(actor, target)
+                allowed = await self.authorization.authorize(actor, target, action, input)
         except Exception:
             raise RuntimeError("BLOB_UPLOAD_DENIED") from None
         if (not _scope(scope) or expected_scope is not None and scope != expected_scope
                 or not isinstance(field, BlobFieldSpec) or field.entity != target.entity
-                or field.field != target.field or not allowed):
+                or field.field != target.field or type(allowed) is not bool or not allowed):
             raise RuntimeError("BLOB_UPLOAD_DENIED")
         extension = input.file_name.rsplit(".", 1)[-1].lower()
         if extension not in field.allowed_extensions:
@@ -242,7 +266,7 @@ class SqliteBlobUploadService:
                 row = rows[0]
                 if row.get("request_hash") != request_hash:
                     raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
-                await self._current(actor, target, "Begin", normalized, scope)
+                await self._current(actor, target, "Begin", normalized, scope, tx)
                 try:
                     expires_ms = row["expires_ms"]
                     if type(expires_ms) is not int:
@@ -257,7 +281,7 @@ class SqliteBlobUploadService:
             upload_id = "bu_" + _token()
             object_key = "blob/" + _token()
             expires_ms = self.now_ms() + self.lease_seconds * 1000
-            await self._current(actor, target, "Begin", normalized, scope)
+            await self._current(actor, target, "Begin", normalized, scope, tx)
             policy = await self._policy_on_lease(actor, tx, target)
             profile = Value.Text(policy.profile) if policy else Value.Null()
             mode = Value.Text(policy.upload_mode) if policy else Value.Null()
@@ -380,7 +404,7 @@ class SqliteBlobUploadService:
                         raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
                     await self._current(actor, target, "Write",
                                         BlobUploadInput(row["file_name"], row["declared_size"]),
-                                        row["scope"])
+                                        row["scope"], tx)
                     if self.now_ms() >= row["expires_ms"]:
                         raise RuntimeError("BLOB_UPLOAD_EXPIRED")
 
@@ -424,7 +448,7 @@ class SqliteBlobUploadService:
                     count = await asyncio.to_thread(verify_replay)
                     await self._current(actor, target, "Write",
                                         BlobUploadInput(row["file_name"], row["declared_size"]),
-                                        row["scope"])
+                                        row["scope"], tx)
                     if self.now_ms() >= row["expires_ms"]:
                         raise RuntimeError("BLOB_UPLOAD_EXPIRED")
                     return count
@@ -432,7 +456,7 @@ class SqliteBlobUploadService:
                     raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
                 await self._current(actor, target, "Write",
                                     BlobUploadInput(row["file_name"], row["declared_size"]),
-                                    row["scope"])
+                                    row["scope"], tx)
                 if self.now_ms() >= row["expires_ms"]:
                     raise RuntimeError("BLOB_UPLOAD_EXPIRED")
                 store = actor.object_storage("write Blob upload")
@@ -482,7 +506,7 @@ class SqliteBlobUploadService:
                     raise RuntimeError("BLOB_STORE_FAILED") from None
                 await self._current(actor, target, "Write",
                                     BlobUploadInput(row["file_name"], row["declared_size"]),
-                                    row["scope"])
+                                    row["scope"], tx)
                 now = self.now_ms()
                 if now >= row["expires_ms"]:
                     raise RuntimeError("BLOB_UPLOAD_EXPIRED")
@@ -622,14 +646,14 @@ class SqliteBlobUploadService:
                 raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
             await self._current(actor, target, "Confirm",
                                 BlobUploadInput(row["file_name"], row["declared_size"]),
-                                row["scope"])
+                                row["scope"], tx)
             now = self.now_ms()
             if not valid_time(now) or now >= row["expires_ms"]:
                 raise RuntimeError("BLOB_UPLOAD_EXPIRED")
             verified = await asyncio.to_thread(verify_stored)
             await self._current(actor, target, "Confirm",
                                 BlobUploadInput(row["file_name"], row["declared_size"],
-                                                verified.content_type), row["scope"])
+                                                verified.content_type), row["scope"], tx)
             now = self.now_ms()
             if not valid_time(now) or now >= row["expires_ms"]:
                 raise RuntimeError("BLOB_UPLOAD_EXPIRED")

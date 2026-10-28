@@ -13,7 +13,8 @@ from .file_generation_maintenance import (BlobFileGenerationSweepBatch,
                                           SqliteBlobFileGenerationSweepService)
 from .retention import BlobRetentionPolicy
 from .content_composite import CompositeBlobContentVerifier
-from .upload_service import (BlobUploadInput, BlobUploadSession, BlobUploadTarget,
+from .upload_service import (BlobUploadAuthorizationState, BlobUploadInput,
+                             BlobUploadSession, BlobUploadTarget,
                              BlobVerifiedContent, SqliteBlobUploadService)
 
 __all__ = ["BlobReferenceModule", "SqliteBlobMutationParticipant", "BlobBindingChange", "BlobBindingTarget", "BlobCatalogRead",
@@ -22,6 +23,6 @@ __all__ = ["BlobReferenceModule", "SqliteBlobMutationParticipant", "BlobBindingC
            "BlobFileGenerationSweepBatch", "BlobFileGenerationSweepOutcome",
            "SqliteBlobFileGenerationSweepService",
            "SqliteBlobCatalog", "SqliteBlobResponseContributor", "FileObjectStorage",
-           "BlobUploadInput", "BlobUploadSession", "BlobUploadTarget",
+           "BlobUploadAuthorizationState", "BlobUploadInput", "BlobUploadSession", "BlobUploadTarget",
            "BlobVerifiedContent", "SqliteBlobUploadService", "BlobRetentionPolicy",
            "CompositeBlobContentVerifier"]

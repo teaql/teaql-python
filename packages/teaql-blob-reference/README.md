@@ -4,6 +4,8 @@ Optional Blob catalog and current-read services for TeaQL Python. Install this w
 
 `SqliteBlobUploadService` offers a host-invoked, scope-bound upload journal. The host must provide current model/action authorization and a trusted parser that consumes every stored byte and returns actual format, size, and SHA256. The service writes through the context's object-storage provider, rechecks the stored generation before confirmation, and promotes the row to `uploaded_unbound` only after full verification. The included PDF verifier in tests is a fixture, not a production format parser. Other SQL backends and production ten-format parsing remain open.
 
+For permissions backed by mutable business rows, the host may implement `current_on_lease(actor, lease, target, action, input)` and return `BlobUploadAuthorizationState(scope, field, allowed)`. Begin, Write, and Confirm then recheck that state on the same physical SQLite transaction as the upload journal; a missing row, revoked permission, malformed state, or scope/field mismatch denies the operation. The ordinary `scope`, `field`, and `authorize` callbacks remain the preflight path and the compatibility path for hosts without this optional hook.
+
 To use several optional parsers in one upload service, pass a
 `CompositeBlobContentVerifier` with explicit extension-to-parser routes. It
 copies and validates the route table at construction, calls each distinct

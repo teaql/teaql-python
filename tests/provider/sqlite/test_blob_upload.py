@@ -29,8 +29,10 @@ from teaql.runtime.view_preparation import (
     ViewPreparationError, ViewPreparationService,
 )
 from teaql.sql.executor import SqlDataServiceExecutor
+from teaql.sql.types import CompiledQuery
 from teaql_blob_reference import (
-    BlobBindingChange, BlobBindingTarget, BlobRetentionPolicy, BlobUploadInput, BlobUploadTarget,
+    BlobBindingChange, BlobBindingTarget, BlobRetentionPolicy, BlobUploadAuthorizationState,
+    BlobUploadInput, BlobUploadTarget,
     BlobVerifiedContent, FileObjectStorage, SqliteBlobCatalog, SqliteBlobResponseContributor,
     SqliteBlobUploadService,
 )
@@ -288,6 +290,72 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
                 actor.object_storage("clean S3 Blob upload fixture").delete(object_key)
         finally:
             provider.close()
+
+
+@pytest.mark.asyncio
+async def test_upload_rechecks_current_permission_on_physical_sql_lease(tmp_path):
+    path = str(tmp_path / "lease-authority.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    async with aiosqlite.connect(path) as db:
+        await db.execute("CREATE TABLE upload_permission (id INTEGER PRIMARY KEY, allowed INTEGER)")
+        await db.execute("INSERT INTO upload_permission VALUES (1,0)")
+        await db.commit()
+
+    class LeaseAuthority(UploadAuthority):
+        def __init__(self):
+            super().__init__()
+            self.seen = []
+
+        async def current_on_lease(self, actor, lease, target, action, _input):
+            self.seen.append(action)
+            rows = await lease.fetch_all_sql(CompiledQuery(
+                "SELECT allowed FROM upload_permission WHERE id=1", []))
+            assert len(rows) == 1
+            return BlobUploadAuthorizationState(self.scope(actor), self.field(actor, target),
+                                                rows[0]["allowed"] == 1)
+
+    async def set_allowed(value):
+        async with aiosqlite.connect(path) as db:
+            await db.execute("UPDATE upload_permission SET allowed=? WHERE id=1", (value,))
+            await db.commit()
+
+    authority = LeaseAuthority()
+    verifier = FixturePDFVerifier()
+    service = SqliteBlobUploadService(catalog, authority, verifier, 10_000)
+    actor = RuntimeModule.new().into_context().with_object_storage(
+        FileObjectStorage(tmp_path / "private", os.urandom(32)))
+    actor.with_object_storage_observer(lambda event: None)
+    target = BlobUploadTarget("Asset", "1", "document")
+    data = b"%PDF-1.7\nlease permission\n%%EOF"
+    input = BlobUploadInput("report.pdf", len(data), "application/pdf")
+
+    with pytest.raises(RuntimeError, match="BLOB_UPLOAD_DENIED"):
+        await service.begin(actor, target, input, "lease-denied")
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT COUNT(*) FROM teaql_blob_upload") as cursor:
+            assert (await cursor.fetchone())[0] == 0
+
+    await set_allowed(1)
+    session = await service.begin(actor, target, input, "lease-allowed")
+    await set_allowed(0)
+    source = BytesIO(data)
+    with pytest.raises(RuntimeError, match="BLOB_UPLOAD_DENIED"):
+        await service.write(actor, session.upload_id, source)
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT state FROM teaql_blob_upload WHERE upload_id=?",
+                              (session.upload_id,)) as cursor:
+            assert (await cursor.fetchone())[0] == "initiated"
+    await set_allowed(1)
+    assert await service.write(actor, session.upload_id, BytesIO(data)) == len(data)
+    await set_allowed(0)
+    with pytest.raises(RuntimeError, match="BLOB_UPLOAD_DENIED"):
+        await service.complete(actor, session.upload_id)
+    assert verifier.calls == 0
+    await set_allowed(1)
+    assert await service.complete(actor, session.upload_id) == session.reference
+    assert verifier.calls == 1
+    assert {"Begin", "Write", "Confirm"}.issubset(authority.seen)
 
 
 @pytest.mark.asyncio
