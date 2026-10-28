@@ -1,1 +1,3 @@
 test-vectors/*.tsv whitespace=-blank-at-eol
+tests/fixtures/reference-modules/*.doc binary
+tests/fixtures/reference-modules/*.xls binary

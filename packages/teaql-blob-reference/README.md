@@ -54,8 +54,19 @@ Office main content type and package relationship, then parses the Word body or
 every Excel worksheet under an element/cell count limit. It hashes original
 bytes and returns the precise Office MIME type. Construction is passive, and
 `validate_ready` requires both optional parsers. The in-process parsers do not
-provide hard CPU or process-memory isolation. Binary DOC/XLS still need
-production adapters.
+provide hard CPU or process-memory isolation.
+
+For binary DOC/XLS on Linux, inject
+`teaql_blob_reference.content_legacy_office.LegacyOfficeBlobContentVerifier`
+with absolute paths to patched LibreOffice (`soffice`), `bwrap`, `prlimit` and
+an owner-only (`0700`) canonical scratch directory. Install the `office` extra
+for its converted OOXML verifier. The adapter checks original CFB header and
+sector layout, converts each file in a network/PID-isolated bubblewrap
+namespace with read-only system mounts and only one private writable scratch,
+then fully validates the DOCX/XLSX output. CPU, address-space, file-size,
+wall-time, input and concurrency limits apply. It returns original DOC/XLS
+SHA, size and MIME, so storage keeps the original bytes. This is bounded
+decodability verification, not malware or macro detection.
 
 For actual MP3/MP4 validation on POSIX hosts, inject
 `teaql_blob_reference.content_ffmpeg.FfmpegBlobContentVerifier` with absolute

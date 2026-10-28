@@ -87,7 +87,8 @@ class FixturePDFVerifier:
 
 @pytest.mark.asyncio
 @pytest.mark.parametrize("case", ["fixture-pdf", "real-jpeg", "real-pdf",
-                                  "real-docx", "real-xlsx", "real-mp3", "real-mp4"])
+                                  "real-docx", "real-xlsx", "real-doc", "real-xls",
+                                  "real-mp3", "real-mp4"])
 async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, case):
     if os.environ.get("TEAQL_S3_TEST_BLOB_UPLOAD") != "1":
         pytest.skip("explicit S3-compatible Blob upload gate required")
@@ -97,6 +98,8 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
         pytest.skip("explicit production PDF S3 gate required")
     if case in ("real-docx", "real-xlsx") and os.environ.get("TEAQL_S3_TEST_REAL_OFFICE") != "1":
         pytest.skip("explicit production Office S3 gate required")
+    if case in ("real-doc", "real-xls") and os.environ.get("TEAQL_S3_TEST_REAL_LEGACY_OFFICE") != "1":
+        pytest.skip("explicit production legacy Office S3 gate required")
     if case in ("real-mp3", "real-mp4") and os.environ.get("TEAQL_S3_TEST_REAL_MEDIA") != "1":
         pytest.skip("explicit production media S3 gate required")
     endpoint = os.environ.get("TEAQL_S3_TEST_ENDPOINT")
@@ -148,6 +151,23 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
             workbook.save(output)
             content_type = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
         data, file_name = output.getvalue(), "sample." + extension
+    elif case in ("real-doc", "real-xls"):
+        from teaql_blob_reference.content_legacy_office import LegacyOfficeBlobContentVerifier
+        soffice, bwrap, prlimit = (which(name) for name in ("soffice", "bwrap", "prlimit"))
+        if not all((soffice, bwrap, prlimit)):
+            pytest.skip("host LibreOffice, bubblewrap and prlimit required")
+        extension = case.removeprefix("real-")
+        scratch = tmp_path / "legacy-scratch"
+        scratch.mkdir(mode=0o700)
+        scratch.chmod(0o700)
+        authority = UploadAuthority((extension,))
+        parser = LegacyOfficeBlobContentVerifier(soffice, bwrap, prlimit, scratch,
+                                                 maximum_input_bytes=100_000,
+                                                 maximum_converted_bytes=100_000)
+        data = (Path(__file__).parents[2] / "fixtures" / "reference-modules" /
+                ("sample." + extension)).read_bytes()
+        file_name = "sample." + extension
+        content_type = "application/msword" if extension == "doc" else "application/vnd.ms-excel"
     elif case in ("real-mp3", "real-mp4"):
         from teaql_blob_reference.content_ffmpeg import FfmpegBlobContentVerifier
         ffprobe, ffmpeg = which("ffprobe"), which("ffmpeg")
