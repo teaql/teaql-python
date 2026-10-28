@@ -11,6 +11,7 @@ from teaql.core.list import SmartList
 from teaql.core.query import AggregateFunction
 from teaql.data_service import QueryRequest
 from .telemetry import RuntimeOperation, observe_runtime_operation
+from .query_properties import capture_entity_query_properties
 
 T = TypeVar('T')
 
@@ -51,6 +52,7 @@ async def execute_typed_list(context, request: QueryRequest, hydrate: Callable[[
 
     async def execute():
         total = None
+        row_query = root.query
         if count_operation is None:
             row_result = await service.query(context, root)
         else:
@@ -59,6 +61,7 @@ async def execute_typed_list(context, request: QueryRequest, hydrate: Callable[[
             query.aggregates = [item for item in query.aggregates
                                 if not (item.function == AggregateFunction.Count and item.alias == count_alias)]
             rows_request = root.with_query(query)
+            row_query = query
 
             async def count():
                 result = await service.query(context, root.for_count(count_alias, count_operation))
@@ -75,7 +78,8 @@ async def execute_typed_list(context, request: QueryRequest, hydrate: Callable[[
             else:
                 total = await count()
                 row_result = await service.query(context, rows_request)
-        return SmartList((hydrate(row) for row in row_result.rows), facets=row_result.facets,
+        return SmartList((capture_entity_query_properties(hydrate(row), row_query)
+                          for row in row_result.rows), facets=row_result.facets,
                          total_count=total, aggregations={count_alias: total} if count_alias is not None else {})
 
     return await observe_query_operation(context, service, root, execute,

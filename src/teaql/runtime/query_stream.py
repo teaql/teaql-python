@@ -3,6 +3,7 @@ import asyncio
 from contextvars import ContextVar
 
 from .telemetry import RuntimeOperation, start_runtime_operation
+from .query_properties import capture_entity_query_properties
 
 
 _active_stream = ContextVar('teaql_typed_stream_execution', default=None)
@@ -80,7 +81,7 @@ class TypedStream:
             while True:
                 raw = next(self.rows, None)
                 if raw is not None:
-                    value = self.hydrate(raw)
+                    value = capture_entity_query_properties(self.hydrate(raw), self.request.query)
                     self.delivered += 1
                     return value
                 chunk = await anext(self.cursor)

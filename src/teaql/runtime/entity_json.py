@@ -16,6 +16,7 @@ import re
 from typing import Callable
 
 from teaql.core.value import Timestamp, Value
+from teaql.core.projection_properties import ProjectionProperties
 from .i18n import JsonFieldNamingProfile, ObjectLocation
 from .wire_fields import WireInputError, create_wire_entity_metadata
 
@@ -206,6 +207,12 @@ class EntityJSONSchema:
         return create_wire_entity_metadata(self.entity_type, [field.canonical_name for field in self.fields],
             profile, {field.canonical_name: (field.canonical_name,) for field in self.fields})
 
+    @lru_cache(maxsize=512)
+    def _query_reserved_names(self):
+        return frozenset(name for field in self.fields for name in (
+            field.canonical_name, field.native_name, field.loaded_name or field.native_name,
+            *(profile.render(field.canonical_name) for profile in JsonFieldNamingProfile)))
+
     def dumps(self, entity, *, profile=None):
         value = self._encode_entity(entity, self.profile if profile is None else _profile(profile), ObjectLocation(), "", set(), 0)
         text = json.dumps(value, ensure_ascii=False, allow_nan=False, separators=(",", ":"))
@@ -245,9 +252,48 @@ class EntityJSONSchema:
                 wire_name = self._wire(profile).fields[field.canonical_name].wire_name
                 result[wire_name] = self._convert(field, getattr(entity, field.native_name), False, profile,
                     location.property(field.canonical_name), _pointer(pointer, wire_name), active, depth + 1)
+            properties = getattr(entity, "_projection_properties", None)
+            if isinstance(properties, ProjectionProperties):
+                for name, value in properties.selected_values().items():
+                    child_location, child_pointer = location.property(name), _pointer(pointer, name)
+                    if name in self._query_reserved_names():
+                        _error(child_location, child_pointer, "Query alias conflicts with the model namespace",
+                               "WIRE_QUERY_PROPERTY_COLLISION")
+                    result[name] = self._query_property_value(value, child_location, child_pointer, depth + 1)
             return result
         finally:
             active.remove(id(entity))
+
+    def _query_property_value(self, value, location, pointer, depth):
+        if depth > _MAX_DEPTH:
+            _error(location, pointer, "JSON depth limit exceeded", "WIRE_JSON_LIMIT")
+        value = _unwrap(value)
+        if value is None or type(value) is bool:
+            return value
+        if type(value) is int:
+            if not -(2**63) <= value < 2**64:
+                _error(location, pointer, "Query integer exceeds the native exact range", "WIRE_INTEGER_RANGE")
+            return value if abs(value) <= 2**53 - 1 else str(value)
+        if isinstance(value, Decimal):
+            return _decimal(value, False, location, pointer)
+        if type(value) is float:
+            if not math.isfinite(value):
+                _error(location, pointer, "Expected a finite query number")
+            return value
+        if isinstance(value, str):
+            return _text(value, location, pointer)
+        for native, kind in ((datetime, "datetime"), (date, "date"), (time, "time")):
+            if isinstance(value, native):
+                return _temporal(value, kind, False, location, pointer)
+        if isinstance(value, (list, tuple)):
+            return [self._query_property_value(item, location.index(index), _pointer(pointer, index), depth + 1)
+                    for index, item in enumerate(value)]
+        if isinstance(value, dict):
+            if any(not isinstance(key, str) for key in value):
+                _error(location, pointer, "Query object keys must be text")
+            return {key: self._query_property_value(item, location.property(key), _pointer(pointer, key), depth + 1)
+                    for key, item in sorted(value.items())}
+        _error(location, pointer, "Unsupported query-property value")
 
     def _decode_entity(self, entity_class, value, profile, location, pointer, depth):
         if depth > _MAX_DEPTH:
