@@ -2,6 +2,8 @@
 
 from dataclasses import replace
 from datetime import datetime, timezone
+import hashlib
+import json
 import time
 
 import aiosqlite
@@ -462,6 +464,17 @@ async def test_sqlite_document_blob_selection_shares_business_binding_and_receip
     assert await receipts(path) == 1
     replayed = await service.accept(context, "Order", "edit-order", command)
     assert replayed.replayed and host.mutations == 1
+    legacy_parts = [command.business_id, command.document_token, command.command_id,
+                    command.body, [item.__dict__ for item in command.blob_selections]]
+    legacy_hash = hashlib.sha256(json.dumps(legacy_parts, ensure_ascii=False,
+        separators=(",", ":"), sort_keys=True).encode("utf-8")).hexdigest()
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT request_hash FROM teaql_document_command_receipt") as cursor:
+            assert (await cursor.fetchone())[0] != legacy_hash
+        await db.execute("UPDATE teaql_document_command_receipt SET request_hash=?", (legacy_hash,))
+        await db.commit()
+    old_replay = await service.accept(context, "Order", "edit-order", command)
+    assert old_replay.replayed and host.mutations == 1
     with pytest.raises(RuntimeError, match="DOCUMENT_REPLAY_CONFLICT"):
         await service.accept(context, "Order", "edit-order", replace(command, blob_selections=None))
     oversized = DocumentBlobSelectionSubmission("tqs1." + "A" * (256000 - 5),

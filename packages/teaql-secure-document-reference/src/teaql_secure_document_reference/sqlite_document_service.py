@@ -138,13 +138,26 @@ def _prepared(command: SubmittedDocumentCommand) -> tuple[str, SubmittedDocument
     # Keep the original digest for receipts written without selections.
     parts = [command.business_id, command.document_token, command.command_id, copied]
     if selections is not None:
-        parts.append([selection.__dict__ for selection in selections])
+        parts.append([{"canonicalField": selection.canonical_field,
+                       "kind": selection.kind,
+                       "targetEntity": selection.target_entity,
+                       "targetKey": selection.target_key,
+                       "token": selection.token} for selection in selections])
     encoded = json.dumps(parts, ensure_ascii=False, separators=(",", ":"),
                          sort_keys=True).encode("utf-8")
     if len(encoded) > _MAX_BYTES:
         _invalid("DOCUMENT_COMMAND_INVALID")
     return hashlib.sha256(encoded).hexdigest(), SubmittedDocumentCommand(
         command.business_id, command.document_token, command.command_id, copied, selections)
+
+
+def _legacy_selection_hash(command: SubmittedDocumentCommand) -> str:
+    """Recognize receipts written before the shared selection-key encoding."""
+    parts = [command.business_id, command.document_token, command.command_id,
+             command.body, [selection.__dict__ for selection in command.blob_selections or ()]]
+    encoded = json.dumps(parts, ensure_ascii=False, separators=(",", ":"),
+                         sort_keys=True).encode("utf-8")
+    return hashlib.sha256(encoded).hexdigest()
 
 
 def _receipt(value: DocumentCommandReceipt) -> DocumentCommandReceipt:
@@ -232,7 +245,9 @@ class SQLiteDocumentCommandJournal:
                 _invalid("DOCUMENT_CATALOG_FAILED")
             if rows:
                 row = rows[0]
-                if row.get("request_hash") != request_hash:
+                if (row.get("request_hash") != request_hash and
+                        (frozen.blob_selections is None or
+                         row.get("request_hash") != _legacy_selection_hash(frozen))):
                     _invalid("DOCUMENT_REPLAY_CONFLICT")
                 try:
                     found = _receipt(DocumentCommandReceipt(row["previous_revision"],
