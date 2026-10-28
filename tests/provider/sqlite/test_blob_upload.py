@@ -150,6 +150,50 @@ async def test_upload_begin_commit_unknown_replays_original_live_session(tmp_pat
 
 
 @pytest.mark.asyncio
+async def test_upload_write_closes_source_once_before_promotion_and_replay(tmp_path):
+    class CountedSource(BytesIO):
+        def __init__(self, data, *, fail_close=False):
+            super().__init__(data)
+            self.close_count = 0
+            self.fail_close = fail_close
+
+        def close(self):
+            self.close_count += 1
+            super().close()
+            if self.fail_close:
+                raise OSError("PRIVATE-UPLOAD-SOURCE-CLOSE-CANARY")
+            if self.close_count > 1:
+                raise OSError("PRIVATE-DOUBLE-CLOSE-CANARY")
+
+    path = str(tmp_path / "write-source-close.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    actor = RuntimeModule.new().into_context().with_object_storage(
+        FileObjectStorage(tmp_path / "private", os.urandom(32)))
+    actor.with_object_storage_observer(lambda event: None)
+    service = SqliteBlobUploadService(catalog, UploadAuthority(), FixturePDFVerifier(), 10_000)
+    data = b"%PDF-1.7\nsource close before promotion\n%%EOF"
+    session = await service.begin(actor, BlobUploadTarget("Asset", "1", "document"),
+                                  BlobUploadInput("report.pdf", len(data)), "source-close")
+    failed = CountedSource(data, fail_close=True)
+    with pytest.raises(RuntimeError, match="^BLOB_STORE_FAILED$"):
+        await service.write(actor, session.upload_id, failed)
+    assert failed.close_count == 1
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("""SELECT u.state,c.status FROM teaql_blob_upload u
+            JOIN teaql_blob_catalog c ON c.key=u.key WHERE u.upload_id=?""",
+                              (session.upload_id,)) as cursor:
+            assert await cursor.fetchone() == ("initiated", "initiated")
+    retry = CountedSource(data)
+    assert await service.write(actor, session.upload_id, retry) == len(data)
+    assert retry.close_count == 1
+    assert await service.complete(actor, session.upload_id) == session.reference
+    replay = CountedSource(data)
+    assert await service.write(actor, session.upload_id, replay) == len(data)
+    assert replay.close_count == 1
+
+
+@pytest.mark.asyncio
 async def test_upload_confirm_close_failure_rolls_back_and_retries(tmp_path):
     class CloseFailStream:
         def __init__(self, source):

@@ -135,7 +135,9 @@ class _CountingReader:
         return block
 
     def close(self):
-        self.stream.close()
+        # ObjectStorage.put closes this borrowed reader. The upload service
+        # owns the caller stream through conflict recovery and SQL promotion.
+        pass
 
 
 class _ReplayMismatch(Exception):
@@ -361,6 +363,18 @@ class SqliteBlobUploadService:
     async def write(self, actor, upload_id: str, source: BinaryIO) -> int:
         if source is None or not callable(getattr(source, "read", None)):
             raise RuntimeError("BLOB_UPLOAD_INCOMPLETE")
+        source_closed = False
+
+        def close_source():
+            nonlocal source_closed
+            if source_closed:
+                return
+            source_closed = True
+            try:
+                source.close()
+            except Exception:
+                raise RuntimeError("BLOB_STORE_FAILED") from None
+
         try:
             row = await self._row(actor, upload_id, "Write")
             key = await self._object_key(actor, row)
@@ -451,6 +465,7 @@ class SqliteBlobUploadService:
                                         row["scope"], tx)
                     if self.now_ms() >= row["expires_ms"]:
                         raise RuntimeError("BLOB_UPLOAD_EXPIRED")
+                    close_source()
                     return count
                 if state != "initiated" or catalog[0]["status"] != "initiated":
                     raise RuntimeError("BLOB_IDEMPOTENCY_CONFLICT")
@@ -513,6 +528,7 @@ class SqliteBlobUploadService:
                 if (not reader.eof or reader.count != row["declared_size"] or
                         metadata.size != reader.count or not metadata.etag):
                     raise RuntimeError("BLOB_UPLOAD_INCOMPLETE")
+                close_source()
                 digest = reader.digest.hexdigest()
                 try:
                     affected, _ = await tx.execute_sql(_query(
@@ -530,8 +546,9 @@ class SqliteBlobUploadService:
                 return reader.count
             return await self._transaction(work)
         finally:
-            with suppress(Exception):
-                source.close()
+            if not source_closed:
+                with suppress(Exception):
+                    source.close()
 
     async def complete(self, actor, upload_id: str) -> BlobRef:
         row = await self._row(actor, upload_id, "Confirm")
