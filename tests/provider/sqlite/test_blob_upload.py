@@ -355,6 +355,13 @@ async def test_upload_rechecks_current_permission_on_physical_sql_lease(tmp_path
     await set_allowed(1)
     assert await service.complete(actor, session.upload_id) == session.reference
     assert verifier.calls == 1
+    await set_allowed(0)
+    with pytest.raises(RuntimeError, match="BLOB_UPLOAD_DENIED"):
+        await service.complete(actor, session.upload_id)
+    assert verifier.calls == 1
+    await set_allowed(1)
+    assert await service.complete(actor, session.upload_id) == session.reference
+    assert verifier.calls == 1
     assert {"Begin", "Write", "Confirm"}.issubset(authority.seen)
 
 
@@ -463,6 +470,68 @@ async def test_upload_confirmation_holds_sql_owner_through_parser_io(tmp_path):
     assert await second == session.reference
     assert await service.complete(actor, session.upload_id) == session.reference
     assert verifier.calls == 1
+
+
+@pytest.mark.asyncio
+async def test_confirm_serializes_permission_revocation_during_parser_io(tmp_path):
+    path = str(tmp_path / "confirm-revocation.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    async with aiosqlite.connect(path) as db:
+        await db.execute("CREATE TABLE upload_permission (id INTEGER PRIMARY KEY, allowed INTEGER)")
+        await db.execute("INSERT INTO upload_permission VALUES (1,1)")
+        await db.commit()
+    entered, release = Event(), Event()
+
+    class LeaseAuthority(UploadAuthority):
+        async def current_on_lease(self, actor, lease, target, action, _input):
+            rows = await lease.fetch_all_sql(CompiledQuery(
+                "SELECT allowed FROM upload_permission WHERE id=1", []))
+            return BlobUploadAuthorizationState(self.scope(actor), self.field(actor, target),
+                                                len(rows) == 1 and rows[0]["allowed"] == 1)
+
+    class BlockingVerifier(FixturePDFVerifier):
+        def verify(self, stream, extension, maximum_bytes):
+            result = super().verify(stream, extension, maximum_bytes)
+            entered.set()
+            if not release.wait(5):
+                raise AssertionError("test did not release parser")
+            return result
+
+    actor = RuntimeModule.new().into_context().with_object_storage(
+        FileObjectStorage(tmp_path / "private", os.urandom(32)))
+    actor.with_object_storage_observer(lambda event: None)
+    verifier = BlockingVerifier()
+    service = SqliteBlobUploadService(catalog, LeaseAuthority(), verifier, 10_000)
+    data = b"%PDF-1.7\nconcurrent revocation\n%%EOF"
+    session = await service.begin(actor, BlobUploadTarget("Asset", "1", "document"),
+                                  BlobUploadInput("report.pdf", len(data)), "revoke-request")
+    assert await service.write(actor, session.upload_id, BytesIO(data)) == len(data)
+
+    async def revoke():
+        async with aiosqlite.connect(path) as db:
+            await db.execute("UPDATE upload_permission SET allowed=0 WHERE id=1")
+            await db.commit()
+
+    confirmation = asyncio.create_task(service.complete(actor, session.upload_id))
+    revocation = None
+    try:
+        assert await asyncio.to_thread(entered.wait, 5)
+        revocation = asyncio.create_task(revoke())
+        await asyncio.sleep(0.05)
+        assert not revocation.done(), "revocation committed during the parser's SQL owner"
+    finally:
+        release.set()
+    assert await confirmation == session.reference
+    assert revocation is not None
+    await revocation
+    with pytest.raises(RuntimeError, match="BLOB_UPLOAD_DENIED"):
+        await service.complete(actor, session.upload_id)
+    assert verifier.calls == 1
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT state FROM teaql_blob_upload WHERE upload_id=?",
+                              (session.upload_id,)) as cursor:
+            assert (await cursor.fetchone())[0] == "completed"
 
 
 @pytest.mark.asyncio
