@@ -28,6 +28,8 @@ jobs:
         run: python scripts/verify-reference-release-artifacts.py dist
       - name: Run four isolated consumers from exact wheels
         run: python scripts/verify-reference-release-consumers.py dist
+      - name: Resolve and install exact wheels with declared dependencies in clean environments
+        run: python scripts/verify-reference-release-dependencies.py dist
       - uses: actions/upload-artifact@v4
         with:
           name: python-distributions
