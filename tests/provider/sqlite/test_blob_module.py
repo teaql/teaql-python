@@ -277,3 +277,139 @@ async def test_native_mutation_binds_blob_in_same_sqlite_graph(tmp_path):
                               (ledger_ref.key,)) as cursor:
             assert await cursor.fetchone() == ("available",)
     store.close()
+
+
+@pytest.mark.asyncio
+async def test_native_blob_multi_entity_graph_rolls_back_together(tmp_path):
+    path = str(tmp_path / "multi-native.db")
+    descriptor = EntityDescriptor("Asset").table_name("asset")
+    descriptor.property(PropertyDescriptor("id", DataType.I64).is_id())
+    descriptor.property(PropertyDescriptor("version", DataType.I64).is_version())
+    for field in ("document", "legacy_document"):
+        descriptor.property(PropertyDescriptor(field, DataType.Text).blob(
+            BlobFieldSpec("Asset", field, ["pdf"], True, "default")))
+    schema = SimpleSchemaProvider()
+    schema.register_entity(descriptor)
+    context = RuntimeModule.new().entity(descriptor).require_capability("blob.v1").into_context()
+    context.insert_resource("dataService", SqlDataServiceExecutor(
+        SqliteDialect(), SqliteTransport(path), schema))
+    context.disable_sql_log()
+    store = FileObjectStorage(tmp_path / "multi-private", os.urandom(32))
+    context.with_object_storage(store)
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    refs = [BlobRef(f"blob_multi_{suffix}") for suffix in ("first", "second", "third")]
+    async with aiosqlite.connect(path) as db:
+        await db.execute("CREATE TABLE asset (id INTEGER PRIMARY KEY, version INTEGER, "
+                         "document TEXT, legacy_document TEXT)")
+        for ref in refs:
+            await db.execute("INSERT INTO teaql_blob_catalog "
+                "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,"
+                "completed_at_ms,policy_profile,upload_mode,unbound_retention_seconds,effective_unref_seconds) "
+                "VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                (ref.key, "tenant-a", f"objects/{ref.key}", "v1", f"{ref.key}.pdf",
+                 "application/pdf", 7, "uploaded_unbound", time.time_ns() // 1_000_000,
+                 "default", "server_stream", 86400, 604800))
+        await db.commit()
+
+    class MultiBindingAuthority(_BindingAuthority):
+        def __init__(self):
+            self.denied_id = None
+            self.denied = False
+            self.visited = []
+
+        async def authorize(self, context, target, previous, next_ref, action):
+            self.visited.append((target.entity_id, target.field))
+            if target.entity_id == self.denied_id and target.field == "legacy_document":
+                self.denied = True
+                return False
+            return target.entity == "Asset"
+
+    authority = MultiBindingAuthority()
+    upload = SqliteBlobUploadService(catalog, _UploadAuthority(), _Verifier(), 10_000)
+    module = BlobReferenceModule(catalog, upload, _ReadAuthority(), authority)
+    module.install(context)
+    await module.ready(context)
+    allocated = []
+
+    async def save(*, catch_denial=False, outer_reject=False):
+        allocated.clear()
+        authority.visited.clear()
+        authority.denied_id = None
+        authority.denied = False
+        ledger = EntityRoot()
+        provisional = [EntityKey("Asset", -1), EntityKey("Asset", -2)]
+        for key in provisional:
+            ledger.mark_as_new(key)
+        ledger.set(provisional[0], "document", refs[0])
+        ledger.set(provisional[1], "document", refs[1])
+        ledger.set(provisional[1], "legacy_document", refs[2])
+
+        async def work(graph):
+            for _ in provisional:
+                allocated.append(await graph.transaction.next_id("Asset"))
+            if catch_denial:
+                authority.denied_id = str(allocated[1])
+            for index, old in enumerate(provisional):
+                actual = EntityKey("Asset", allocated[index])
+                ledger.rekey(old, actual)
+                assert ledger.get(actual, "document") == refs[index]
+                command = (InsertCommand.new("Asset").value("id", allocated[index])
+                           .value("document", ledger.get(actual, "document")))
+                if index == 1:
+                    command.value("legacy_document", ledger.get(actual, "legacy_document"))
+                try:
+                    await graph.transaction.mutate(graph.context,
+                        graph.request(command, graph.scope(actual), ledger, actual))
+                except RuntimeError:
+                    if catch_denial:
+                        return
+                    raise
+            if outer_reject:
+                raise RuntimeError("outer owner rejected")
+
+        await context.execute_graph_save(work, comment="save multi-entity Blob graph")
+        return tuple(allocated)
+
+    async def assert_rollback(ids):
+        async with aiosqlite.connect(path) as db:
+            async with db.execute("SELECT COUNT(*) FROM asset WHERE id IN (?,?)", ids) as cursor:
+                assert await cursor.fetchone() == (0,)
+            async with db.execute("SELECT COUNT(*) FROM teaql_blob_binding") as cursor:
+                assert await cursor.fetchone() == (0,)
+            async with db.execute("SELECT key,status FROM teaql_blob_catalog ORDER BY key") as cursor:
+                assert await cursor.fetchall() == [(ref.key, "uploaded_unbound") for ref in refs]
+
+    try:
+        with pytest.raises(RuntimeError, match="GRAPH_TRANSACTION_ROLLBACK_ONLY"):
+            await save(catch_denial=True)
+        assert authority.denied
+        assert authority.visited == [
+            (str(allocated[0]), "document"), (str(allocated[0]), "legacy_document"),
+            (str(allocated[1]), "document"), (str(allocated[1]), "legacy_document")]
+        await assert_rollback(tuple(allocated))
+
+        with pytest.raises(RuntimeError, match="outer owner rejected"):
+            await save(outer_reject=True)
+        await assert_rollback(tuple(allocated))
+
+        committed = await save()
+        assert authority.visited == [
+            (str(committed[0]), "document"), (str(committed[0]), "legacy_document"),
+            (str(committed[1]), "document"), (str(committed[1]), "legacy_document")]
+        async with aiosqlite.connect(path) as db:
+            async with db.execute("SELECT id,document,legacy_document FROM asset ORDER BY id") as cursor:
+                assert await cursor.fetchall() == [
+                    (committed[0], refs[0].key, None),
+                    (committed[1], refs[1].key, refs[2].key)]
+            async with db.execute("SELECT entity_id,field,key FROM teaql_blob_binding "
+                                  "ORDER BY entity_id,field") as cursor:
+                assert await cursor.fetchall() == [
+                    (str(committed[0]), "document", refs[0].key),
+                    (str(committed[0]), "legacy_document", None),
+                    (str(committed[1]), "document", refs[1].key),
+                    (str(committed[1]), "legacy_document", refs[2].key)]
+            async with db.execute("SELECT key,status FROM teaql_blob_catalog ORDER BY key") as cursor:
+                assert await cursor.fetchall() == [(ref.key, "available") for ref in refs]
+    finally:
+        store.close()
