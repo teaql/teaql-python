@@ -32,9 +32,10 @@ from teaql.runtime.view_preparation import (
 from teaql.sql.executor import SqlDataServiceExecutor
 from teaql.sql.types import CompiledQuery
 from teaql_blob_reference import (
-    BlobBindingChange, BlobBindingTarget, BlobRetentionPolicy, BlobUploadAuthorizationState,
+    BlobBindingChange, BlobBindingTarget, BlobReferenceModule, BlobRetentionPolicy,
+    BlobUploadAuthorizationState,
     BlobUploadInput, BlobUploadTarget,
-    BlobVerifiedContent, FileObjectStorage, SqliteBlobCatalog, SqliteBlobResponseContributor,
+    BlobVerifiedContent, FileObjectStorage, SqliteBlobCatalog,
     SqliteBlobMaintenanceService, SqliteBlobUploadService,
 )
 
@@ -270,7 +271,10 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
     descriptor.property(PropertyDescriptor("id", DataType.I64).is_id())
     descriptor.property(PropertyDescriptor("version", DataType.I64).is_version())
     descriptor.property(PropertyDescriptor("name", DataType.Text))
-    descriptor.property(PropertyDescriptor("document", DataType.Text))
+    descriptor.property(PropertyDescriptor("document", DataType.Text).blob(
+        BlobFieldSpec("Asset", "document",
+                      ["doc", "docx", "jpeg", "jpg", "mp3", "mp4", "pdf", "png", "xls", "xlsx"],
+                      True, "default")))
     schema = SimpleSchemaProvider()
     schema.register_entity(descriptor)
     actor = RuntimeModule.new().entity(descriptor).into_context()
@@ -400,16 +404,46 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
 
         binding_authority = LifecycleBindingAuthority()
 
+        class ReadAuthorization:
+            allowed = True
+            async def authorize(self, _context, _slot):
+                return self.allowed
+
+        read_permission = ReadAuthorization()
+        module = BlobReferenceModule(catalog, service, read_permission, binding_authority,
+                                     maximum_url_seconds=3)
+        module.install(actor)
+        await module.ready(actor)
+
+        async def rejected_bind(graph):
+            command = (InsertCommand.new("Asset").value("id", 1)
+                       .value("version", 1).value("name", "rolled back")
+                       .value("document", session.reference))
+            await graph.transaction.mutate(graph.context,
+                graph.request(command, graph.scope(EntityKey("Asset", 1))))
+            raise RuntimeError("S3 outer owner rejected")
+
+        with pytest.raises(RuntimeError, match="S3 outer owner rejected"):
+            await actor.execute_graph_save(rejected_bind, comment="reject S3 Blob outer owner")
+        async with aiosqlite.connect(path) as db:
+            async with db.execute("SELECT COUNT(*) FROM asset WHERE id=1") as cursor:
+                assert await cursor.fetchone() == (0,)
+            async with db.execute("SELECT COUNT(*) FROM teaql_blob_binding WHERE "
+                                  "scope='tenant-a' AND entity='Asset' AND entity_id='1' "
+                                  "AND field='document'") as cursor:
+                assert await cursor.fetchone() == (0,)
+            async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key=?",
+                                  (session.reference.key,)) as cursor:
+                assert await cursor.fetchone() == ("uploaded_unbound",)
+        assert store.head(object_key) is not None
+        print("PASS Python " + case + " native module outer owner rollback")
+
         async def bind(graph):
             command = (InsertCommand.new("Asset").value("id", 1)
                        .value("version", 1).value("name", "document")
-                       .value("document", session.reference.key))
+                       .value("document", session.reference))
             await graph.transaction.mutate(graph.context,
                 graph.request(command, graph.scope(EntityKey("Asset", 1))))
-            assert await catalog.bind_in_graph(graph, graph.context,
-                BlobBindingChange(BlobBindingTarget("Asset", "1", "document"),
-                                  session.reference, 0, 1, "Create"),
-                binding_authority) == 1
 
         await actor.execute_graph_save(bind, comment="bind S3 Blob in business graph")
         async with aiosqlite.connect(path) as db:
@@ -419,11 +453,6 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
                                   (session.reference.key,)) as cursor:
                 assert (await cursor.fetchone())[0] == "available"
 
-        class ReadAuthorization:
-            allowed = True
-            async def authorize(self, _context, _slot):
-                return self.allowed
-
         class Authorizer:
             version = 1
             async def authorize(self, _context, _result, _options):
@@ -431,10 +460,8 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
                                           "tenant-a", self.version, session.reference)
                 return AuthorizedResponseGraph({"document": session.reference}, (slot,))
 
-        read_permission, authorizer = ReadAuthorization(), Authorizer()
+        authorizer = Authorizer()
         actor.insert_resource("response_graph_authorizer", authorizer)
-        actor.insert_resource("blob_response_contributor",
-                              SqliteBlobResponseContributor(catalog, read_permission, 3))
         options = ViewOptions("ordinary", "read_only",
                               datetime.now(timezone.utc) + timedelta(seconds=60))
         view = await ViewPreparationService().prepare(actor, None, options)
@@ -461,9 +488,6 @@ async def test_upload_real_sqlite_s3_create_only_confirm_and_replay(tmp_path, ca
                            .value("document", None))
                 await graph.transaction.mutate(graph.context,
                     graph.request(command, graph.scope(EntityKey("Asset", 1))))
-                assert await catalog.bind_in_graph(graph, graph.context,
-                    BlobBindingChange(BlobBindingTarget("Asset", "1", "document"),
-                                      None, 1, 2, "Update"), binding_authority) == 2
 
             await actor.execute_graph_save(unbind, comment="unbind S3 Blob in business graph")
             async with aiosqlite.connect(path) as db:
