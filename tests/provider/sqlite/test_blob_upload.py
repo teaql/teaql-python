@@ -18,7 +18,7 @@ from teaql.core.blob_ref import BlobFieldSpec
 from teaql.core.entity import EntityKey
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor
 from teaql.core.mutation import InsertCommand
-from teaql.core.object_storage import ObjectKey, PutOptions, WriteMode
+from teaql.core.object_storage import ObjectContent, ObjectKey, PutOptions, WriteMode
 from teaql.core.value import DataType
 from teaql.provider.sqlite import SimpleSchemaProvider
 from teaql.provider.sqlite.dialect import SqliteDialect
@@ -147,6 +147,51 @@ async def test_upload_begin_commit_unknown_replays_original_live_session(tmp_pat
     async with aiosqlite.connect(path) as db:
         async with db.execute("SELECT COUNT(*) FROM teaql_blob_upload") as cursor:
             assert (await cursor.fetchone())[0] == 1
+
+
+@pytest.mark.asyncio
+async def test_upload_confirm_close_failure_rolls_back_and_retries(tmp_path):
+    class CloseFailStream:
+        def __init__(self, source):
+            self.source = source
+
+        def read(self, size=-1):
+            return self.source.read(size)
+
+        def close(self):
+            self.source.close()
+            raise OSError("PRIVATE-OBJECT-CLOSE-CANARY")
+
+    class CloseFailStore(FileObjectStorage):
+        fail_close = True
+
+        def get(self, invocation, key):
+            content = super().get(invocation, key)
+            if self.fail_close:
+                return ObjectContent(content.metadata, CloseFailStream(content.stream))
+            return content
+
+    path = str(tmp_path / "confirm-close-failure.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    store = CloseFailStore(tmp_path / "private", os.urandom(32))
+    actor = RuntimeModule.new().into_context().with_object_storage(store)
+    actor.with_object_storage_observer(lambda event: None)
+    service = SqliteBlobUploadService(catalog, UploadAuthority(), FixturePDFVerifier(), 10_000)
+    target = BlobUploadTarget("Asset", "1", "document")
+    data = b"%PDF-1.7\nclose failure must not promote\n%%EOF"
+    session = await service.begin(actor, target, BlobUploadInput("report.pdf", len(data)), "close-failure")
+    assert await service.write(actor, session.upload_id, BytesIO(data)) == len(data)
+    with pytest.raises(RuntimeError, match="^BLOB_UPLOAD_INCOMPLETE$") as failure:
+        await service.complete(actor, session.upload_id)
+    assert "CANARY" not in str(failure.value)
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("""SELECT u.state,c.status FROM teaql_blob_upload u
+            JOIN teaql_blob_catalog c ON c.key=u.key WHERE u.upload_id=?""",
+                              (session.upload_id,)) as cursor:
+            assert await cursor.fetchone() == ("written", "initiated")
+    store.fail_close = False
+    assert await service.complete(actor, session.upload_id) == session.reference
 
 
 @pytest.mark.asyncio
