@@ -88,6 +88,68 @@ class FixturePDFVerifier:
 
 
 @pytest.mark.asyncio
+async def test_upload_begin_commit_unknown_replays_original_live_session(tmp_path):
+    path = str(tmp_path / "begin-reply-lost.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    actor = RuntimeModule.new().into_context()
+    authority = UploadAuthority()
+    now = [10000]
+    service = SqliteBlobUploadService(catalog, authority, FixturePDFVerifier(), 1000,
+                                      now_ms=lambda: now[0])
+    target = BlobUploadTarget("Asset", "1", "document")
+    upload = BlobUploadInput("report.pdf", 25)
+    begin_sql = catalog.transport.begin_sql
+
+    class CommitThenFail:
+        def __init__(self, tx):
+            self.tx = tx
+
+        def __getattr__(self, name):
+            return getattr(self.tx, name)
+
+        async def commit_sql(self):
+            await self.tx.commit_sql()
+            raise OSError("PRIVATE-BEGIN-REPLY-CANARY")
+
+    async def uncertain_begin():
+        return CommitThenFail(await begin_sql())
+
+    catalog.transport.begin_sql = uncertain_begin
+    try:
+        with pytest.raises(RuntimeError, match="^BLOB_CATALOG_FAILED$") as failure:
+            await service.begin(actor, target, upload, "lost-begin")
+        assert "CANARY" not in str(failure.value)
+    finally:
+        catalog.transport.begin_sql = begin_sql
+
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("""SELECT u.upload_id,u.key,u.expires_ms,c.status,c.upload_mode
+            FROM teaql_blob_upload u JOIN teaql_blob_catalog c ON c.key=u.key
+            WHERE u.scope=? AND u.replay_key=?""", ("tenant-a", "lost-begin")) as cursor:
+            rows = await cursor.fetchall()
+    assert len(rows) == 1
+    upload_id, key, expires_ms, status, mode = rows[0]
+    assert status == "initiated" and mode == "server_stream"
+
+    authority.allowed = False
+    with pytest.raises(RuntimeError, match="^BLOB_UPLOAD_DENIED$"):
+        await service.begin(actor, target, upload, "lost-begin")
+    authority.allowed = True
+    with pytest.raises(RuntimeError, match="^BLOB_IDEMPOTENCY_CONFLICT$"):
+        await service.begin(actor, target, BlobUploadInput("changed.pdf", 25), "lost-begin")
+    replay = await service.begin(actor, target, upload, "lost-begin")
+    assert (replay.upload_id, replay.reference.key,
+            int(replay.expires_at.timestamp() * 1000)) == (upload_id, key, expires_ms)
+    now[0] = expires_ms
+    with pytest.raises(RuntimeError, match="^BLOB_UPLOAD_EXPIRED$"):
+        await service.begin(actor, target, upload, "lost-begin")
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT COUNT(*) FROM teaql_blob_upload") as cursor:
+            assert (await cursor.fetchone())[0] == 1
+
+
+@pytest.mark.asyncio
 @pytest.mark.parametrize("case", ["fixture-pdf", "real-jpeg", "real-pdf",
                                   "real-docx", "real-xlsx", "real-doc", "real-xls",
                                   "real-mp3", "real-mp4"])
