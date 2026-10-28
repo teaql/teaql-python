@@ -209,6 +209,10 @@ def test_minio_real_signed_range_and_expiry():
         with pytest.raises(HTTPError) as expired:
             urlopen(ticket.url, timeout=5)
         assert expired.value.code == 403
+        refreshed = storage.get_read_url(key, ReadUrlOptions(timedelta(seconds=30), "attachment", "report.pdf"))
+        assert refreshed.url != ticket.url and refreshed.expires_at > datetime.now(timezone.utc)
+        with urlopen(Request(refreshed.url, headers={"Range": "bytes=0-7"}), timeout=5) as response:
+            assert response.status == 206 and response.read() == content[:8]
         if os.environ.get("TEAQL_S3_TEST_CREATE_ONLY") == "1":
             create = PutOptions(len(content), WriteMode.CREATE_ONLY, "application/pdf")
             created = storage.put_bytes(create_key, content, create)
