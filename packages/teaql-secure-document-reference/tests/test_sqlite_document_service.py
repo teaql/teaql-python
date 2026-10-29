@@ -151,6 +151,9 @@ async def test_document_commit_unknown_replays_durable_receipt_under_current_aut
         return transport
 
     path, context, host, service = await fixture(tmp_path, make_transport)
+    async with aiosqlite.connect(path) as db:
+        await db.execute("ALTER TABLE document_order ADD COLUMN hidden_note TEXT NOT NULL DEFAULT 'server-only'")
+        await db.commit()
     opened = await service.open(context, "Order", "ORD-10", "edit-order", 60)
     command = SubmittedDocumentCommand("ORD-10", opened.document_token,
         "command-commit-unknown", {"quantity": 3})
@@ -180,6 +183,9 @@ async def test_document_commit_unknown_replays_durable_receipt_under_current_aut
     assert recovered.replayed and recovered.new_revision == 2
     assert host.mutations == 1 and await row(path) == (2, 3)
     assert await durable_receipt() == original
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT hidden_note FROM document_order WHERE id=10") as cursor:
+            assert await cursor.fetchone() == ("server-only",)
 
 
 @pytest.mark.asyncio

@@ -157,3 +157,89 @@ async def test_passive_install_prepares_governed_view_and_checks_blob_binding():
         await ViewPreparationService().prepare(wrong, None, ViewOptions("governed", "committed"))
     assert (error.value.code, error.value.business_state, error.value.retry) == \
         ("DOCUMENT_PROJECTION_VIOLATION", "committed", "read")
+
+
+@pytest.mark.parametrize("scenario", ["writable-unloaded", "duplicate-row", "orphan-relation",
+    "duplicate-relation-row", "readonly-relation-mutation", "binding-unloaded",
+    "binding-readonly", "binding-foreign-entity", "duplicate-binding"])
+def test_rejects_inconsistent_issued_projection(scenario):
+    row, relation, binding = SNAPSHOT.entities[0], SNAPSHOT.relations[0], DOCUMENT.bindings[0]
+    if scenario == "writable-unloaded": row = replace(row, writable_fields=frozenset({"hidden"}))
+    if scenario == "orphan-relation": relation = replace(relation, row_keys=("absent",))
+    if scenario == "duplicate-relation-row": relation = replace(relation, row_keys=("item:0", "item:0"))
+    if scenario == "readonly-relation-mutation": relation = replace(relation, writable=False)
+    if scenario == "binding-unloaded":
+        row = replace(row, loaded_fields=frozenset({"quantity"}), writable_fields=frozenset({"quantity"}))
+        binding = replace(binding, writable=False)
+    if scenario == "binding-readonly": row = replace(row, writable_fields=frozenset({"quantity"}))
+    if scenario == "binding-foreign-entity": binding = replace(binding, entity_type="OtherItem")
+    snapshot = replace(SNAPSHOT, entities=(row, row) if scenario == "duplicate-row" else (row,),
+                       relations=(relation,))
+    document = replace(DOCUMENT, snapshot=snapshot,
+                       bindings=(binding, binding) if scenario == "duplicate-binding" else (binding,))
+    assert code(lambda: runtime().issue_bound_document_snapshot(ALICE, document, 60)) == \
+        "DOCUMENT_PROJECTION_VIOLATION"
+
+
+@pytest.mark.parametrize("scenario", ["readonly-existing", "hidden-existing", "partial-child",
+                                      "readonly-child", "no-create-child"])
+def test_selection_cannot_expand_the_issued_surface(scenario):
+    document, target = DOCUMENT, TARGET
+    if scenario == "readonly-existing":
+        row = replace(SNAPSHOT.entities[0], writable_fields=frozenset({"quantity"}))
+        document = replace(DOCUMENT, snapshot=replace(SNAPSHOT, entities=(row,)),
+                           bindings=(replace(DOCUMENT.bindings[0], writable=False),))
+    elif scenario == "hidden-existing": target = replace(TARGET, canonical_field="hidden_attachment")
+    else:
+        target = replace(TARGET, kind="NEW_CLIENT_KEY", target_key="client-hidden")
+        relation = SNAPSHOT.relations[0]
+        if scenario == "partial-child": relation = replace(relation, completeness="PARTIAL")
+        if scenario == "readonly-child": relation = replace(relation, writable=False, allowed_mutations=frozenset())
+        if scenario == "no-create-child": relation = replace(relation, allowed_mutations=frozenset({"REMOVE_CHILD"}))
+        document = replace(DOCUMENT, snapshot=replace(SNAPSHOT, relations=(relation,)))
+    module = runtime()
+    token = module.issue_bound_document_snapshot(ALICE, document, 60)
+    assert module.consume_bound_document_snapshot(ALICE, token, "Order", "edit-order").document == document
+    assert code(lambda: module.issue_blob_selection(ALICE, token, replace(CLAIM, target=target), 30)) == \
+        "DOCUMENT_PROJECTION_VIOLATION"
+
+
+@pytest.mark.asyncio
+async def test_governed_view_hides_unlisted_blob_and_bounds_url_by_document_deadline():
+    now = datetime.now(timezone.utc).replace(microsecond=0)
+    deadline = now + timedelta(seconds=60)
+    visible, hidden = BlobRef("blob_A"), BlobRef("blob_hidden")
+    source = {"attachment": visible, "hidden_attachment": hidden}
+    graph = AuthorizedResponseGraph({"attachment": visible}, (
+        AuthorizedBlobSlot(("attachment",), "OrderItem", "20", "attachment", "tenant-a", 4, visible),))
+    projected = []
+    late = False
+
+    class Authorizer:
+        async def authorize(self, *_): return graph
+    class Assembly:
+        def principal(self, _): return ALICE
+        async def snapshot(self, *_):
+            return PreparedBoundDocument(replace(DOCUMENT,
+                bindings=(replace(DOCUMENT.bindings[0], binding_version=4),)), 60)
+    class Projector:
+        async def project_batch(self, _context, authorized, ceiling):
+            assert ceiling == deadline
+            projected.extend(slot.reference.key for slot in authorized.blob_slots)
+            return (ProjectedBlobURL("https://files.example.invalid/asset",
+                deadline + timedelta(milliseconds=1) if late else deadline - timedelta(seconds=5)),)
+
+    context = UserContext().insert_resource("response_graph_authorizer", Authorizer())
+    context.insert_resource("blob_response_contributor", Projector())
+    runtime(now=now).install(context, Assembly())
+    options = ViewOptions("governed", "committed", now + timedelta(seconds=120))
+    view = await ViewPreparationService().prepare(context, source, options)
+    assert view.presentation == {"attachment": "https://files.example.invalid/asset"}
+    assert view.expires_at == deadline - timedelta(seconds=5)
+    assert projected == ["blob_A"] and source["hidden_attachment"] is hidden
+    late = True
+    with pytest.raises(ViewPreparationError) as failure:
+        await ViewPreparationService().prepare(context, source, options)
+    assert failure.value.code == "BLOB_SIGN_FAILED"
+    assert failure.value.business_state == "committed" and failure.value.retry == "read"
+    assert projected == ["blob_A", "blob_A"]
