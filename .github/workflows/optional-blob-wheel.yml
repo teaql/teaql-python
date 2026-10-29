@@ -15,7 +15,7 @@ jobs:
           cache: pip
       - run: python -m pip install --upgrade build
       - run: python -m pip install -e ".[test,object-storage-s3]"
-      - run: python -m pip install --no-deps -e ./packages/teaql-blob-reference
+      - run: python -m pip install -e "./packages/teaql-blob-reference[image,pdf,office]"
       - run: python -m pip install --no-deps -e ./packages/teaql-secure-document-reference
       - run: python -m pytest -q tests/provider/sqlite/test_blob_catalog_graph.py tests/provider/sqlite/test_file_blob_storage.py tests/provider/sqlite/test_blob_upload.py tests/provider/sqlite/test_blob_module.py
       - run: python -m pytest -q packages/teaql-secure-document-reference/tests
