@@ -198,6 +198,7 @@ async def test_native_mutation_binds_blob_in_same_sqlite_graph(tmp_path):
     descriptor = EntityDescriptor("Asset").table_name("asset")
     descriptor.property(PropertyDescriptor("id", DataType.I64).is_id())
     descriptor.property(PropertyDescriptor("version", DataType.I64).is_version())
+    descriptor.property(PropertyDescriptor("caption", DataType.Text))
     descriptor.property(PropertyDescriptor("document", DataType.Text).blob(
         BlobFieldSpec("Asset", "document", ["pdf"], True, "default")))
     schema = SimpleSchemaProvider()
@@ -212,7 +213,7 @@ async def test_native_mutation_binds_blob_in_same_sqlite_graph(tmp_path):
     catalog = SqliteBlobCatalog(SqliteTransport(path))
     await catalog.ensure_schema()
     async with aiosqlite.connect(path) as db:
-        await db.execute("CREATE TABLE asset (id INTEGER PRIMARY KEY, version INTEGER, document TEXT)")
+        await db.execute("CREATE TABLE asset (id INTEGER PRIMARY KEY, version INTEGER, document TEXT, caption TEXT)")
         for key in ("blob_native_one", "blob_native_two"):
             await db.execute("INSERT INTO teaql_blob_catalog "
                 "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status,"
@@ -347,6 +348,38 @@ async def test_native_mutation_binds_blob_in_same_sqlite_graph(tmp_path):
         async with db.execute("SELECT status FROM teaql_blob_catalog WHERE key=?",
                               (ledger_ref.key,)) as cursor:
             assert await cursor.fetchone() == ("available",)
+    async def snapshot(query, parameters):
+        async with aiosqlite.connect(path) as db:
+            async with db.execute(query, parameters) as cursor:
+                return await cursor.fetchall()
+
+    binding_query = "SELECT * FROM teaql_blob_binding WHERE entity_id=?"
+    catalog_query = "SELECT * FROM teaql_blob_catalog WHERE key=?"
+    binding_before = await snapshot(binding_query, (str(allocated),))
+    catalog_before = await snapshot(catalog_query, (ledger_ref.key,))
+    ledger = EntityRoot()
+    actual = EntityKey("Asset", allocated)
+    ledger.set(actual, "caption", "after")
+    assigned = dict(ledger.current_change_set().changes())[actual]
+    assert "document" not in assigned
+    authority.allowed = False
+
+    async def update_ordinary(graph):
+        command = (UpdateCommand.new("Asset", allocated).expected_version(1)
+                   .value("caption", assigned["caption"]))
+        return await graph.transaction.mutate(graph.context,
+            graph.request(command, graph.scope(actual), ledger, actual))
+
+    await context.execute_graph_save(update_ordinary, comment="update caption with unloaded Blob")
+    assert await snapshot("SELECT document,caption,version FROM asset WHERE id=?", (allocated,)) == [
+        (ledger_ref.key, "after", 2)]
+    assert await snapshot(binding_query, (str(allocated),)) == binding_before
+    assert await snapshot(catalog_query, (ledger_ref.key,)) == catalog_before
+    authority.allowed = True
+    await save(UpdateCommand.new("Asset", allocated).expected_version(2)
+               .value("document", None), "explicitly clear Blob", asset_id=allocated)
+    assert await snapshot("SELECT key,version FROM teaql_blob_binding WHERE entity_id=?",
+                          (str(allocated),)) == [(None, 3)]
     store.close()
 
 
