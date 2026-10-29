@@ -5,6 +5,7 @@ import time
 from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from io import BytesIO
+from types import SimpleNamespace
 from urllib.request import Request, urlopen
 
 import aiosqlite
@@ -131,6 +132,64 @@ def test_blob_module_rejects_an_upload_from_another_catalog(tmp_path):
     upload = SqliteBlobUploadService(second, _UploadAuthority(), _Verifier(), 10_000)
     with pytest.raises(RuntimeError, match="BLOB_CAPABILITY_MISSING"):
         BlobReferenceModule(first, upload, _ReadAuthority(), _BindingAuthority())
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("scenario", ["other-file", "separate-memory", "non-native", "wrong-dialect", "upload-catalog-drift"])
+async def test_blob_module_rejects_incompatible_business_database(tmp_path, scenario):
+    path = str(tmp_path / "catalog.db")
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    verifier = _Verifier()
+    upload = SqliteBlobUploadService(catalog, _UploadAuthority(), verifier, 10_000)
+    module = BlobReferenceModule(catalog, upload, _ReadAuthority(), _BindingAuthority())
+    owner = SqlDataServiceExecutor(SqliteDialect(), SqliteTransport(path), SimpleSchemaProvider())
+    if scenario == "other-file":
+        owner.transport = SqliteTransport(str(tmp_path / "other.db"))
+    elif scenario == "separate-memory":
+        owner.transport = SqliteTransport(":memory:")
+    elif scenario == "non-native":
+        async def begin(_context):
+            raise AssertionError("readiness must not open this non-native owner")
+        owner = SimpleNamespace(begin=begin)
+    elif scenario == "wrong-dialect":
+        from teaql.provider.mysql.dialect import MysqlDialect
+        owner.dialect = MysqlDialect()
+    context = RuntimeModule.new().require_capability("blob.v1").into_context()
+    context.insert_resource("dataService", owner)
+    provider = FileObjectStorage(tmp_path / "objects", os.urandom(32))
+    context.with_object_storage(provider)
+    module.install(context)
+    assert verifier.ready_calls == 0
+    if scenario == "upload-catalog-drift":
+        upload.catalog = SqliteBlobCatalog(SqliteTransport(str(tmp_path / "other.db")))
+    try:
+        with pytest.raises(RuntimeError, match="^BLOB_CAPABILITY_MISSING$"):
+            await module.ready(context)
+        assert verifier.ready_calls == 0
+    finally:
+        provider.close()
+
+
+@pytest.mark.asyncio
+async def test_blob_module_accepts_same_database_through_native_file_uri(tmp_path):
+    path = tmp_path / "module.db"
+    catalog = SqliteBlobCatalog(SqliteTransport(str(path)))
+    await catalog.ensure_schema()
+    verifier = _Verifier()
+    upload = SqliteBlobUploadService(catalog, _UploadAuthority(), verifier, 10_000)
+    module = BlobReferenceModule(catalog, upload, _ReadAuthority(), _BindingAuthority())
+    owner = SqlDataServiceExecutor(SqliteDialect(), SqliteTransport(path.as_uri() + "?mode=rwc"), SimpleSchemaProvider())
+    context = RuntimeModule.new().require_capability("blob.v1").into_context()
+    context.insert_resource("dataService", owner)
+    provider = FileObjectStorage(tmp_path / "objects", os.urandom(32))
+    context.with_object_storage(provider)
+    try:
+        module.install(context)
+        await module.ready(context)
+        assert verifier.ready_calls == 1
+    finally:
+        provider.close()
 
 
 @pytest.mark.asyncio

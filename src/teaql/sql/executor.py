@@ -5,6 +5,7 @@ from datetime import date, datetime, time as wall_time
 import asyncio
 import hashlib
 import logging
+from inspect import isawaitable
 import time
 import threading
 from array import array
@@ -159,6 +160,19 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         # Context may legitimately have no ambient "db" resource. The actual
         # executor still needs a stable, non-recycled cache isolation identity.
         self._id_set_source_identity = uuid4().hex
+
+    async def uses_sql_database(self, transport) -> bool:
+        """Ask the native transport for resource identity; no Blob dependency."""
+        shares = getattr(self.transport, "shares_database", None)
+        if not callable(shares):
+            return False
+        try:
+            result = shares(transport)
+            if isawaitable(result):
+                result = await result
+            return result is True
+        except Exception:
+            return False
 
     def _backend_name(self) -> str:
         kind = self.dialect.kind()

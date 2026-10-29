@@ -1,6 +1,8 @@
 """Passive assembly of the optional SQLite Blob reference services."""
 
 from teaql.runtime.capability import install_runtime_capability
+from teaql.sql.executor import SqlDataServiceExecutor
+from teaql.sql.types import DatabaseKind
 
 from .read_service import SqliteBlobResponseContributor
 from .mutation_participant import SqliteBlobMutationParticipant
@@ -16,15 +18,26 @@ class _BlobCapability:
         self.module = module
 
     async def validate_ready(self, context) -> None:
-        if context.get_resource("blob_response_contributor") is not self.module.read or \
+        if not isinstance(self.module.upload, SqliteBlobUploadService) or \
+                self.module.upload.catalog is not self.module.catalog or \
+                self.module.read.catalog is not self.module.catalog or \
+                self.module.mutation.catalog is not self.module.catalog or \
+                context.get_resource("blob_response_contributor") is not self.module.read or \
                 context.get_resource("blob_mutation_participant") is not self.module.mutation or \
                 context.get_resource("object_storage_provider") is None:
             raise RuntimeError("BLOB_CAPABILITY_MISSING")
         if self.module.maintenance is not None and \
-                context.get_resource("blob_maintenance_service") is not self.module.maintenance:
+                (self.module.maintenance.catalog is not self.module.catalog or \
+                 context.get_resource("blob_maintenance_service") is not self.module.maintenance):
             raise RuntimeError("BLOB_CAPABILITY_MISSING")
         owner = context.get_resource("dataService")
-        if owner is None or not callable(getattr(owner, "begin", None)):
+        try:
+            compatible = (isinstance(owner, SqlDataServiceExecutor) and
+                          owner.dialect.kind() == DatabaseKind.Sqlite and
+                          await owner.uses_sql_database(self.module.catalog.transport))
+        except Exception:
+            compatible = False
+        if not compatible:
             raise RuntimeError("BLOB_CAPABILITY_MISSING")
         await self.module.catalog.validate_schema()
         verifier_ready = getattr(self.module.upload.verifier, "validate_ready", None)

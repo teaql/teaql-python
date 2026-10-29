@@ -2,6 +2,18 @@
 
 Optional Blob catalog and current-read services for TeaQL Python. Install this wheel alongside the matching `teaql` version. Catalog migration and runtime service installation are explicit host actions; this package does not install schema or expose routes on import.
 
+`BlobReferenceModule.ready(context)` checks that the current native SQLite
+business executor and catalog refer to the same database before activating the
+content verifier. The executor's `uses_sql_database` SPI asks the transport for
+identity; the native SQLite transport compares SQLite's actual `main` filename
+from `PRAGMA database_list`, so ordinary paths and native file URIs can match.
+An empty filename cannot establish a durable database for its independent
+per-operation connections and is rejected. Missing/non-native owners, a different
+dialect or file, and drift between the installed services' catalogs fail with
+`BLOB_CAPABILITY_MISSING`. Separate native transports to the same file remain
+supported. Installation stays passive; explicit readiness performs metadata
+reads, schema validation and verifier readiness without migrating or uploading.
+
 `SqliteBlobUploadService` offers a host-invoked, scope-bound upload journal. The host must provide current model/action authorization and a trusted parser that consumes every stored byte and returns actual format, size, and SHA256. The service writes through the context's object-storage provider, rechecks the stored generation before confirmation, and promotes the row to `uploaded_unbound` only after full verification. The included PDF verifier in tests is a fixture, not a production format parser. Other SQL backends and production ten-format parsing remain open.
 
 For permissions backed by mutable business rows, the host may implement `current_on_lease(actor, lease, target, action, input)` and return `BlobUploadAuthorizationState(scope, field, allowed)`. Begin, Write, and Confirm then recheck that state on the same physical SQLite transaction as the upload journal; a missing row, revoked permission, malformed state, or scope/field mismatch denies the operation. The ordinary `scope`, `field`, and `authorize` callbacks remain the preflight path and the compatibility path for hosts without this optional hook.
