@@ -2,8 +2,10 @@
 
 import os
 import time
+from datetime import datetime, timedelta, timezone
 from hashlib import sha256
 from io import BytesIO
+from urllib.request import Request, urlopen
 
 import aiosqlite
 import pytest
@@ -18,6 +20,10 @@ from teaql.provider.sqlite import SimpleSchemaProvider
 from teaql.provider.sqlite.dialect import SqliteDialect
 from teaql.provider.sqlite.transport import SqliteTransport
 from teaql.runtime import RuntimeModule, validate_capabilities
+from teaql.runtime.view_preparation import (
+    AuthorizedBlobSlot, AuthorizedResponseGraph, ViewOptions,
+    ViewPreparationError, ViewPreparationService,
+)
 from teaql.sql.executor import SqlDataServiceExecutor
 from teaql_blob_reference import (
     BlobReferenceModule, BlobRetentionPolicy, FileObjectStorage, SqliteBlobCatalog,
@@ -27,8 +33,10 @@ from teaql_blob_reference import (
 
 
 class _ReadAuthority:
+    allowed = True
+
     async def authorize(self, context, slot):
-        return True
+        return self.allowed
 
 
 class _UploadAuthority:
@@ -421,6 +429,26 @@ async def test_native_blob_multi_entity_graph_rolls_back_together(tmp_path):
 
 @pytest.mark.asyncio
 async def test_native_shared_blob_final_unbind_controls_file_retention(tmp_path):
+    store = FileObjectStorage(tmp_path / "shared-private", os.urandom(32))
+    await _run_native_shared_blob_final_unbind(tmp_path, store, real_s3=False)
+
+
+@pytest.mark.asyncio
+async def test_native_shared_blob_final_unbind_controls_real_s3_retention(tmp_path):
+    if os.environ.get("TEAQL_S3_TEST_SHARED_BLOB") != "1":
+        pytest.skip("explicit shared-reference S3 gate required")
+    endpoint = os.environ.get("TEAQL_S3_TEST_ENDPOINT")
+    bucket = os.environ.get("TEAQL_S3_TEST_BUCKET")
+    access = os.environ.get("TEAQL_S3_TEST_ACCESS_KEY")
+    secret = os.environ.get("TEAQL_S3_TEST_SECRET_KEY")
+    assert all((endpoint, bucket, access, secret)), "explicit S3 test configuration required"
+    from teaql.provider.s3 import S3ObjectStorage
+    store = S3ObjectStorage.connect(bucket, endpoint_url=endpoint,
+                                    aws_access_key_id=access, aws_secret_access_key=secret)
+    await _run_native_shared_blob_final_unbind(tmp_path, store, real_s3=True)
+
+
+async def _run_native_shared_blob_final_unbind(tmp_path, store, real_s3):
     path = str(tmp_path / "shared-native.db")
     descriptor = EntityDescriptor("Asset").table_name("asset")
     descriptor.property(PropertyDescriptor("id", DataType.I64).is_id())
@@ -433,7 +461,6 @@ async def test_native_shared_blob_final_unbind_controls_file_retention(tmp_path)
     context.insert_resource("dataService", SqlDataServiceExecutor(
         SqliteDialect(), SqliteTransport(path), schema))
     context.disable_sql_log()
-    store = FileObjectStorage(tmp_path / "shared-private", os.urandom(32))
     context.with_object_storage(store).with_object_storage_observer(lambda event: None)
     clock = [1_700_000_000_000]
     catalog = SqliteBlobCatalog(SqliteTransport(path), now_ms=lambda: clock[0])
@@ -471,7 +498,8 @@ async def test_native_shared_blob_final_unbind_controls_file_retention(tmp_path)
                                      now_ms=lambda: clock[0])
     maintenance = SqliteBlobMaintenanceService(catalog, _MaintenanceAuthority(),
                                                now_ms=lambda: clock[0])
-    module = BlobReferenceModule(catalog, upload, _ReadAuthority(), BindingAuthority(),
+    read_permission = _ReadAuthority()
+    module = BlobReferenceModule(catalog, upload, read_permission, BindingAuthority(),
                                  maintenance=maintenance)
     async with aiosqlite.connect(path) as db:
         await db.execute("CREATE TABLE asset (id INTEGER PRIMARY KEY, version INTEGER, document TEXT)")
@@ -485,6 +513,7 @@ async def test_native_shared_blob_final_unbind_controls_file_retention(tmp_path)
             async with db.execute(sql, params) as cursor:
                 return await cursor.fetchone()
 
+    object_key = None
     try:
         data = b"%PDF-1.7\nshared native Blob\n%%EOF"
         session = await upload.begin(context, BlobUploadTarget("Asset", "1", "document"),
@@ -542,6 +571,27 @@ async def test_native_shared_blob_final_unbind_controls_file_retention(tmp_path)
         assert (await maintenance.run_batch(context)).outcomes == ()
         assert object_store.head(object_key) is not None
 
+        if real_s3:
+            class Authorizer:
+                async def authorize(self, _context, _result, _options):
+                    slot = AuthorizedBlobSlot(("document",), "Asset", str(ids[1]), "document",
+                                              "tenant-a", 1, session.reference)
+                    return AuthorizedResponseGraph({"document": session.reference}, (slot,))
+
+            context.insert_resource("response_graph_authorizer", Authorizer())
+            options = ViewOptions("ordinary", "read_only",
+                                  datetime.now(timezone.utc) + timedelta(seconds=60))
+            view = await ViewPreparationService().prepare(context, None, options)
+            link = view.presentation["document"]
+            assert link.startswith("http") and view.cache_control == "private, no-store"
+            with urlopen(Request(link, headers={"Range": "bytes=0-7"}), timeout=5) as response:
+                assert response.status == 206 and response.read() == data[:8]
+            read_permission.allowed = False
+            with pytest.raises(ViewPreparationError) as denied:
+                await ViewPreparationService().prepare(context, None, options)
+            assert denied.value.code == "BLOB_READ_DENIED"
+            read_permission.allowed = True
+
         with pytest.raises(RuntimeError, match="outer owner rejected final unbind"):
             await unbind(ids[1], outer_reject=True)
         assert await row("SELECT document FROM asset WHERE id=?", (ids[1],)) == (session.reference.key,)
@@ -556,6 +606,10 @@ async def test_native_shared_blob_final_unbind_controls_file_retention(tmp_path)
                          (session.reference.key,)) == (0,)
         assert await row("SELECT last_unbound_at_ms FROM teaql_blob_catalog WHERE key=?",
                          (session.reference.key,)) == (clock[0],)
+        if real_s3:
+            with pytest.raises(ViewPreparationError) as stale_view:
+                await ViewPreparationService().prepare(context, None, options)
+            assert stale_view.value.code == "BLOB_READ_DENIED"
         clock[0] += 19_999
         assert (await maintenance.run_batch(context)).outcomes == ()
         assert object_store.head(object_key) is not None
@@ -566,5 +620,11 @@ async def test_native_shared_blob_final_unbind_controls_file_retention(tmp_path)
         assert object_store.head(object_key) is None
         assert await row("SELECT status FROM teaql_blob_catalog WHERE key=?",
                          (session.reference.key,)) == ("deleted",)
+        if real_s3:
+            print("PASS Python shared S3 native graph/final unbind/authorized Range/retention GC")
     finally:
-        store.close()
+        try:
+            if real_s3 and object_key is not None:
+                context.object_storage("clean shared S3 Blob").delete(object_key)
+        finally:
+            store.close()
