@@ -85,7 +85,7 @@ class OrderHost:
             raise RuntimeError("presentation failed")
 
 
-async def fixture(tmp_path):
+async def fixture(tmp_path, transport_factory=SqliteTransport):
     path = str(tmp_path / "secure-document.sqlite")
     async with aiosqlite.connect(path) as db:
         await db.execute("""CREATE TABLE document_order (id INTEGER PRIMARY KEY,
@@ -94,7 +94,7 @@ async def fixture(tmp_path):
         await db.execute("INSERT INTO document_order VALUES (10,'ORD-10',1,1)")
         await db.execute("INSERT INTO document_permission VALUES ('alice',1)")
         await db.commit()
-    transport = SqliteTransport(path)
+    transport = transport_factory(path)
     context = RuntimeModule.new().into_context()
     context.insert_resource("dataService", SqlDataServiceExecutor(
         SqliteDialect(), transport, SimpleSchemaProvider()))
@@ -121,6 +121,65 @@ async def receipts(path):
     async with aiosqlite.connect(path) as db:
         async with db.execute("SELECT COUNT(*) FROM teaql_document_command_receipt") as cursor:
             return (await cursor.fetchone())[0]
+
+
+@pytest.mark.asyncio
+async def test_document_commit_unknown_replays_durable_receipt_under_current_authority(tmp_path):
+    class LostReplyTransport(SqliteTransport):
+        lose_next = False
+
+        async def begin_sql(self):
+            transaction = await super().begin_sql()
+            if not self.lose_next:
+                return transaction
+            self.lose_next = False
+
+            class CommitThenFail:
+                def __getattr__(self, name):
+                    return getattr(transaction, name)
+
+                async def commit_sql(self):
+                    await transaction.commit_sql()
+                    raise OSError("document commit acknowledgement unavailable")
+
+            return CommitThenFail()
+
+    transports = []
+    def make_transport(path):
+        transport = LostReplyTransport(path)
+        transports.append(transport)
+        return transport
+
+    path, context, host, service = await fixture(tmp_path, make_transport)
+    opened = await service.open(context, "Order", "ORD-10", "edit-order", 60)
+    command = SubmittedDocumentCommand("ORD-10", opened.document_token,
+        "command-commit-unknown", {"quantity": 3})
+    transports[0].lose_next = True
+    with pytest.raises(OSError, match="commit acknowledgement unavailable"):
+        await service.accept(context, "Order", "edit-order", command)
+    assert await row(path) == (2, 3) and await receipts(path) == 1
+    assert host.mutations == 1
+
+    async def durable_receipt():
+        async with aiosqlite.connect(path) as db:
+            async with db.execute("SELECT * FROM teaql_document_command_receipt") as cursor:
+                return await cursor.fetchall()
+
+    original = await durable_receipt()
+    async with aiosqlite.connect(path) as db:
+        await db.execute("UPDATE document_permission SET can_edit=0 WHERE subject='alice'")
+        await db.commit()
+    with pytest.raises(RuntimeError, match="DOCUMENT_AUTHORIZATION_REQUIRED"):
+        await service.accept(context, "Order", "edit-order", command)
+    async with aiosqlite.connect(path) as db:
+        await db.execute("UPDATE document_permission SET can_edit=1 WHERE subject='alice'")
+        await db.commit()
+    with pytest.raises(RuntimeError, match="DOCUMENT_REPLAY_CONFLICT"):
+        await service.accept(context, "Order", "edit-order", replace(command, body={"quantity": 4}))
+    recovered = await service.accept(context, "Order", "edit-order", command)
+    assert recovered.replayed and recovered.new_revision == 2
+    assert host.mutations == 1 and await row(path) == (2, 3)
+    assert await durable_receipt() == original
 
 
 @pytest.mark.asyncio
