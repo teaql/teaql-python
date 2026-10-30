@@ -755,6 +755,11 @@ class UserContext:
         results.extend(integral_scalar_results(descriptor, record, location, pending_references=pending))
             
         if results:
+            # Bind the declaring Checker, not the graph root or a rendered
+            # member path. Preserve explicitly specialized child identities.
+            for result in results:
+                if result.entity_type is None or not result.entity_type.strip():
+                    result.entity_type = entity
             self.translate_check_results(results)
             from .i18n import CheckException
             raise CheckException(results)
@@ -813,7 +818,8 @@ class UserContext:
             value = values.get(prop.name)
             is_null = value.is_null() if hasattr(value, "is_null") else value is None
             if (inserting and not present) or (present and is_null):
-                results.append(CheckResult("required", ObjectLocation().property(prop.name)))
+                results.append(CheckResult("required", ObjectLocation().property(prop.name),
+                                           entity_type=mutation.entity))
         if results:
             self.translate_check_results(results)
             raise CheckException(results)

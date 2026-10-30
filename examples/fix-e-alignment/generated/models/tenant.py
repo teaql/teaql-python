@@ -5,11 +5,30 @@ from teaql.core.request_intent import MutationIntent
 from teaql.core.projection_properties import ProjectionProperties
 from teaql.runtime.loaded_scalar_snapshot import LoadedScalarSnapshots
 from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
+from teaql.runtime import EntityJSONField, EntityJSONSchema, JsonFieldNamingProfile
+from importlib import import_module
 import itertools
 
 
 class Tenant:
+    _teaql_json_schema = EntityJSONSchema("Tenant", (
+        EntityJSONField("id", "id", "id"),
+        EntityJSONField("name", "name", "text"),
+        EntityJSONField("version", "version", "version"),
+        EntityJSONField("purchase_order_list", "_purchase_order_list", "many", factory=lambda: getattr(import_module("models.purchase_order"), "PurchaseOrder"), loaded_name="purchase_order_list"),
+        EntityJSONField("order_item_list", "_order_item_list", "many", factory=lambda: getattr(import_module("models.order_item"), "OrderItem"), loaded_name="order_item_list")
+    ), profile=JsonFieldNamingProfile.parse("camelCase"))
     _teaql_temporary_ids = itertools.count(1)
+
+    def to_json(self, *, profile=None):
+        """Typed model JSON; no query, mutation or transport authorization."""
+        return self._teaql_json_schema.dumps(self, profile=profile)
+
+    @classmethod
+    def from_json(cls, payload, *, profile=None):
+        """Hydrate only supplied fields into an independent mutation boundary."""
+        return cls._teaql_json_schema.loads(cls, payload, profile=profile)
+
     @classmethod
     def refer(cls, entity_id):
         return cls(id=entity_id)
@@ -127,14 +146,17 @@ class Tenant:
         if id(self) in visited:
             return
         visited.add(id(self))
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
+            ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
+            context._validate_mutation_fields("Tenant", ledger)
             if self._action == "Update":
                 if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="Tenant")])
                 if "name" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity", entity_type="Tenant")])
                 if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="Tenant")])
             _action, command = self._teaql_build_command()
             context._validate_required_mutation_input(command, parent_field=parent_field)
         for index, child in enumerate(self._purchase_order_list):
@@ -143,7 +165,7 @@ class Tenant:
             except CheckException as error:
                 prefix = ObjectLocation().property("purchase_order_list").index(index)
                 raise CheckException([
-                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message)
+                    v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
         for index, child in enumerate(self._order_item_list):
@@ -152,7 +174,7 @@ class Tenant:
             except CheckException as error:
                 prefix = ObjectLocation().property("order_item_list").index(index)
                 raise CheckException([
-                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message)
+                    v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
 
@@ -190,15 +212,22 @@ class Tenant:
     async def _teaql_prepare_graph(self, context, session):
         # Complete all input/Fix checks before reserving any graph identity.
         # Stable IDs then make the final policy plan and TraceScope concrete.
+        self._teaql_validate_input_graph(context, set())
         self._teaql_prepare_input_graph(context, set())
+        # Fix may edit a sibling or its version; re-admit the whole graph before IDs.
+        self._teaql_validate_input_graph(context, set())
         await self._teaql_reserve_graph_ids(context, set())
         self._teaql_preflight_graph(context, session)
+        session._seal_generated_plan()
 
     def _teaql_prepare_input_graph(self, context, visited):
         if id(self) in visited:
             return
         visited.add(id(self))
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
+            ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
+            context._validate_mutation_fields("Tenant", ledger)
             _action, cmd = self._teaql_build_command()
             try:
                 context._check_and_fix_mutation_input(cmd, deferred_fields=())
@@ -217,8 +246,7 @@ class Tenant:
             except CheckException as error:
                 prefix = ObjectLocation().property("purchase_order_list").index(index)
                 raise CheckException([
-                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message,
-                                entity_type=v.entity_type)
+                    v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
         for index, child in enumerate(self._order_item_list):
@@ -232,8 +260,7 @@ class Tenant:
             except CheckException as error:
                 prefix = ObjectLocation().property("order_item_list").index(index)
                 raise CheckException([
-                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message,
-                                entity_type=v.entity_type)
+                    v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
 
@@ -280,11 +307,11 @@ class Tenant:
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
                 if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="Tenant")])
                 if "name" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity", entity_type="Tenant")])
                 if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="Tenant")])
             action, cmd = self._teaql_build_command()
             try:
                 context.preflight_mutation(cmd)
@@ -303,7 +330,7 @@ class Tenant:
             except CheckException as error:
                 prefix = ObjectLocation().property("purchase_order_list").index(index)
                 raise CheckException([
-                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message)
+                    v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
         for index, child in enumerate(self._order_item_list):
@@ -316,7 +343,7 @@ class Tenant:
             except CheckException as error:
                 prefix = ObjectLocation().property("order_item_list").index(index)
                 raise CheckException([
-                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message)
+                    v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
 
@@ -409,13 +436,7 @@ class Tenant:
                 except CheckException as error:
                     prefix = ObjectLocation().property(relation_name).index(index)
                     raise CheckException([
-                        CheckResult(
-                            violation.rule_id,
-                            violation.location.prefixed_by(prefix),
-                            violation.input_value,
-                            violation.system_value,
-                            violation.message,
-                        )
+                        violation.prefixed_by(prefix)
                         for violation in error.violations
                     ]) from error
 
@@ -428,7 +449,7 @@ class Tenant:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and self.id == value:
+        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
         self._loaded_fields.add("id")
@@ -436,7 +457,7 @@ class Tenant:
         return self
 
     def update_name(self, value):
-        if "name" in self._loaded_fields and self.name == value:
+        if "name" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.name, value):
             return self
         self.name = value
         self._loaded_fields.add("name")
@@ -444,7 +465,7 @@ class Tenant:
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and self.version == value:
+        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
         self._loaded_fields.add("version")

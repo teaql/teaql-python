@@ -5,12 +5,34 @@ from teaql.core.request_intent import MutationIntent
 from teaql.core.projection_properties import ProjectionProperties
 from teaql.runtime.loaded_scalar_snapshot import LoadedScalarSnapshots
 from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
+from teaql.runtime import EntityJSONField, EntityJSONSchema, JsonFieldNamingProfile
+from importlib import import_module
 import itertools
 from models.tenant import Tenant
 
 
 class PurchaseOrder:
+    _teaql_json_schema = EntityJSONSchema("PurchaseOrder", (
+        EntityJSONField("id", "id", "id"),
+        EntityJSONField("tenant", "tenant", "reference", factory=lambda: Tenant),
+        EntityJSONField("contact_phone", "contactPhone", "text"),
+        EntityJSONField("internal_note", "internalNote", "text"),
+        EntityJSONField("create_time", "createTime", "datetime"),
+        EntityJSONField("update_time", "updateTime", "datetime"),
+        EntityJSONField("version", "version", "version"),
+        EntityJSONField("order_item_list", "_order_item_list", "many", factory=lambda: getattr(import_module("models.order_item"), "OrderItem"), loaded_name="order_item_list")
+    ), profile=JsonFieldNamingProfile.parse("camelCase"))
     _teaql_temporary_ids = itertools.count(1)
+
+    def to_json(self, *, profile=None):
+        """Typed model JSON; no query, mutation or transport authorization."""
+        return self._teaql_json_schema.dumps(self, profile=profile)
+
+    @classmethod
+    def from_json(cls, payload, *, profile=None):
+        """Hydrate only supplied fields into an independent mutation boundary."""
+        return cls._teaql_json_schema.loads(cls, payload, profile=profile)
+
     @classmethod
     def refer(cls, entity_id):
         return cls(id=entity_id)
@@ -144,22 +166,25 @@ class PurchaseOrder:
         if id(self) in visited:
             return
         visited.add(id(self))
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
+            ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
+            context._validate_mutation_fields("PurchaseOrder", ledger)
             if self._action == "Update":
                 if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "tenant" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("tenant"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("tenant"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "contactPhone" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("contact_phone"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("contact_phone"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "internalNote" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("internal_note"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("internal_note"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "createTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "updateTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
             _action, command = self._teaql_build_command()
             context._validate_required_mutation_input(command, parent_field=parent_field)
         for index, child in enumerate(self._order_item_list):
@@ -168,7 +193,7 @@ class PurchaseOrder:
             except CheckException as error:
                 prefix = ObjectLocation().property("order_item_list").index(index)
                 raise CheckException([
-                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message)
+                    v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
 
@@ -203,15 +228,22 @@ class PurchaseOrder:
     async def _teaql_prepare_graph(self, context, session):
         # Complete all input/Fix checks before reserving any graph identity.
         # Stable IDs then make the final policy plan and TraceScope concrete.
+        self._teaql_validate_input_graph(context, set())
         self._teaql_prepare_input_graph(context, set())
+        # Fix may edit a sibling or its version; re-admit the whole graph before IDs.
+        self._teaql_validate_input_graph(context, set())
         await self._teaql_reserve_graph_ids(context, set())
         self._teaql_preflight_graph(context, session)
+        session._seal_generated_plan()
 
     def _teaql_prepare_input_graph(self, context, visited):
         if id(self) in visited:
             return
         visited.add(id(self))
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
+            ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
+            context._validate_mutation_fields("PurchaseOrder", ledger)
             _action, cmd = self._teaql_build_command()
             try:
                 context._check_and_fix_mutation_input(cmd, deferred_fields=())
@@ -230,8 +262,7 @@ class PurchaseOrder:
             except CheckException as error:
                 prefix = ObjectLocation().property("order_item_list").index(index)
                 raise CheckException([
-                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message,
-                                entity_type=v.entity_type)
+                    v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
 
@@ -298,19 +329,19 @@ class PurchaseOrder:
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
                 if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "tenant" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("tenant"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("tenant"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "contactPhone" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("contact_phone"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("contact_phone"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "internalNote" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("internal_note"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("internal_note"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "createTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "updateTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
             action, cmd = self._teaql_build_command()
             try:
                 context.preflight_mutation(cmd)
@@ -329,7 +360,7 @@ class PurchaseOrder:
             except CheckException as error:
                 prefix = ObjectLocation().property("order_item_list").index(index)
                 raise CheckException([
-                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message)
+                    v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
 
@@ -445,13 +476,7 @@ class PurchaseOrder:
                 except CheckException as error:
                     prefix = ObjectLocation().property(relation_name).index(index)
                     raise CheckException([
-                        CheckResult(
-                            violation.rule_id,
-                            violation.location.prefixed_by(prefix),
-                            violation.input_value,
-                            violation.system_value,
-                            violation.message,
-                        )
+                        violation.prefixed_by(prefix)
                         for violation in error.violations
                     ]) from error
 
@@ -464,7 +489,7 @@ class PurchaseOrder:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and self.id == value:
+        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
         self._loaded_fields.add("id")
@@ -472,7 +497,7 @@ class PurchaseOrder:
         return self
 
     def update_contact_phone(self, value):
-        if "contactPhone" in self._loaded_fields and self.contactPhone == value:
+        if "contactPhone" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.contactPhone, value):
             return self
         self.contactPhone = value
         self._loaded_fields.add("contactPhone")
@@ -480,7 +505,7 @@ class PurchaseOrder:
         return self
 
     def update_internal_note(self, value):
-        if "internalNote" in self._loaded_fields and self.internalNote == value:
+        if "internalNote" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.internalNote, value):
             return self
         self.internalNote = value
         self._loaded_fields.add("internalNote")
@@ -488,7 +513,7 @@ class PurchaseOrder:
         return self
 
     def update_create_time(self, value):
-        if "createTime" in self._loaded_fields and self.createTime == value:
+        if "createTime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.createTime, value):
             return self
         self.createTime = value
         self._loaded_fields.add("createTime")
@@ -496,7 +521,7 @@ class PurchaseOrder:
         return self
 
     def update_update_time(self, value):
-        if "updateTime" in self._loaded_fields and self.updateTime == value:
+        if "updateTime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.updateTime, value):
             return self
         self.updateTime = value
         self._loaded_fields.add("updateTime")
@@ -504,7 +529,7 @@ class PurchaseOrder:
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and self.version == value:
+        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
         self._loaded_fields.add("version")
@@ -514,7 +539,7 @@ class PurchaseOrder:
         assigned_id = getattr(value, "id", value) if value else None
         current = self.tenant
         current_id = getattr(current, "id", current)
-        if "tenant" in self._loaded_fields and current_id == assigned_id and (assigned_id is not None or current is value):
+        if "tenant" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.tenant = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
         self._loaded_fields.add("tenant")

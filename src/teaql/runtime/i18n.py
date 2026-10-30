@@ -1,5 +1,5 @@
 from __future__ import annotations
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from enum import Enum
 import builtins
 import json
@@ -117,6 +117,13 @@ class CheckResult:
     def __post_init__(self):
         if isinstance(self.location, str):
             self.location = ObjectLocation.from_model_path(self.location)
+    def prefixed_by(self, prefix: ObjectLocation) -> CheckResult:
+        """Add graph location without dropping declaring type or input provenance.
+
+        A submitted source pointer is already boundary-owned and absolute; do
+        not reconstruct or rename it when adding canonical graph segments.
+        """
+        return replace(self, location=self.location.prefixed_by(prefix))
     def to_wire(self, profile:JsonFieldNamingProfile=JsonFieldNamingProfile.CAMEL_CASE)->dict[str,Any]:
         return {key:value for key,value in {
             "ruleId":self.rule_id,"entityType":self.entity_type,

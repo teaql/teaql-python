@@ -49,6 +49,8 @@ def test_missing_required_input_uses_canonical_paths_without_io(field, operation
         ctx._validate_required_mutation_input(mutation)
     assert [v.location.model_path for v in error.value.violations] == [field]
     assert error.value.violations[0].location.instance_path.startswith("/")
+    assert error.value.violations[0].entity_type == "Probe"
+    assert error.value.violations[0].to_wire()["entityType"] == "Probe"
     assert ctx.get_resource("fix_time") is None
     assert ctx.last_fix_evidence() == ()
 

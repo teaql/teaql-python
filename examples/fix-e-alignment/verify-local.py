@@ -73,6 +73,22 @@ def main():
                 values = [json.loads(line[len(marker):]) for line in lines if line.startswith(marker)]
                 assert len(values) == 1 and values[0]["passed"] is True, marker
             assert fingerprint() == manifest
+        checker_command = [sys.executable, str(EXAMPLE / "checker_diagnostics.py"),
+                           "--database", str(evidence / "checker.sqlite")]
+        checker_log = evidence / "checker.log"
+        with checker_log.open("w") as output:
+            checker_result = subprocess.run(checker_command, cwd=REPO, env=environment, stdout=output,
+                                            stderr=subprocess.STDOUT, check=False, timeout=120)
+        report["checkerMetadata"] = {"command": checker_command, "exitCode": checker_result.returncode,
+                                     "logSha256": hashlib.sha256(checker_log.read_bytes()).hexdigest()}
+        assert checker_result.returncode == 0, checker_log.read_text()[-12000:]
+        checker_rows = [json.loads(line[len("CHECKER_METADATA="):])
+                        for line in checker_log.read_text().splitlines() if line.startswith("CHECKER_METADATA=")]
+        assert len(checker_rows) == 1 and checker_rows[0]["passed"] is True
+        assert checker_rows[0]["invalidSaves"] == 16 and checker_rows[0]["rounds"] == 2
+        report["checkerMetadata"]["invalidSaves"] = 16
+        report["checkerMetadata"]["databaseSha256"] = hashlib.sha256((evidence / "checker.sqlite").read_bytes()).hexdigest()
+        assert fingerprint() == manifest
         report["databaseSha256"] = hashlib.sha256((evidence / "fixture.sqlite").read_bytes()).hexdigest()
         report["passed"] = True
         status = 0
