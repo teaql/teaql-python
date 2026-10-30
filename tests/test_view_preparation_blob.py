@@ -125,6 +125,40 @@ async def test_unlisted_key_and_provider_failure_fail_closed_after_commit():
 
 
 @pytest.mark.asyncio
+async def test_provider_url_with_raw_whitespace_or_control_fails_after_commit():
+    reference = BlobRef("blob_asset_1")
+
+    class Authorizer:
+        async def authorize(self, _context, _result, _options):
+            return AuthorizedResponseGraph({"document": reference}, (
+                AuthorizedBlobSlot(("document",), "Asset", "1", "document",
+                                   "tenant-a", 4, reference),))
+
+    class Blob:
+        url = ""
+
+        async def project_batch(self, _context, _graph, _expiry):
+            return (ProjectedBlobURL(self.url,
+                                     datetime.now(timezone.utc) + timedelta(seconds=30)),)
+
+    blob = Blob()
+    context = UserContext().insert_resource("response_graph_authorizer", Authorizer())
+    context.insert_resource("blob_response_contributor", blob)
+    for invalid in (" https://files.example.invalid/read",
+                    "https://files.example.invalid/read file",
+                    "https://files.example.invalid/read\n",
+                    "https://files.example.invalid/\tread",
+                    "https://files.example.invalid/read\u2028next",
+                    "https://files.example.invalid/read\u2029next"):
+        blob.url = invalid
+        with pytest.raises(ViewPreparationError) as failure:
+            await ViewPreparationService().prepare(context, None,
+                ViewOptions(mode="ordinary", business_outcome="committed"))
+        assert failure.value.code == "BLOB_SIGN_FAILED"
+        assert failure.value.business_state == "committed"
+
+
+@pytest.mark.asyncio
 async def test_invalid_or_expired_view_options_are_rejected_before_authorization():
     context = UserContext()
     service = ViewPreparationService()

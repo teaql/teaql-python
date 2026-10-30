@@ -4,6 +4,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import re
 from typing import Any, Protocol
 from urllib.parse import urlsplit
 
@@ -222,6 +223,10 @@ class ViewPreparationService:
                 if len(urls) != len(graph.blob_slots):
                     _fail("BLOB_SIGN_FAILED")
                 for slot, signed in zip(graph.blob_slots, urls):
+                    # urlsplit strips or normalizes raw whitespace; reject the original value.
+                    if (not isinstance(signed.url, str)
+                            or re.search(r"[\s\x00-\x1f\x7f-\x9f]", signed.url)):
+                        _fail("BLOB_SIGN_FAILED")
                     parsed = urlsplit(signed.url)
                     if (parsed.scheme not in ("http", "https") or not parsed.hostname
                             or not _future(signed.expires_at)
