@@ -1,7 +1,13 @@
 from datetime import timedelta, datetime, timezone
+from concurrent.futures import ThreadPoolExecutor
 from io import BytesIO
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from threading import Thread
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+from uuid import uuid4
+import os
+import time
 import pytest
 import boto3
 from botocore.config import Config
@@ -14,6 +20,7 @@ class Stub:
     size = 3
     code = None
     seen = None
+    deletes = 0
     def head(self, invocation, key):
         self.seen = invocation
         if self.code:
@@ -24,6 +31,8 @@ class Stub:
         return ObjectMetadata(key, options.size)
     def get(self, invocation, key):
         return ObjectContent(ObjectMetadata(key, self.size), BytesIO(b"abc"))
+    def delete(self, invocation, key):
+        self.deletes += 1
 
 
 def assert_error(code, work):
@@ -48,6 +57,16 @@ def test_object_storage_context_and_error_semantics():
     for code in (StorageErrorCode.ACCESS_DENIED, StorageErrorCode.UNAVAILABLE):
         stub.code = code
         assert_error(code, lambda: storage.exists(key))
+
+def test_conditional_delete_refuses_blind_provider():
+    stub = Stub()
+    storage = UserContext().with_object_storage(stub).object_storage("collect old generation")
+    key = ObjectKey("PRIVATE-KEY-CANARY")
+    assert_error(StorageErrorCode.UNSUPPORTED,
+                 lambda: storage.delete_if_version(key, '"old-etag"'))
+    assert_error(StorageErrorCode.INVALID_INPUT,
+                 lambda: storage.delete_if_version(key, "*"))
+    assert stub.deletes == 0
 
 
 def test_object_storage_stream_bounds_ownership_and_completion():
@@ -80,6 +99,16 @@ def test_object_storage_options_and_private_representations():
     for seconds in (0, -1, 0.5, 604801):
         assert_error(StorageErrorCode.INVALID_INPUT, lambda: ReadUrlOptions(timedelta(seconds=seconds)))
     assert_error(StorageErrorCode.INVALID_INPUT, lambda: ReadUrlOptions(filename="bad\nname", disposition="attachment"))
+    assert_error(StorageErrorCode.INVALID_INPUT, lambda: ReadUrlOptions(filename="bad\r\nname", disposition="attachment"))
+    assert_error(StorageErrorCode.INVALID_INPUT, lambda: ReadUrlOptions(filename="bad/name", disposition="attachment"))
+    assert_error(StorageErrorCode.INVALID_INPUT, lambda: ReadUrlOptions(filename="\ud800", disposition="attachment"))
+    assert ReadUrlOptions(disposition="inline", filename="sample.jpg").content_disposition() == (
+        'inline; filename="sample.jpg"')
+    unicode_disposition = ReadUrlOptions(
+        disposition="inline", filename="报告 & 📄\u2028mid\u2029x.jpg").content_disposition()
+    assert unicode_disposition.startswith('inline; filename="__ & _')
+    assert "filename*=UTF-8''%E6%8A%A5%E5%91%8A%20%26%20%F0%9F%93%84" in unicode_disposition
+    assert "\r" not in unicode_disposition and "\n" not in unicode_disposition
     assert "CANARY" not in repr(ObjectKey("PRIVATE-KEY-CANARY"))
     assert "CANARY" not in repr(ObjectReadUrl("PRIVATE-URL-CANARY", None))
     options = PutOptions(0, WriteMode.CREATE_ONLY, metadata={"tag": "PRIVATE-METADATA-CANARY"})
@@ -146,3 +175,89 @@ def test_object_storage_real_sdk_http_errors_are_not_absence():
         server.shutdown()
         server.server_close()
         provider.close()
+
+
+def test_minio_real_signed_range_and_expiry():
+    """Explicit local S3-compatible gate; the host owns the disposable bucket."""
+    endpoint = os.environ.get("TEAQL_S3_TEST_ENDPOINT")
+    bucket = os.environ.get("TEAQL_S3_TEST_BUCKET")
+    access = os.environ.get("TEAQL_S3_TEST_ACCESS_KEY")
+    secret = os.environ.get("TEAQL_S3_TEST_SECRET_KEY")
+    if not all((endpoint, bucket, access, secret)):
+        pytest.skip("explicit S3-compatible endpoint, bucket and credentials required")
+    provider = S3ObjectStorage.connect(bucket, endpoint_url=endpoint,
+        aws_access_key_id=access, aws_secret_access_key=secret)
+    storage = UserContext().with_object_storage(provider).object_storage("F4 real S3-compatible Python")
+    key = ObjectKey("f4/python/" + uuid4().hex)
+    create_key = ObjectKey("f4/python/create/" + uuid4().hex)
+    race_key = ObjectKey("f4/python/race/" + uuid4().hex)
+    conditional_key = ObjectKey("f2/python/conditional-delete/" + uuid4().hex)
+    content = b"%PDF-1.7\nF4 real S3-compatible bytes\n%%EOF"
+    try:
+        written = storage.put_bytes(key, content, PutOptions(len(content), WriteMode.REPLACE, "application/pdf"))
+        head = storage.head(key)
+        assert head is not None and head.size == len(content)
+        assert head.etag == written.etag and head.content_type == "application/pdf"
+        assert storage.get_bytes(key, 1024) == content
+        ticket = storage.get_read_url(key, ReadUrlOptions(timedelta(seconds=2), "attachment", "report.pdf"))
+        # Do not log the signed URL or credentials.
+        with urlopen(Request(ticket.url, headers={"Range": "bytes=0-7"}), timeout=5) as response:
+            assert response.status == 206 and response.read() == content[:8]
+            assert response.headers["Content-Type"] == "application/pdf"
+            assert "report.pdf" in response.headers["Content-Disposition"]
+        time.sleep(max(0, ticket.expires_at.timestamp() - time.time() + 1.3))
+        with pytest.raises(HTTPError) as expired:
+            urlopen(ticket.url, timeout=5)
+        assert expired.value.code == 403
+        refreshed = storage.get_read_url(key, ReadUrlOptions(timedelta(seconds=30), "attachment", "report.pdf"))
+        assert refreshed.url != ticket.url and refreshed.expires_at > datetime.now(timezone.utc)
+        with urlopen(Request(refreshed.url, headers={"Range": "bytes=0-7"}), timeout=5) as response:
+            assert response.status == 206 and response.read() == content[:8]
+        if os.environ.get("TEAQL_S3_TEST_CREATE_ONLY") == "1":
+            create = PutOptions(len(content), WriteMode.CREATE_ONLY, "application/pdf")
+            created = storage.put_bytes(create_key, content, create)
+            assert_error(StorageErrorCode.CONFLICT,
+                         lambda: storage.put_bytes(create_key, b"x" * len(content), create))
+            assert storage.head(create_key).etag == created.etag
+            assert storage.get_bytes(create_key, 1024) == content
+            candidates = (content, b"y" * len(content))
+            with ThreadPoolExecutor(max_workers=2) as pool:
+                futures = [pool.submit(storage.put_bytes, race_key, value, create)
+                           for value in candidates]
+                outcomes = []
+                for future in futures:
+                    try:
+                        future.result()
+                        outcomes.append("winner")
+                    except StorageError as error:
+                        assert error.code == StorageErrorCode.CONFLICT
+                        outcomes.append("conflict")
+            assert outcomes.count("winner") == outcomes.count("conflict") == 1
+            assert storage.get_bytes(race_key, 1024) == candidates[outcomes.index("winner")]
+        if os.environ.get("TEAQL_S3_TEST_CONDITIONAL_DELETE") == "1":
+            first = storage.put_bytes(conditional_key, content,
+                PutOptions(len(content), WriteMode.CREATE_ONLY, "application/pdf"))
+            assert storage.delete_if_version(
+                conditional_key, '"00000000000000000000000000000000"') == "version_mismatch"
+            assert storage.head(conditional_key).etag == first.etag
+            replacement = b"next immutable generation"
+            second = storage.put_bytes(conditional_key, replacement,
+                PutOptions(len(replacement), WriteMode.REPLACE, "text/plain"))
+            assert storage.delete_if_version(conditional_key, first.etag) == "version_mismatch"
+            assert storage.head(conditional_key).etag == second.etag
+            assert storage.get_bytes(conditional_key, 1024) == replacement
+            assert storage.delete_if_version(conditional_key, second.etag) == "deleted"
+            assert storage.head(conditional_key) is None
+            assert storage.delete_if_version(conditional_key, second.etag) == "already_missing"
+            assert_error(StorageErrorCode.INVALID_INPUT,
+                         lambda: storage.delete_if_version(conditional_key, "*"))
+    finally:
+        try:
+            storage.delete(key)
+            if os.environ.get("TEAQL_S3_TEST_CREATE_ONLY") == "1":
+                storage.delete(create_key)
+                storage.delete(race_key)
+            if os.environ.get("TEAQL_S3_TEST_CONDITIONAL_DELETE") == "1":
+                storage.delete(conditional_key)
+        finally:
+            provider.close()

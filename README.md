@@ -424,7 +424,7 @@ distinguish implemented source, executed examples, artifact verification and rel
 
 ```bash
 python -m pip install -e '.[test]'
-PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src python -m pytest -q
+PYTHONDONTWRITEBYTECODE=1 PYTHONPATH=src:packages/teaql-blob-reference/src python -m pytest -q
 PYTHONDONTWRITEBYTECODE=1 bash scripts/verify-examples.sh
 ```
 

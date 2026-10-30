@@ -121,6 +121,26 @@ class S3ObjectStorage:
     def delete(self, invocation, key):
         _sdk_call(lambda: self._client.delete_object(Bucket=self._bucket, Key=key.value))
 
+    def delete_if_version(self, invocation, key, content_version: str):
+        if (not isinstance(content_version, str) or not content_version
+                or len(content_version) > 256 or content_version == "*"
+                or content_version.strip() != content_version
+                or any(ord(char) < 32 or 127 <= ord(char) <= 159
+                       for char in content_version)):
+            raise StorageError(StorageErrorCode.INVALID_INPUT)
+        try:
+            self._client.delete_object(Bucket=self._bucket, Key=key.value,
+                                       IfMatch=content_version)
+            return "deleted"
+        except Exception as error:
+            status = getattr(error, "response", {}).get(
+                "ResponseMetadata", {}).get("HTTPStatusCode")
+            if status in (404, 412):
+                return ("version_mismatch" if self.head(invocation, key) is not None
+                        else "already_missing")
+            safe = _translate(error)
+        raise safe from None
+
     def get_read_url(self, invocation, key, options):
         params = dict(Bucket=self._bucket, Key=key.value)
         disposition = options.content_disposition()

@@ -1,0 +1,186 @@
+"""Real local File/HTTP behavior for the independent optional wheel."""
+from concurrent.futures import ThreadPoolExecutor
+from datetime import timedelta
+from io import BytesIO
+from threading import Event
+from urllib.error import HTTPError
+from urllib.request import Request, urlopen
+import hashlib
+import os
+import subprocess
+import sys
+import time
+
+import pytest
+
+from teaql_blob_reference import FileObjectStorage
+from teaql.core.object_storage import (
+    ObjectKey, PutOptions, ReadUrlOptions, StorageError, StorageErrorCode, WriteMode,
+)
+from teaql.runtime import UserContext
+
+
+def test_file_conditional_delete_fences_same_bytes_and_external_process(tmp_path):
+    root = tmp_path / "objects"
+    first = FileObjectStorage(root, os.urandom(32))
+    second = FileObjectStorage(root, os.urandom(32))
+    actor = UserContext().with_object_storage(first).with_object_storage_observer(lambda event: None)
+    writer = actor.object_storage("write File generation")
+    actor.with_object_storage(second)
+    collector = actor.object_storage("delete File generation")
+    key = ObjectKey("blob/same-bytes")
+    assert collector.head(key) is None
+    assert collector.delete_if_version(key, "absent") == "already_missing"
+    data = b"same bytes"
+    old = writer.put_bytes(key, data, PutOptions(len(data), WriteMode.CREATE_ONLY))
+    current = writer.put_bytes(key, data, PutOptions(len(data), WriteMode.REPLACE))
+    assert old.etag != current.etag
+    assert collector.delete_if_version(key, old.etag) == "version_mismatch"
+    assert collector.get_bytes(key, len(data)) == data
+    assert collector.delete_if_version(key, current.etag) == "deleted"
+    assert collector.head(key) is None
+    assert collector.delete_if_version(key, current.etag) == "already_missing"
+    key_hash = second._hash(key)
+    assert not (second._directory(key_hash) / ("data-" + current.etag.split(".")[-1])).exists()
+
+    if os.name != "posix":
+        return
+    locked_key = ObjectKey("blob/external-lock")
+    written = writer.put_bytes(locked_key, data, PutOptions(len(data), WriteMode.CREATE_ONLY))
+    lock_path = second._directory(second._hash(locked_key)) / "manifest.lock"
+    marker = tmp_path / "locked"
+    script = ("import fcntl, os, sys, time; "
+              "fd=os.open(sys.argv[1], os.O_RDWR); fcntl.flock(fd, fcntl.LOCK_EX); "
+              "open(sys.argv[2], 'w').close(); time.sleep(2)")
+    process = subprocess.Popen([sys.executable, "-c", script, str(lock_path), str(marker)])
+    try:
+        for _ in range(100):
+            if marker.exists():
+                break
+            time.sleep(0.01)
+        assert marker.exists() and process.poll() is None
+        with ThreadPoolExecutor(max_workers=1) as pool:
+            pending = pool.submit(collector.delete_if_version, locked_key, written.etag)
+            time.sleep(0.1)
+            assert process.poll() is None and not pending.done()
+            assert process.wait(timeout=5) == 0
+            assert pending.result(timeout=5) == "deleted"
+    finally:
+        if process.poll() is None:
+            process.terminate()
+        process.wait(timeout=5)
+
+
+def test_file_generation_sweep_waits_for_writer_and_preserves_current(tmp_path):
+    root = tmp_path / "objects"
+    writer_provider = FileObjectStorage(root, os.urandom(32))
+    sweep_provider = FileObjectStorage(root, os.urandom(32))
+    actor = UserContext().with_object_storage(writer_provider)
+    writer = actor.object_storage("write File generations")
+    key = ObjectKey("blob/generation-sweep")
+    data = b"same bytes"
+    first = writer.put_bytes(key, data, PutOptions(len(data), WriteMode.CREATE_ONLY))
+    second = writer.put_bytes(key, data, PutOptions(len(data), WriteMode.REPLACE))
+    assert first.etag != second.etag
+    key_hash = sweep_provider._hash(key)
+    old_path = sweep_provider._directory(key_hash) / ("data-" + first.etag.split(".")[-1])
+    assert old_path.is_file()
+
+    reading = Event()
+    proceed = Event()
+
+    class PausedSource(BytesIO):
+        def read(self, size=-1):
+            reading.set()
+            assert proceed.wait(5)
+            return super().read(size)
+
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        replacing = pool.submit(writer_provider.put, None, key, PausedSource(data),
+                                PutOptions(len(data), WriteMode.REPLACE))
+        assert reading.wait(5)
+        sweeping = pool.submit(sweep_provider.sweep_old_generations, key)
+        time.sleep(0.1)
+        assert not sweeping.done()
+        assert old_path.is_file()
+        proceed.set()
+        third = replacing.result(timeout=5)
+        assert sweeping.result(timeout=5) == 2
+
+    assert sweep_provider.head(None, key).etag == third.etag
+    assert sweep_provider.sweep_old_generations(key) == 0
+    assert not old_path.exists()
+    current_path = sweep_provider._directory(key_hash) / ("data-" + third.etag.split(".")[-1])
+    assert current_path.is_file()
+    assert sweep_provider.delete_if_version(None, key, third.etag) == "deleted"
+    assert sweep_provider.sweep_old_generations(key) == 0
+
+
+def _status(url, *, method="GET", headers=None):
+    try:
+        with urlopen(Request(url, method=method, headers=headers or {}), timeout=5) as response:
+            return response.status, dict(response.headers), response.read()
+    except HTTPError as error:
+        return error.code, dict(error.headers), error.read()
+
+
+def test_file_storage_exact_bytes_and_authenticated_http(tmp_path):
+    provider = FileObjectStorage(tmp_path / "objects", os.urandom(32))
+    context = UserContext().with_object_storage(provider).with_object_storage_observer(lambda event: None)
+    store = context.object_storage("verify real optional file store")
+    key = ObjectKey("objects/PRIVATE-PYTHON-CANARY")
+    content = b"%PDF-1.7\nTeaQL document\n%%EOF"
+    try:
+        with pytest.raises(StorageError) as unstarted:
+            store.get_read_url(key)
+        assert unstarted.value.code == StorageErrorCode.NOT_CONFIGURED
+        assert provider.start().startswith("http://127.0.0.1:")
+        options = PutOptions(len(content), WriteMode.CREATE_ONLY, "application/pdf")
+        metadata = store.put_bytes(key, content, options)
+        assert metadata.etag.startswith(hashlib.sha256(content).hexdigest() + ".")
+        same = store.put_bytes(key, content, PutOptions(len(content), WriteMode.REPLACE, "application/pdf"))
+        assert same.etag != metadata.etag
+        assert same.etag.startswith(hashlib.sha256(content).hexdigest() + ".")
+        assert store.head(key).size == len(content)
+        assert store.get_bytes(key, len(content)) == content
+        with pytest.raises(StorageError) as conflict:
+            store.put_bytes(key, content, options)
+        assert conflict.value.code == StorageErrorCode.CONFLICT
+        with pytest.raises(StorageError):
+            store.put_bytes(key, content, PutOptions(len(content) + 1, WriteMode.REPLACE))
+        assert store.get_bytes(key, len(content)) == content
+
+        signed = store.get_read_url(key, ReadUrlOptions(timedelta(seconds=2), "attachment", "asset.pdf"))
+        assert key.value not in signed.url and "PRIVATE-PYTHON-CANARY" not in repr(signed)
+        code, headers, body = _status(signed.url)
+        assert code == 200 and body == content
+        assert headers["Content-Type"] == "application/pdf"
+        assert headers["Content-Disposition"] == 'attachment; filename="asset.pdf"'
+        assert headers["Cache-Control"] == "private, no-store"
+        code, headers, body = _status(signed.url, method="HEAD")
+        assert code == 200 and body == b"" and headers["Content-Length"] == str(len(content))
+        code, headers, body = _status(signed.url, headers={"Range": "bytes=0-3"})
+        assert code == 206 and body == content[:4]
+        assert headers["Content-Range"] == f"bytes 0-3/{len(content)}"
+        code, _, body = _status(signed.url, headers={"Range": "bytes=-3"})
+        assert code == 206 and body == content[-3:]
+        assert _status(signed.url, headers={"Range": "bytes=999-"})[0] == 416
+
+        tampered = signed.url.replace("/objects/", "/objects/A", 1)
+        assert _status(tampered)[0] == 404
+        replacement = b"next generation"
+        store.put_bytes(key, replacement, PutOptions(len(replacement), WriteMode.REPLACE))
+        assert _status(signed.url)[0] == 404
+        assert store.get_bytes(key, len(replacement)) == replacement
+        expiring = store.get_read_url(key, ReadUrlOptions(timedelta(seconds=1)))
+        time.sleep(1.1)
+        assert _status(expiring.url)[0] == 404
+        current = provider._manifest(provider._hash(key))
+        provider._data_path(provider._hash(key), current).unlink()
+        with pytest.raises(StorageError) as missing:
+            store.head(key)
+        assert missing.value.code == StorageErrorCode.UNAVAILABLE
+        store.delete(key)
+        assert not store.exists(key)
+    finally:
+        provider.close()

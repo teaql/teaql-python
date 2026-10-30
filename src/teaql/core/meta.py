@@ -7,6 +7,17 @@ class PropertyDescriptor:
         self._is_version = False
         self.nullable = True
         self.log_policy_val = 'unknown'
+        self.blob_spec = None
+    def blob(self, spec):
+        from .blob_ref import BlobFieldSpec
+        from .value import DataType
+        if not isinstance(spec, BlobFieldSpec) or spec.field != self.name:
+            raise ValueError("BLOB_POLICY_INVALID")
+        self.blob_spec = spec
+        self.property_type = DataType.Text
+        self.nullable = spec.nullable
+        self.log_policy_val = 'credential'
+        return self
     def log_policy(self, policy):
         """Trusted schema policy; incoming requests cannot override it."""
         if policy not in ('plain', 'masked', 'credential', 'unknown'):
@@ -59,6 +70,8 @@ class EntityDescriptor:
         self.table_name_val = name
         return self
     def property(self, prop): 
+        if prop.blob_spec is not None and prop.blob_spec.entity != self._name:
+            raise ValueError("BLOB_POLICY_INVALID")
         self.properties.append(prop)
         return self
 

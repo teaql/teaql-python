@@ -11,6 +11,7 @@ class RuntimeModule:
         self._generated_bootstraps: List[Any] = []
         self._schema_entities: List[Any] = []
         self._wire_metadata: Dict[str, Any] = {}
+        self._required_capabilities: set[str] = set()
 
     @classmethod
     def new(cls) -> 'RuntimeModule':
@@ -60,6 +61,16 @@ class RuntimeModule:
         self._wire_metadata[entity] = metadata
         return self
 
+    def require_capability(self, name: str) -> 'RuntimeModule':
+        if not isinstance(name, str) or not name or name != name.strip() or any(ch.isspace() for ch in name):
+            raise ValueError("invalid runtime capability")
+        self._required_capabilities.add(name)
+        return self
+
+    @property
+    def required_capabilities(self) -> tuple[str, ...]:
+        return tuple(sorted(self._required_capabilities))
+
     def schema_entity(self, descriptor: Any) -> 'RuntimeModule':
         """Register generated storage metadata without embedding a provider."""
         self._schema_entities.append(descriptor)
@@ -78,6 +89,7 @@ class RuntimeModule:
         ]
         combined._schema_entities = [*self._schema_entities, *other._schema_entities]
         combined._wire_metadata = {**self._wire_metadata, **other._wire_metadata}
+        combined._required_capabilities = self._required_capabilities | other._required_capabilities
         combined._initial_graphs = [
             *getattr(self, '_initial_graphs', []),
             *getattr(other, '_initial_graphs', []),
@@ -89,6 +101,7 @@ class RuntimeModule:
         return combined
 
     def apply_to(self, context: UserContext):
+        context._required_capabilities = frozenset(self._required_capabilities)
         for name, dep in self._dependencies.items():
             context.insert_resource(name, dep)
         installed_entities = self._schema_entities or self._entities

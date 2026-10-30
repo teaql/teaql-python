@@ -8,6 +8,8 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -15,10 +17,29 @@ jobs:
           python-version: "3.12"
       - run: python -m pip install --upgrade build
       - run: python -m pip install --editable ".[test,telemetry]"
+      - run: python -m pip install --editable "./packages/teaql-blob-reference[image,pdf,office]"
+      - run: python -m pip install --no-deps --editable ./packages/teaql-secure-document-reference
       - name: Verify tag matches package version
         run: test "${GITHUB_REF_NAME#python-v}" = "$(python -c 'import importlib.metadata; print(importlib.metadata.version("teaql"))')"
+      - name: Require a verified signed release tag
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/verify_signed_release_tag.py
+      - name: Test signed release tag verifier
+        run: python scripts/test_verify_signed_release_tag.py
+      - name: Test PyPI version-absence verifier
+        run: python scripts/test_verify_public_release_absence.py
       - run: python -m pytest
-      - run: python -m build
+      - run: python -m pytest packages/teaql-secure-document-reference/tests
+      - run: python -m build --outdir dist .
+      - run: python -m build --outdir dist ./packages/teaql-blob-reference
+      - run: python -m build --outdir dist ./packages/teaql-secure-document-reference
+      - name: Verify exact release wheels and source distributions
+        run: python scripts/verify-reference-release-artifacts.py dist
+      - name: Run four isolated consumers from exact wheels
+        run: python scripts/verify-reference-release-consumers.py dist
+      - name: Resolve and install exact wheels with declared dependencies in clean environments
+        run: python scripts/verify-reference-release-dependencies.py dist
       - uses: actions/upload-artifact@v4
         with:
           name: python-distributions
@@ -31,10 +52,21 @@ jobs:
       name: pypi
       url: https://pypi.org/project/teaql/
     permissions:
+      contents: read
       id-token: write
     steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
       - uses: actions/download-artifact@v4
         with:
           name: python-distributions
           path: dist/
+      - name: Reverify exact downloaded distributions
+        run: python scripts/verify-reference-release-artifacts.py dist
+      - name: Refuse any occupied PyPI version
+        run: python scripts/verify_public_release_absence.py dist
       - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Verify exact public wheel and source distribution bytes
+        run: python scripts/verify_public_release_absence.py --published dist

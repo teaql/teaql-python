@@ -1,5 +1,6 @@
 import json
 import aiosqlite
+from pathlib import Path
 from decimal import Decimal
 from datetime import date, time
 from typing import List, Dict, Any, Optional, AsyncIterator
@@ -35,6 +36,26 @@ class SqliteTransport(SqlTransactionTransport):
 
     async def enable_soundex(self) -> None:
         self._soundex_enabled = True
+
+    async def shares_database(self, transport) -> bool:
+        """Compare SQLite's actual main file, including native file URI paths.
+
+        Empty filenames (private or shared memory) cannot prove this provider's
+        independent per-operation connections share a durable database.
+        """
+        if not isinstance(transport, SqliteTransport):
+            return False
+
+        async def main_file(source):
+            rows = await source.fetch_all_sql(CompiledQuery("PRAGMA database_list", []))
+            scalar = lambda value: getattr(value, "val", value)
+            files = [scalar(row.get("file")) for row in rows if scalar(row.get("name")) == "main"]
+            if len(files) != 1 or not isinstance(files[0], str) or not files[0]:
+                return None
+            return Path(files[0]).resolve()
+
+        own_file = await main_file(self)
+        return own_file is not None and own_file == await main_file(transport)
 
     async def _prepare(self, db: aiosqlite.Connection) -> None:
         if self._soundex_enabled:

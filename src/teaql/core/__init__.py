@@ -1,4 +1,5 @@
 from .value import Value, DataType, Timestamp
+from .blob_ref import BlobRef, BlobFieldSpec
 from .entity import BaseEntityData, EntityKey, EntityChangeSet, EntityRoot
 from .expr import (
     Expr, ExprBuilder, BinaryOp, ExprFunction,
@@ -46,7 +47,7 @@ from .business_id import (
 
 __all__ = [
     "QueryIntent", "MutationIntent", "RequestIntentError", "QueryOperation",
-    "Value", "DataType", "Timestamp",
+    "Value", "DataType", "Timestamp", "BlobRef", "BlobFieldSpec",
     "BaseEntityData", "EntityKey", "EntityChangeSet", "EntityRoot",
     "Expr", "ExprBuilder", "BinaryOp", "ExprFunction",
     "SelectQuery", "SortDirection", "OrderBy", "Aggregate", "AggregateFunction",

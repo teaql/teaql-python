@@ -101,6 +101,7 @@ _default_id_set_store = InMemoryIdSetStore()
 class UserContext:
     def __init__(self):
         self._resources: Dict[str, Any] = {}
+        self._required_capabilities: frozenset[str] = frozenset()
         self._resources["sql_log_options"] = SqlLogOptions.all()
         self._resources["diagnostic_sql_log_sink"] = TextDiagnosticSqlLogSink()
         self._metadata: Optional[Any] = None
@@ -219,6 +220,12 @@ class UserContext:
         )
         return claims
 
+    def require_no_active_graph_sql(self) -> None:
+        """Reject maintenance that would wait on its own graph SQL owner."""
+        guard = self._graph_save_guard.get()
+        if self._graph_session is not None or (guard is not None and guard["active"]):
+            raise RuntimeError("BLOB_TRANSACTION_REQUIRED")
+
     async def execute_graph_save(self, work, *, comment=None):
         """Run ``work(session)``; never implicitly join another root save."""
         from teaql.core.request_intent import MutationIntent
@@ -237,6 +244,8 @@ class UserContext:
                 lambda: self._execute_graph_transaction(work, intent, GraphMutationSession))
 
     async def _execute_graph_transaction(self, work, intent, session_type):
+        from .capability import validate_capabilities
+        await validate_capabilities(self)
         provider = self.require_resource("dataService")
         begin = getattr(provider, "begin", None)
         if not callable(begin):
@@ -618,6 +627,8 @@ class UserContext:
         self.with_schema_provider(provider)
 
     async def ensure_schema(self):
+        from .capability import validate_capabilities
+        await validate_capabilities(self)
         provider = self.get_resource("schema_provider")
         if provider:
             from ._schema_capability import SCHEMA_CAPABILITY
@@ -786,7 +797,9 @@ class UserContext:
         descriptor = self.entity(event.entity)
         mask_fields = getattr(descriptor, "audit_mask_fields_val", []) if descriptor else []
         max_len = getattr(descriptor, "audit_value_max_len_val", None) if descriptor else None
-        safe_event = event.safe(mask_fields, max_len)
+        credential_fields = {prop.name for prop in descriptor.properties
+                             if getattr(prop, "blob_spec", None) is not None} if descriptor else set()
+        safe_event = event.safe(mask_fields, max_len, credential_fields)
         if self._graph_session is not None:
             self._graph_session.queue_audit(event, safe_event)
             return

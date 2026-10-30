@@ -5,6 +5,7 @@ from datetime import date, datetime, time as wall_time
 import asyncio
 import hashlib
 import logging
+from inspect import isawaitable
 import time
 import threading
 from array import array
@@ -159,6 +160,19 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         # Context may legitimately have no ambient "db" resource. The actual
         # executor still needs a stable, non-recycled cache isolation identity.
         self._id_set_source_identity = uuid4().hex
+
+    async def uses_sql_database(self, transport) -> bool:
+        """Ask the native transport for resource identity; no Blob dependency."""
+        shares = getattr(self.transport, "shares_database", None)
+        if not callable(shares):
+            return False
+        try:
+            result = shares(transport)
+            if isawaitable(result):
+                result = await result
+            return result is True
+        except Exception:
+            return False
 
     def _backend_name(self) -> str:
         kind = self.dialect.kind()
@@ -1082,6 +1096,39 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         except SqlCompileError as e:
             raise CompileError(e)
 
+        # A legacy row can predate the Blob binding table. Read its modeled Blob
+        # columns inside this mutation's SQL owner before an explicit update or
+        # delete, so a NULL slot can be handled without accepting a non-NULL
+        # orphan Key after the business row has changed or disappeared.
+        blob_fields = [prop for prop in entity_desc.properties
+                       if getattr(prop, 'blob_spec', None) is not None]
+        before_blob_record = None
+        blob_participant = context.get_resource('blob_mutation_participant') if context is not None else None
+        if callable(getattr(blob_participant, 'apply_with_before', None)) and blob_fields and id_prop is not None and (
+                isinstance(req_data, DeleteCommand) or
+                isinstance(req_data, UpdateCommand) and any(
+                    prop.name in req_data.values for prop in blob_fields)):
+            columns = ", ".join(
+                self.dialect.quote_ident(prop.column_name_val)
+                if prop.column_name_val == prop.name else
+                f"{self.dialect.quote_ident(prop.column_name_val)} AS "
+                f"{self.dialect.quote_ident(prop.name)}"
+                for prop in blob_fields)
+            before_query = CompiledQuery(
+                f"SELECT {columns} FROM {self.dialect.quote_ident(entity_desc.table_name_val)} "
+                f"WHERE {self.dialect.quote_ident(id_prop.column_name_val)} = "
+                f"{self.dialect.placeholder(1)}",
+                [req_data.id],
+                parameter_log_policies=[self.dialect.field_log_policy(entity_desc, id_prop.name)],
+                sql_origin='generated')
+            try:
+                before_rows = await self.transport.fetch_all_sql(before_query)
+            except Exception:
+                raise RuntimeError('BLOB_CATALOG_FAILED') from None
+            if len(before_rows) > 1:
+                raise RuntimeError('BLOB_CATALOG_FAILED')
+            before_blob_record = before_rows[0] if before_rows else None
+
         start = datetime.now()
         last_insert_id = None
         operation = {'insert': DataServiceOperation.Insert, 'update': DataServiceOperation.Update,
@@ -1174,6 +1221,21 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             read_metadata = self._record_readback(context, readback, compiled, metadata,
                                                   read_start, persisted_rows, None, privacy, read_scope.correlation)
             metadata = replace(metadata, statements=(metadata, read_metadata))
+
+        if affected_rows > 0 and context is not None:
+            blob_fields = [prop for prop in entity_desc.properties
+                           if getattr(prop, 'blob_spec', None) is not None]
+            if blob_fields and (isinstance(req_data, (InsertCommand, DeleteCommand, RecoverCommand))
+                                or isinstance(req_data, UpdateCommand) and any(
+                                    prop.name in req_data.values for prop in blob_fields)):
+                participant = context.get_resource('blob_mutation_participant')
+                if not callable(getattr(participant, 'apply', None)):
+                    raise RuntimeError('BLOB_CAPABILITY_MISSING')
+                if callable(getattr(participant, 'apply_with_before', None)):
+                    await participant.apply_with_before(context, entity_desc, req_data,
+                                                        persisted_record, before_blob_record)
+                else:
+                    await participant.apply(context, entity_desc, req_data, persisted_record)
 
         if affected_rows > 0 and context is not None:
             from teaql.runtime.audit import AuditFieldChange, MutationAuditKind, RawAuditEvent
@@ -1390,6 +1452,32 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
         self._audit_journal = None
         self._audit_owner = None
         self._completed = False
+        self._rollback_only = False
+        self._physical_sql_active = False
+
+    async def with_physical_sql(self, work):
+        """Lend this physical SQL owner to an explicit graph module callback."""
+        if self._completed or self._rollback_only or self._physical_sql_active or not callable(work):
+            raise RuntimeError('BLOB_TRANSACTION_REQUIRED')
+        lease = _PhysicalSQLLease(self.transport)
+        self._physical_sql_active = True
+        try:
+            result = await work(lease)
+            if lease.failed:
+                self._rollback_only = True
+                raise RuntimeError('GRAPH_TRANSACTION_ROLLBACK_ONLY')
+            return result
+        except BaseException:
+            self._rollback_only = True
+            raise
+        finally:
+            lease.close()
+            self._physical_sql_active = False
+
+    def is_current_physical_sql_lease(self, lease):
+        return (not self._completed and self._physical_sql_active and
+                isinstance(lease, _PhysicalSQLLease) and lease._active and
+                lease._transport is self.transport)
 
     def capabilities(self) -> DataServiceCapabilities:
         return DataServiceCapabilities(
@@ -1410,6 +1498,8 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
         request.validate()
         if self._completed:
             raise RuntimeError('SQL transaction is already completed')
+        if self._rollback_only:
+            raise RuntimeError('GRAPH_TRANSACTION_ROLLBACK_ONLY')
         if context is not None:
             context._require_mutation_invocation()
             if context._graph_session is None:
@@ -1436,6 +1526,8 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
     async def commit(self, context: 'UserContext') -> None:
         if self._completed:
             raise RuntimeError('SQL transaction is already completed')
+        if self._rollback_only:
+            raise RuntimeError('GRAPH_TRANSACTION_ROLLBACK_ONLY')
         await self.transport.commit_sql()
         self._completed = True
         if self._audit_journal:
@@ -1446,3 +1538,31 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
             self._audit_journal.discard()
         self._completed = True
         await self.transport.rollback_sql()
+
+
+class _PhysicalSQLLease(SqlTransport):
+    def __init__(self, transport: SqlTransactionTransportTx):
+        self._transport = transport
+        self._active = True
+        self.failed = False
+
+    def close(self):
+        self._active = False
+
+    async def fetch_all_sql(self, query: CompiledQuery):
+        if not self._active:
+            raise RuntimeError('BLOB_TRANSACTION_REQUIRED')
+        try:
+            return await self._transport.fetch_all_sql(query)
+        except BaseException:
+            self.failed = True
+            raise
+
+    async def execute_sql(self, query: CompiledQuery):
+        if not self._active:
+            raise RuntimeError('BLOB_TRANSACTION_REQUIRED')
+        try:
+            return await self._transport.execute_sql(query)
+        except BaseException:
+            self.failed = True
+            raise

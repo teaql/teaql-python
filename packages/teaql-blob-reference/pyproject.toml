@@ -1,0 +1,22 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "teaql-blob-reference"
+version = "0.3.1"
+description = "Optional TeaQL Blob reference module"
+readme = "README.md"
+requires-python = ">=3.10"
+license = "Apache-2.0"
+authors = [{ name = "TeaQL" }]
+dependencies = ["teaql==0.3.1"]
+
+[project.optional-dependencies]
+image = ["Pillow==12.3.0"]
+pdf = ["pypdf==6.21.3"]
+office = ["python-docx==1.2.0", "openpyxl==3.1.5"]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+include = ["teaql_blob_reference*"]

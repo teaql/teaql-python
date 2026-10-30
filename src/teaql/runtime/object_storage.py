@@ -224,5 +224,25 @@ class ObjectStorage:
     def delete(self, key):
         return self._call("delete", lambda: self._provider.delete(self._invocation, key))
 
+    def delete_if_version(self, key, content_version: str):
+        if (not isinstance(content_version, str) or not content_version
+                or len(content_version) > 256 or content_version == "*"
+                or content_version.strip() != content_version
+                or any(ord(char) < 32 or 127 <= ord(char) <= 159
+                       for char in content_version)):
+            raise StorageError(StorageErrorCode.INVALID_INPUT)
+        conditional = getattr(self._provider, "delete_if_version", None)
+        if not callable(conditional):
+            raise StorageError(StorageErrorCode.UNSUPPORTED)
+        def delete():
+            result = conditional(self._invocation, key, content_version)
+            if result not in ("deleted", "already_missing", "version_mismatch"):
+                raise StorageError(StorageErrorCode.UNAVAILABLE)
+            return result
+        return self._call("delete_if_version", delete)
+
+    def supports_version_conditional_delete(self) -> bool:
+        return callable(getattr(self._provider, "delete_if_version", None))
+
     def get_read_url(self, key, options=ReadUrlOptions()):
         return self._call("read_url", lambda: self._provider.get_read_url(self._invocation, key, options))
