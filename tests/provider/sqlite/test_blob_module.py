@@ -384,6 +384,119 @@ async def test_native_mutation_binds_blob_in_same_sqlite_graph(tmp_path):
 
 
 @pytest.mark.asyncio
+async def test_native_legacy_nullable_blob_slot_checks_authoritative_old_value(tmp_path):
+    path = str(tmp_path / "legacy-blob-slot.db")
+    descriptor = EntityDescriptor("Asset").table_name("asset")
+    descriptor.property(PropertyDescriptor("id", DataType.I64).is_id())
+    descriptor.property(PropertyDescriptor("version", DataType.I64).is_version())
+    descriptor.property(PropertyDescriptor("document", DataType.Text).blob(
+        BlobFieldSpec("Asset", "document", ["pdf"], True, "default")))
+    schema = SimpleSchemaProvider()
+    schema.register_entity(descriptor)
+    context = RuntimeModule.new().entity(descriptor).require_capability("blob.v1").into_context()
+    context.insert_resource("dataService", SqlDataServiceExecutor(
+        SqliteDialect(), SqliteTransport(path), schema))
+    store = FileObjectStorage(tmp_path / "legacy-private", os.urandom(32))
+    context.with_object_storage(store)
+    catalog = SqliteBlobCatalog(SqliteTransport(path))
+    await catalog.ensure_schema()
+    async with aiosqlite.connect(path) as db:
+        await db.execute("CREATE TABLE asset (id INTEGER PRIMARY KEY, version INTEGER, document TEXT)")
+        await db.executemany("INSERT INTO asset(id,version,document) VALUES (?,?,?)",
+                             [(10, 1, None), (11, 1, "blob_old_orphan"),
+                              (12, 1, None), (13, 1, "blob_business_old")])
+        await db.execute("INSERT INTO teaql_blob_catalog "
+                         "(key,scope,object_key,content_version,file_name,content_type,size_bytes,status) "
+                         "VALUES (?,?,?,?,?,?,?,?)",
+                         ("blob_catalog_other", "tenant-a", "objects/catalog-other", "v1",
+                          "other.pdf", "application/pdf", 7, "available"))
+        await db.execute("INSERT INTO teaql_blob_binding "
+                         "(scope,entity,entity_id,field,key,version) VALUES (?,?,?,?,?,?)",
+                         ("tenant-a", "Asset", "13", "document", "blob_catalog_other", 1))
+        await db.commit()
+    module = BlobReferenceModule(catalog,
+        SqliteBlobUploadService(catalog, _UploadAuthority(), _Verifier(), 10_000),
+        _ReadAuthority(), _BindingAuthority())
+    module.install(context)
+    await module.ready(context)
+
+    async def save(command, asset_id):
+        async def work(graph):
+            return await graph.transaction.mutate(graph.context,
+                graph.request(command, graph.scope(EntityKey("Asset", asset_id))))
+        return await context.execute_graph_save(work, comment="legacy nullable Blob mutation")
+
+    with pytest.raises(RuntimeError, match="BLOB_BIND_DENIED"):
+        await save(UpdateCommand.new("Asset", 11).expected_version(1)
+                   .value("document", None), 11)
+    with pytest.raises(RuntimeError, match="BLOB_BIND_DENIED"):
+        await save(DeleteCommand.new("Asset", 11).expected_version(1).hard_delete(), 11)
+    with pytest.raises(RuntimeError, match="BLOB_BIND_DENIED"):
+        await save(UpdateCommand.new("Asset", 13).expected_version(1)
+                   .value("document", None), 13)
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT id,version,document FROM asset WHERE id=11") as cursor:
+            assert await cursor.fetchone() == (11, 1, "blob_old_orphan")
+        async with db.execute("SELECT count(*) FROM teaql_blob_binding") as cursor:
+            assert await cursor.fetchone() == (1,)
+        async with db.execute("SELECT key,version FROM teaql_blob_binding WHERE entity_id='13'") as cursor:
+            assert await cursor.fetchone() == ("blob_catalog_other", 1)
+
+    await save(UpdateCommand.new("Asset", 12).expected_version(1)
+               .value("document", None), 12)
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT key,version FROM teaql_blob_binding WHERE entity_id='12'") as cursor:
+            assert await cursor.fetchone() == (None, 2)
+    await save(DeleteCommand.new("Asset", 10).expected_version(1).hard_delete(), 10)
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT id FROM asset WHERE id=10") as cursor:
+            assert await cursor.fetchone() is None
+        async with db.execute("SELECT count(*) FROM teaql_blob_binding WHERE entity_id='10'") as cursor:
+            assert await cursor.fetchone() == (0,)
+    store.close()
+
+
+@pytest.mark.asyncio
+async def test_native_executor_keeps_four_argument_blob_participant_contract(tmp_path):
+    path = str(tmp_path / "custom-participant.db")
+    descriptor = EntityDescriptor("Asset").table_name("asset")
+    descriptor.property(PropertyDescriptor("id", DataType.I64).is_id())
+    descriptor.property(PropertyDescriptor("version", DataType.I64).is_version())
+    descriptor.property(PropertyDescriptor("document", DataType.Text).blob(
+        BlobFieldSpec("Asset", "document", ["pdf"], True, "default")))
+    schema = SimpleSchemaProvider()
+    schema.register_entity(descriptor)
+    context = RuntimeModule.new().entity(descriptor).into_context()
+    context.insert_resource("dataService", SqlDataServiceExecutor(
+        SqliteDialect(), SqliteTransport(path), schema))
+    async with aiosqlite.connect(path) as db:
+        await db.execute("CREATE TABLE asset (id INTEGER PRIMARY KEY, version INTEGER, document TEXT)")
+        await db.commit()
+
+    class ExistingParticipant:
+        def __init__(self):
+            self.calls = 0
+
+        async def apply(self, _context, _descriptor, _mutation, persisted):
+            assert persisted["document"] is None
+            self.calls += 1
+
+    participant = ExistingParticipant()
+    context.insert_resource("blob_mutation_participant", participant)
+
+    async def save(graph):
+        command = InsertCommand.new("Asset").value("id", 1).value("document", None)
+        return await graph.transaction.mutate(graph.context,
+            graph.request(command, graph.scope(EntityKey("Asset", 1))))
+
+    await context.execute_graph_save(save, comment="four argument Blob participant")
+    assert participant.calls == 1
+    async with aiosqlite.connect(path) as db:
+        async with db.execute("SELECT id,document FROM asset") as cursor:
+            assert await cursor.fetchone() == (1, None)
+
+
+@pytest.mark.asyncio
 async def test_native_blob_multi_entity_graph_rolls_back_together(tmp_path):
     path = str(tmp_path / "multi-native.db")
     descriptor = EntityDescriptor("Asset").table_name("asset")

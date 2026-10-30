@@ -18,6 +18,9 @@ class SqliteBlobMutationParticipant:
         self.authorization = authorization
 
     async def apply(self, context, descriptor, mutation, persisted) -> None:
+        await self.apply_with_before(context, descriptor, mutation, persisted, None)
+
+    async def apply_with_before(self, context, descriptor, mutation, persisted, before) -> None:
         graph = getattr(context, "_graph_session", None)
         if graph is None or context is not graph.context:
             raise RuntimeError("BLOB_TRANSACTION_REQUIRED")
@@ -45,16 +48,16 @@ class SqliteBlobMutationParticipant:
         if not isinstance(scope, str) or not scope or scope != scope.strip():
             raise RuntimeError("BLOB_BIND_DENIED")
 
-        async def prior_version(target):
+        async def prior_binding(target):
             async def query(sql):
                 rows = await sql.fetch_all_sql(CompiledQuery(
-                    "SELECT version FROM teaql_blob_binding WHERE scope = ? AND entity = ? "
+                    "SELECT key,version FROM teaql_blob_binding WHERE scope = ? AND entity = ? "
                     "AND entity_id = ? AND field = ?",
                     [Value.Text(scope), Value.Text(target.entity), Value.Text(target.entity_id),
                      Value.Text(target.field)]))
                 if len(rows) > 1:
                     raise RuntimeError("BLOB_CATALOG_FAILED")
-                return rows[0]["version"] if rows else None
+                return rows[0] if rows else None
             return await graph.with_sql_transport(query)
 
         for prop in descriptor.properties:
@@ -68,14 +71,21 @@ class SqliteBlobMutationParticipant:
                 if action != "Create":
                     continue
             target = BlobBindingTarget(descriptor._name, entity_id, prop.name)
-            prior = await prior_version(target)
+            binding = await prior_binding(target)
+            prior = binding["version"] if binding is not None else None
             if prior is not None and (type(prior) is not int or prior < 0):
                 raise RuntimeError("BLOB_CATALOG_FAILED")
             if action == "Create" and prior is not None:
                 raise RuntimeError("BLOB_BIND_DENIED")
+            if action != "Create":
+                if not isinstance(before, dict) or prop.name not in before or \
+                        before[prop.name] != (binding["key"] if binding is not None else None):
+                    raise RuntimeError("BLOB_BIND_DENIED")
             if action == "Delete":
                 if prior is None:
-                    raise RuntimeError("BLOB_BIND_DENIED")
+                    # A pre-binding nullable legacy slot has no catalog fact
+                    # to clear. Its authoritative old value must be NULL.
+                    continue
                 next_ref = None
             else:
                 value = mutation.values.get(prop.name, Value.Null())

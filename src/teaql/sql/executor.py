@@ -1096,6 +1096,39 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         except SqlCompileError as e:
             raise CompileError(e)
 
+        # A legacy row can predate the Blob binding table. Read its modeled Blob
+        # columns inside this mutation's SQL owner before an explicit update or
+        # delete, so a NULL slot can be handled without accepting a non-NULL
+        # orphan Key after the business row has changed or disappeared.
+        blob_fields = [prop for prop in entity_desc.properties
+                       if getattr(prop, 'blob_spec', None) is not None]
+        before_blob_record = None
+        blob_participant = context.get_resource('blob_mutation_participant') if context is not None else None
+        if callable(getattr(blob_participant, 'apply_with_before', None)) and blob_fields and id_prop is not None and (
+                isinstance(req_data, DeleteCommand) or
+                isinstance(req_data, UpdateCommand) and any(
+                    prop.name in req_data.values for prop in blob_fields)):
+            columns = ", ".join(
+                self.dialect.quote_ident(prop.column_name_val)
+                if prop.column_name_val == prop.name else
+                f"{self.dialect.quote_ident(prop.column_name_val)} AS "
+                f"{self.dialect.quote_ident(prop.name)}"
+                for prop in blob_fields)
+            before_query = CompiledQuery(
+                f"SELECT {columns} FROM {self.dialect.quote_ident(entity_desc.table_name_val)} "
+                f"WHERE {self.dialect.quote_ident(id_prop.column_name_val)} = "
+                f"{self.dialect.placeholder(1)}",
+                [req_data.id],
+                parameter_log_policies=[self.dialect.field_log_policy(entity_desc, id_prop.name)],
+                sql_origin='generated')
+            try:
+                before_rows = await self.transport.fetch_all_sql(before_query)
+            except Exception:
+                raise RuntimeError('BLOB_CATALOG_FAILED') from None
+            if len(before_rows) > 1:
+                raise RuntimeError('BLOB_CATALOG_FAILED')
+            before_blob_record = before_rows[0] if before_rows else None
+
         start = datetime.now()
         last_insert_id = None
         operation = {'insert': DataServiceOperation.Insert, 'update': DataServiceOperation.Update,
@@ -1198,7 +1231,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 participant = context.get_resource('blob_mutation_participant')
                 if not callable(getattr(participant, 'apply', None)):
                     raise RuntimeError('BLOB_CAPABILITY_MISSING')
-                await participant.apply(context, entity_desc, req_data, persisted_record)
+                if callable(getattr(participant, 'apply_with_before', None)):
+                    await participant.apply_with_before(context, entity_desc, req_data,
+                                                        persisted_record, before_blob_record)
+                else:
+                    await participant.apply(context, entity_desc, req_data, persisted_record)
 
         if affected_rows > 0 and context is not None:
             from teaql.runtime.audit import AuditFieldChange, MutationAuditKind, RawAuditEvent
