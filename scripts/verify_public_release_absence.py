@@ -1,9 +1,12 @@
 #!/usr/bin/env python3
 """Fail closed if any exact TeaQL Python release version is already on PyPI."""
 
+import hashlib
+import json
 from pathlib import Path
 import re
 import sys
+import time
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
@@ -69,13 +72,73 @@ def require_absent(identities, opener=urlopen):
         raise RuntimeError(f"Could not prove {name} {version} absent on PyPI: HTTP {status}")
 
 
+def require_published_exact(dist, identities, opener=urlopen, sleeper=time.sleep):
+    for name, version in identities:
+        expected = {
+            path.name: hashlib.sha256(path.read_bytes()).hexdigest()
+            for path in dist.iterdir()
+            if path.name.startswith(name.replace("-", "_") + f"-{version}-")
+            or path.name in (f"{name}-{version}.tar.gz",
+                             f"{name.replace('-', '_')}-{version}.tar.gz")
+        }
+        if len(expected) != 2:
+            raise ValueError(f"Expected exact wheel and source distribution for {name} {version}")
+        url = f"https://pypi.org/pypi/{name}/{version}/json"
+        request = Request(url, headers={"Accept": "application/json",
+                                        "User-Agent": "teaql-release-integrity/1"})
+        for attempt in range(5):
+            try:
+                with opener(request, timeout=15) as response:
+                    if response.status != 200:
+                        raise RuntimeError(f"Unexpected PyPI HTTP {response.status}: {name} {version}")
+                    raw = response.read(1_000_001)
+                if len(raw) > 1_000_000:
+                    raise RuntimeError(f"Oversized PyPI release metadata: {name} {version}")
+                payload = json.loads(raw)
+                actual = {item["filename"]: item["digests"]["sha256"]
+                          for item in payload["urls"]}
+                if len(actual) != len(payload["urls"]):
+                    raise RuntimeError(f"Duplicate PyPI release filename: {name} {version}")
+                if (payload["info"]["name"], payload["info"]["version"]) != (name, version):
+                    raise RuntimeError(f"Unexpected PyPI release identity: {name} {version}")
+                if actual == expected:
+                    break
+                if any(filename in actual and actual[filename] != digest
+                       for filename, digest in expected.items()):
+                    raise RuntimeError(f"PyPI release byte digest mismatch: {name} {version}")
+                if set(actual) - set(expected):
+                    raise RuntimeError(f"Unexpected extra PyPI release file: {name} {version}")
+            except HTTPError as exc:
+                if exc.code != 404:
+                    exc.close()
+                    raise RuntimeError(f"Could not verify PyPI release: {name} {version}, HTTP {exc.code}") from exc
+                exc.close()
+            except (URLError, TimeoutError) as exc:
+                raise RuntimeError(f"Could not verify PyPI release: {name} {version}") from exc
+            except (KeyError, TypeError, ValueError) as exc:
+                raise RuntimeError(f"Malformed PyPI release metadata: {name} {version}") from exc
+            if attempt == 4:
+                raise RuntimeError(f"PyPI release incomplete after retries: {name} {version}")
+            sleeper(3)
+        print(f"PASS exact published PyPI bytes: {name} {version}")
+
+
 def main(argv):
-    if len(argv) != 2:
-        raise SystemExit("Usage: verify_public_release_absence.py <distribution-directory>")
+    if len(argv) == 2:
+        published = False
+        dist = Path(argv[1])
+    elif len(argv) == 3 and argv[1] == "--published":
+        published = True
+        dist = Path(argv[2])
+    else:
+        raise SystemExit("Usage: verify_public_release_absence.py [--published] <distribution-directory>")
     identities = release_identities()
-    require_exact_distribution_names(Path(argv[1]), identities)
-    require_absent(identities)
-    print("PASS all three TeaQL Python release versions are absent on PyPI")
+    require_exact_distribution_names(dist, identities)
+    if published:
+        require_published_exact(dist, identities)
+    else:
+        require_absent(identities)
+        print("PASS all three TeaQL Python release versions are absent on PyPI")
 
 
 if __name__ == "__main__":

@@ -68,3 +68,5 @@ jobs:
       - name: Refuse any occupied PyPI version
         run: python scripts/verify_public_release_absence.py dist
       - uses: pypa/gh-action-pypi-publish@release/v1
+      - name: Verify exact public wheel and source distribution bytes
+        run: python scripts/verify_public_release_absence.py --published dist

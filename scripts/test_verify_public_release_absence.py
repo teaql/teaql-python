@@ -2,7 +2,9 @@
 """Exercise PyPI release-absence decisions without external network access."""
 
 import importlib.util
+import hashlib
 from io import BytesIO
+import json
 from pathlib import Path
 import tempfile
 import unittest
@@ -18,8 +20,8 @@ IDENTITIES = (("teaql", "9.8.7"), ("teaql-blob-reference", "9.8.7"),
 
 
 class Response(BytesIO):
-    def __init__(self, status):
-        super().__init__(b"")
+    def __init__(self, status, body=b""):
+        super().__init__(body)
         self.status = status
 
 
@@ -44,6 +46,33 @@ class PyPIAbsenceTests(unittest.TestCase):
             if status >= 400:
                 raise HTTPError(request.full_url, status, "mock", None, None)
             return Response(status)
+        return open_request
+
+    def release_payload(self, name, version):
+        files = [path for path in self.dist.iterdir()
+                 if path.name.startswith(name.replace("-", "_") + f"-{version}-")
+                 or path.name in (f"{name}-{version}.tar.gz",
+                                  f"{name.replace('-', '_')}-{version}.tar.gz")]
+        return {"info": {"name": name, "version": version},
+                "urls": [{"filename": path.name,
+                          "digests": {"sha256": hashlib.sha256(path.read_bytes()).hexdigest()}}
+                         for path in files]}
+
+    def published_opener(self, observed, replacements=None):
+        replacements = replacements or {}
+        def open_request(request, timeout):
+            self.assertEqual(timeout, 15)
+            observed.append(request.full_url)
+            parts = request.full_url.removeprefix("https://pypi.org/pypi/").split("/")
+            name, version = parts[0], parts[1]
+            value = replacements.get(request.full_url)
+            if isinstance(value, list):
+                value = value[min(observed.count(request.full_url) - 1, len(value) - 1)]
+            if isinstance(value, Exception):
+                raise value
+            if value is None:
+                value = self.release_payload(name, version)
+            return Response(200, json.dumps(value).encode())
         return open_request
 
     def test_all_three_absent(self):
@@ -86,6 +115,63 @@ class PyPIAbsenceTests(unittest.TestCase):
         self.assertEqual([name for name, _ in identities],
                          [name for name, _ in IDENTITIES])
         self.assertEqual(len({version for _, version in identities}), 1)
+
+    def test_exact_three_published_release_file_sets(self):
+        observed = []
+        MODULE.require_published_exact(self.dist, IDENTITIES,
+                                       self.published_opener(observed), lambda _: None)
+        self.assertEqual(len(observed), 3)
+
+    def test_eventually_visible_release_files(self):
+        observed = []
+        name, version = IDENTITIES[0]
+        url = f"https://pypi.org/pypi/{name}/{version}/json"
+        partial = self.release_payload(name, version)
+        partial["urls"] = partial["urls"][:1]
+        MODULE.require_published_exact(self.dist, IDENTITIES,
+            self.published_opener(observed, {url: [partial, self.release_payload(name, version)]}),
+            lambda _: None)
+        self.assertEqual(observed.count(url), 2)
+
+    def test_published_digest_mismatch_rejected(self):
+        observed = []
+        name, version = IDENTITIES[0]
+        url = f"https://pypi.org/pypi/{name}/{version}/json"
+        wrong = self.release_payload(name, version)
+        wrong["urls"][0]["digests"]["sha256"] = "0" * 64
+        with self.assertRaisesRegex(RuntimeError, "digest mismatch"):
+            MODULE.require_published_exact(self.dist, IDENTITIES,
+                                           self.published_opener(observed, {url: wrong}), lambda _: None)
+
+    def test_unexpected_published_file_rejected(self):
+        observed = []
+        name, version = IDENTITIES[0]
+        url = f"https://pypi.org/pypi/{name}/{version}/json"
+        extra = self.release_payload(name, version)
+        extra["urls"].append({"filename": "unrecognized.whl", "digests": {"sha256": "0" * 64}})
+        with self.assertRaisesRegex(RuntimeError, "Unexpected extra"):
+            MODULE.require_published_exact(self.dist, IDENTITIES,
+                                           self.published_opener(observed, {url: extra}), lambda _: None)
+
+    def test_duplicate_published_filename_rejected(self):
+        observed = []
+        name, version = IDENTITIES[0]
+        url = f"https://pypi.org/pypi/{name}/{version}/json"
+        duplicate = self.release_payload(name, version)
+        duplicate["urls"].append(dict(duplicate["urls"][0]))
+        with self.assertRaisesRegex(RuntimeError, "Duplicate"):
+            MODULE.require_published_exact(self.dist, IDENTITIES,
+                                           self.published_opener(observed, {url: duplicate}), lambda _: None)
+
+    def test_published_release_never_appears_fails_closed(self):
+        observed = []
+        name, version = IDENTITIES[0]
+        url = f"https://pypi.org/pypi/{name}/{version}/json"
+        absent = HTTPError(url, 404, "mock", None, None)
+        with self.assertRaisesRegex(RuntimeError, "incomplete after retries"):
+            MODULE.require_published_exact(self.dist, IDENTITIES,
+                                           self.published_opener(observed, {url: absent}), lambda _: None)
+        self.assertEqual(observed.count(url), 5)
 
 
 if __name__ == "__main__":
