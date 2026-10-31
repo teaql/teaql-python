@@ -19,3 +19,18 @@ def test_rejects_unknown_and_collision():
 def test_encodes_wire_output():
     assert dict(encode_wire_output({"school_type": 1001}, metadata())) == {"schoolType": 1001}
     with pytest.raises(ValueError, match="Unknown canonical"): encode_wire_output({"missing": 1}, metadata())
+
+def test_parent_alias_never_truncates_descendant_provenance():
+    meta = create_wire_entity_metadata("Order", ["order_item_list", "product_name"], aliases={"order_item_list": ["legacy/items"], "product_name": ["legacy~name"]})
+    normalized = normalize_wire_input({"legacy/items": [], "legacy~name": None}, meta)
+    location = ObjectLocation().property("order_item_list").index(2).property("product_name")
+    exact = "/legacy~1items/2/legacy~0name"
+    original = CheckResult("required", location, source_instance_path=exact)
+    results = retain_submitted_paths([
+        original, CheckResult("required", location),
+        CheckResult("required", ObjectLocation().index(2).property("product_name")),
+        CheckResult("required", ObjectLocation().property("order_item_list")),
+    ], normalized)
+    assert [r.source_instance_path for r in results] == [exact, None, None, "/legacy~1items"]
+    assert results[0].location.instance_path == "/orderItemList/2/productName"
+    assert original.source_instance_path == exact

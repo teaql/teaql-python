@@ -59,7 +59,10 @@ def encode_wire_output(values, metadata):
 def retain_submitted_paths(results, normalized):
     retained = []
     for result in results:
-        canonical = next((value for kind, value in result.location.segments if kind == "property"), None)
+        # A parent-only map cannot identify a nested leaf. Preserve any exact
+        # pointer already attached by the child's own normalization boundary.
+        segments = result.location.segments
+        canonical = segments[0][1] if len(segments) == 1 and segments[0][0] == "property" else None
         retained.append(CheckResult(result.rule_id, result.location, result.input_value, result.system_value, result.message, result.entity_type, normalized.source_instance_paths.get(canonical, result.source_instance_path)))
     return retained
 
