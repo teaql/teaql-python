@@ -735,7 +735,10 @@ class UserContext:
 
     def check_and_fix_record_at(self, entity: str, record: Any, location: Any):
         from .scalar_validation import finite_scalar_results, integral_scalar_results, pending_reference_values
+        from .checker_privacy import _CheckBatch, capture
+        from .i18n import CheckException
         self._validate_mutation_fields(entity, record, location)
+        before_scope = capture(record, self.entity, entity)
         descriptor = self.entity(entity)
         pending = pending_reference_values(self, descriptor, record)
         registry = self.get_resource("checker_registry")
@@ -744,7 +747,12 @@ class UserContext:
         if checker is not None:
             if not isinstance(checker, Checker):
                 raise TypeError("checker registry returned an object without check_and_fix")
-            checker.check_and_fix(self, record, location, results)
+            try:
+                checker.check_and_fix(self, record, location, results)
+            except CheckException as error:
+                # Do not retain a raw custom exception as cause/context. The
+                # safe replacement is raised after leaving this except block.
+                results.extend(error.violations)
         self._validate_mutation_fields(entity, record, location)
         # Customer Fix may repair an input or introduce a different value. The
         # portable representation check therefore runs last, even when no
@@ -755,30 +763,48 @@ class UserContext:
         results.extend(integral_scalar_results(descriptor, record, location, pending_references=pending))
             
         if results:
-            # Bind the declaring Checker, not the graph root or a rendered
-            # member path. Preserve explicitly specialized child identities.
-            for result in results:
-                if result.entity_type is None or not result.entity_type.strip():
-                    result.entity_type = entity
-            self.translate_check_results(results)
-            from .i18n import CheckException
+            after_scope = capture(record, self.entity, entity)
+            results = _CheckBatch(results, entity, tuple(a + b for a, b in zip(before_scope, after_scope)))
+            try:
+                self.translate_check_results(results)
+            finally:
+                results.scope = ((), ())
             raise CheckException(results)
 
     def check_and_fix_mutation(self, mutation: Any):
         """Run generated fixes and checks before a mutation reaches a provider."""
         from teaql.core.mutation_version import validate_mutation_versions
+        from .checker_privacy import _CheckBatch, capture
+        from .i18n import CheckException
         validate_mutation_versions(mutation)
         entity = getattr(mutation, "entity", None)
         record = getattr(mutation, "values", None)
         if not entity or record is None:
             return
+        old_scope = capture(getattr(mutation, "old_values", None), self.entity, entity)
         owns_fix_time = self.get_resource("fix_time") is None
         if owns_fix_time:
             self.insert_resource("fix_time", self.business_time())
             self.begin_fix_evidence()
         self.insert_resource("fix_operation", type(mutation).__name__.replace("Command", "").lower())
         try:
-            self.check_and_fix_record(entity, record)
+            failure = None
+            try:
+                self.check_and_fix_record(entity, record)
+            except CheckException as error:
+                after_old_scope = capture(getattr(mutation, "old_values", None), self.entity, entity)
+                scope = tuple(a + b for a, b in zip(old_scope, after_old_scope))
+                if not any(scope):
+                    raise  # The record-level boundary already produced a safe error.
+                results = _CheckBatch(error.violations, entity, scope)
+                try:
+                    self.translate_check_results(results)
+                finally:
+                    results.scope = ((), ())
+                failure = CheckException(results)
+            if failure is not None:
+                # Leave the raw catch scope before raising; do not chain it.
+                raise failure from None
             validate_mutation_versions(mutation)
         finally:
             if owns_fix_time:
@@ -876,8 +902,10 @@ class UserContext:
         return True
 
     def translate_check_results(self, results: Any):
+        from .checker_privacy import translate
         for r in results:
-            self.i18n_catalog().translate_check_result(r, self.language())
+            translate(self.i18n_catalog(), r, self.language(), resolve=self.entity,
+                      owner=getattr(results, "owner", None), scope=getattr(results, "scope", ((), ())))
         return results
 
     async def send_audit_event(self, event: Any):

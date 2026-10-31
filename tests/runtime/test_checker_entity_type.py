@@ -39,7 +39,8 @@ def test_checker_owner_is_bound_before_localization_without_overwriting_speciali
     expected = declared if declared and declared.strip() else "Child"
     assert translated == [expected]
     result = error.value.violations[0]
-    assert result is original
+    assert result is not original
+    assert original.entity_type == declared and original.message is None
     assert result.entity_type == expected
     assert result.message and not result.message.startswith("checker.")
     assert result.to_wire()["sourceInstancePath"] == "/submitted~1url"

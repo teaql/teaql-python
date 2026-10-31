@@ -123,22 +123,38 @@ class CheckResult:
         A submitted source pointer is already boundary-owned and absolute; do
         not reconstruct or rename it when adding canonical graph segments.
         """
-        return replace(self, location=self.location.prefixed_by(prefix))
+        result = replace(self, location=self.location.prefixed_by(prefix))
+        if hasattr(self, "_presentation"):
+            result._presentation = self._presentation
+        return result
     def to_wire(self, profile:JsonFieldNamingProfile=JsonFieldNamingProfile.CAMEL_CASE)->dict[str,Any]:
+        from .checker_privacy import project
+        safe = project(self)
         return {key:value for key,value in {
             "ruleId":self.rule_id,"entityType":self.entity_type,
             "location":[{"kind":kind, "name":value} if kind=="property" else {"kind":kind,"index":value} for kind,value in self.location.segments],
             "instancePath":self.location.instance_path_for(profile),"sourceInstancePath":self.source_instance_path,
-            "inputValue":self.input_value,"systemValue":self.system_value,"message":self.message,
+            "inputValue":safe.input_value,"systemValue":safe.system_value,"message":safe.message,
         }.items() if value is not None}
+
+    def __repr__(self):
+        return f"CheckResult({self.to_wire()!r})"
 
 class CheckException(Exception):
     """Stable machine-readable model validation failure."""
     def __init__(self, violations):
-        self.violations = list(violations)
+        from .checker_privacy import project
+        self.violations = [project(result) for result in violations]
+        # Exception.args must never become a hidden plaintext cache after debug
+        # opt-in is revoked. The public formatter reprojects at read time.
         super().__init__("Check failed: " + "; ".join(
-            result.message or str(result) for result in self.violations
-        ))
+            safe.message or repr(safe) for safe in (project(r, force_safe=True) for r in self.violations)))
+
+    def __str__(self):
+        return "Check failed: " + "; ".join(result.to_wire().get("message") or repr(result) for result in self.violations)
+
+    def __repr__(self):
+        return f"CheckException({str(self)!r})"
 
 class I18nCatalog:
     _builtin=None
@@ -158,14 +174,5 @@ class I18nCatalog:
     def message(self,locale,key):
         return self._find(locale.value,key) or (self._fallback and self._fallback._find(locale.value,key)) or self._find("en",key) or (self._fallback and self._fallback._find("en",key)) or key
     def translate_check_result(self,result,locale):
-        rule=getattr(result,"rule_id",getattr(result,"rule","")); rule=getattr(rule,"value",rule)
-        keys={"REQUIRED":"checker.required","MIN":"checker.min","MAX":"checker.max","MIN_STR_LEN":"checker.minLength","MIN_LENGTH":"checker.minLength","MAX_STR_LEN":"checker.maxLength","MAX_LENGTH":"checker.maxLength"}
-        key=keys.get(str(rule).upper(),f"checker.{str(rule).lower()}")
-        input_value=getattr(result,"input_value",getattr(result,"input",None))
-        location=getattr(result,"location",None)
-        values={"location":location.native_path if isinstance(location,ObjectLocation) else location,"system":getattr(result,"system_value",getattr(result,"system",None)),"input":input_value,"input_len":len(input_value) if hasattr(input_value,"__len__") else 0}
-        rendered=self.message(locale,key)
-        for name,value in values.items(): rendered=rendered.replace("{"+name+"}",str(value))
-        if hasattr(result,"message"): result.message=rendered
-        elif hasattr(result,"natural_language_statement"): result.natural_language_statement=rendered
-        return result
+        from .checker_privacy import translate
+        return translate(self, result, locale)
