@@ -240,7 +240,7 @@ class Tenant:
             # The object reference exists even before either endpoint has a stable ID.
             # Do not confuse two absent IDs with an already-established association.
             if getattr(child, "tenant", None) is not self:
-                child.update_tenant(self)
+                child._teaql_set_tenant(self)
             try:
                 child._teaql_prepare_input_graph(context, visited)
             except CheckException as error:
@@ -254,7 +254,7 @@ class Tenant:
             # The object reference exists even before either endpoint has a stable ID.
             # Do not confuse two absent IDs with an already-established association.
             if getattr(child, "tenant", None) is not self:
-                child.update_tenant(self)
+                child._teaql_set_tenant(self)
             try:
                 child._teaql_prepare_input_graph(context, visited)
             except CheckException as error:
@@ -324,7 +324,7 @@ class Tenant:
             child._teaql_attach_root(self._entity_root)
             current = getattr(child, "tenant", None)
             if getattr(current, "id", current) != self.id:
-                child.update_tenant(self)
+                child._teaql_set_tenant(self)
             try:
                 child._teaql_preflight_graph(context, session, scope)
             except CheckException as error:
@@ -337,7 +337,7 @@ class Tenant:
             child._teaql_attach_root(self._entity_root)
             current = getattr(child, "tenant", None)
             if getattr(current, "id", current) != self.id:
-                child.update_tenant(self)
+                child._teaql_set_tenant(self)
             try:
                 child._teaql_preflight_graph(context, session, scope)
             except CheckException as error:
@@ -423,8 +423,8 @@ class Tenant:
 
     async def _teaql_cascade_children(self, context, session, scope):
         cascade_relations = []
-        cascade_relations.append(("purchase_order_list", self._purchase_order_list, "update_tenant", "tenant"))
-        cascade_relations.append(("order_item_list", self._order_item_list, "update_tenant", "tenant"))
+        cascade_relations.append(("purchase_order_list", self._purchase_order_list, "_teaql_set_tenant", "tenant"))
+        cascade_relations.append(("order_item_list", self._order_item_list, "_teaql_set_tenant", "tenant"))
         for relation_name, children, updater, member in cascade_relations:
             for index, child in enumerate(children):
                 child._teaql_attach_root(self._entity_root)

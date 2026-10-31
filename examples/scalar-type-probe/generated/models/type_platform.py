@@ -137,11 +137,11 @@ class TypePlatform:
             context._validate_mutation_fields("TypePlatform", ledger)
             if self._action == "Update":
                 if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="TypePlatform")])
                 if "name" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity", entity_type="TypePlatform")])
                 if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="TypePlatform")])
             _action, command = self._teaql_build_command()
             context._validate_required_mutation_input(command, parent_field=parent_field)
         for index, child in enumerate(self._scalar_type_probe_list):
@@ -150,7 +150,7 @@ class TypePlatform:
             except CheckException as error:
                 prefix = ObjectLocation().property("scalar_type_probe_list").index(index)
                 raise CheckException([
-                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message)
+                    v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
 
@@ -219,8 +219,7 @@ class TypePlatform:
             except CheckException as error:
                 prefix = ObjectLocation().property("scalar_type_probe_list").index(index)
                 raise CheckException([
-                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message,
-                                entity_type=v.entity_type)
+                    v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
 
@@ -267,11 +266,11 @@ class TypePlatform:
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
                 if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="TypePlatform")])
                 if "name" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity", entity_type="TypePlatform")])
                 if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="TypePlatform")])
             action, cmd = self._teaql_build_command()
             try:
                 context.preflight_mutation(cmd)
@@ -290,7 +289,7 @@ class TypePlatform:
             except CheckException as error:
                 prefix = ObjectLocation().property("scalar_type_probe_list").index(index)
                 raise CheckException([
-                    CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message)
+                    v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
 
@@ -382,13 +381,7 @@ class TypePlatform:
                 except CheckException as error:
                     prefix = ObjectLocation().property(relation_name).index(index)
                     raise CheckException([
-                        CheckResult(
-                            violation.rule_id,
-                            violation.location.prefixed_by(prefix),
-                            violation.input_value,
-                            violation.system_value,
-                            violation.message,
-                        )
+                        violation.prefixed_by(prefix)
                         for violation in error.violations
                     ]) from error
 

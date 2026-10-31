@@ -309,57 +309,57 @@ class ScalarTypeProbe:
             context._validate_mutation_fields("ScalarTypeProbe", ledger)
             if self._action == "Update":
                 if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "typePlatform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("type_platform"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("type_platform"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredString" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_string"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_string"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalString" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_string"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_string"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "largeText" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("large_text"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("large_text"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredBoolean" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_boolean"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_boolean"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalBoolean" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_boolean"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_boolean"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredInteger" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_integer"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_integer"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalInteger" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_integer"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_integer"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredLong" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_long"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_long"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalLong" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_long"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_long"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredDecimal" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_decimal"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_decimal"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalDecimal" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_decimal"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_decimal"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredFloat" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_float"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_float"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalFloat" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_float"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_float"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredDouble" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_double"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_double"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalDouble" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_double"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_double"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredDate" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_date"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_date"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalDate" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_date"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_date"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_time"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_time"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_time"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_time"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredDatetime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_datetime"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_datetime"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalDatetime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_datetime"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_datetime"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "createTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "updateTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
             _action, command = self._teaql_build_command()
             context._validate_required_mutation_input(command, parent_field=parent_field)
 
@@ -535,57 +535,57 @@ class ScalarTypeProbe:
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
                 if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "typePlatform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("type_platform"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("type_platform"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredString" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_string"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_string"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalString" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_string"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_string"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "largeText" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("large_text"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("large_text"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredBoolean" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_boolean"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_boolean"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalBoolean" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_boolean"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_boolean"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredInteger" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_integer"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_integer"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalInteger" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_integer"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_integer"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredLong" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_long"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_long"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalLong" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_long"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_long"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredDecimal" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_decimal"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_decimal"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalDecimal" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_decimal"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_decimal"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredFloat" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_float"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_float"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalFloat" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_float"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_float"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredDouble" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_double"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_double"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalDouble" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_double"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_double"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredDate" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_date"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_date"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalDate" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_date"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_date"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_time"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_time"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_time"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_time"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "requiredDatetime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_datetime"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("required_datetime"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "optionalDatetime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_datetime"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("optional_datetime"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "createTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "updateTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
             action, cmd = self._teaql_build_command()
             try:
                 context.preflight_mutation(cmd)
@@ -820,13 +820,7 @@ class ScalarTypeProbe:
                 except CheckException as error:
                     prefix = ObjectLocation().property(relation_name).index(index)
                     raise CheckException([
-                        CheckResult(
-                            violation.rule_id,
-                            violation.location.prefixed_by(prefix),
-                            violation.input_value,
-                            violation.system_value,
-                            violation.message,
-                        )
+                        violation.prefixed_by(prefix)
                         for violation in error.violations
                     ]) from error
 

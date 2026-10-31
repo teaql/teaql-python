@@ -88,6 +88,21 @@ def main():
         assert checker_rows[0]["invalidSaves"] == 16 and checker_rows[0]["rounds"] == 2
         report["checkerMetadata"]["invalidSaves"] = 16
         report["checkerMetadata"]["databaseSha256"] = hashlib.sha256((evidence / "checker.sqlite").read_bytes()).hexdigest()
+        report["partialGraphLoading"] = []
+        for index in (1, 2):
+            command = [sys.executable, str(EXAMPLE / "partial_graph_loading.py"),
+                       "--database", str(evidence / "partial-graph.sqlite"), "--round", str(index)]
+            log = evidence / f"partial-graph-round-{index}.log"
+            with log.open("w") as output:
+                result = subprocess.run(command, cwd=REPO, env=environment, stdout=output,
+                                        stderr=subprocess.STDOUT, check=False, timeout=120)
+            report["partialGraphLoading"].append({"command": command, "exitCode": result.returncode,
+                                                 "logSha256": hashlib.sha256(log.read_bytes()).hexdigest()})
+            assert result.returncode == 0, log.read_text()[-12000:]
+            frames = [json.loads(line[len("PARTIAL_GRAPH_LOAD="):]) for line in log.read_text().splitlines()
+                      if line.startswith("PARTIAL_GRAPH_LOAD=")]
+            assert len(frames) == 1 and frames[0]["passed"] and frames[0]["round"] == index
+        report["partialGraphDatabaseSha256"] = hashlib.sha256((evidence / "partial-graph.sqlite").read_bytes()).hexdigest()
         assert fingerprint() == manifest
         report["databaseSha256"] = hashlib.sha256((evidence / "fixture.sqlite").read_bytes()).hexdigest()
         report["passed"] = True

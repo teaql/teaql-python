@@ -12,20 +12,30 @@
   },
   "generatorTest": "CoreScalarFixtureExportTest,CoreScalarAssistExportTest,PythonBaselineRestorationGenerationTest,PythonScalarMetadataGenerationTest,PythonEntityJsonGenerationTest",
   "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
-  "producerReceiptSha256": "afded6712cc249dd256e9b5568a300aceccdf92e750be135b2426a928b9ff7dd",
+  "producerReceiptSha256": "9d0faebbc643852c96c83192afcfdaf9530d63f9d797c3c9fa31ddab8b0d99ef",
   "producerManifestSha256": "b455deee63de21c1905a0c0fc74cff5fc059d1e2e8ac31783a8f7609e520492e",
   "files": {
     "teaql-i18n.json": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163",
+    "Q.py": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
+    "models/type_platform.py": "d92161d1145899086a63e52154ab718b471eb5a7e91a53864b3689c6cda2340a",
+    "models/scalar_type_probe.py": "9ff3298ff849a9a3aee05259fe545c9d6b0ccb4472f525f4c88bcc49d5b556e4",
+    "E.py": "5e6a69648c561528bf6168391e9d3b3c8946e0918425909ed64c27e6499974dc",
+    "runtime_module.py": "967dbb7d790ccc07597787416d58afb6aaa3d0ec031f8ce33421c68248d57611",
     "pyproject.toml": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
     "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "generated_search_models.py": "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19",
     "requests/type_platform_request.py": "aff77b54d44aae520dd88f9d9eef67992a2b322006cceebc6ce5cdd85e0afc42",
-    "requests/scalar_type_probe_request.py": "0b50059754f203a58291512675d22fbf13ca942a31fbac95b7915542f5913581",
-    "models/type_platform.py": "96e42632fccddc7fd612f8a9aec2191fccb9f0b3a0bedcd558d1a625b48365f9",
-    "models/scalar_type_probe.py": "dc312cd6ca5340f3f8b810697ba95631f34e3661c633cb04f765826d3a183031",
-    "E.py": "5e6a69648c561528bf6168391e9d3b3c8946e0918425909ed64c27e6499974dc",
-    "Q.py": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
-    "runtime_module.py": "967dbb7d790ccc07597787416d58afb6aaa3d0ec031f8ce33421c68248d57611"
-  }
+    "requests/scalar_type_probe_request.py": "0b50059754f203a58291512675d22fbf13ca942a31fbac95b7915542f5913581"
+  },
+  "producerSource": {
+    "commit": "584a00baddff066c14a8ae65fb1865da8174d804",
+    "diff": "8b3489585d350181b77afe7470ea9d6058b91fe0c0ae78584189d206477d3b43",
+    "status": "f43588ff46295eb18b4019ea62086d28ded810d556f248013f31fccd1cc7b6b1",
+    "sourceContentsSha256": "7bf25c05840cf9593197a75b588a9da71bca7d9cc2c2c5182bdd13645def1d4c",
+    "assistExporterSha256": "2583414a9d656e89b43b85f1d4e993dcc774b74e2bed0f9b7120d7cb7ea47efd"
+  },
+  "generatedManifestSha256": "0e01c699747aac52a1b3c24b6c94b08c8c8047ad9a2e39c43d36509b3f8522cf",
+  "evaluationErrors": 0,
+  "evaluationWarnings": 0
 }
