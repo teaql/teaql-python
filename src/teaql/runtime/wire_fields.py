@@ -45,7 +45,9 @@ def normalize_wire_input(input_value, metadata, parent_pointer=""):
         previous = submitted.get(field.canonical_name)
         if previous is not None: raise WireInputError("WIRE_FIELD_COLLISION", pointer, f"Fields '{previous}' and '{submitted_name}' both map to canonical field '{field.canonical_name}'")
         submitted[field.canonical_name] = submitted_name; values[field.canonical_name] = value
-        if submitted_name != field.wire_name: paths[field.canonical_name] = pointer
+        # Keep an already-escaped ancestor boundary even for a standard leaf.
+        if submitted_name != field.wire_name or parent_pointer:
+            paths[field.canonical_name] = pointer
     return NormalizedWireInput(MappingProxyType(values), MappingProxyType(paths))
 
 def encode_wire_output(values, metadata):

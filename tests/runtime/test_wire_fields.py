@@ -34,3 +34,25 @@ def test_parent_alias_never_truncates_descendant_provenance():
     assert [r.source_instance_path for r in results] == [exact, None, None, "/legacy~1items"]
     assert results[0].location.instance_path == "/orderItemList/2/productName"
     assert original.source_instance_path == exact
+
+@pytest.mark.parametrize("profile", [JsonFieldNamingProfile.CAMEL_CASE, JsonFieldNamingProfile.SNAKE_CASE, JsonFieldNamingProfile.PASCAL_CASE])
+def test_standard_child_retains_ancestor_provenance(profile):
+    parent = create_wire_entity_metadata("Order", ["order_item_list"], aliases={"order_item_list": ["legacy/items~"]})
+    child = create_wire_entity_metadata("OrderItem", ["product_name", "unit_count"], profile)
+    name = child.fields["product_name"].wire_name
+    for value in (None, "submitted item"):
+        child_object = {name: value}
+        parent_input = normalize_wire_input({"legacy/items~": [{}, {}, child_object]}, parent)
+        boundary = parent_input.source_instance_paths["order_item_list"] + "/2"
+        normalized = normalize_wire_input(child_object, child, boundary)
+        assert dict(normalized.values) == {"product_name": value}
+        assert dict(normalized.source_instance_paths) == {"product_name": boundary + "/" + name}
+        original = CheckResult("required", ObjectLocation().property("product_name"), entity_type="OrderItem")
+        leaf = retain_submitted_paths([original], normalized)[0]
+        location = ObjectLocation().property("order_item_list").index(2).property("product_name")
+        prefixed = CheckResult(leaf.rule_id, location, entity_type=leaf.entity_type, source_instance_path=leaf.source_instance_path)
+        actual = retain_submitted_paths([prefixed], parent_input)[0]
+        assert actual.source_instance_path == "/legacy~1items~0/2/" + name
+        assert actual.location == location
+        assert original.source_instance_path is None
+    assert dict(normalize_wire_input({name: None}, child).source_instance_paths) == {}
