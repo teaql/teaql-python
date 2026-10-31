@@ -1,5 +1,7 @@
 """Request-only source values and concurrent request-owner policy."""
 from concurrent.futures import ThreadPoolExecutor
+from datetime import date
+from decimal import Decimal
 
 import pytest
 
@@ -59,3 +61,23 @@ def test_one_context_keeps_concurrent_request_owners_separate():
         values = list(pool.map(run, range(16)))
     assert values == [_mask(secret) if index % 2 == 0 else secret for index in range(16)]
     assert original.input_value == secret and original.entity_type is None and original.message is None
+
+
+def test_marker_shaped_json_cannot_reuse_a_decimal_input_snapshot():
+    result = CheckResult("custom", "contact_phone", Decimal("12.50"))
+    ctx = configured(result)
+    ctx.translate_check_results([result])
+    result.input_value = {"$decimal": "12.50"}
+    ctx.translate_check_results([result])
+    assert result.input_value == {"$decimal": "12.50"}
+    assert result.to_wire()["inputValue"] == {"$decimal": "12.50"}
+
+
+def test_marker_shaped_json_cannot_reuse_a_date_system_snapshot():
+    result = CheckResult("custom", "contact_phone", "ordinary", date(2026, 10, 31))
+    ctx = configured(result)
+    ctx.translate_check_results([result])
+    result.system_value = {"$date": "2026-10-31"}
+    ctx.translate_check_results([result])
+    assert result.system_value == {"$date": "2026-10-31"}
+    assert result.to_wire()["systemValue"] == {"$date": "2026-10-31"}

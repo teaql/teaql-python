@@ -84,12 +84,28 @@ def _raw(value, seen=None, depth=0):
 
 def _signature(value):
     def typed(v):
+        # Tag every node, including containers. A user dictionary containing a
+        # "$decimal"/"$date" key must not collide with a native scalar snapshot.
+        if v is None:
+            return ["null"]
+        if type(v) is str:
+            return ["string", v]
+        if type(v) is bool:
+            return ["bool", v]
+        if type(v) is int:
+            return ["integer", str(v)]
+        if type(v) is float:
+            return ["float", v.hex()]
         if type(v) is Decimal:
-            return {"$decimal": str(v)}
+            return ["decimal", str(v)]
         if type(v) in (date, datetime, time):
-            return {"$" + type(v).__name__: v.isoformat()}
+            return [type(v).__name__, v.isoformat()]
+        if isinstance(v, dict):
+            return ["object", [[key, typed(child)] for key, child in sorted(v.items())]]
+        if isinstance(v, list):
+            return ["array", [typed(child) for child in v]]
         raise TypeError("unexpected diagnostic snapshot type")
-    encoded = json.dumps(value, default=typed, sort_keys=True, ensure_ascii=True, allow_nan=False)
+    encoded = json.dumps(typed(value), ensure_ascii=True, allow_nan=False, separators=(",", ":"))
     return sha256(encoded.encode()).hexdigest()
 
 
