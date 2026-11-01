@@ -23,6 +23,8 @@ def capture_entity_query_properties(entity, query):
         if schema is None or not isinstance(properties, ProjectionProperties):
             return  # Existing custom hydrators retain their native result type.
         names = [item.alias for item in (*selected.aggregates, *selected.relation_aggregates)]
+        names.extend(item.alias for item in selected.expr_projection)
+        names.extend(item.property_name for item in (*selected.raw_projections, *selected.dynamic_properties))
         for name in names:
             if (not isinstance(name, str) or not name or len(name) > 4096
                     or name in schema._query_reserved_names()):
@@ -30,8 +32,9 @@ def capture_entity_query_properties(entity, query):
                                       "Query alias conflicts with the model namespace")
         if len(names) != len(set(names)):
             raise ValueError("Duplicate selected query-property alias")
-        if names:
-            staged.append((node, properties.with_selected_aliases(names)))
+        view = properties.with_selected_aliases(names)
+        if view is not properties:
+            staged.append((node, view))
         fields = {field.canonical_name: field for field in schema.fields}
         loaded = getattr(node, "_loaded_fields", ())
         for relation in selected.relations:
@@ -50,3 +53,13 @@ def capture_entity_query_properties(entity, query):
     for node, view in staged:
         node._projection_properties = view
     return entity
+
+
+def invalidate_committed_query_properties(entity):
+    """A real write cannot return old derived values as authoritative readback.
+
+    Do not recompute expressions or query here. Only the actually prepared
+    entity loses this old snapshot; unchanged views and rollback paths keep it.
+    """
+    if isinstance(getattr(entity, "_projection_properties", None), ProjectionProperties):
+        entity._projection_properties = ProjectionProperties({}, ())

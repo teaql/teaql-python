@@ -25,6 +25,8 @@ class ProjectionProperties:
         if any(not isinstance(name, str) or not name or name not in self.__values
                for name in selected):
             raise ValueError("Selected query property was not present in the result")
+        if selected == self.__selected:
+            return self
         view = object.__new__(ProjectionProperties)
         view.__values, view.__selected = self.__values, selected
         return view

@@ -135,6 +135,30 @@ def main():
                       for line in log.read_text().splitlines() if line.startswith("PYTHON_PROJECTION_VIEW_COMPLETE=")]
             assert len(frames) == 1 and frames[0]["passed"] and frames[0]["round"] == index and frames[0]["cases"] == 3
         report["projectionDatabaseSha256"] = hashlib.sha256((evidence / "projection-views.sqlite").read_bytes()).hexdigest()
+        report["unchangedViews"] = []
+        report["unchangedViewApplicationSha256"] = hashlib.sha256((EXAMPLE / "unchanged_views.py").read_bytes()).hexdigest()
+        expected_cases = ["sparse-restored-values-null-properties-and-edge", "repeat-clean-sparse-save",
+                          "other-row-pending-intent-and-values-retained", "row-owned-properties-and-loaded-null-retained",
+                          "rejected-property-selection-retains-prior-view"]
+        for index in (1, 2):
+            command = [sys.executable, str(EXAMPLE / "unchanged_views.py"),
+                       "--database", str(evidence / "unchanged-views.sqlite"), "--round", str(index)]
+            log = evidence / f"unchanged-views-round-{index}.log"
+            with log.open("w") as output:
+                result = subprocess.run(command, cwd=REPO, env=environment, stdout=output,
+                                        stderr=subprocess.STDOUT, check=False, timeout=120)
+            report["unchangedViews"].append({"command": command, "exitCode": result.returncode,
+                                            "logSha256": hashlib.sha256(log.read_bytes()).hexdigest()})
+            assert result.returncode == 0, log.read_text()[-12000:]
+            frames = [json.loads(line[len("PYTHON_UNCHANGED_VIEW_CASE="):])
+                      for line in log.read_text().splitlines() if line.startswith("PYTHON_UNCHANGED_VIEW_CASE=")]
+            assert [frame["case"] for frame in frames] == expected_cases
+            assert all(frame["passed"] and frame["round"] == index and not frame["pending"]
+                       and all(count == 0 for count in frame["effects"].values()) for frame in frames)
+            for marker in ("PYTHON_UNCHANGED_VIEW_WRITE=", "PYTHON_UNCHANGED_VIEW_PHYSICAL=", "PYTHON_UNCHANGED_VIEW_COMPLETE="):
+                rows = [json.loads(line[len(marker):]) for line in log.read_text().splitlines() if line.startswith(marker)]
+                assert len(rows) == 1 and rows[0]["passed"] and rows[0]["round"] == index
+        report["unchangedViewDatabaseSha256"] = hashlib.sha256((evidence / "unchanged-views.sqlite").read_bytes()).hexdigest()
         assert fingerprint() == manifest
         report["databaseSha256"] = hashlib.sha256((evidence / "fixture.sqlite").read_bytes()).hexdigest()
         report["passed"] = True

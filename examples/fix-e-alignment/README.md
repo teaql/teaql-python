@@ -33,6 +33,19 @@ The existing runtime reports this rejection as a `RuntimeError` for missing
 authoritative persisted state, not a dedicated optimistic-conflict exception.
 This example does not claim richer error classification or cyclic-graph coverage.
 
+`unchanged_views.py` adds five generated Q/E/audited-save cases twice on one
+unreset SQLite store. Restored scalar/null edits and clean saves preserve sparse
+fields, loaded sparse relations, readonly null/zero/empty properties, row-owned
+values, JSON, lineage and optimistic versions with zero provider/policy/audit
+effects. One row's save cannot consume another row's pending intent. A genuine
+write returns authoritative fixed fields and invalidates its old query-property
+snapshot after commit; expressions are not silently recomputed. Rollback retains
+the snapshot for retry, and clean rows are not invalidated. A separate read-only
+SQLite oracle checks stored values and versions. Expression/raw/dynamic aliases
+share aggregate alias validation, including collision/missing/duplicate rejection
+without partially installing a graph. This does not add typed dynamic schemas,
+persistent dynamic fields or a public enclosing-transaction API.
+
 The service **and its real transaction** are observed. Every counter, including
 rollback, is calibrated before the rejected saves. Read-only immutable SQLite
 queries are an independent storage oracle, never an alternative write path.

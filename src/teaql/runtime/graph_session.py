@@ -114,8 +114,17 @@ class GraphMutationSession:
         self._audits.append((deepcopy(event), deepcopy(safe_event)))
 
     async def committed(self):
+        from .query_properties import invalidate_committed_query_properties
         self._committed = True
         failures = []
+        # These are the mutated generated entities, not every reached view.
+        # Invalidate before public completion callbacks can expose stale aliases.
+        # A failed callback must not undo this already committed boundary.
+        for entity, _, _ in self._prepared_mutations.values():
+            try:
+                invalidate_committed_query_properties(entity)
+            except BaseException as error:
+                failures.append(error)
         # A failed sink must not prevent subsequent events or ledger cleanup.
         for event, safe_event in self._audits:
             try:
