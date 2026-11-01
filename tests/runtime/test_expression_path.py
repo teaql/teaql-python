@@ -5,6 +5,32 @@ import pytest
 from teaql.runtime import ExpressionPath, JsonFieldNamingProfile, TeaQLNotLoadedError
 
 
+@pytest.mark.parametrize("profile,pointer", [
+    (JsonFieldNamingProfile.CAMEL_CASE, "/schoolType/2/a~0~1b.c"),
+    (JsonFieldNamingProfile.SNAKE_CASE, "/school_type/2/a~0~1b.c"),
+    (JsonFieldNamingProfile.PASCAL_CASE, "/SchoolType/2/A~0~1b.c"),
+])
+def test_literal_punctuation_and_indices_preserve_canonical_identity_in_all_wire_profiles(profile, pointer):
+    import os
+    path = ExpressionPath("E.node(<root>)", profile).member("school_type", "school_type")
+    path = path.index(2).member("a~/b.c", "safe_field").mark_missing()
+    wire = TeaQLNotLoadedError(path, "a~/b.c").terminal("eval()").to_wire()
+    assert wire["instancePath"] == pointer
+    assert wire["attemptedInstancePath"] == pointer
+    assert wire["location"] == [{"kind":"property", "name":"school_type"},
+                                {"kind":"index", "index":2}, {"kind":"property", "name":"a~/b.c"}]
+    assert wire["attemptedLocation"] == wire["location"]
+    assert wire["suggestedFix"]["location"] == wire["location"]
+    assert wire["breakPointIndex"] == 2
+    assert wire["breakPoint"] == "a~/b.c"
+    assert wire["expressionWithBrokenPoint"] == "E.node(<root>).school_type().get(2).safe_field()<broken>.eval()"
+    record = json.dumps({"language":"python", "profile":profile.value, "wire":wire})
+    print("E_POINTER_PROFILE_CASE=" + record)
+    if output := os.environ.get("TEAQL_POINTER_PROFILE_EVIDENCE"):
+        with open(output, "a", encoding="utf-8") as stream:
+            stream.write(record + "\n")
+
+
 def test_early_repeated_relation_preserves_suffix_and_first_positional_breakpoint():
     parent = ExpressionPath("E.node(<root>)").member("parent", "parent").mark_missing()
     leaf = parent.member("parent", "parent").member("user_url", "user_url")
