@@ -67,9 +67,9 @@ def test_create_defers_only_an_absent_root_not_a_conflicting_one():
         check(active(2), original={"account_root": 1}, current={"account_root": 2}, pending={"account_root": 2})
 
 
-@pytest.mark.parametrize("locale,profile,rule", product(
+@pytest.mark.parametrize("locale,profile,rule", tuple(product(
     ("en", "zh-CN", "zh-TW", "ja", "ko", "de", "fr", "es", "pt", "ar", "th", "id", "fil", "uk", "vi"),
-    tuple(JsonFieldNamingProfile), ("context_root_missing", "context_root_mismatch")))
+    tuple(JsonFieldNamingProfile), ("context_root_missing", "context_root_mismatch"))))
 def test_root_diagnostics_preserve_full_canonical_path_and_render_all_profiles(locale, profile, rule):
     context = active(2).set_locale_code(locale) if rule.endswith("mismatch") else UserContext.new().set_locale_code(locale)
     with pytest.raises(CheckException) as error:
