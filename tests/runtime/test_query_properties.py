@@ -7,7 +7,8 @@ import math
 import pytest
 
 from teaql.core.projection_properties import ProjectionProperties
-from teaql.core.query import SelectQuery
+from teaql.core.query import RawSqlProjection, SelectQuery
+from teaql.core.expr import ExprBuilder
 from teaql.runtime.entity_json import EntityJSONError, EntityJSONField, EntityJSONSchema
 from teaql.runtime.i18n import JsonFieldNamingProfile
 from teaql.runtime.query_properties import capture_entity_query_properties
@@ -164,3 +165,127 @@ def test_query_graph_depth_failure_keeps_previous_views_unchanged():
     with pytest.raises(ValueError, match="depth limit"):
         capture_entity_query_properties(root, request)
     assert root._projection_properties is original
+
+
+def scalar_projection(kind, alias):
+    request = SelectQuery("Node")
+    if kind == "expression":
+        request.project_expr(alias, ExprBuilder.value(0))
+    elif kind == "raw":
+        request.project_raw(alias, "0")  # Trusted local query, never remote input.
+    else:
+        request.dynamic_properties.append(RawSqlProjection(alias, "0"))
+    return request
+
+
+@pytest.mark.parametrize("kind", ["expression", "raw", "dynamic"])
+@pytest.mark.parametrize("value", [None, False, 0, ""])
+def test_native_scalar_projection_aliases_are_selected_without_changing_presence_or_loaded_fields(kind, value):
+    entity = Node(id=1, _value=value, _private="not selected")
+    loaded = set(entity._loaded_fields)
+    capture_entity_query_properties(entity, scalar_projection(kind, "_value"))
+    assert json.loads(SCHEMA.dumps(entity)) == {"id": "1", "_value": value}
+    assert entity._loaded_fields == loaded
+    assert entity._projection_properties.as_dict()["_value"] is value
+    assert entity._projection_properties.get("_missing") is None
+
+
+@pytest.mark.parametrize("kind", ["expression", "raw", "dynamic"])
+def test_scalar_projection_collision_is_rejected_before_replacing_a_previous_view(kind):
+    entity = capture_entity_query_properties(Node(id=1, total=0), query("total"))
+    original = entity._projection_properties
+    with pytest.raises(EntityJSONError, match="model namespace") as error:
+        capture_entity_query_properties(entity, scalar_projection(kind, "displayName"))
+    assert error.value.code == "WIRE_QUERY_PROPERTY_COLLISION"
+    assert entity._projection_properties is original
+
+
+@pytest.mark.parametrize("kind", ["expression", "raw", "dynamic"])
+def test_scalar_projection_missing_alias_rejects_without_fabricating_null(kind):
+    entity = Node(id=1)
+    original = entity._projection_properties
+    with pytest.raises(ValueError, match="not present"):
+        capture_entity_query_properties(entity, scalar_projection(kind, "_missing"))
+    assert entity._projection_properties is original
+
+
+@pytest.mark.parametrize("kind", ["expression", "raw", "dynamic"])
+def test_alias_uniqueness_spans_aggregate_and_scalar_projection_sources(kind):
+    request = scalar_projection(kind, "_total")
+    request.sum("metric", "_total")
+    with pytest.raises(ValueError, match="Duplicate"):
+        capture_entity_query_properties(Node(id=1, _total=0), request)
+
+
+def test_late_expression_collision_preserves_the_complete_loaded_graph():
+    child = capture_entity_query_properties(Node(id=2, total=None), query("total"))
+    root = capture_entity_query_properties(Node(id=1, total=0, children=[child]), query("total"))
+    root_old, child_old = root._projection_properties, child._projection_properties
+    request = query("total").relation_query("children", scalar_projection("expression", "displayName"))
+    with pytest.raises(EntityJSONError):
+        capture_entity_query_properties(root, request)
+    assert root._projection_properties is root_old and child._projection_properties is child_old
+
+
+def test_a_new_empty_selection_removes_previous_output_authority_without_erasing_owned_values():
+    entity = capture_entity_query_properties(Node(id=1, _value=False), scalar_projection("expression", "_value"))
+    assert json.loads(SCHEMA.dumps(entity)) == {"id": "1", "_value": False}
+    capture_entity_query_properties(entity, SelectQuery("Node"))
+    assert json.loads(SCHEMA.dumps(entity)) == {"id": "1"}
+    assert entity._projection_properties.as_dict()["_value"] is False
+
+
+@pytest.mark.asyncio
+async def test_real_graph_commit_invalidates_old_query_properties_only_on_prepared_entities():
+    from teaql.core.request_intent import MutationIntent
+    from teaql.runtime import UserContext
+    from teaql.runtime.graph_session import GraphMutationSession
+    changed = capture_entity_query_properties(Node(id=1, total=0), query("total"))
+    unchanged = capture_entity_query_properties(Node(id=2, total=None), query("total"))
+    loaded = set(changed._loaded_fields)
+    session = GraphMutationSession(UserContext.new(), object(), MutationIntent("commit a real generated edit"))
+    session._remember_prepared_mutation(changed, "Update", object())
+    try:
+        await session.committed()
+        assert changed._projection_properties.as_dict() == {}
+        assert changed._projection_properties.selected_values() == {}
+        assert changed._loaded_fields == loaded
+        assert unchanged._projection_properties.selected_values() == {"total": None}
+    finally:
+        session.close()
+
+
+@pytest.mark.asyncio
+async def test_graph_rollback_retains_the_prior_query_properties_for_retry():
+    from teaql.core.request_intent import MutationIntent
+    from teaql.runtime import UserContext
+    from teaql.runtime.graph_session import GraphMutationSession
+    entity = capture_entity_query_properties(Node(id=1, total=None), query("total"))
+    original = entity._projection_properties
+    session = GraphMutationSession(UserContext.new(), object(), MutationIntent("roll back a generated edit"))
+    session._remember_prepared_mutation(entity, "Update", object())
+    try:
+        assert await session.rolled_back() == ()
+        assert entity._projection_properties is original
+        assert entity._projection_properties.selected_values() == {"total": None}
+    finally:
+        session.close()
+
+
+@pytest.mark.asyncio
+async def test_a_failed_completion_callback_cannot_reexport_stale_query_properties():
+    from teaql.core.request_intent import MutationIntent
+    from teaql.runtime import UserContext
+    from teaql.runtime.graph_session import GraphCommittedError, GraphMutationSession
+    entity = capture_entity_query_properties(Node(id=1, total=0), query("total"))
+    session = GraphMutationSession(UserContext.new(), object(), MutationIntent("commit before failed delivery"))
+    session._remember_prepared_mutation(entity, "Update", object())
+    def failed_delivery():
+        raise ValueError("synthetic delivery failure")
+    session.after_commit(failed_delivery)
+    try:
+        with pytest.raises(GraphCommittedError):
+            await session.committed()
+        assert entity._projection_properties.as_dict() == {}
+    finally:
+        session.close()
