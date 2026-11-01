@@ -3,7 +3,7 @@
   "language": "python",
   "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
   "generatedManifestSha256": "ab37151c6254e449be6101ff0b78862fe03a6c19acd203ba69e106968bef81fd",
-  "producerReceiptSha256": "5a70119dcf5e8d56e137a4bbeab2e198473c7a0937691d60c749ff7d5c5c18fd",
+  "previousProducerReceiptSha256": "5a70119dcf5e8d56e137a4bbeab2e198473c7a0937691d60c749ff7d5c5c18fd",
   "producerSource": {
     "commit": "531110789ddb4e0aa26ea8503f53f9504f14e49b",
     "sourceContentsSha256": "2493cdfce1e0d801dfe57d28a490d2cae09a6ce445354b1a98a551d8ac8ff03d"
