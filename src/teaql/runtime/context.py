@@ -733,6 +733,12 @@ class UserContext:
         from .canonical_fields import validate_canonical_fields
         validate_canonical_fields(self, entity, record, location)
 
+    def _validate_context_root_input(self, entity, field, expected_type, action,
+                                     original, current, pending):
+        """Generated graph admission; no provider, clock, policy or mutation."""
+        from .context_roots import validate_input
+        validate_input(self, entity, field, expected_type, action, original, current, pending)
+
     def check_and_fix_record_at(self, entity: str, record: Any, location: Any):
         from .scalar_validation import finite_scalar_results, integral_scalar_results, pending_reference_values
         from .checker_privacy import _CheckBatch, capture

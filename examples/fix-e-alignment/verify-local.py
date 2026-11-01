@@ -103,6 +103,22 @@ def main():
                       if line.startswith("PARTIAL_GRAPH_LOAD=")]
             assert len(frames) == 1 and frames[0]["passed"] and frames[0]["round"] == index
         report["partialGraphDatabaseSha256"] = hashlib.sha256((evidence / "partial-graph.sqlite").read_bytes()).hexdigest()
+        report["partialRootLoading"] = []
+        report["partialRootApplicationSha256"] = hashlib.sha256((EXAMPLE / "partial_root_loading.py").read_bytes()).hexdigest()
+        for index in (1, 2):
+            command = [sys.executable, str(EXAMPLE / "partial_root_loading.py"),
+                       "--database", str(evidence / "partial-root.sqlite"), "--round", str(index)]
+            log = evidence / f"partial-root-round-{index}.log"
+            with log.open("w") as output:
+                result = subprocess.run(command, cwd=REPO, env=environment, stdout=output,
+                                        stderr=subprocess.STDOUT, check=False, timeout=120)
+            report["partialRootLoading"].append({"command": command, "exitCode": result.returncode,
+                                                "logSha256": hashlib.sha256(log.read_bytes()).hexdigest()})
+            assert result.returncode == 0, log.read_text()[-12000:]
+            frames = [json.loads(line[len("PYTHON_PARTIAL_ROOT_RESULT="):]) for line in log.read_text().splitlines()
+                      if line.startswith("PYTHON_PARTIAL_ROOT_RESULT=")]
+            assert len(frames) == 1 and frames[0]["passed"] and frames[0]["round"] == index
+        report["partialRootDatabaseSha256"] = hashlib.sha256((evidence / "partial-root.sqlite").read_bytes()).hexdigest()
         assert fingerprint() == manifest
         report["databaseSha256"] = hashlib.sha256((evidence / "fixture.sqlite").read_bytes()).hexdigest()
         report["passed"] = True

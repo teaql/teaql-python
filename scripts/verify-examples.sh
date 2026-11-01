@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(business-clock business-id conformance facet-trace fix-e-alignment internal-id mutation-policy object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management task_board trace-chain typed-extension-spi)
+expected=(business-clock business-id conformance expression-profiles facet-trace fix-e-alignment internal-id mutation-policy object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management task_board trace-chain typed-extension-spi)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -42,6 +42,8 @@ bash "$repo/examples/scalar-type-probe/verify-restoration.sh" "$evidence_directo
 bash "$repo/examples/scalar-type-probe/verify-version.sh" "$evidence_directory/version.sqlite"
 bash "$repo/examples/scalar-type-probe/verify-empty.sh" "$evidence_directory/empty-aggregates.sqlite"
 python "$repo/examples/fix-e-alignment/verify-local.py"
+TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$evidence_directory/expression-profiles" \
+  python "$repo/examples/expression-profiles/verify-local.py"
 PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/conformance" -p 'test_sql_log_intent.py' -v
 PYTHONPATH="$repo/examples/school-management:$repo/src" python -m app.main

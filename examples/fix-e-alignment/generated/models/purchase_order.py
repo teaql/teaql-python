@@ -185,6 +185,7 @@ class PurchaseOrder:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
                 if "version" not in self._loaded_fields:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+            self._teaql_validate_context_root(context, ledger)
             _action, command = self._teaql_build_command()
             context._validate_required_mutation_input(command, parent_field=parent_field)
         for index, child in enumerate(self._order_item_list):
@@ -196,6 +197,13 @@ class PurchaseOrder:
                     v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
+
+    def _teaql_validate_context_root(self, context, pending):
+        context._validate_context_root_input(
+            "PurchaseOrder", "tenant",
+            "Tenant", self._action,
+            LoadedScalarSnapshots.values(self), self._teaql_scalar_payload(), pending)
+
 
     async def _teaql_ensure_business_ids(self, context):
         if self._action != "Create":
@@ -345,6 +353,7 @@ class PurchaseOrder:
             action, cmd = self._teaql_build_command()
             try:
                 context.preflight_mutation(cmd)
+                self._teaql_validate_context_root(context, getattr(cmd, "values", {}))
             finally:
                 for field, value in getattr(cmd, "values", {}).items():
                     if field not in ("id", "version"):

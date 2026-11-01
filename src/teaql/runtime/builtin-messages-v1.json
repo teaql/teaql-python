@@ -4,6 +4,8 @@
   "locales": {
     "en": {
       "messages": {
+        "checker.context_root_missing": "The {location} requires an active context root of the declared type",
+        "checker.context_root_mismatch": "The {location} does not belong to the active context root",
         "checker.required": "The {location} is required",
         "checker.min": "The {location} should be equal or greater than {system}, but input is {input}",
         "checker.max": "The {location} should be equal or less than {system}, but input is {input}",
@@ -14,6 +16,8 @@
     },
     "zh-CN": {
       "messages": {
+        "checker.context_root_missing": "{location} 需要声明类型的有效上下文根对象",
+        "checker.context_root_mismatch": "{location} 不属于当前上下文根对象",
         "checker.required": "{location} 是必填项",
         "checker.min": "{location} 应该大于等于 {system}，但输入值为 {input}",
         "checker.max": "{location} 应该小于等于 {system}，但输入值为 {input}",
