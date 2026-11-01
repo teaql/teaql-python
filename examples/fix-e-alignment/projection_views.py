@@ -127,6 +127,8 @@ async def main(database, round_number):
               "errorType": type(failure).__name__ if failure else None, "message": str(failure) if failure else None,
               "effects": {key: calls[key] - before[key] for key in ZERO}}, sort_keys=True), flush=True)
         assert failure is not None, "A stale independent view was reported as successfully saved"
+        assert type(failure) is RuntimeError
+        assert str(failure) == "Mutation provider did not return authoritative persisted state for PurchaseOrder"
         assert calls["mutations"] > before["mutations"] and calls["rollbacks"] == before["rollbacks"] + 1
         assert calls["commits"] == before["commits"] and calls["audits"] == before["audits"]
         after = pending(other)

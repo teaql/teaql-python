@@ -119,6 +119,22 @@ def main():
                       if line.startswith("PYTHON_PARTIAL_ROOT_RESULT=")]
             assert len(frames) == 1 and frames[0]["passed"] and frames[0]["round"] == index
         report["partialRootDatabaseSha256"] = hashlib.sha256((evidence / "partial-root.sqlite").read_bytes()).hexdigest()
+        report["independentProjectionViews"] = []
+        report["projectionApplicationSha256"] = hashlib.sha256((EXAMPLE / "projection_views.py").read_bytes()).hexdigest()
+        for index in (1, 2):
+            command = [sys.executable, str(EXAMPLE / "projection_views.py"),
+                       "--database", str(evidence / "projection-views.sqlite"), "--round", str(index)]
+            log = evidence / f"projection-views-round-{index}.log"
+            with log.open("w") as output:
+                result = subprocess.run(command, cwd=REPO, env=environment, stdout=output,
+                                        stderr=subprocess.STDOUT, check=False, timeout=120)
+            report["independentProjectionViews"].append({"command": command, "exitCode": result.returncode,
+                                                        "logSha256": hashlib.sha256(log.read_bytes()).hexdigest()})
+            assert result.returncode == 0, log.read_text()[-12000:]
+            frames = [json.loads(line[len("PYTHON_PROJECTION_VIEW_COMPLETE="):])
+                      for line in log.read_text().splitlines() if line.startswith("PYTHON_PROJECTION_VIEW_COMPLETE=")]
+            assert len(frames) == 1 and frames[0]["passed"] and frames[0]["round"] == index and frames[0]["cases"] == 3
+        report["projectionDatabaseSha256"] = hashlib.sha256((evidence / "projection-views.sqlite").read_bytes()).hexdigest()
         assert fingerprint() == manifest
         report["databaseSha256"] = hashlib.sha256((evidence / "fixture.sqlite").read_bytes()).hexdigest()
         report["passed"] = True

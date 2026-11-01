@@ -22,6 +22,17 @@ same mutation intent, projection and physical rows. Retrying that same graph
 with its correct active root writes only the leaf, clears committed intent and
 uses the injected BusinessClock. Ancestors remain partial and version 1.
 
+`projection_views.py` checks three independent-view boundaries twice on one
+SQLite file: a later complete query cannot widen an earlier sparse view; two
+views of one row retain independent pending edits and reject a stale save; a
+sparse root and its full nested alias retain different projections and JSON.
+E/JSON inspection performs no provider work or mutation. The rejected stale
+save rolls back without commit audit, preserves its original version/business
+edit, and may retain only its successful BusinessClock-derived `update_time` Fix.
+The existing runtime reports this rejection as a `RuntimeError` for missing
+authoritative persisted state, not a dedicated optimistic-conflict exception.
+This example does not claim richer error classification or cyclic-graph coverage.
+
 The service **and its real transaction** are observed. Every counter, including
 rollback, is calibrated before the rejected saves. Read-only immutable SQLite
 queries are an independent storage oracle, never an alternative write path.
