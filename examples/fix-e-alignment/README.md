@@ -10,6 +10,19 @@ generated Q API and audited save; E API checks distinguish NotLoaded from null.
 The generated fixture is hash-bound to its evaluated model and producer. Do not
 edit it to fix an example: repair generation, regenerate, then verify its hashes.
 
+`expression_boundaries.py` is required by the default two-round gate. Real
+generated Q/audited Save prepares loaded, sparse, empty and FK-only graphs;
+twelve E cases cover late/indexed missing leaves, `first()` index zero,
+list-size operations, absence, the generated
+`eval()`/`or_if_null()` terminals, same-root sibling isolation,
+repeated relation names and zero side effects. Every provider/allocation/
+transaction/policy/audit counter is positively calibrated before E. Snapshots,
+pending intent and ledger identities must remain unchanged. Both human messages
+and the closed structured error preserve the complete redacted chain and exactly
+one first-failure marker. The SQLite store is never reset between rounds.
+This tests the generated E facade, not the separate generic `SafeExpression`
+class; it does not invent presence/lazy terminal APIs on generated expressions.
+
 `checker_boundaries.py` is part of the normal `verify-local.py` run, not a
 conformance-only consumer. It executes 63 observations across two unreset
 rounds: actual schema-free Checker installation, required references/null

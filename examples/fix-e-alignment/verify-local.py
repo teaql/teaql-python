@@ -180,6 +180,30 @@ def main():
                 rows = [json.loads(line[len(marker):]) for line in log.read_text().splitlines() if line.startswith(marker)]
                 assert len(rows) == 1 and rows[0]["passed"] and rows[0]["round"] == index
         report["unchangedViewDatabaseSha256"] = hashlib.sha256((evidence / "unchanged-views.sqlite").read_bytes()).hexdigest()
+        report["expressionBoundaries"] = []
+        report["expressionBoundaryApplicationSha256"] = hashlib.sha256((EXAMPLE / "expression_boundaries.py").read_bytes()).hexdigest()
+        expression_cases = ["late-leaf", "indexed-leaf", "first-indexed-leaf", "loaded-null", "loaded-empty", "out-of-range",
+                            "missing-list-size", "terminals", "sibling-paths", "fk-only-not-loaded",
+                            "repeated-relation", "no-side-effects"]
+        for index in (1, 2):
+            command = [sys.executable, str(EXAMPLE / "expression_boundaries.py"),
+                       "--database", str(evidence / "expression-boundaries.sqlite"), "--round", str(index)]
+            log = evidence / f"expression-boundaries-round-{index}.log"
+            with log.open("w") as output:
+                result = subprocess.run(command, cwd=REPO, env=environment, stdout=output,
+                                        stderr=subprocess.STDOUT, check=False, timeout=120)
+            report["expressionBoundaries"].append({"command": command, "exitCode": result.returncode,
+                                                   "logSha256": hashlib.sha256(log.read_bytes()).hexdigest()})
+            assert result.returncode == 0, log.read_text()[-12000:]
+            rows = [json.loads(line[len("PYTHON_E_BOUNDARY_CASE="):])
+                    for line in log.read_text().splitlines() if line.startswith("PYTHON_E_BOUNDARY_CASE=")]
+            assert [row["name"] for row in rows] == expression_cases
+            assert all(row["passed"] and row["round"] == index for row in rows)
+            summaries = [json.loads(line[len("PYTHON_E_BOUNDARY_RESULT="):])
+                         for line in log.read_text().splitlines() if line.startswith("PYTHON_E_BOUNDARY_RESULT=")]
+            assert len(summaries) == 1 and summaries[0]["passed"] and summaries[0]["round"] == index
+            assert summaries[0]["cases"] == expression_cases and summaries[0]["terminalObservations"] == 2
+        report["expressionBoundaryDatabaseSha256"] = hashlib.sha256((evidence / "expression-boundaries.sqlite").read_bytes()).hexdigest()
         assert fingerprint() == manifest
         report["databaseSha256"] = hashlib.sha256((evidence / "fixture.sqlite").read_bytes()).hexdigest()
         report["passed"] = True
