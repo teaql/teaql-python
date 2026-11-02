@@ -1,4 +1,5 @@
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
+from teaql.core.mutation_version import validate_mutation_versions
 from teaql.core.list import SmartList
 from teaql.core.value import Value
 from teaql.core.request_intent import MutationIntent
@@ -186,8 +187,9 @@ class OrderItem:
             self._teaql_validate_context_root(context, ledger)
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
+            _action, command = self._teaql_build_command()
+            validate_mutation_versions(command)
             if validate_required:
-                _action, command = self._teaql_build_command()
                 context._validate_required_mutation_input(command, parent_field=parent_field)
 
     def _teaql_validate_context_root(self, context, pending):

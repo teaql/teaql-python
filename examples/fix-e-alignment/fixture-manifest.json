@@ -2,13 +2,13 @@
   "schema": "teaql.generated-example-fixture/v1",
   "language": "python",
   "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
-  "generatedManifestSha256": "8854877f9074bc60a1a0bc61ef213d7d0150f33c501ae19620004738b2256760",
+  "generatedManifestSha256": "8d5396d57bf0dd7e1953f5453ab5e6c7527800c8a246fbece3d2a6021a1d0bc6",
   "previousProducerReceiptSha256": "5a70119dcf5e8d56e137a4bbeab2e198473c7a0937691d60c749ff7d5c5c18fd",
   "producerSource": {
-    "commit": "b8815410625097b0505bf58a1de13f6ebfc4d48c",
+    "commit": "5d24b84cfe319225d1664f2c867d1b408e6ab362",
     "diff": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "status": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "sourceContentsSha256": "5e48e34170a50be98038656d9f38308e762266f8cc40c33dafe1563d1cb9a65b"
+    "sourceContentsSha256": "5e7afbbafaa9a3678213825cb9965e974b5b4689960bc306193de95946e183ce"
   },
   "evaluatedScope": "python-lib-core",
   "evaluationErrors": 0,
@@ -20,9 +20,9 @@
     "requests/tenant_request.py": "c7b97739444016e5ae106ced40ff953b0111fbacae020b29772e1a60859d0a92",
     "requests/purchase_order_request.py": "c0c92f91005c4ee8820f1d89da64433227dd8039b42b695060d5014242a949b8",
     "requests/order_item_request.py": "85d65f9f21afdf2815ddaf36f4b946014d2339b052d1ab84dabc111359f8a405",
-    "models/tenant.py": "a5c1067672fb435aed9d77ee7355fb2fbe86f064261129e115599b461aa6820d",
-    "models/purchase_order.py": "ab80a564d7f56e9fcc99317479d1d42e5baf1f2ab78abf9018054882ab48ac6e",
-    "models/order_item.py": "f3ad9a632293a0c2111e1335991242237edfd5f6898bbca04dc72d041bc8fa6c",
+    "models/tenant.py": "09030c0bfabe307fc573a332b44d7d65cfc5aa23ab2fde3d89dc1aad70ac9151",
+    "models/purchase_order.py": "3679eb38b5f0c3b199f5af8af01f1a1ad5f2718089af33359911b9e153f4c20b",
+    "models/order_item.py": "1fa63453b8563260f4a60be32ff182f552903c65fa00eb571f06b70bc0e40cd7",
     "pyproject.toml": "df5a97996a6c312e64e8bdb58e9e79bfdda18cd0d0b03e8747bb8260836c321d",
     "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -30,5 +30,5 @@
     "runtime_module.py": "c5c6274831c099c6af3a2fa3a90bc65083916af2af5432b04b86ea14da698ff4"
   },
   "producerReportSha256": "fd4f4ca671e1e6be427688032380bef6d72319f6430fb050513fb5b4c68f4dbb",
-  "producerReceiptSha256": "110bfeda0a56810337d6401abe700de360ccab4041b632406c4e3269b24b2252"
+  "producerReceiptSha256": "3680d37abd69bfdb88369b4e13fe8f46a867756126784ef35eb6524026c8f7f7"
 }
