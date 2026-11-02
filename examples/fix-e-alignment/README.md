@@ -10,6 +10,24 @@ generated Q API and audited save; E API checks distinguish NotLoaded from null.
 The generated fixture is hash-bound to its evaluated model and producer. Do not
 edit it to fix an example: repair generation, regenerate, then verify its hashes.
 
+`checker_boundaries.py` is part of the normal `verify-local.py` run, not a
+conformance-only consumer. It executes 63 observations across two unreset
+rounds: actual schema-free Checker installation, required references/null
+updates, non-root partial-object rejection, stable numeric/string bounds,
+native indexed locations, post-Fix rejection and successful required/range
+repair, and exactly-once provider INSERTs. Real JSON traverses the runtime's
+object-local naming adapter and generated mutation/save; accepted aliases retain
+escaped source pointers in all three naming profiles. Unknown fields and
+equal/unequal alias collisions in both orders reject before mapping, Checker
+or save. Positive controls calibrate the same real SQLite boundaries.
+
+The small generated library comes from evaluated upstream generation. Required
+business fields are checked after customer Fix, before ID reservation; rebuilding
+a Create command retains the checked ledger values without overriding identity.
+The adapter example is application-owned composition, not a promise of a fully
+recursive generated HTTP input adapter. Its nested `ObjectLocation` diagnostic
+does not require every custom human message to contain a path.
+
 `partial_graph_loading.py` covers complete modified descendants behind two
 untouched partial ancestors, incomplete modified descendants, projection and
 version preservation, and managed cascade wiring.

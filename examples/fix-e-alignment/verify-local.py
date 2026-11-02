@@ -88,6 +88,27 @@ def main():
         assert checker_rows[0]["invalidSaves"] == 16 and checker_rows[0]["rounds"] == 2
         report["checkerMetadata"]["invalidSaves"] = 16
         report["checkerMetadata"]["databaseSha256"] = hashlib.sha256((evidence / "checker.sqlite").read_bytes()).hexdigest()
+        boundary_directory = evidence / "checker-boundaries"
+        boundary_directory.mkdir()
+        boundary_command = [sys.executable, str(EXAMPLE / "checker_boundaries.py"),
+                            "--source", str(REPO), "--output", str(boundary_directory)]
+        boundary_log = evidence / "checker-boundaries.log"
+        with boundary_log.open("w") as output:
+            boundary_result = subprocess.run(boundary_command, cwd=REPO, env=environment, stdout=output,
+                                             stderr=subprocess.STDOUT, check=False, timeout=180)
+        report["checkerBoundaries"] = {"command": boundary_command, "exitCode": boundary_result.returncode,
+                                      "applicationSha256": hashlib.sha256((EXAMPLE / "checker_boundaries.py").read_bytes()).hexdigest(),
+                                      "logSha256": hashlib.sha256(boundary_log.read_bytes()).hexdigest()}
+        assert boundary_result.returncode == 0, boundary_log.read_text()[-12000:]
+        boundary_rows = [json.loads(line[len("PYTHON_CHECKER_BOUNDARY_RESULT="):])
+                         for line in boundary_log.read_text().splitlines() if line.startswith("PYTHON_CHECKER_BOUNDARY_RESULT=")]
+        assert len(boundary_rows) == 1 and boundary_rows[0]["passed"] is True
+        assert boundary_rows[0]["observedCases"] == 63 and boundary_rows[0]["rounds"] == 2
+        assert boundary_rows[0]["sameDatabase"] and boundary_rows[0]["requiredAndRangeObserveActualFix"]
+        assert not boundary_rows[0]["schemaFreeDatabaseCreated"]
+        report["checkerBoundaries"]["observedCases"] = 63
+        report["checkerBoundaries"]["databaseSha256"] = hashlib.sha256((boundary_directory / "fixture.sqlite").read_bytes()).hexdigest()
+        assert not (boundary_directory / "never-created.sqlite").exists()
         report["partialGraphLoading"] = []
         for index in (1, 2):
             command = [sys.executable, str(EXAMPLE / "partial_graph_loading.py"),
