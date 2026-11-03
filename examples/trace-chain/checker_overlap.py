@@ -21,6 +21,7 @@ class ObservedContext(UserContext):
     def __init__(self):
         super().__init__()
         self.observation = dict(active=0, peak=0, callbacks=0, callback_peak=0, checks=[])
+        self.pause = None
 
     async def execute_graph_save(self, work, *, comment=None, prepare=None):
         state = self.observation
@@ -30,16 +31,23 @@ class ObservedContext(UserContext):
         async def observe_callback(callback, session):
             state['callbacks'] += 1
             state['callback_peak'] = max(state['callback_peak'], state['callbacks'])
-            session.transaction.entry['reason'] = comment
             try:
                 return await callback(session)
             finally:
                 state['callbacks'] -= 1
 
         async def observed(session):
+            entry = getattr(session.transaction, 'entry', None)
+            if entry is not None:
+                entry['reason'] = comment
             return await observe_callback(work, session)
 
         async def observed_prepare(session):
+            pause, self.pause = self.pause, None
+            if pause:
+                entered, release = pause
+                entered.set()
+                await asyncio.wait_for(release.wait(), 10)
             return await observe_callback(prepare, session)
 
         try:
@@ -107,11 +115,6 @@ class Service(SharedService):
         self.request_comments = []
 
     async def begin(self, context):
-        pause, self.pause = self.pause, None
-        if pause:
-            entered, release = pause
-            entered.set()
-            await asyncio.wait_for(release.wait(), 10)
         self.begins += 1
         return Transaction(self, await self.service.begin(context))
 
@@ -169,7 +172,8 @@ async def verify(context, platform, service, sink, logging, invalid_first):
     rejected.order_item_list()[0].update_name(None).audit_as('rejected child responsibility')
     clear(context, service, sink)
     entered, release = asyncio.Event(), asyncio.Event()
-    service.pause = (entered, release)
+    context.pause = (entered, release)
+    begins_before = service.begins
     ordered = [(rejected, rejected_reason), (accepted, accepted_reason)] if invalid_first else [
         (accepted, accepted_reason), (rejected, rejected_reason)]
     first = asyncio.create_task(ordered[0][0].audit_as(ordered[0][1]).save(context))
@@ -211,10 +215,10 @@ async def verify(context, platform, service, sink, logging, invalid_first):
         assert statement.trace_chain[0].name == 'CustomerOrder'
         assert [node.name for node in statement.trace_chain[-2:]] == ['sqlite', 'select' if index % 2 else 'update']
         assert statement.result_count == 1 if index % 2 else statement.affected_rows == 1
-    assert len(service.transactions) == 2
-    failed = next(item for item in service.transactions if item['reason'] == rejected_reason)
-    committed = next(item for item in service.transactions if item['reason'] == accepted_reason)
-    assert failed['outcome'] == 'rollback' and failed['physical'] == [], failed
+    assert service.begins == begins_before + 1, 'rejected input must not open a transaction'
+    assert len(service.transactions) == 1
+    committed = service.transactions[0]
+    assert committed['reason'] == accepted_reason
     assert committed['outcome'] == 'commit' and len(committed['physical']) == 4
     assert accepted_secret in committed['physical'][0]['params'], 'real SQL values are unchanged'
     assert [(event.entity, scalar(event.entity_id)) for event in sink.events] == [
