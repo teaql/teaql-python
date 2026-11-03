@@ -2,13 +2,13 @@
   "schema": "teaql.generated-example-fixture/v1",
   "language": "python",
   "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
-  "generatedManifestSha256": "78d40f9ad72b00f5565dd491f0f80c7cbda15d350b83313de5ccdb9a299ec082",
-  "previousFixtureManifestSha256": "0b94b23a3c2c0a7ae69cd1487fa5c6680082857969925f88376a9747b705b451",
+  "generatedManifestSha256": "a813046ae06a3204ba413c00a567b2926b0dd361c686cdaf6e884c9c6e77ee23",
+  "previousFixtureManifestSha256": "7e3c18ff6e3005893b3c82b13cd44791667498da6d530f9f2fbacf40f48dd851",
   "producerSource": {
-    "commit": "0746effbfdbc074b54b4899576ece1437d691de7",
-    "sourceContentsSha256": "66dfa91b8cc1bbb8eae0b02373258f362a4dd3e6ade4b1e48979877d6a5ee1ca"
+    "commit": "4c9a7ab79e235c84ac0d98d3fafde9e2ba6fba82",
+    "sourceContentsSha256": "31fb8693581e6f4f12366bfde37256347b20d23a15c6aeab4c944b60b45d6e6a"
   },
-  "producerReportSha256": "bd60789673fe5a74013778628b9b98a664c905b23692feea5de5d77edff3ca90",
+  "producerReportSha256": "bdff8e4dc60ef3b537537599af23a1b783058a6749f0ebfdd97af7931469dc96",
   "evaluatedScope": "python-lib-core",
   "evaluationErrors": 0,
   "evaluationWarnings": 4,
@@ -24,8 +24,8 @@
     "generated_search_models.py": "a1fc7d496d0ca1e789452df2d6d694641e3fd3017859133228fe9953975889ef",
     "E.py": "3a1bb923330c41e3a56403cd46c558efbc02d76406c3d2c31ef959fd18fec680",
     "Q.py": "110a04fe7434e902455505b6d9c76d433aed068a3279b22f9106742b6be685a3",
-    "models/tenant.py": "423ea0a3bcb04aa1293d04f90ee0970bce984acdab7d97829ba5af1e84f2e6cc",
-    "models/purchase_order.py": "103dbcd6ebeb3c8cf9362af3d13456cea4e1430315ce0facfc0767b4a3b21356",
-    "models/order_item.py": "d9cb648115d61e15220b3955b68bed1929570576ef7c5faa82e6d7e2663e22e2"
+    "models/tenant.py": "305f877fc9046545d092348ae0a81a2214cd39d61450f8ac9440c14540c717c3",
+    "models/purchase_order.py": "2405447f5cdb5e5418c76accd68a3981c87c9e186c38bbbd9fdb30ea04944d3f",
+    "models/order_item.py": "224502b9058d53193ac68837fd156b4e32df72f41e4ea26606f13cf779779c01"
   }
 }

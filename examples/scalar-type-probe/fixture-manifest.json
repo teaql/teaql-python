@@ -2,13 +2,13 @@
   "schema": "teaql.generated-example-fixture/v1",
   "language": "python",
   "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
-  "generatedManifestSha256": "c16bd880d645cce33ae30666773ff393917798bb6f16c585ecaebf5192f943b0",
-  "previousFixtureManifestSha256": "209136ca13bbe1c9c9f2790df20afcdda38be4dd414c202c88b866f1031d85eb",
+  "generatedManifestSha256": "459af6bc0cad28ecd81246c34aabb34d0530b2239b0ee59eeb01241c718725b1",
+  "previousFixtureManifestSha256": "6d796d286ccb915eab040648e9a0abbf81d49063ba7aa6607a6c286029c10593",
   "producerSource": {
-    "commit": "0746effbfdbc074b54b4899576ece1437d691de7",
-    "sourceContentsSha256": "66dfa91b8cc1bbb8eae0b02373258f362a4dd3e6ade4b1e48979877d6a5ee1ca"
+    "commit": "4c9a7ab79e235c84ac0d98d3fafde9e2ba6fba82",
+    "sourceContentsSha256": "31fb8693581e6f4f12366bfde37256347b20d23a15c6aeab4c944b60b45d6e6a"
   },
-  "producerReportSha256": "bd60789673fe5a74013778628b9b98a664c905b23692feea5de5d77edff3ca90",
+  "producerReportSha256": "bdff8e4dc60ef3b537537599af23a1b783058a6749f0ebfdd97af7931469dc96",
   "evaluatedScope": "python-lib-core",
   "evaluationErrors": 0,
   "evaluationWarnings": 0,
@@ -23,7 +23,7 @@
     "generated_search_models.py": "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19",
     "E.py": "5e6a69648c561528bf6168391e9d3b3c8946e0918425909ed64c27e6499974dc",
     "Q.py": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
-    "models/type_platform.py": "28fa8b1a6a7881397840ccf2c9c927ec6e8be6b7774ad046938b2d3ab2dc9175",
-    "models/scalar_type_probe.py": "359ce8785582d0de0edf717abf64f5f2806af45da1329d9f41e0065dd0e5811c"
+    "models/type_platform.py": "33c22fb82f6ba00388a1aa66e7b6b1aae61ea549c198fe165f4840aeb160d1cd",
+    "models/scalar_type_probe.py": "c3ffa0d2bc563d1950ee4aba7cd4fc8b3dbd386946e65297a2e631e7a3f76bd0"
   }
 }

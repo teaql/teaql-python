@@ -245,7 +245,9 @@ class OrderItem:
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("OrderItem", ledger)
-            action, cmd = self._teaql_build_command()
+            # A fresh invocation starts from caller-owned Create attributes,
+            # not retained output from a previously rejected Fix invocation.
+            action, cmd = self._teaql_build_command(include_fixed=False)
             session._generated.fix(self, action, cmd,
                 deferred_fields=())
 
@@ -288,10 +290,10 @@ class OrderItem:
 
         return payload
 
-    def _teaql_build_command(self):
+    def _teaql_build_command(self, include_fixed=True):
         payload = self._teaql_scalar_payload()
         action = self._action
-        if action == "Create":
+        if action == "Create" and include_fixed:
             # Preparation Fix values live in the ledger until commit. Rebuilding
             # from entity attributes alone must not discard those checked values.
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
