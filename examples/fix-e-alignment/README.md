@@ -69,6 +69,25 @@ The receipt binds these three application files, their logs and four databases.
 The generated fixture requires the paired runtime graph-preparation repair;
 do not run it with an older installed runtime or edit generated entities locally.
 
+## Failure recovery and trusted root admission
+
+`python_fix_lifecycle.py` runs seven generated Q/E/audited-save scenarios twice
+on one SQLite store. An advancing clock proves that modified parent and child
+share an instant, while subsequent invocations and independent Contexts capture
+new instants. Repeated child instances are fixed and written once per save.
+
+A custom Checker rejection, a failure after real child SQL, and cancellation
+after that SQL all preserve storage and allow the same graph to retry with fresh
+Fix state. The provider wrapper observes the real service and its transaction;
+it neither replaces persistence with a fake nor writes through another path.
+Six missing, invalid or conflicting root cases reject before provider activity
+or a Fix clock read. Generated entities expose no public root updater.
+
+Fix provenance contains only immutable type, model path, source kind and source
+label records, without business values. Numeric counters, exact instants and
+safe provenance records accompany the scenario results. Read-only SQLite checks
+verify rollback and committed values; their databases are retained in the receipt.
+
 The service **and its real transaction** are observed. Every counter, including
 rollback, is calibrated before the rejected saves. Read-only immutable SQLite
 queries are an independent storage oracle, never an alternative write path.

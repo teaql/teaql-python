@@ -165,13 +165,13 @@ def main():
             for name in ("python_graph_fix_probe.py", "python_graph_once_update.py", "required_graph.py")
         }
 
-        def graph_probe(name, script, arguments):
+        def graph_probe(name, script, arguments, group="graphPreparation"):
             command = [sys.executable, str(EXAMPLE / script), "--generated", str(EXAMPLE / "generated"), *arguments]
             log = evidence / (name + ".log")
             with log.open("w") as output:
                 result = subprocess.run(command, cwd=REPO, env=environment, stdout=output,
                                         stderr=subprocess.STDOUT, check=False, timeout=120)
-            report["graphPreparation"].append({"name": name, "command": command,
+            report[group].append({"name": name, "command": command,
                 "exitCode": result.returncode, "logSha256": hashlib.sha256(log.read_bytes()).hexdigest()})
             assert result.returncode == 0, log.read_text()[-12000:]
             return log.read_text().splitlines()
@@ -217,6 +217,21 @@ def main():
             for name in ("graph.single-child.sqlite", "graph.repeated-child.sqlite",
                          "graph-update.sqlite", "graph-admission.sqlite")
         }
+        report["fixLifecycle"] = []
+        report["fixLifecycleApplicationSha256"] = hashlib.sha256((EXAMPLE / "python_fix_lifecycle.py").read_bytes()).hexdigest()
+        expected_lifecycle = ["advancing-create-update", "safe-provenance", "independent-contexts",
+                              "checker-failure-retry", "provider-failure-retry", "cancel-failure-retry", "root-admission"]
+        for index in (1, 2):
+            lines = graph_probe(f"fix-lifecycle-round-{index}", "python_fix_lifecycle.py",
+                ["--database", str(evidence / "fix-lifecycle.sqlite"), "--round", str(index)], group="fixLifecycle")
+            cases = graph_frames(lines, "PYTHON_FIX_LIFECYCLE_CASE=", count=7)
+            assert [row["case"] for row in cases] == expected_lifecycle
+            assert all(row["round"] == index and all(value is True for value in row["facts"].values()) for row in cases)
+            summary = graph_frames(lines, "PYTHON_FIX_LIFECYCLE_RESULT=")[0]
+            assert summary["round"] == index and summary["cases"] == 7 and summary["rootRejections"] == 6
+            assert summary["parentRowsAdded"] == summary["childRowsAdded"] == 5
+            assert Path(summary["runtimeFile"]).resolve() == REPO / "src/teaql/runtime/context.py"
+        report["fixLifecycleDatabaseSha256"] = hashlib.sha256((evidence / "fix-lifecycle.sqlite").read_bytes()).hexdigest()
         assert fingerprint() == manifest
         report["databaseSha256"] = hashlib.sha256((evidence / "fixture.sqlite").read_bytes()).hexdigest()
         report["passed"] = True
