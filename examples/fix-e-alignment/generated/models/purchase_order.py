@@ -1,4 +1,5 @@
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
+from teaql.core.mutation_version import validate_mutation_versions
 from teaql.core.list import SmartList
 from teaql.core.value import Value
 from teaql.core.request_intent import MutationIntent
@@ -162,7 +163,7 @@ class PurchaseOrder:
             lambda session: self._teaql_save_within_graph(session.context, session),
             prepare=lambda session: self._teaql_prepare_graph(session.context, session), comment=self._comment)
 
-    def _teaql_validate_input_graph(self, context, visited, parent_field=None):
+    def _teaql_validate_input_graph(self, context, visited, parent_field=None, validate_required=False):
         if id(self) in visited:
             return
         visited.add(id(self))
@@ -186,11 +187,15 @@ class PurchaseOrder:
                 if "version" not in self._loaded_fields:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
             self._teaql_validate_context_root(context, ledger)
+            # Required business values may be supplied by customer Fix. Root,
+            # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
-            context._validate_required_mutation_input(command, parent_field=parent_field)
+            validate_mutation_versions(command)
+            if validate_required:
+                context._validate_required_mutation_input(command, parent_field=parent_field)
         for index, child in enumerate(self._order_item_list):
             try:
-                child._teaql_validate_input_graph(context, visited, "purchase_order")
+                child._teaql_validate_input_graph(context, visited, "purchase_order", validate_required=validate_required)
             except CheckException as error:
                 prefix = ObjectLocation().property("order_item_list").index(index)
                 raise CheckException([
@@ -240,7 +245,7 @@ class PurchaseOrder:
         session._generated.admit_graph(self)
         self._teaql_prepare_input_graph(context, set(), session)
         # Fix may edit a sibling or its version; re-admit the whole graph before IDs.
-        self._teaql_validate_input_graph(context, set())
+        self._teaql_validate_input_graph(context, set(), validate_required=True)
         await self._teaql_reserve_graph_ids(context, set())
         self._teaql_preflight_graph(context, session)
         session._seal_generated_plan()
@@ -308,7 +313,12 @@ class PurchaseOrder:
     def _teaql_build_command(self):
         payload = self._teaql_scalar_payload()
         action = self._action
-        if action == "Update":
+        if action == "Create":
+            # Preparation Fix values live in the ledger until commit. Rebuilding
+            # from entity attributes alone must not discard those checked values.
+            ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
+            payload.update({field: value for field, value in ledger.items() if field not in ("id", "version")})
+        elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
         if "tenant" in payload:

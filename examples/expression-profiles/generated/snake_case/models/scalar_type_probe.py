@@ -1,4 +1,5 @@
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
+from teaql.core.mutation_version import validate_mutation_versions
 from teaql.core.list import SmartList
 from teaql.core.value import Value
 from teaql.core.request_intent import MutationIntent
@@ -299,7 +300,7 @@ class ScalarTypeProbe:
             lambda session: self._teaql_save_within_graph(session.context, session),
             prepare=lambda session: self._teaql_prepare_graph(session.context, session), comment=self._comment)
 
-    def _teaql_validate_input_graph(self, context, visited, parent_field=None):
+    def _teaql_validate_input_graph(self, context, visited, parent_field=None, validate_required=False):
         if id(self) in visited:
             return
         visited.add(id(self))
@@ -360,8 +361,12 @@ class ScalarTypeProbe:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
                 if "version" not in self._loaded_fields:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
+            # Required business values may be supplied by customer Fix. Root,
+            # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
-            context._validate_required_mutation_input(command, parent_field=parent_field)
+            validate_mutation_versions(command)
+            if validate_required:
+                context._validate_required_mutation_input(command, parent_field=parent_field)
 
     async def _teaql_ensure_business_ids(self, context):
         if self._action != "Create":
@@ -392,28 +397,29 @@ class ScalarTypeProbe:
         # Complete all input/Fix checks before reserving any graph identity.
         # Stable IDs then make the final policy plan and TraceScope concrete.
         self._teaql_validate_input_graph(context, set())
-        self._teaql_prepare_input_graph(context, set())
+        session._generated.admit_graph(self)
+        self._teaql_prepare_input_graph(context, set(), session)
         # Fix may edit a sibling or its version; re-admit the whole graph before IDs.
-        self._teaql_validate_input_graph(context, set())
+        self._teaql_validate_input_graph(context, set(), validate_required=True)
         await self._teaql_reserve_graph_ids(context, set())
         self._teaql_preflight_graph(context, session)
         session._seal_generated_plan()
 
-    def _teaql_prepare_input_graph(self, context, visited):
+    def _teaql_prepare_input_graph(self, context, visited, session):
         if id(self) in visited:
             return
         visited.add(id(self))
         LoadedScalarSnapshots.discard_restored_fields(self, context)
+        session._generated.observe(self)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("ScalarTypeProbe", ledger)
-            _action, cmd = self._teaql_build_command()
-            try:
-                context._check_and_fix_mutation_input(cmd, deferred_fields=())
-            finally:
-                for field, value in getattr(cmd, "values", {}).items():
-                    if field not in ("id", "version"):
-                        self._entity_root.set(self._teaql_entity_key(), field, value)
+            action, cmd = self._teaql_build_command()
+            session._generated.fix(self, action, cmd,
+                deferred_fields=())
+
+    def _teaql_graph_relations(self):
+        return {}
 
     def _teaql_scalar_payload(self):
         payload = {}
@@ -504,7 +510,12 @@ class ScalarTypeProbe:
     def _teaql_build_command(self):
         payload = self._teaql_scalar_payload()
         action = self._action
-        if action == "Update":
+        if action == "Create":
+            # Preparation Fix values live in the ledger until commit. Rebuilding
+            # from entity attributes alone must not discard those checked values.
+            ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
+            payload.update({field: value for field, value in ledger.items() if field not in ("id", "version")})
+        elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
         if "type_platform" in payload:
@@ -528,6 +539,8 @@ class ScalarTypeProbe:
         return action, cmd
 
     def _teaql_preflight_graph(self, context, session, parent=None):
+        if not session._generated.visit("plan", self):
+            return
         if parent is None:
             MutationIntent(self._comment)
         scope = session.scope(self._teaql_entity_key(), parent, self._comment)
@@ -588,7 +601,7 @@ class ScalarTypeProbe:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
             action, cmd = self._teaql_build_command()
             try:
-                context.preflight_mutation(cmd)
+                action, cmd = session._generated.finalize(self, action, cmd)
             finally:
                 for field, value in getattr(cmd, "values", {}).items():
                     if field not in ("id", "version"):
@@ -596,6 +609,8 @@ class ScalarTypeProbe:
             session._remember_prepared_mutation(self, action, cmd)
 
     async def _teaql_save_within_graph(self, context, session, parent=None):
+        if not session._generated.visit("write", self):
+            return self
         if parent is None:
             MutationIntent(self._comment)
 
@@ -797,6 +812,7 @@ class ScalarTypeProbe:
         if action != "Delete":
             self._action = "Update"
 
+        session._generated.accepted(self)
         if action != "Delete":
             await self._teaql_cascade_children(context, session, scope)
         def commit_entity():
