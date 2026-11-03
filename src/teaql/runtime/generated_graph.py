@@ -141,6 +141,11 @@ class GeneratedGraphPreparation:
         original = entry['command']
         if type(rebuilt) is not type(original) or rebuilt.entity != original.entity:
             _changed(original.entity)
+        # Temporary identities may have become stable during allocation. Never
+        # turn two distinct pending instances into one silently deduplicated ID.
+        previous = self.identities.setdefault(entity._teaql_entity_key(), entity)
+        if previous is not entity:
+            _changed(original.entity, "ambiguous_mutation_view")
         if not isinstance(original, InsertCommand):
             if (not LoadedScalarSnapshots.same_value(original.id, rebuilt.id)
                     or original.expected_version_val != rebuilt.expected_version_val
