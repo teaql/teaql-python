@@ -191,7 +191,10 @@ async def main():
             assert len(service.requests) == len(sink.events) == len(policy.plans) == 1
             operation = policy.plans[0].operations[0]
             assert set(operation.changed_values) == {'description'}, operation.changed_values
-            assert loaded.get_dynamic_property('save') == 2
+            # A real commit invalidates the changed entity's derived snapshot.
+            # Do not re-export old query values as authoritative mutation output.
+            assert loaded.get_dynamic_property('save') is None
+            assert loaded.get_dynamic_property('filtered_count') is None
             print('AGGREGATE_SAVE ' + json.dumps({'nested': nested, 'logging': logging,
                 'commands': len(service.requests), 'audits': len(sink.events),
                 'fields': sorted(operation.changed_values), 'projection': loaded.get_dynamic_property('save')}))
@@ -199,6 +202,7 @@ async def main():
             fresh = E.payment(fresh).customer_order().eval() if nested else fresh
             assert E.customer_order(fresh).description().eval() == E.customer_order(loaded).description().eval()
             assert fresh.get_dynamic_property('filtered_count') == 0
+            assert fresh.get_dynamic_property('save') == 2
 
         clear()
         fault[0] = True
