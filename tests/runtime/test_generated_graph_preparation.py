@@ -140,3 +140,35 @@ async def test_failed_or_successful_invocation_does_not_reuse_fixed_state():
     assert len(calls) == 2
     assert retained[0] is not retained[1]
     assert all(not state.fixed and not state.views for state in retained)
+
+
+@pytest.mark.asyncio
+async def test_graph_admission_rejects_two_pending_views_before_any_fix():
+    context, calls = fixture()
+    root = Probe(9)
+    root.children = [Probe(1), Probe(1)]
+    original = [child._entity_root for child in root.children]
+    async def prepare(session):
+        with pytest.raises(CheckException) as error:
+            session._generated.admit_graph(root)
+        assert error.value.violations[0].rule_id == 'ambiguous_mutation_view'
+        assert all(child._entity_root is ledger for child, ledger in zip(root.children, original))
+    async def work(session):
+        pass
+    await context.execute_graph_save(work, prepare=prepare, comment='admit before merging views')
+    assert not calls
+
+
+@pytest.mark.asyncio
+async def test_equal_text_does_not_hide_a_changed_value_type_hint():
+    context, _ = fixture()
+    entity = Probe()
+    async def prepare(session):
+        state = session._generated
+        state.fix(entity, 'Create', InsertCommand('Probe', entity._teaql_scalar_payload()))
+        entity._entity_root.set(entity._teaql_entity_key(), 'name', Value.Json('fixed once'))
+        with pytest.raises(CheckException):
+            state.finalize(entity, 'Create', InsertCommand('Probe', entity._teaql_scalar_payload()))
+    async def work(session):
+        pass
+    await context.execute_graph_save(work, prepare=prepare, comment='preserve the checked representation')

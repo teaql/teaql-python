@@ -28,7 +28,7 @@ class _Reference:
         return Value.I64(identity)
 
 
-class GeneratedGraphPreparation:
+class _GeneratedGraphPreparation:
     def __init__(self, session):
         self.session = session
         self.fixed = {}
@@ -89,7 +89,9 @@ class GeneratedGraphPreparation:
             # Business-ID wrappers are immutable str subclasses.
             left = value.val if isinstance(value, Value) else value
             right = other.val if isinstance(other, Value) else other
-            if isinstance(left, str) and type(left) is type(right) and left == right:
+            if (isinstance(left, str) and type(left) is type(right) and left == right
+                    and type(value) is type(other)
+                    and getattr(value, '_type_hint', None) == getattr(other, '_type_hint', None)):
                 continue
             if not LoadedScalarSnapshots.same_value(value, other):
                 return False
@@ -104,6 +106,25 @@ class GeneratedGraphPreparation:
         if self.sealed:
             _changed()
         self.views.setdefault(id(entity), (entity, entity._teaql_graph_relations()))
+
+    def admit_graph(self, root):
+        """Reject distinct pending views before attaching/merging any ledger."""
+        self._active()
+        seen = set()
+        def visit(entity):
+            if id(entity) in seen:
+                return
+            seen.add(id(entity))
+            LoadedScalarSnapshots.discard_restored_fields(entity, self.session.context)
+            key = entity._teaql_entity_key()
+            if entity._entity_root.has_pending(key):
+                previous = self.identities.setdefault(key, entity)
+                if previous is not entity:
+                    _changed(key.entity, "ambiguous_mutation_view")
+            for children in entity._teaql_graph_relations().values():
+                for child in children:
+                    visit(child)
+        visit(root)
 
     def fix(self, entity, action, command, deferred_fields=()):
         self._active()

@@ -29,8 +29,8 @@ class GraphMutationSession:
         self._committed = False
         self._preparing = False
         self._prepared_mutations = {}
-        from .generated_graph import GeneratedGraphPreparation
-        self._generated = GeneratedGraphPreparation(self)
+        from .generated_graph import _GeneratedGraphPreparation
+        self._generated = _GeneratedGraphPreparation(self)
         self._generated_plan_complete = False
         self._commit_actions = []
         self._rollback_actions = []
