@@ -120,6 +120,10 @@ class GeneratedGraphPreparation:
             for field, value in getattr(command, 'values', {}).items():
                 if field not in ('id', 'version'):
                     entity._entity_root.set(entity._teaql_entity_key(), field, value)
+        # The normal generated admission pass also removes known-baseline
+        # equal changes. Snapshot the same normalized ledger, including when
+        # the Business Clock equals an already persisted update timestamp.
+        LoadedScalarSnapshots.discard_restored_fields(entity, self.session.context)
         retained = copy(command)
         retained.values = self._values(command.entity, getattr(command, 'values', {}))
         if hasattr(command, 'old_values'):
