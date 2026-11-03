@@ -10,7 +10,7 @@ from Q import Q
 from runtime_module import GENERATED_RUNTIME_MODULE
 from teaql.core.entity import EntityKey
 from teaql.provider.sqlite import create_sqlite_service
-from teaql.runtime import UserContext
+from teaql.runtime import UserContext, CheckException
 
 from main import AuditSink, ObservedService, ObservedTransaction, new, reset, scalar
 
@@ -226,14 +226,16 @@ async def conflict(context, platform, service, sink):
     reset(service, sink, context)
     try:
         await old.audit_as('reject conflicting loaded graph').save(context)
-    except ValueError as error:
-        assert 'ENTITY_VERSION_CONFLICT' in str(error)
+    except CheckException as error:
+        assert [(v.rule_id, v.entity_type) for v in error.violations] == [
+            ('ambiguous_mutation_view', 'OrderItem')]
     except BaseException:
         observe('conflict', service, sink, context)
         raise
     else:
         raise AssertionError('conflicting loaded versions must be rejected')
     assert service.requests == [] and sink.events == []
+    assert context.sql_logs() == []
     key = EntityKey('OrderItem', E.order_item(old_child).id().eval())
     assert pending(old_ledger, key) and pending(current_ledger, key)
     assert scalar(old_ledger.get(key, 'name')) == 'old pending value'
