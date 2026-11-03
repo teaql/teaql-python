@@ -1,7 +1,11 @@
-from teaql.core.query import RelationAggregate, SelectQuery
-from teaql.core.list import SmartList, TeaQLPage
+from teaql.core.query import AggregateFunction, RelationAggregate, SelectQuery
+from teaql.core.request_tree import QueryOperation
+from teaql.core.dynamic_search import merge_generated_scalar_search
+from generated_search_models import GENERATED_SEARCH_MODELS
+from teaql.core.list import SmartList
+from teaql.core.request_intent import QueryIntent
+from teaql.runtime import EntityRoot
 from teaql.data_service import QueryRequest
-from teaql.core import QueryIntent
 from copy import deepcopy
 from teaql.core.expr import (
     begin_with, between, column, contain, end_with, eq, gt, gte,
@@ -20,6 +24,9 @@ class SchoolRequest:
         self.query = SelectQuery("School")
         self._purpose = None
         self._comment = None
+        self._page_count_alias = None
+        self._page_count_method = None
+        self._dynamic_search_warnings = []
         self.query.and_filter(gte("version", 1))
         if minimal:
             self.select_id()
@@ -31,6 +38,17 @@ class SchoolRequest:
         self.query.comment(c)
         self._comment = c
         return self
+
+    def filter_by_json(self, source, warn=None):
+        kwargs = {} if warn is None else {"warn": warn}
+        query, warnings = merge_generated_scalar_search(self.query, source, GENERATED_SEARCH_MODELS, **kwargs)
+        self.query = query
+        self._dynamic_search_warnings.extend(warnings)
+        return self
+
+    @property
+    def dynamic_search_warnings(self):
+        return tuple(dict(warning) for warning in self._dynamic_search_warnings)
 
     def purpose(self, p: str):
         self.query.purpose(p)
@@ -117,11 +135,13 @@ class SchoolRequest:
 
     def select_platform_with(self, child_request):
         self.query.project("platform")
-        self.query.relation_query("platform", child_request.query)
+        self.query.relation_query("platform", child_request.query,
+            QueryOperation("relation-select", "select_platform_with", relation="platform"))
         return self
     def select_school_type_with(self, child_request):
         self.query.project("school_type")
-        self.query.relation_query("school_type", child_request.query)
+        self.query.relation_query("school_type", child_request.query,
+            QueryOperation("relation-select", "select_school_type_with", relation="school_type"))
         return self
     def with_platform_matching(self, child_request):
         child_request.query.projection = ["id"]
@@ -211,6 +231,9 @@ class SchoolRequest:
         return self
     def with_school_type_is_primary(self):
         self.query.and_filter(eq("school_type", 1001))
+        return self
+    def with_school_type_is_secondary(self):
+        self.query.and_filter(eq("school_type", 1002))
         return self
 
     def with_name_containing(self, val: str):
@@ -699,10 +722,14 @@ class SchoolRequest:
 
     def count(self):
         self.query.count_field("id", "count")
+        self._page_count_alias = "count"
+        self._page_count_method = "count"
         return self
 
     def count_as(self, ret_name: str):
         self.query.count_field("id", ret_name)
+        self._page_count_alias = ret_name
+        self._page_count_method = "count_as"
         return self
 
     def min_student_capacity(self):
@@ -832,12 +859,14 @@ class SchoolRequest:
         return self
     def facet_by_platform_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "platform", request.query, include_all_facets)
+        self.query.facet_by(name, "platform", request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_platform_as", name, "platform"))
         return self
 
     def facet_by_school_type_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "school_type", request.query, include_all_facets)
+        self.query.facet_by(name, "school_type", request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_school_type_as", name, "school_type"))
         return self
 
 
@@ -868,37 +897,18 @@ class ExecutableSchoolRequest:
         return (await self.execute_for_result(context)).rows
 
     async def execute_for_list(self, context) -> SmartList[School]:
-        result = await self.execute_for_result(context)
-        return SmartList(
-            (School(**row) for row in result.rows),
-            facets=result.facets)
-
-    async def execute_for_page(self, context, offset: int, limit: int) -> TeaQLPage[School]:
+        from teaql.runtime.query_list import execute_typed_list
         request = self._request
-        intent = QueryIntent(request._comment, request._purpose)
+        QueryIntent(request._comment, request._purpose)
         query = deepcopy(request.query)
-        query.offset(offset).limit(limit)
-        authorized = context.prepare_query_request(QueryRequest(query, _comment=intent.comment, _purpose=intent.purpose))
-        service = context.require_resource("dataService")
-        alias = "__teaql_total"
-        if authorized.query.id_set_pagination is not None:
-            row_result = await service.query(context, authorized)
-            retained_count, accuracy = context.id_set_count()
-            if accuracy == "EXACT":
-                total_count = retained_count
-            else:
-                count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
-                if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
-                    raise RuntimeError("dataService did not return an exact page count")
-                total_count = int(count_result.rows[0][alias])
-        else:
-            count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
-            if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
-                raise RuntimeError("dataService did not return an exact page count")
-            total_count = int(count_result.rows[0][alias])
-            row_result = await service.query(context, authorized)
-        data = SmartList(School(**row) for row in row_result.rows)
-        return TeaQLPage(data=data, total_count=total_count, offset=offset, limit=limit)
+        authorized = context.prepare_query(query)
+        root = QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose)
+        operation = (QueryOperation("named-count", request._page_count_method or "count",
+            request._page_count_alias if request._page_count_method == "count_as" else None)
+            if request._page_count_alias is not None else None)
+        return await execute_typed_list(context, root,
+            lambda row: School(_entity_root=EntityRoot(), **row),
+            count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
         request = deepcopy(self._request)
@@ -908,20 +918,12 @@ class ExecutableSchoolRequest:
 
     def execute_for_stream(self, context, chunk_size: int = 1000):
         """Yield entity chunks lazily from the provider cursor."""
-        request = self._request
-        req = QueryRequest(request.query, _comment=request._comment, _purpose=request._purpose)
-        req = context.prepare_query_request(req)
+        request = deepcopy(self._request)
+        QueryIntent(request._comment, request._purpose)
         service = context.require_resource("dataService")
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
-        stream = service.query_stream(context, req, chunk_size)
-        async def entities():
-            try:
-                async for chunk in stream:
-                    for row in chunk.rows:
-                        yield School(**row)
-            finally:
-                close = getattr(stream, "aclose", None)
-                if close is not None:
-                    await close()
-        return entities()
+        root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
+        from teaql.runtime.query_stream import execute_typed_stream
+        return execute_typed_stream(context, root,
+            lambda row: School(_entity_root=EntityRoot(), **row), chunk_size)

@@ -1,14 +1,36 @@
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
-from teaql.core.entity import _LoadedScalarSnapshot
-from teaql.core import MutationIntent
+from teaql.core.mutation_version import validate_mutation_versions
+from teaql.core.list import SmartList
 from teaql.core.value import Value
+from teaql.core.request_intent import MutationIntent
+from teaql.core.projection_properties import ProjectionProperties
+from teaql.runtime.loaded_scalar_snapshot import LoadedScalarSnapshots
 from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
+from teaql.runtime import EntityJSONField, EntityJSONSchema, JsonFieldNamingProfile
+from importlib import import_module
 import itertools
 from models.task import Task
 
 
 class TaskExecutionLog:
+    _teaql_json_schema = EntityJSONSchema("TaskExecutionLog", (
+        EntityJSONField("id", "id", "id"),
+        EntityJSONField("task", "task", "reference", factory=lambda: Task),
+        EntityJSONField("action", "action", "text"),
+        EntityJSONField("detail", "detail", "text"),
+        EntityJSONField("version", "version", "version"),
+    ), profile=JsonFieldNamingProfile.parse("camelCase"))
     _teaql_temporary_ids = itertools.count(1)
+
+    def to_json(self, *, profile=None):
+        """Typed model JSON; no query, mutation or transport authorization."""
+        return self._teaql_json_schema.dumps(self, profile=profile)
+
+    @classmethod
+    def from_json(cls, payload, *, profile=None):
+        """Hydrate only supplied fields into an independent mutation boundary."""
+        return cls._teaql_json_schema.loads(cls, payload, profile=profile)
+
     @classmethod
     def refer(cls, entity_id):
         return cls(id=entity_id)
@@ -35,6 +57,8 @@ class TaskExecutionLog:
             kwargs["detail"] = kwargs.pop("detail")
         if "version" in kwargs and "version" not in kwargs:
             kwargs["version"] = kwargs.pop("version")
+        self._projection_properties = ProjectionProperties(kwargs,
+            ["id", "task", "action", "detail", "version"])
         self._action = "Update" if kwargs.get("id") else "Create"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
@@ -58,16 +82,36 @@ class TaskExecutionLog:
             self._entity_root.mark_as_new(key)
         elif getattr(self, "version", None) is not None:
             self._entity_root.set_original_version(key, int(self.version))
-        self._teaql_loaded_snapshot = _LoadedScalarSnapshot(
-            self._teaql_scalar_payload() if self._action == "Update" else {})
+        LoadedScalarSnapshots.capture(self, self._teaql_snapshot_values())
+
+    def _teaql_snapshot_values(self):
+        payload = {}
+        if "id" in self._loaded_fields:
+            payload["id"] = Value.I64(self.id)
+
+        if "task" in self._loaded_fields:
+            payload["task"] = Value.I64(getattr(self.task, "id", self.task))
+
+        if "action" in self._loaded_fields:
+            payload["action"] = Value.Text(self.action)
+
+        if "detail" in self._loaded_fields:
+            payload["detail"] = Value.Text(self.detail)
+
+        if "version" in self._loaded_fields:
+            payload["version"] = Value.I64(self.version)
+
+        return payload
 
     def _teaql_entity_key(self):
         return EntityKey("TaskExecutionLog", self._ledger_id)
 
+    def get_dynamic_property(self, name):
+        return self._projection_properties.get(name)
+
     def _teaql_attach_root(self, root):
-        key = self._teaql_entity_key()
-        if self._entity_root is not root and self._entity_root.has_pending(key):
-            root.merge_entity_from(self._entity_root, key)
+        if self._entity_root is not root:
+            root.merge_entity_from(self._entity_root, self._teaql_entity_key())
             self._entity_root = root
         return self
     def mark_for_deletion(self):
@@ -81,15 +125,44 @@ class TaskExecutionLog:
         return self
 
     async def save(self, context):
-        intent = MutationIntent(self._comment)
-        return await context.execute_graph_save(self._teaql_preflight_and_save, comment=intent.comment)
+        # Validate the root reason before ID allocation or provider access.
+        MutationIntent(self._comment)
+        self._teaql_validate_input_graph(context, set())
+        return await context.execute_graph_save(
+            lambda session: self._teaql_save_within_graph(session.context, session),
+            prepare=lambda session: self._teaql_prepare_graph(session.context, session), comment=self._comment)
+
+    def _teaql_validate_input_graph(self, context, visited, parent_field=None, validate_required=False):
+        if id(self) in visited:
+            return
+        visited.add(id(self))
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
+        if self._entity_root.has_pending(self._teaql_entity_key()):
+            ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
+            context._validate_mutation_fields("TaskExecutionLog", ledger)
+            if self._action == "Update":
+                if "id" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if "task" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("task"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if "action" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("action"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if "detail" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("detail"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if "version" not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+            # Required business values may be supplied by customer Fix. Root,
+            # canonical-key, version and completeness admission still runs first.
+            _action, command = self._teaql_build_command()
+            validate_mutation_versions(command)
+            if validate_required:
+                context._validate_required_mutation_input(command, parent_field=parent_field)
 
     async def _teaql_ensure_business_ids(self, context):
         if self._action != "Create":
             return
 
-    async def _teaql_reserve_graph_ids(self, graph, visited):
-        context = graph.context
+    async def _teaql_reserve_graph_ids(self, context, visited):
         object_identity = id(self)
         if object_identity in visited:
             return
@@ -102,26 +175,43 @@ class TaskExecutionLog:
                     "Configured dataService does not support stable ID reservation"
                 )
             old_key = self._teaql_entity_key()
-            old_loaded = set(self._loaded_fields)
             self.id = int(await allocator("TaskExecutionLog"))
             self._loaded_fields.add("id")
             self._ledger_id = self.id
             new_key = self._teaql_entity_key()
             self._entity_root.rekey(old_key, new_key)
             self._entity_root.set(new_key, "id", Value.I64(self.id))
-            def rollback_reservation():
-                self.id = None
-                self._ledger_id = old_key.id
-                self._loaded_fields = old_loaded
-                self._entity_root.rekey(new_key, old_key)
-                self._entity_root.set(old_key, "id", Value.from_any(None))
-            graph.after_rollback(rollback_reservation)
         await self._teaql_ensure_business_ids(context)
 
-    async def _teaql_preflight_and_save(self, graph):
-        await self._teaql_reserve_graph_ids(graph, set())
-        self._teaql_preflight_graph(graph)
-        return await self._teaql_save_within_graph(graph)
+    async def _teaql_prepare_graph(self, context, session):
+        # Complete all input/Fix checks before reserving any graph identity.
+        # Stable IDs then make the final policy plan and TraceScope concrete.
+        self._teaql_validate_input_graph(context, set())
+        session._generated.admit_graph(self)
+        self._teaql_prepare_input_graph(context, set(), session)
+        # Fix may edit a sibling or its version; re-admit the whole graph before IDs.
+        self._teaql_validate_input_graph(context, set(), validate_required=True)
+        await self._teaql_reserve_graph_ids(context, set())
+        self._teaql_preflight_graph(context, session)
+        session._seal_generated_plan()
+
+    def _teaql_prepare_input_graph(self, context, visited, session):
+        if id(self) in visited:
+            return
+        visited.add(id(self))
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
+        session._generated.observe(self)
+        if self._entity_root.has_pending(self._teaql_entity_key()):
+            ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
+            context._validate_mutation_fields("TaskExecutionLog", ledger)
+            # A fresh invocation starts from caller-owned Create attributes,
+            # not retained output from a previously rejected Fix invocation.
+            action, cmd = self._teaql_build_command(include_fixed=False)
+            session._generated.fix(self, action, cmd,
+                deferred_fields=())
+
+    def _teaql_graph_relations(self):
+        return {}
 
     def _teaql_scalar_payload(self):
         payload = {}
@@ -146,12 +236,21 @@ class TaskExecutionLog:
 
         return payload
 
-    def _teaql_build_command(self):
+    def _teaql_build_command(self, include_fixed=True):
         payload = self._teaql_scalar_payload()
         action = self._action
-        if action == "Update":
+        if action == "Create" and include_fixed:
+            # Preparation Fix values live in the ledger until commit. Rebuilding
+            # from entity attributes alone must not discard those checked values.
+            ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
+            payload.update({field: value for field, value in ledger.items() if field not in ("id", "version")})
+        elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
+        if "task" in payload:
+            reference = payload["task"].val
+            if reference is not None and hasattr(reference, "id") and reference.id is not None:
+                payload["task"] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("TaskExecutionLog", payload)
         elif action == "Update":
@@ -165,51 +264,54 @@ class TaskExecutionLog:
             cmd = DeleteCommand("TaskExecutionLog", Value.from_any(getattr(self, "id", None)),
                 original_version if original_version is not None else getattr(self, "version", None))
         if action != "Create":
-            cmd.old_values = self._teaql_loaded_snapshot.business_values()
+            cmd.old_values = LoadedScalarSnapshots.values(self)
         return action, cmd
 
-    def _teaql_preflight_graph(self, graph):
-        context = graph.context
-        if self._action != "Update" or self._entity_root.has_pending(self._teaql_entity_key()):
+    def _teaql_preflight_graph(self, context, session, parent=None):
+        if not session._generated.visit("plan", self):
+            return
+        if parent is None:
+            MutationIntent(self._comment)
+        scope = session.scope(self._teaql_entity_key(), parent, self._comment)
+        session.capture_loaded_values("TaskExecutionLog", LoadedScalarSnapshots.values(self))
+        if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
                 if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
                 if "task" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("task"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("task"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
                 if "action" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("action"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("action"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
                 if "detail" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("detail"), message="Mutation requires a fully loaded entity")])
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("detail"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
                 if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity")])
-            _action, cmd = self._teaql_build_command()
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+            action, cmd = self._teaql_build_command()
             try:
-                context.preflight_mutation(cmd)
+                action, cmd = session._generated.finalize(self, action, cmd)
             finally:
                 for field, value in getattr(cmd, "values", {}).items():
                     if field not in ("id", "version"):
                         self._entity_root.set(self._teaql_entity_key(), field, value)
+            session._remember_prepared_mutation(self, action, cmd)
 
-    async def _teaql_save_within_graph(self, graph, parent_scope=None):
-        context = graph.context
-        scope = graph.scope(self._teaql_entity_key(), parent_scope, self._comment)
-
-        if self._action == "Update" and not self._entity_root.has_pending(self._teaql_entity_key()):
-            await self._teaql_save_children(graph, scope)
+    async def _teaql_save_within_graph(self, context, session, parent=None):
+        if not session._generated.visit("write", self):
             return self
+        if parent is None:
+            MutationIntent(self._comment)
 
         self._teaql_attach_root(self._entity_root)
-        action, cmd = self._teaql_build_command()
+        scope = session.scope(self._teaql_entity_key(), parent, self._comment)
+        if not self._entity_root.has_pending(self._teaql_entity_key()):
+            await self._teaql_cascade_children(context, session, scope)
+            return self
+        action, cmd = session._prepared_mutation(self)
 
 
-        req = graph.request(cmd, scope, self._entity_root, self._teaql_entity_key())
+        req = session.request(cmd, scope, self._entity_root, self._teaql_entity_key())
 
-        try:
-            context.check_and_fix_mutation(cmd)
-        finally:
-            for field, value in getattr(cmd, "values", {}).items():
-                if field not in ("id", "version"):
-                    self._entity_root.set(self._teaql_entity_key(), field, value)
+        # Execute the exact final checked command; no third Fix pass in SQL.
         context.mark_mutation_checked(cmd)
         service = context.require_resource("dataService")
         result = await service.mutate(context, req)
@@ -219,6 +321,7 @@ class TaskExecutionLog:
                 "Mutation provider did not return authoritative persisted state for TaskExecutionLog"
             )
         rollback_payload = {field: getattr(self, field, None) for field in self._loaded_fields | {"id", "version"}}
+        rollback_snapshot = LoadedScalarSnapshots.values(self)
         rollback_ledger_id = self._ledger_id
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
@@ -253,7 +356,6 @@ class TaskExecutionLog:
         elif "version" in persisted:
             self.version = persisted["version"]
             self._loaded_fields.add("version")
-        committed_snapshot = _LoadedScalarSnapshot(self._teaql_scalar_payload())
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -264,23 +366,25 @@ class TaskExecutionLog:
             self._ledger_id = rollback_ledger_id
             self._action = rollback_action
             self._loaded_fields = rollback_loaded_fields
+            LoadedScalarSnapshots.restore(self, rollback_snapshot)
             if old_key != new_key:
                 self._entity_root.rekey(new_key, old_key)
-        graph.after_rollback(rollback_entity)
+        session.after_rollback(rollback_entity)
         if action != "Delete":
             self._action = "Update"
 
+        session._generated.accepted(self)
         if action != "Delete":
-            await self._teaql_save_children(graph, scope)
+            await self._teaql_cascade_children(context, session, scope)
         def commit_entity():
-            self._teaql_loaded_snapshot = committed_snapshot
+            LoadedScalarSnapshots.capture(self, self._teaql_snapshot_values())
             self._entity_root.clear_entity(new_key)
             if getattr(self, "version", None) is not None:
                 self._entity_root.accept_committed_version(new_key, int(self.version))
-        graph.after_commit(commit_entity)
+        session.after_commit(commit_entity)
         return self
 
-    async def _teaql_save_children(self, graph, scope):
+    async def _teaql_cascade_children(self, context, session, scope):
         cascade_relations = []
         for relation_name, children, updater, member in cascade_relations:
             for index, child in enumerate(children):
@@ -289,45 +393,62 @@ class TaskExecutionLog:
                 if getattr(current, "id", current) != self.id:
                     getattr(child, updater)(self)
                 try:
-                    await child._teaql_save_within_graph(graph, scope)
+                    await child._teaql_save_within_graph(context, session, scope)
                 except CheckException as error:
                     prefix = ObjectLocation().property(relation_name).index(index)
                     raise CheckException([
-                        CheckResult(v.rule_id, v.location.prefixed_by(prefix), v.input_value, v.system_value, v.message)
-                        for v in error.violations
+                        violation.prefixed_by(prefix)
+                        for violation in error.violations
                     ]) from error
 
     def update_id(self, value):
-        if not isinstance(value, int) or isinstance(value, bool) or value <= 0:
-            raise ValueError("id must be a positive integer")
+        if self._action != "Create":
+            raise ValueError("ENTITY_ID_IMMUTABLE: an existing entity ID cannot be changed")
+        value = int(value) if isinstance(value, str) and value.isdecimal() else value
+        if type(value) is not int or not 0 < value <= 18446744073709551615:
+            raise ValueError("ENTITY_ID_INVALID: an assigned unsigned-64 identity is required")
         old_key = self._teaql_entity_key()
-        new_key = EntityKey(old_key.entity, value)
-        self._entity_root.rekey(old_key, new_key)
         self._ledger_id = value
+        self._entity_root.rekey(old_key, self._teaql_entity_key())
+        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+            return self
         self.id = value
         self._loaded_fields.add("id")
         self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
         return self
 
     def update_action(self, value):
+        if "action" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.action, value):
+            return self
         self.action = value
         self._loaded_fields.add("action")
         self._entity_root.set(self._teaql_entity_key(), "action", Value.from_any(value))
         return self
 
     def update_detail(self, value):
+        if "detail" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.detail, value):
+            return self
         self.detail = value
         self._loaded_fields.add("detail")
         self._entity_root.set(self._teaql_entity_key(), "detail", Value.from_any(value))
         return self
 
     def update_version(self, value):
+        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+            return self
         self.version = value
         self._loaded_fields.add("version")
         self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
         return self
     def update_task(self, value):
-        self.task = getattr(value, "id", value) if value else None
+        assigned_id = getattr(value, "id", value) if value else None
+        current = self.task
+        current_id = getattr(current, "id", current)
+        if "task" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+            return self
+        self.task = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
         self._loaded_fields.add("task")
-        self._entity_root.set(self._teaql_entity_key(), "task", Value.from_any(self.task))
+        self._entity_root.set(self._teaql_entity_key(), "task",
+            Value.Object(self.task) if self.task is not None and hasattr(self.task, "id")
+            else Value.from_any(self.task))
         return self

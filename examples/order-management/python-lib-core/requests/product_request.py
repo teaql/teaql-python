@@ -1,7 +1,11 @@
-from teaql.core.query import RelationAggregate, SelectQuery
-from teaql.core.list import SmartList, TeaQLPage
+from teaql.core.query import AggregateFunction, RelationAggregate, SelectQuery
+from teaql.core.request_tree import QueryOperation
+from teaql.core.dynamic_search import merge_generated_scalar_search
+from generated_search_models import GENERATED_SEARCH_MODELS
+from teaql.core.list import SmartList
+from teaql.core.request_intent import QueryIntent
+from teaql.runtime import EntityRoot
 from teaql.data_service import QueryRequest
-from teaql.core import QueryIntent
 from copy import deepcopy
 from teaql.core.expr import (
     begin_with, between, column, contain, end_with, eq, gt, gte,
@@ -20,6 +24,9 @@ class ProductRequest:
         self.query = SelectQuery("Product")
         self._purpose = None
         self._comment = None
+        self._page_count_alias = None
+        self._page_count_method = None
+        self._dynamic_search_warnings = []
         self.query.and_filter(gte("version", 1))
         if minimal:
             self.select_id()
@@ -31,6 +38,17 @@ class ProductRequest:
         self.query.comment(c)
         self._comment = c
         return self
+
+    def filter_by_json(self, source, warn=None):
+        kwargs = {} if warn is None else {"warn": warn}
+        query, warnings = merge_generated_scalar_search(self.query, source, GENERATED_SEARCH_MODELS, **kwargs)
+        self.query = query
+        self._dynamic_search_warnings.extend(warnings)
+        return self
+
+    @property
+    def dynamic_search_warnings(self):
+        return tuple(dict(warning) for warning in self._dynamic_search_warnings)
 
     def purpose(self, p: str):
         self.query.purpose(p)
@@ -108,7 +126,8 @@ class ProductRequest:
 
     def select_commerce_platform_with(self, child_request):
         self.query.project("commerce_platform")
-        self.query.relation_query("commerce_platform", child_request.query)
+        self.query.relation_query("commerce_platform", child_request.query,
+            QueryOperation("relation-select", "select_commerce_platform_with", relation="commerce_platform"))
         return self
     def with_commerce_platform_matching(self, child_request):
         child_request.query.projection = ["id"]
@@ -581,10 +600,14 @@ class ProductRequest:
 
     def count(self):
         self.query.count_field("id", "count")
+        self._page_count_alias = "count"
+        self._page_count_method = "count"
         return self
 
     def count_as(self, ret_name: str):
         self.query.count_field("id", ret_name)
+        self._page_count_alias = ret_name
+        self._page_count_method = "count_as"
         return self
 
     def group_by_id(self):
@@ -648,7 +671,8 @@ class ProductRequest:
         return self.select_order_line_list_with(OrderLineRequest())
 
     def select_order_line_list_with(self, child_request):
-        self.query.relation_query("order_line_list", child_request.query)
+        self.query.relation_query("order_line_list", child_request.query,
+            QueryOperation("relation-select", "select_order_line_list_with", relation="order_line_list"))
         return self
     def have_order_lines(self):
         from requests.order_line_request import OrderLineRequest
@@ -672,12 +696,18 @@ class ProductRequest:
 
     def count_order_lines_as(self, alias: str):
         from requests.order_line_request import OrderLineRequest
-        return self.count_order_lines_with(alias, OrderLineRequest())
+        self.count_order_lines_with(alias, OrderLineRequest())
+        self.query.relation_aggregates[-1].operation = QueryOperation(
+            "relation-count", "count_order_lines_as", alias, "order_line_list")
+        return self
 
     def count_order_lines_with(self, alias: str, child_request):
-        child_request.query.count_field("id", alias)
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.count_field("id", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("order_line_list", alias, child_request.query, True)
+            RelationAggregate("order_line_list", alias, query, True,
+                QueryOperation("relation-count", "count_order_lines_with", alias, "order_line_list"))
         )
         return self
 
@@ -687,9 +717,12 @@ class ProductRequest:
             "min_quantity_of_order_lines", OrderLineRequest())
 
     def min_quantity_of_order_lines_as(self, alias: str, child_request):
-        child_request.query.min("quantity", "min_quantity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.min("quantity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("order_line_list", alias, child_request.query, True)
+            RelationAggregate("order_line_list", alias, query, True,
+                QueryOperation("aggregate", "min_quantity_of_order_lines_as", alias, "order_line_list"))
         )
         return self
     def max_quantity_of_order_lines(self):
@@ -698,9 +731,12 @@ class ProductRequest:
             "max_quantity_of_order_lines", OrderLineRequest())
 
     def max_quantity_of_order_lines_as(self, alias: str, child_request):
-        child_request.query.max("quantity", "max_quantity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.max("quantity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("order_line_list", alias, child_request.query, True)
+            RelationAggregate("order_line_list", alias, query, True,
+                QueryOperation("aggregate", "max_quantity_of_order_lines_as", alias, "order_line_list"))
         )
         return self
     def sum_quantity_of_order_lines(self):
@@ -709,9 +745,12 @@ class ProductRequest:
             "sum_quantity_of_order_lines", OrderLineRequest())
 
     def sum_quantity_of_order_lines_as(self, alias: str, child_request):
-        child_request.query.sum("quantity", "sum_quantity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.sum("quantity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("order_line_list", alias, child_request.query, True)
+            RelationAggregate("order_line_list", alias, query, True,
+                QueryOperation("aggregate", "sum_quantity_of_order_lines_as", alias, "order_line_list"))
         )
         return self
     def avg_quantity_of_order_lines(self):
@@ -720,9 +759,12 @@ class ProductRequest:
             "avg_quantity_of_order_lines", OrderLineRequest())
 
     def avg_quantity_of_order_lines_as(self, alias: str, child_request):
-        child_request.query.avg("quantity", "avg_quantity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.avg("quantity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("order_line_list", alias, child_request.query, True)
+            RelationAggregate("order_line_list", alias, query, True,
+                QueryOperation("aggregate", "avg_quantity_of_order_lines_as", alias, "order_line_list"))
         )
         return self
     def standardDeviation_quantity_of_order_lines(self):
@@ -731,9 +773,12 @@ class ProductRequest:
             "standardDeviation_quantity_of_order_lines", OrderLineRequest())
 
     def standardDeviation_quantity_of_order_lines_as(self, alias: str, child_request):
-        child_request.query.standardDeviation("quantity", "standardDeviation_quantity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.standardDeviation("quantity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("order_line_list", alias, child_request.query, True)
+            RelationAggregate("order_line_list", alias, query, True,
+                QueryOperation("aggregate", "standardDeviation_quantity_of_order_lines_as", alias, "order_line_list"))
         )
         return self
     def squareRootOfPopulationStandardDeviation_quantity_of_order_lines(self):
@@ -742,9 +787,12 @@ class ProductRequest:
             "squareRootOfPopulationStandardDeviation_quantity_of_order_lines", OrderLineRequest())
 
     def squareRootOfPopulationStandardDeviation_quantity_of_order_lines_as(self, alias: str, child_request):
-        child_request.query.squareRootOfPopulationStandardDeviation("quantity", "squareRootOfPopulationStandardDeviation_quantity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.squareRootOfPopulationStandardDeviation("quantity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("order_line_list", alias, child_request.query, True)
+            RelationAggregate("order_line_list", alias, query, True,
+                QueryOperation("aggregate", "squareRootOfPopulationStandardDeviation_quantity_of_order_lines_as", alias, "order_line_list"))
         )
         return self
     def sampleVariance_quantity_of_order_lines(self):
@@ -753,9 +801,12 @@ class ProductRequest:
             "sampleVariance_quantity_of_order_lines", OrderLineRequest())
 
     def sampleVariance_quantity_of_order_lines_as(self, alias: str, child_request):
-        child_request.query.sampleVariance("quantity", "sampleVariance_quantity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.sampleVariance("quantity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("order_line_list", alias, child_request.query, True)
+            RelationAggregate("order_line_list", alias, query, True,
+                QueryOperation("aggregate", "sampleVariance_quantity_of_order_lines_as", alias, "order_line_list"))
         )
         return self
     def samplePopulationVariance_quantity_of_order_lines(self):
@@ -764,14 +815,18 @@ class ProductRequest:
             "samplePopulationVariance_quantity_of_order_lines", OrderLineRequest())
 
     def samplePopulationVariance_quantity_of_order_lines_as(self, alias: str, child_request):
-        child_request.query.samplePopulationVariance("quantity", "samplePopulationVariance_quantity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.samplePopulationVariance("quantity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("order_line_list", alias, child_request.query, True)
+            RelationAggregate("order_line_list", alias, query, True,
+                QueryOperation("aggregate", "samplePopulationVariance_quantity_of_order_lines_as", alias, "order_line_list"))
         )
         return self
     def facet_by_commerce_platform_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "commerce_platform", request.query, include_all_facets)
+        self.query.facet_by(name, "commerce_platform", request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_commerce_platform_as", name, "commerce_platform"))
         return self
 
 
@@ -802,37 +857,18 @@ class ExecutableProductRequest:
         return (await self.execute_for_result(context)).rows
 
     async def execute_for_list(self, context) -> SmartList[Product]:
-        result = await self.execute_for_result(context)
-        return SmartList(
-            (Product(**row) for row in result.rows),
-            facets=result.facets)
-
-    async def execute_for_page(self, context, offset: int, limit: int) -> TeaQLPage[Product]:
+        from teaql.runtime.query_list import execute_typed_list
         request = self._request
-        intent = QueryIntent(request._comment, request._purpose)
+        QueryIntent(request._comment, request._purpose)
         query = deepcopy(request.query)
-        query.offset(offset).limit(limit)
-        authorized = context.prepare_query_request(QueryRequest(query, _comment=intent.comment, _purpose=intent.purpose))
-        service = context.require_resource("dataService")
-        alias = "__teaql_total"
-        if authorized.query.id_set_pagination is not None:
-            row_result = await service.query(context, authorized)
-            retained_count, accuracy = context.id_set_count()
-            if accuracy == "EXACT":
-                total_count = retained_count
-            else:
-                count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
-                if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
-                    raise RuntimeError("dataService did not return an exact page count")
-                total_count = int(count_result.rows[0][alias])
-        else:
-            count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
-            if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
-                raise RuntimeError("dataService did not return an exact page count")
-            total_count = int(count_result.rows[0][alias])
-            row_result = await service.query(context, authorized)
-        data = SmartList(Product(**row) for row in row_result.rows)
-        return TeaQLPage(data=data, total_count=total_count, offset=offset, limit=limit)
+        authorized = context.prepare_query(query)
+        root = QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose)
+        operation = (QueryOperation("named-count", request._page_count_method or "count",
+            request._page_count_alias if request._page_count_method == "count_as" else None)
+            if request._page_count_alias is not None else None)
+        return await execute_typed_list(context, root,
+            lambda row: Product(_entity_root=EntityRoot(), **row),
+            count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
         request = deepcopy(self._request)
@@ -842,20 +878,12 @@ class ExecutableProductRequest:
 
     def execute_for_stream(self, context, chunk_size: int = 1000):
         """Yield entity chunks lazily from the provider cursor."""
-        request = self._request
-        req = QueryRequest(request.query, _comment=request._comment, _purpose=request._purpose)
-        req = context.prepare_query_request(req)
+        request = deepcopy(self._request)
+        QueryIntent(request._comment, request._purpose)
         service = context.require_resource("dataService")
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
-        stream = service.query_stream(context, req, chunk_size)
-        async def entities():
-            try:
-                async for chunk in stream:
-                    for row in chunk.rows:
-                        yield Product(**row)
-            finally:
-                close = getattr(stream, "aclose", None)
-                if close is not None:
-                    await close()
-        return entities()
+        root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
+        from teaql.runtime.query_stream import execute_typed_stream
+        return execute_typed_stream(context, root,
+            lambda row: Product(_entity_root=EntityRoot(), **row), chunk_size)

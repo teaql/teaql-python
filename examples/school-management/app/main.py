@@ -32,7 +32,8 @@ async def verify_request_intent(context, client):
         executions = [
             (Q.schools().purpose('render schools').execute_for_list(context), 'REQUEST_COMMENT_REQUIRED'),
             (Q.schools().comment('load schools').purpose('\u0085').execute_for_rows(context), 'QUERY_PURPOSE_REQUIRED'),
-            (Q.schools().purpose('render page').execute_for_page(context, 0, 10), 'REQUEST_COMMENT_REQUIRED'),
+            (Q.schools().offset(0).limit(10).count().purpose('render page')
+             .execute_for_list(context), 'REQUEST_COMMENT_REQUIRED'),
         ]
         for execution, code in executions:
             try:

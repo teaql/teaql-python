@@ -5,7 +5,7 @@ description = "Generated python library"
 dependencies = ["teaql==0.2.9", "aiosqlite>=0.22.1"]
 
 [tool.setuptools]
-py-modules = ["Q", "E"]
+py-modules = ["Q", "E", "runtime_module", "generated_search_models"]
 
 [tool.setuptools.packages.find]
 where = ["."]

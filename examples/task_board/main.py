@@ -39,10 +39,10 @@ async def main():
                          .comment("read renamed task").purpose("verify persisted mutation")
                          .execute_for_one(context))
         assert updated.name == "Build Robot Arm V2"
-        page = await (Q.tasks().with_id_is(task.id)
+        page = await (Q.tasks().with_id_is(task.id).offset(0).limit(1).count()
                       .comment("page renamed task").purpose("verify paginated task intent")
-                      .execute_for_page(context, 0, 1))
-        assert page.total_count == 1 and page.data[0].name == "Build Robot Arm V2"
+                      .execute_for_list(context))
+        assert page.total_count == 1 and len(page) == 1 and page[0].name == "Build Robot Arm V2"
         streamed = []
         async for row in (Q.tasks().with_id_is(task.id)
                           .comment("stream renamed task").purpose("verify streamed task intent")

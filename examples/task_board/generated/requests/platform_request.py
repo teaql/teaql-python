@@ -1,7 +1,11 @@
-from teaql.core.query import RelationAggregate, SelectQuery
-from teaql.core.list import SmartList, TeaQLPage
+from teaql.core.query import AggregateFunction, RelationAggregate, SelectQuery
+from teaql.core.request_tree import QueryOperation
+from teaql.core.dynamic_search import merge_generated_scalar_search
+from generated_search_models import GENERATED_SEARCH_MODELS
+from teaql.core.list import SmartList
+from teaql.core.request_intent import QueryIntent
+from teaql.runtime import EntityRoot
 from teaql.data_service import QueryRequest
-from teaql.core import QueryIntent
 from copy import deepcopy
 from teaql.core.expr import (
     begin_with, between, column, contain, end_with, eq, gt, gte,
@@ -20,6 +24,9 @@ class PlatformRequest:
         self.query = SelectQuery("Platform")
         self._purpose = None
         self._comment = None
+        self._page_count_alias = None
+        self._page_count_method = None
+        self._dynamic_search_warnings = []
         self.query.and_filter(gte("version", 1))
         if minimal:
             self.select_id()
@@ -31,6 +38,17 @@ class PlatformRequest:
         self.query.comment(c)
         self._comment = c
         return self
+
+    def filter_by_json(self, source, warn=None):
+        kwargs = {} if warn is None else {"warn": warn}
+        query, warnings = merge_generated_scalar_search(self.query, source, GENERATED_SEARCH_MODELS, **kwargs)
+        self.query = query
+        self._dynamic_search_warnings.extend(warnings)
+        return self
+
+    @property
+    def dynamic_search_warnings(self):
+        return tuple(dict(warning) for warning in self._dynamic_search_warnings)
 
     def purpose(self, p: str):
         self.query.purpose(p)
@@ -415,10 +433,14 @@ class PlatformRequest:
 
     def count(self):
         self.query.count_field("id", "count")
+        self._page_count_alias = "count"
+        self._page_count_method = "count"
         return self
 
     def count_as(self, ret_name: str):
         self.query.count_field("id", ret_name)
+        self._page_count_alias = ret_name
+        self._page_count_method = "count_as"
         return self
 
     def group_by_id(self):
@@ -461,14 +483,16 @@ class PlatformRequest:
         return self.select_task_status_list_with(TaskStatusRequest())
 
     def select_task_status_list_with(self, child_request):
-        self.query.relation_query("task_status_list", child_request.query)
+        self.query.relation_query("task_status_list", child_request.query,
+            QueryOperation("relation-select", "select_task_status_list_with", relation="task_status_list"))
         return self
     def select_task_list(self):
         from requests.task_request import TaskRequest
         return self.select_task_list_with(TaskRequest())
 
     def select_task_list_with(self, child_request):
-        self.query.relation_query("task_list", child_request.query)
+        self.query.relation_query("task_list", child_request.query,
+            QueryOperation("relation-select", "select_task_list_with", relation="task_list"))
         return self
     def have_task_statuses(self):
         from requests.task_status_request import TaskStatusRequest
@@ -509,12 +533,18 @@ class PlatformRequest:
 
     def count_task_statuses_as(self, alias: str):
         from requests.task_status_request import TaskStatusRequest
-        return self.count_task_statuses_with(alias, TaskStatusRequest())
+        self.count_task_statuses_with(alias, TaskStatusRequest())
+        self.query.relation_aggregates[-1].operation = QueryOperation(
+            "relation-count", "count_task_statuses_as", alias, "task_status_list")
+        return self
 
     def count_task_statuses_with(self, alias: str, child_request):
-        child_request.query.count_field("id", alias)
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.count_field("id", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("relation-count", "count_task_statuses_with", alias, "task_status_list"))
         )
         return self
 
@@ -524,9 +554,12 @@ class PlatformRequest:
             "min_display_order_of_task_statuses", TaskStatusRequest())
 
     def min_display_order_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.min("display_order", "min_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.min("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "min_display_order_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def max_display_order_of_task_statuses(self):
@@ -535,9 +568,12 @@ class PlatformRequest:
             "max_display_order_of_task_statuses", TaskStatusRequest())
 
     def max_display_order_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.max("display_order", "max_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.max("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "max_display_order_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def sum_display_order_of_task_statuses(self):
@@ -546,9 +582,12 @@ class PlatformRequest:
             "sum_display_order_of_task_statuses", TaskStatusRequest())
 
     def sum_display_order_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.sum("display_order", "sum_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.sum("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "sum_display_order_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def avg_display_order_of_task_statuses(self):
@@ -557,9 +596,12 @@ class PlatformRequest:
             "avg_display_order_of_task_statuses", TaskStatusRequest())
 
     def avg_display_order_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.avg("display_order", "avg_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.avg("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "avg_display_order_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def standardDeviation_display_order_of_task_statuses(self):
@@ -568,9 +610,12 @@ class PlatformRequest:
             "standardDeviation_display_order_of_task_statuses", TaskStatusRequest())
 
     def standardDeviation_display_order_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.standardDeviation("display_order", "standardDeviation_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.standardDeviation("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "standardDeviation_display_order_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def squareRootOfPopulationStandardDeviation_display_order_of_task_statuses(self):
@@ -579,9 +624,12 @@ class PlatformRequest:
             "squareRootOfPopulationStandardDeviation_display_order_of_task_statuses", TaskStatusRequest())
 
     def squareRootOfPopulationStandardDeviation_display_order_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.squareRootOfPopulationStandardDeviation("display_order", "squareRootOfPopulationStandardDeviation_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.squareRootOfPopulationStandardDeviation("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "squareRootOfPopulationStandardDeviation_display_order_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def sampleVariance_display_order_of_task_statuses(self):
@@ -590,9 +638,12 @@ class PlatformRequest:
             "sampleVariance_display_order_of_task_statuses", TaskStatusRequest())
 
     def sampleVariance_display_order_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.sampleVariance("display_order", "sampleVariance_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.sampleVariance("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "sampleVariance_display_order_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def samplePopulationVariance_display_order_of_task_statuses(self):
@@ -601,9 +652,12 @@ class PlatformRequest:
             "samplePopulationVariance_display_order_of_task_statuses", TaskStatusRequest())
 
     def samplePopulationVariance_display_order_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.samplePopulationVariance("display_order", "samplePopulationVariance_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.samplePopulationVariance("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "samplePopulationVariance_display_order_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def min_progress_of_task_statuses(self):
@@ -612,9 +666,12 @@ class PlatformRequest:
             "min_progress_of_task_statuses", TaskStatusRequest())
 
     def min_progress_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.min("progress", "min_progress")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.min("progress", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "min_progress_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def max_progress_of_task_statuses(self):
@@ -623,9 +680,12 @@ class PlatformRequest:
             "max_progress_of_task_statuses", TaskStatusRequest())
 
     def max_progress_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.max("progress", "max_progress")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.max("progress", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "max_progress_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def sum_progress_of_task_statuses(self):
@@ -634,9 +694,12 @@ class PlatformRequest:
             "sum_progress_of_task_statuses", TaskStatusRequest())
 
     def sum_progress_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.sum("progress", "sum_progress")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.sum("progress", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "sum_progress_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def avg_progress_of_task_statuses(self):
@@ -645,9 +708,12 @@ class PlatformRequest:
             "avg_progress_of_task_statuses", TaskStatusRequest())
 
     def avg_progress_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.avg("progress", "avg_progress")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.avg("progress", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "avg_progress_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def standardDeviation_progress_of_task_statuses(self):
@@ -656,9 +722,12 @@ class PlatformRequest:
             "standardDeviation_progress_of_task_statuses", TaskStatusRequest())
 
     def standardDeviation_progress_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.standardDeviation("progress", "standardDeviation_progress")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.standardDeviation("progress", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "standardDeviation_progress_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def squareRootOfPopulationStandardDeviation_progress_of_task_statuses(self):
@@ -667,9 +736,12 @@ class PlatformRequest:
             "squareRootOfPopulationStandardDeviation_progress_of_task_statuses", TaskStatusRequest())
 
     def squareRootOfPopulationStandardDeviation_progress_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.squareRootOfPopulationStandardDeviation("progress", "squareRootOfPopulationStandardDeviation_progress")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.squareRootOfPopulationStandardDeviation("progress", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "squareRootOfPopulationStandardDeviation_progress_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def sampleVariance_progress_of_task_statuses(self):
@@ -678,9 +750,12 @@ class PlatformRequest:
             "sampleVariance_progress_of_task_statuses", TaskStatusRequest())
 
     def sampleVariance_progress_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.sampleVariance("progress", "sampleVariance_progress")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.sampleVariance("progress", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "sampleVariance_progress_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def samplePopulationVariance_progress_of_task_statuses(self):
@@ -689,9 +764,12 @@ class PlatformRequest:
             "samplePopulationVariance_progress_of_task_statuses", TaskStatusRequest())
 
     def samplePopulationVariance_progress_of_task_statuses_as(self, alias: str, child_request):
-        child_request.query.samplePopulationVariance("progress", "samplePopulationVariance_progress")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.samplePopulationVariance("progress", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_status_list", alias, child_request.query, True)
+            RelationAggregate("task_status_list", alias, query, True,
+                QueryOperation("aggregate", "samplePopulationVariance_progress_of_task_statuses_as", alias, "task_status_list"))
         )
         return self
     def count_tasks(self):
@@ -699,12 +777,18 @@ class PlatformRequest:
 
     def count_tasks_as(self, alias: str):
         from requests.task_request import TaskRequest
-        return self.count_tasks_with(alias, TaskRequest())
+        self.count_tasks_with(alias, TaskRequest())
+        self.query.relation_aggregates[-1].operation = QueryOperation(
+            "relation-count", "count_tasks_as", alias, "task_list")
+        return self
 
     def count_tasks_with(self, alias: str, child_request):
-        child_request.query.count_field("id", alias)
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.count_field("id", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("task_list", alias, child_request.query, True)
+            RelationAggregate("task_list", alias, query, True,
+                QueryOperation("relation-count", "count_tasks_with", alias, "task_list"))
         )
         return self
 
@@ -737,37 +821,18 @@ class ExecutablePlatformRequest:
         return (await self.execute_for_result(context)).rows
 
     async def execute_for_list(self, context) -> SmartList[Platform]:
-        result = await self.execute_for_result(context)
-        return SmartList(
-            (Platform(**row) for row in result.rows),
-            facets=result.facets)
-
-    async def execute_for_page(self, context, offset: int, limit: int) -> TeaQLPage[Platform]:
+        from teaql.runtime.query_list import execute_typed_list
         request = self._request
-        intent = QueryIntent(request._comment, request._purpose)
+        QueryIntent(request._comment, request._purpose)
         query = deepcopy(request.query)
-        query.offset(offset).limit(limit)
-        authorized = context.prepare_query_request(QueryRequest(query, _comment=intent.comment, _purpose=intent.purpose))
-        service = context.require_resource("dataService")
-        alias = "__teaql_total"
-        if authorized.query.id_set_pagination is not None:
-            row_result = await service.query(context, authorized)
-            retained_count, accuracy = context.id_set_count()
-            if accuracy == "EXACT":
-                total_count = retained_count
-            else:
-                count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
-                if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
-                    raise RuntimeError("dataService did not return an exact page count")
-                total_count = int(count_result.rows[0][alias])
-        else:
-            count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
-            if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
-                raise RuntimeError("dataService did not return an exact page count")
-            total_count = int(count_result.rows[0][alias])
-            row_result = await service.query(context, authorized)
-        data = SmartList(Platform(**row) for row in row_result.rows)
-        return TeaQLPage(data=data, total_count=total_count, offset=offset, limit=limit)
+        authorized = context.prepare_query(query)
+        root = QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose)
+        operation = (QueryOperation("named-count", request._page_count_method or "count",
+            request._page_count_alias if request._page_count_method == "count_as" else None)
+            if request._page_count_alias is not None else None)
+        return await execute_typed_list(context, root,
+            lambda row: Platform(_entity_root=EntityRoot(), **row),
+            count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
         request = deepcopy(self._request)
@@ -777,20 +842,12 @@ class ExecutablePlatformRequest:
 
     def execute_for_stream(self, context, chunk_size: int = 1000):
         """Yield entity chunks lazily from the provider cursor."""
-        request = self._request
-        req = QueryRequest(request.query, _comment=request._comment, _purpose=request._purpose)
-        req = context.prepare_query_request(req)
+        request = deepcopy(self._request)
+        QueryIntent(request._comment, request._purpose)
         service = context.require_resource("dataService")
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
-        stream = service.query_stream(context, req, chunk_size)
-        async def entities():
-            try:
-                async for chunk in stream:
-                    for row in chunk.rows:
-                        yield Platform(**row)
-            finally:
-                close = getattr(stream, "aclose", None)
-                if close is not None:
-                    await close()
-        return entities()
+        root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
+        from teaql.runtime.query_stream import execute_typed_stream
+        return execute_typed_stream(context, root,
+            lambda row: Platform(_entity_root=EntityRoot(), **row), chunk_size)

@@ -1,7 +1,11 @@
-from teaql.core.query import RelationAggregate, SelectQuery
-from teaql.core.list import SmartList, TeaQLPage
+from teaql.core.query import AggregateFunction, RelationAggregate, SelectQuery
+from teaql.core.request_tree import QueryOperation
+from teaql.core.dynamic_search import merge_generated_scalar_search
+from generated_search_models import GENERATED_SEARCH_MODELS
+from teaql.core.list import SmartList
+from teaql.core.request_intent import QueryIntent
+from teaql.runtime import EntityRoot
 from teaql.data_service import QueryRequest
-from teaql.core import QueryIntent
 from copy import deepcopy
 from teaql.core.expr import (
     begin_with, between, column, contain, end_with, eq, gt, gte,
@@ -20,6 +24,9 @@ class PlatformRequest:
         self.query = SelectQuery("Platform")
         self._purpose = None
         self._comment = None
+        self._page_count_alias = None
+        self._page_count_method = None
+        self._dynamic_search_warnings = []
         self.query.and_filter(gte("version", 1))
         if minimal:
             self.select_id()
@@ -31,6 +38,17 @@ class PlatformRequest:
         self.query.comment(c)
         self._comment = c
         return self
+
+    def filter_by_json(self, source, warn=None):
+        kwargs = {} if warn is None else {"warn": warn}
+        query, warnings = merge_generated_scalar_search(self.query, source, GENERATED_SEARCH_MODELS, **kwargs)
+        self.query = query
+        self._dynamic_search_warnings.extend(warnings)
+        return self
+
+    @property
+    def dynamic_search_warnings(self):
+        return tuple(dict(warning) for warning in self._dynamic_search_warnings)
 
     def purpose(self, p: str):
         self.query.purpose(p)
@@ -471,10 +489,14 @@ class PlatformRequest:
 
     def count(self):
         self.query.count_field("id", "count")
+        self._page_count_alias = "count"
+        self._page_count_method = "count"
         return self
 
     def count_as(self, ret_name: str):
         self.query.count_field("id", ret_name)
+        self._page_count_alias = ret_name
+        self._page_count_method = "count_as"
         return self
 
     def group_by_id(self):
@@ -524,14 +546,16 @@ class PlatformRequest:
         return self.select_school_type_list_with(SchoolTypeRequest())
 
     def select_school_type_list_with(self, child_request):
-        self.query.relation_query("school_type_list", child_request.query)
+        self.query.relation_query("school_type_list", child_request.query,
+            QueryOperation("relation-select", "select_school_type_list_with", relation="school_type_list"))
         return self
     def select_school_list(self):
         from requests.school_request import SchoolRequest
         return self.select_school_list_with(SchoolRequest())
 
     def select_school_list_with(self, child_request):
-        self.query.relation_query("school_list", child_request.query)
+        self.query.relation_query("school_list", child_request.query,
+            QueryOperation("relation-select", "select_school_list_with", relation="school_list"))
         return self
     def have_school_types(self):
         from requests.school_type_request import SchoolTypeRequest
@@ -572,12 +596,18 @@ class PlatformRequest:
 
     def count_school_types_as(self, alias: str):
         from requests.school_type_request import SchoolTypeRequest
-        return self.count_school_types_with(alias, SchoolTypeRequest())
+        self.count_school_types_with(alias, SchoolTypeRequest())
+        self.query.relation_aggregates[-1].operation = QueryOperation(
+            "relation-count", "count_school_types_as", alias, "school_type_list")
+        return self
 
     def count_school_types_with(self, alias: str, child_request):
-        child_request.query.count_field("id", alias)
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.count_field("id", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_type_list", alias, child_request.query, True)
+            RelationAggregate("school_type_list", alias, query, True,
+                QueryOperation("relation-count", "count_school_types_with", alias, "school_type_list"))
         )
         return self
 
@@ -587,9 +617,12 @@ class PlatformRequest:
             "min_display_order_of_school_types", SchoolTypeRequest())
 
     def min_display_order_of_school_types_as(self, alias: str, child_request):
-        child_request.query.min("display_order", "min_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.min("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_type_list", alias, child_request.query, True)
+            RelationAggregate("school_type_list", alias, query, True,
+                QueryOperation("aggregate", "min_display_order_of_school_types_as", alias, "school_type_list"))
         )
         return self
     def max_display_order_of_school_types(self):
@@ -598,9 +631,12 @@ class PlatformRequest:
             "max_display_order_of_school_types", SchoolTypeRequest())
 
     def max_display_order_of_school_types_as(self, alias: str, child_request):
-        child_request.query.max("display_order", "max_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.max("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_type_list", alias, child_request.query, True)
+            RelationAggregate("school_type_list", alias, query, True,
+                QueryOperation("aggregate", "max_display_order_of_school_types_as", alias, "school_type_list"))
         )
         return self
     def sum_display_order_of_school_types(self):
@@ -609,9 +645,12 @@ class PlatformRequest:
             "sum_display_order_of_school_types", SchoolTypeRequest())
 
     def sum_display_order_of_school_types_as(self, alias: str, child_request):
-        child_request.query.sum("display_order", "sum_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.sum("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_type_list", alias, child_request.query, True)
+            RelationAggregate("school_type_list", alias, query, True,
+                QueryOperation("aggregate", "sum_display_order_of_school_types_as", alias, "school_type_list"))
         )
         return self
     def avg_display_order_of_school_types(self):
@@ -620,9 +659,12 @@ class PlatformRequest:
             "avg_display_order_of_school_types", SchoolTypeRequest())
 
     def avg_display_order_of_school_types_as(self, alias: str, child_request):
-        child_request.query.avg("display_order", "avg_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.avg("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_type_list", alias, child_request.query, True)
+            RelationAggregate("school_type_list", alias, query, True,
+                QueryOperation("aggregate", "avg_display_order_of_school_types_as", alias, "school_type_list"))
         )
         return self
     def standardDeviation_display_order_of_school_types(self):
@@ -631,9 +673,12 @@ class PlatformRequest:
             "standardDeviation_display_order_of_school_types", SchoolTypeRequest())
 
     def standardDeviation_display_order_of_school_types_as(self, alias: str, child_request):
-        child_request.query.standardDeviation("display_order", "standardDeviation_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.standardDeviation("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_type_list", alias, child_request.query, True)
+            RelationAggregate("school_type_list", alias, query, True,
+                QueryOperation("aggregate", "standardDeviation_display_order_of_school_types_as", alias, "school_type_list"))
         )
         return self
     def squareRootOfPopulationStandardDeviation_display_order_of_school_types(self):
@@ -642,9 +687,12 @@ class PlatformRequest:
             "squareRootOfPopulationStandardDeviation_display_order_of_school_types", SchoolTypeRequest())
 
     def squareRootOfPopulationStandardDeviation_display_order_of_school_types_as(self, alias: str, child_request):
-        child_request.query.squareRootOfPopulationStandardDeviation("display_order", "squareRootOfPopulationStandardDeviation_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.squareRootOfPopulationStandardDeviation("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_type_list", alias, child_request.query, True)
+            RelationAggregate("school_type_list", alias, query, True,
+                QueryOperation("aggregate", "squareRootOfPopulationStandardDeviation_display_order_of_school_types_as", alias, "school_type_list"))
         )
         return self
     def sampleVariance_display_order_of_school_types(self):
@@ -653,9 +701,12 @@ class PlatformRequest:
             "sampleVariance_display_order_of_school_types", SchoolTypeRequest())
 
     def sampleVariance_display_order_of_school_types_as(self, alias: str, child_request):
-        child_request.query.sampleVariance("display_order", "sampleVariance_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.sampleVariance("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_type_list", alias, child_request.query, True)
+            RelationAggregate("school_type_list", alias, query, True,
+                QueryOperation("aggregate", "sampleVariance_display_order_of_school_types_as", alias, "school_type_list"))
         )
         return self
     def samplePopulationVariance_display_order_of_school_types(self):
@@ -664,9 +715,12 @@ class PlatformRequest:
             "samplePopulationVariance_display_order_of_school_types", SchoolTypeRequest())
 
     def samplePopulationVariance_display_order_of_school_types_as(self, alias: str, child_request):
-        child_request.query.samplePopulationVariance("display_order", "samplePopulationVariance_display_order")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.samplePopulationVariance("display_order", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_type_list", alias, child_request.query, True)
+            RelationAggregate("school_type_list", alias, query, True,
+                QueryOperation("aggregate", "samplePopulationVariance_display_order_of_school_types_as", alias, "school_type_list"))
         )
         return self
     def count_schools(self):
@@ -674,12 +728,18 @@ class PlatformRequest:
 
     def count_schools_as(self, alias: str):
         from requests.school_request import SchoolRequest
-        return self.count_schools_with(alias, SchoolRequest())
+        self.count_schools_with(alias, SchoolRequest())
+        self.query.relation_aggregates[-1].operation = QueryOperation(
+            "relation-count", "count_schools_as", alias, "school_list")
+        return self
 
     def count_schools_with(self, alias: str, child_request):
-        child_request.query.count_field("id", alias)
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.count_field("id", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_list", alias, child_request.query, True)
+            RelationAggregate("school_list", alias, query, True,
+                QueryOperation("relation-count", "count_schools_with", alias, "school_list"))
         )
         return self
 
@@ -689,9 +749,12 @@ class PlatformRequest:
             "min_student_capacity_of_schools", SchoolRequest())
 
     def min_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.min("student_capacity", "min_student_capacity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.min("student_capacity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_list", alias, child_request.query, True)
+            RelationAggregate("school_list", alias, query, True,
+                QueryOperation("aggregate", "min_student_capacity_of_schools_as", alias, "school_list"))
         )
         return self
     def max_student_capacity_of_schools(self):
@@ -700,9 +763,12 @@ class PlatformRequest:
             "max_student_capacity_of_schools", SchoolRequest())
 
     def max_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.max("student_capacity", "max_student_capacity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.max("student_capacity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_list", alias, child_request.query, True)
+            RelationAggregate("school_list", alias, query, True,
+                QueryOperation("aggregate", "max_student_capacity_of_schools_as", alias, "school_list"))
         )
         return self
     def sum_student_capacity_of_schools(self):
@@ -711,9 +777,12 @@ class PlatformRequest:
             "sum_student_capacity_of_schools", SchoolRequest())
 
     def sum_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.sum("student_capacity", "sum_student_capacity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.sum("student_capacity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_list", alias, child_request.query, True)
+            RelationAggregate("school_list", alias, query, True,
+                QueryOperation("aggregate", "sum_student_capacity_of_schools_as", alias, "school_list"))
         )
         return self
     def avg_student_capacity_of_schools(self):
@@ -722,9 +791,12 @@ class PlatformRequest:
             "avg_student_capacity_of_schools", SchoolRequest())
 
     def avg_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.avg("student_capacity", "avg_student_capacity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.avg("student_capacity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_list", alias, child_request.query, True)
+            RelationAggregate("school_list", alias, query, True,
+                QueryOperation("aggregate", "avg_student_capacity_of_schools_as", alias, "school_list"))
         )
         return self
     def standardDeviation_student_capacity_of_schools(self):
@@ -733,9 +805,12 @@ class PlatformRequest:
             "standardDeviation_student_capacity_of_schools", SchoolRequest())
 
     def standardDeviation_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.standardDeviation("student_capacity", "standardDeviation_student_capacity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.standardDeviation("student_capacity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_list", alias, child_request.query, True)
+            RelationAggregate("school_list", alias, query, True,
+                QueryOperation("aggregate", "standardDeviation_student_capacity_of_schools_as", alias, "school_list"))
         )
         return self
     def squareRootOfPopulationStandardDeviation_student_capacity_of_schools(self):
@@ -744,9 +819,12 @@ class PlatformRequest:
             "squareRootOfPopulationStandardDeviation_student_capacity_of_schools", SchoolRequest())
 
     def squareRootOfPopulationStandardDeviation_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.squareRootOfPopulationStandardDeviation("student_capacity", "squareRootOfPopulationStandardDeviation_student_capacity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.squareRootOfPopulationStandardDeviation("student_capacity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_list", alias, child_request.query, True)
+            RelationAggregate("school_list", alias, query, True,
+                QueryOperation("aggregate", "squareRootOfPopulationStandardDeviation_student_capacity_of_schools_as", alias, "school_list"))
         )
         return self
     def sampleVariance_student_capacity_of_schools(self):
@@ -755,9 +833,12 @@ class PlatformRequest:
             "sampleVariance_student_capacity_of_schools", SchoolRequest())
 
     def sampleVariance_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.sampleVariance("student_capacity", "sampleVariance_student_capacity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.sampleVariance("student_capacity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_list", alias, child_request.query, True)
+            RelationAggregate("school_list", alias, query, True,
+                QueryOperation("aggregate", "sampleVariance_student_capacity_of_schools_as", alias, "school_list"))
         )
         return self
     def samplePopulationVariance_student_capacity_of_schools(self):
@@ -766,9 +847,12 @@ class PlatformRequest:
             "samplePopulationVariance_student_capacity_of_schools", SchoolRequest())
 
     def samplePopulationVariance_student_capacity_of_schools_as(self, alias: str, child_request):
-        child_request.query.samplePopulationVariance("student_capacity", "samplePopulationVariance_student_capacity")
+        query = deepcopy(child_request.query)
+        query.aggregates = []
+        query.samplePopulationVariance("student_capacity", alias)
         self.query.relation_aggregates.append(
-            RelationAggregate("school_list", alias, child_request.query, True)
+            RelationAggregate("school_list", alias, query, True,
+                QueryOperation("aggregate", "samplePopulationVariance_student_capacity_of_schools_as", alias, "school_list"))
         )
         return self
 
@@ -799,37 +883,18 @@ class ExecutablePlatformRequest:
         return (await self.execute_for_result(context)).rows
 
     async def execute_for_list(self, context) -> SmartList[Platform]:
-        result = await self.execute_for_result(context)
-        return SmartList(
-            (Platform(**row) for row in result.rows),
-            facets=result.facets)
-
-    async def execute_for_page(self, context, offset: int, limit: int) -> TeaQLPage[Platform]:
+        from teaql.runtime.query_list import execute_typed_list
         request = self._request
-        intent = QueryIntent(request._comment, request._purpose)
+        QueryIntent(request._comment, request._purpose)
         query = deepcopy(request.query)
-        query.offset(offset).limit(limit)
-        authorized = context.prepare_query_request(QueryRequest(query, _comment=intent.comment, _purpose=intent.purpose))
-        service = context.require_resource("dataService")
-        alias = "__teaql_total"
-        if authorized.query.id_set_pagination is not None:
-            row_result = await service.query(context, authorized)
-            retained_count, accuracy = context.id_set_count()
-            if accuracy == "EXACT":
-                total_count = retained_count
-            else:
-                count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
-                if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
-                    raise RuntimeError("dataService did not return an exact page count")
-                total_count = int(count_result.rows[0][alias])
-        else:
-            count_result = await service.query(context, authorized.with_query(authorized.query.for_exact_count(alias)))
-            if not count_result.rows or not isinstance(count_result.rows[0].get(alias), (int, float)):
-                raise RuntimeError("dataService did not return an exact page count")
-            total_count = int(count_result.rows[0][alias])
-            row_result = await service.query(context, authorized)
-        data = SmartList(Platform(**row) for row in row_result.rows)
-        return TeaQLPage(data=data, total_count=total_count, offset=offset, limit=limit)
+        authorized = context.prepare_query(query)
+        root = QueryRequest(authorized, _comment=request._comment, _purpose=request._purpose)
+        operation = (QueryOperation("named-count", request._page_count_method or "count",
+            request._page_count_alias if request._page_count_method == "count_as" else None)
+            if request._page_count_alias is not None else None)
+        return await execute_typed_list(context, root,
+            lambda row: Platform(_entity_root=EntityRoot(), **row),
+            count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
         request = deepcopy(self._request)
@@ -839,20 +904,12 @@ class ExecutablePlatformRequest:
 
     def execute_for_stream(self, context, chunk_size: int = 1000):
         """Yield entity chunks lazily from the provider cursor."""
-        request = self._request
-        req = QueryRequest(request.query, _comment=request._comment, _purpose=request._purpose)
-        req = context.prepare_query_request(req)
+        request = deepcopy(self._request)
+        QueryIntent(request._comment, request._purpose)
         service = context.require_resource("dataService")
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
-        stream = service.query_stream(context, req, chunk_size)
-        async def entities():
-            try:
-                async for chunk in stream:
-                    for row in chunk.rows:
-                        yield Platform(**row)
-            finally:
-                close = getattr(stream, "aclose", None)
-                if close is not None:
-                    await close()
-        return entities()
+        root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
+        from teaql.runtime.query_stream import execute_typed_stream
+        return execute_typed_stream(context, root,
+            lambda row: Platform(_entity_root=EntityRoot(), **row), chunk_size)
