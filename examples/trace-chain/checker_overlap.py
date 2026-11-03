@@ -22,22 +22,29 @@ class ObservedContext(UserContext):
         super().__init__()
         self.observation = dict(active=0, peak=0, callbacks=0, callback_peak=0, checks=[])
 
-    async def execute_graph_save(self, work, *, comment=None):
+    async def execute_graph_save(self, work, *, comment=None, prepare=None):
         state = self.observation
         state['active'] += 1
         state['peak'] = max(state['peak'], state['active'])
 
-        async def observed(session):
+        async def observe_callback(callback, session):
             state['callbacks'] += 1
             state['callback_peak'] = max(state['callback_peak'], state['callbacks'])
             session.transaction.entry['reason'] = comment
             try:
-                return await work(session)
+                return await callback(session)
             finally:
                 state['callbacks'] -= 1
 
+        async def observed(session):
+            return await observe_callback(work, session)
+
+        async def observed_prepare(session):
+            return await observe_callback(prepare, session)
+
         try:
-            return await super().execute_graph_save(observed, comment=comment)
+            return await super().execute_graph_save(observed, comment=comment,
+                prepare=observed_prepare if prepare is not None else None)
         finally:
             state['active'] -= 1
 
