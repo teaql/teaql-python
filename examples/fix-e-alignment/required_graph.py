@@ -58,12 +58,16 @@ async def verify(options):
             assert failure.location.instance_path == "/orderItemList/0/productName"
         assert len(calls) == before, f"rejected child touched provider: {calls[before:]}"
         assert order.id is None and child.id is None
-        assert clock.calls == clock_before, "input-only rejection must not capture a Fix clock"
+        # Business Required is evaluated after customer Fix. An unsuccessful
+        # preparation captures one graph clock, but still performs no provider
+        # calls and reserves no identities. Identity/root admission is earlier.
+        assert clock.calls == clock_before + 1
+        retry_clock_before = clock.calls
 
         child.update_product_name("Corrected synthetic product")
         await order.audit_as("Save corrected parent and child").save(context)
         assert len(calls) > before
-        assert clock.calls == clock_before + 1
+        assert clock.calls == retry_clock_before + 1
         row = await (Q.order_items().with_id_is(child.id).limit(1)
                      .comment("Reload corrected generated child")
                      .purpose("Verify real Q and E after retry").execute_for_one(context))
@@ -74,6 +78,7 @@ async def verify(options):
 
         child.update_product_name(None)
         before = len(calls)
+        update_clock_before = clock.calls
         try:
             await order.audit_as("Reject an invalid changed child").save(context)
             raise AssertionError("invalid child update was accepted")
@@ -81,6 +86,7 @@ async def verify(options):
             assert any(v.rule_id == "required" and v.location.model_path == "order_item_list[0].product_name"
                        for v in error.violations)
         assert len(calls) == before
+        assert clock.calls == update_clock_before + 1
         unchanged = await (Q.order_items().with_id_is(child.id).limit(1)
                            .comment("Reload after rejected child update")
                            .purpose("Verify persisted value and version survived").execute_for_one(context))
@@ -106,7 +112,9 @@ async def verify(options):
         print("REQUIRED_GRAPH_ADMISSION=" + json.dumps({"language": "python", "passed": True,
               "invalidChildCreateCalls": 0, "invalidChildUpdateCalls": 0,
               "sameGraphRetry": True, "unallocatedIdsOnRejection": True,
-              "singleFixClockOnSuccess": True, "existingChildToNewParent": True, "observedProviderCalls": len(calls)}))
+              "singleFixClockOnSuccess": True, "existingChildToNewParent": True, "observedProviderCalls": len(calls),
+              "requiredAdmissionAfterFix": True, "failedCreateClockCaptures": 1,
+              "successfulRetryClockCaptures": 1, "failedUpdateClockCaptures": 1}))
     finally:
         await client.close()
 
