@@ -861,7 +861,8 @@ class UserContext:
 
         Business-ID fields are assigned by their separate allocator after every
         node's ordinary input has passed. Only their generated required checks
-        may wait; final whole-graph preflight runs the full Checker/Fix again.
+        may wait; final generated planning validates their resolved values
+        without executing the customer's Checker/Fix a second time.
         No placeholder ID or business value is invented here.
         """
         from teaql.core.mutation import InsertCommand
@@ -1002,7 +1003,15 @@ class UserContext:
     def mutation_policy_execution(self, request: Any):
         """Provider boundary scope; entered after validation and before mutation."""
         self._require_mutation_invocation()
-        return self._mutation_policy.enter_mutation(self, request)
+        scope = self._mutation_policy.enter_mutation(self, request)
+        try:
+            if self._graph_session is not None:
+                self._graph_session._generated.validate()
+        except BaseException:
+            import sys
+            scope.__exit__(*sys.exc_info())
+            raise
+        return scope
 
     def _require_mutation_invocation(self):
         if self._audit_journal is not None:

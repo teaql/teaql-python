@@ -29,6 +29,8 @@ class GraphMutationSession:
         self._committed = False
         self._preparing = False
         self._prepared_mutations = {}
+        from .generated_graph import GeneratedGraphPreparation
+        self._generated = GeneratedGraphPreparation(self)
         self._generated_plan_complete = False
         self._commit_actions = []
         self._rollback_actions = []
@@ -71,6 +73,7 @@ class GraphMutationSession:
         self._require_active()
         if not self._preparing or self._generated_plan_complete:
             raise RuntimeError('generated graph may only be sealed once during preparation')
+        self._generated.seal()
         self._generated_plan_complete = True
 
     @property
@@ -165,5 +168,6 @@ class GraphMutationSession:
         self._commit_actions.clear()
         self._rollback_actions.clear()
         self._prepared_mutations.clear()
+        self._generated.clear()
         self._generated_plan_complete = False
         self._preparing = False
