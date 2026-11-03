@@ -2,11 +2,12 @@
   "schema": "teaql.generated-example-fixture/v1",
   "language": "python",
   "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
-  "generatedManifestSha256": "ab37151c6254e449be6101ff0b78862fe03a6c19acd203ba69e106968bef81fd",
+  "generatedManifestSha256": "54900f4b2000a9f02dd09a824d36ceb3b373606e03ca403c8a23044cac05555e",
+  "previousFixtureManifestSha256": "e2a12ebd2157b00b6a574f6e3e57d469894d7246fd6c55d15f2fcfd7ae800e4d",
   "previousProducerReceiptSha256": "5a70119dcf5e8d56e137a4bbeab2e198473c7a0937691d60c749ff7d5c5c18fd",
   "producerSource": {
-    "commit": "531110789ddb4e0aa26ea8503f53f9504f14e49b",
-    "sourceContentsSha256": "2493cdfce1e0d801dfe57d28a490d2cae09a6ce445354b1a98a551d8ac8ff03d"
+    "commit": "9dd9faa3ef5636d4c9edb954df9a52f892ce5d73",
+    "sourceContentsSha256": "a65f902e6749e97005f38784f700f6e4644759fa75d878fe08da6e23a532b92e"
   },
   "evaluatedScope": "python-lib-core",
   "evaluationErrors": 0,
@@ -18,14 +19,15 @@
     "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "generated_search_models.py": "a1fc7d496d0ca1e789452df2d6d694641e3fd3017859133228fe9953975889ef",
     "runtime_module.py": "c5c6274831c099c6af3a2fa3a90bc65083916af2af5432b04b86ea14da698ff4",
-    "models/tenant.py": "3451f60a72c268046860ad2e303e6eddbedcd63ebf215d3d9d3bf0c734f4ac4b",
-    "models/purchase_order.py": "3b410fdb23f76c9402d7b2c0172e46963fac2b4deb5e28a499474dbc1c7ecb76",
-    "models/order_item.py": "c29bcd27e4b26a630617db9477baec2c0758e8fd271929a2a7c992afbf85c437",
+    "models/tenant.py": "d2dbc9845aa9f8ffd5a380f21232a9a4d417ac678c6d4ec371ce786dad1eb9f2",
+    "models/purchase_order.py": "0c47be7646d758fbdb435ea3588b1a5e0f6c08f6465b45c13941dd4c045a2990",
+    "models/order_item.py": "c950264d21d0a4df600e8e90869b6cc7a5ffa982c435d22b3c17b2d290f0cf14",
     "E.py": "3a1bb923330c41e3a56403cd46c558efbc02d76406c3d2c31ef959fd18fec680",
     "requests/tenant_request.py": "c7b97739444016e5ae106ced40ff953b0111fbacae020b29772e1a60859d0a92",
     "requests/purchase_order_request.py": "c0c92f91005c4ee8820f1d89da64433227dd8039b42b695060d5014242a949b8",
     "requests/order_item_request.py": "85d65f9f21afdf2815ddaf36f4b946014d2339b052d1ab84dabc111359f8a405",
     "teaql-i18n.json": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014"
   },
-  "producerReportSha256": "fd4f4ca671e1e6be427688032380bef6d72319f6430fb050513fb5b4c68f4dbb"
+  "previousProducerReportSha256": "fd4f4ca671e1e6be427688032380bef6d72319f6430fb050513fb5b4c68f4dbb",
+  "producerReportSha256": "818cd6732db6ed879f287988e90b35e508e1086046a2cd66ab9901f607ec5c86"
 }

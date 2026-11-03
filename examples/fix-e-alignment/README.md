@@ -3,7 +3,8 @@
 Run `python examples/fix-e-alignment/verify-local.py` against the repository's
 local runtime. Set `TEAQL_FIX_E_EVIDENCE_DIR` to an unused absolute directory to
 retain compact logs, receipts and synthetic databases at a known location.
-Each scenario runs twice without deleting or resetting its database.
+The main scenarios run twice without deleting or resetting their databases.
+The input-admission probe uses one new database and retries the same graph in place.
 
 The three-entity model is deliberately small. All setup and mutations use the
 generated Q API and audited save; E API checks distinguish NotLoaded from null.
@@ -45,6 +46,28 @@ SQLite oracle checks stored values and versions. Expression/raw/dynamic aliases
 share aggregate alias validation, including collision/missing/duplicate rejection
 without partially installing a graph. This does not add typed dynamic schemas,
 persistent dynamic fields or a public enclosing-transaction API.
+
+## Once per entity graph preparation
+
+`python_graph_fix_probe.py` saves both a normal parent/child graph and a graph
+containing the same child instance twice. Each entity must run Checker/Fix and
+persist exactly once, with one BusinessClock capture for the graph and no
+provider access inside Fix. Both scenarios run twice on their original stores.
+
+`python_graph_once_update.py` adds a customer Checker that increases a child's
+price by one cent. Create and update retain that correction exactly once;
+the repeated child finishes at `23.45`, not `23.46`. A policy callback that edits
+the reviewed child must reject and roll back, preserving the committed value
+and optimistic version. The complete probe runs twice on one database.
+
+`required_graph.py` rejects missing child input before provider access, ID
+reservation or a Fix clock read. It then saves the corrected graph, rejects an
+invalid child update, and moves the existing child to a new parent whose ID is
+not yet allocated during preparation. All writes use generated audited saves.
+The receipt binds these three application files, their logs and four databases.
+
+The generated fixture requires the paired runtime graph-preparation repair;
+do not run it with an older installed runtime or edit generated entities locally.
 
 The service **and its real transaction** are observed. Every counter, including
 rollback, is calibrated before the rejected saves. Read-only immutable SQLite

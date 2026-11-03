@@ -213,36 +213,35 @@ class Tenant:
         # Complete all input/Fix checks before reserving any graph identity.
         # Stable IDs then make the final policy plan and TraceScope concrete.
         self._teaql_validate_input_graph(context, set())
-        self._teaql_prepare_input_graph(context, set())
+        session._generated.admit_graph(self)
+        self._teaql_prepare_input_graph(context, set(), session)
         # Fix may edit a sibling or its version; re-admit the whole graph before IDs.
         self._teaql_validate_input_graph(context, set())
         await self._teaql_reserve_graph_ids(context, set())
         self._teaql_preflight_graph(context, session)
         session._seal_generated_plan()
 
-    def _teaql_prepare_input_graph(self, context, visited):
+    def _teaql_prepare_input_graph(self, context, visited, session):
         if id(self) in visited:
             return
         visited.add(id(self))
         LoadedScalarSnapshots.discard_restored_fields(self, context)
+        session._generated.observe(self)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("Tenant", ledger)
-            _action, cmd = self._teaql_build_command()
-            try:
-                context._check_and_fix_mutation_input(cmd, deferred_fields=())
-            finally:
-                for field, value in getattr(cmd, "values", {}).items():
-                    if field not in ("id", "version"):
-                        self._entity_root.set(self._teaql_entity_key(), field, value)
+            action, cmd = self._teaql_build_command()
+            session._generated.fix(self, action, cmd,
+                deferred_fields=())
         for index, child in enumerate(self._purchase_order_list):
             child._teaql_attach_root(self._entity_root)
             # The object reference exists even before either endpoint has a stable ID.
             # Do not confuse two absent IDs with an already-established association.
-            if getattr(child, "tenant", None) is not self:
+            current = getattr(child, "tenant", None)
+            if current is not self and (self.id is None or getattr(current, "id", current) != self.id):
                 child._teaql_set_tenant(self)
             try:
-                child._teaql_prepare_input_graph(context, visited)
+                child._teaql_prepare_input_graph(context, visited, session)
             except CheckException as error:
                 prefix = ObjectLocation().property("purchase_order_list").index(index)
                 raise CheckException([
@@ -253,16 +252,20 @@ class Tenant:
             child._teaql_attach_root(self._entity_root)
             # The object reference exists even before either endpoint has a stable ID.
             # Do not confuse two absent IDs with an already-established association.
-            if getattr(child, "tenant", None) is not self:
+            current = getattr(child, "tenant", None)
+            if current is not self and (self.id is None or getattr(current, "id", current) != self.id):
                 child._teaql_set_tenant(self)
             try:
-                child._teaql_prepare_input_graph(context, visited)
+                child._teaql_prepare_input_graph(context, visited, session)
             except CheckException as error:
                 prefix = ObjectLocation().property("order_item_list").index(index)
                 raise CheckException([
                     v.prefixed_by(prefix)
                     for v in error.violations
                 ]) from error
+
+    def _teaql_graph_relations(self):
+        return {"purchase_order_list": tuple(self._purchase_order_list), "order_item_list": tuple(self._order_item_list),}
 
     def _teaql_scalar_payload(self):
         payload = {}
@@ -300,6 +303,8 @@ class Tenant:
         return action, cmd
 
     def _teaql_preflight_graph(self, context, session, parent=None):
+        if not session._generated.visit("plan", self):
+            return
         if parent is None:
             MutationIntent(self._comment)
         scope = session.scope(self._teaql_entity_key(), parent, self._comment)
@@ -314,7 +319,7 @@ class Tenant:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="Tenant")])
             action, cmd = self._teaql_build_command()
             try:
-                context.preflight_mutation(cmd)
+                action, cmd = session._generated.finalize(self, action, cmd)
             finally:
                 for field, value in getattr(cmd, "values", {}).items():
                     if field not in ("id", "version"):
@@ -348,6 +353,8 @@ class Tenant:
                 ]) from error
 
     async def _teaql_save_within_graph(self, context, session, parent=None):
+        if not session._generated.visit("write", self):
+            return self
         if parent is None:
             MutationIntent(self._comment)
 
@@ -411,6 +418,7 @@ class Tenant:
         if action != "Delete":
             self._action = "Update"
 
+        session._generated.accepted(self)
         if action != "Delete":
             await self._teaql_cascade_children(context, session, scope)
         def commit_entity():

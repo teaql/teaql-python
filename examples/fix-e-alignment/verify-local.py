@@ -159,6 +159,64 @@ def main():
                 rows = [json.loads(line[len(marker):]) for line in log.read_text().splitlines() if line.startswith(marker)]
                 assert len(rows) == 1 and rows[0]["passed"] and rows[0]["round"] == index
         report["unchangedViewDatabaseSha256"] = hashlib.sha256((evidence / "unchanged-views.sqlite").read_bytes()).hexdigest()
+        report["graphPreparation"] = []
+        report["graphApplications"] = {
+            name: hashlib.sha256((EXAMPLE / name).read_bytes()).hexdigest()
+            for name in ("python_graph_fix_probe.py", "python_graph_once_update.py", "required_graph.py")
+        }
+
+        def graph_probe(name, script, arguments):
+            command = [sys.executable, str(EXAMPLE / script), "--generated", str(EXAMPLE / "generated"), *arguments]
+            log = evidence / (name + ".log")
+            with log.open("w") as output:
+                result = subprocess.run(command, cwd=REPO, env=environment, stdout=output,
+                                        stderr=subprocess.STDOUT, check=False, timeout=120)
+            report["graphPreparation"].append({"name": name, "command": command,
+                "exitCode": result.returncode, "logSha256": hashlib.sha256(log.read_bytes()).hexdigest()})
+            assert result.returncode == 0, log.read_text()[-12000:]
+            return log.read_text().splitlines()
+
+        def graph_frames(lines, marker, count=1):
+            rows = [json.loads(line[len(marker):]) for line in lines if line.startswith(marker)]
+            assert len(rows) == count and all(row["passed"] is True for row in rows), marker
+            return rows
+
+        for index in (1, 2):
+            lines = graph_probe(f"graph-round-{index}", "python_graph_fix_probe.py",
+                ["--database-prefix", str(evidence / "graph"), "--round", str(index)])
+            rows = graph_frames(lines, "PYTHON_GRAPH_FIX_CASE=", count=2)
+            assert [row["case"] for row in rows] == ["single-child", "repeated-child"]
+            for row in rows:
+                assert row["round"] == index and row["saved"] and row["fixOnce"]
+                assert row["clockCaptures"] == 1 and row["error"] is None
+                assert Path(row["runtimeFile"]).resolve() == REPO / "src/teaql/runtime/context.py"
+                assert row["effects"] == {"begins": 1, "queries": 0, "ids": 2,
+                                           "mutations": 2, "commits": 1, "rollbacks": 0}
+                assert len(row["visits"]) == 2
+                assert all(not any(visit["providerEffectsDuringFix"].values()) for visit in row["visits"])
+            summary = graph_frames(lines, "PYTHON_GRAPH_FIX_RESULT=")[0]
+            assert summary["round"] == index and summary["cases"] == 2
+            lines = graph_probe(f"graph-update-round-{index}", "python_graph_once_update.py",
+                ["--database", str(evidence / "graph-update.sqlite"), "--round", str(index)])
+            update = graph_frames(lines, "PYTHON_GRAPH_ONCE_UPDATE=")[0]
+            assert update["round"] == index and update["fixCalls"] == 2 and update["clockCaptures"] == 1
+            assert update["version"] == 2 and update["retainedPrice"] == "23.45"
+            policy = graph_frames(lines, "PYTHON_GRAPH_ONCE_POLICY=")[0]
+            assert policy["round"] == index and policy["fixCalls"] == 2 and policy["policyCalls"] == 1
+            assert policy["effectsBeforeRead"]["rollbacks"] == 1 and policy["effectsBeforeRead"]["commits"] == 0
+            assert policy["storedVersion"] == 2 and policy["storedPrice"] == "23.45"
+        lines = graph_probe("graph-admission", "required_graph.py",
+            ["--database", str(evidence / "graph-admission.sqlite")])
+        admission = graph_frames(lines, "REQUIRED_GRAPH_ADMISSION=")[0]
+        assert admission["invalidChildCreateCalls"] == admission["invalidChildUpdateCalls"] == 0
+        assert all(admission[key] is True for key in ("sameGraphRetry", "unallocatedIdsOnRejection",
+                   "singleFixClockOnSuccess", "existingChildToNewParent"))
+        assert admission["observedProviderCalls"] > 0
+        report["graphDatabases"] = {
+            name: hashlib.sha256((evidence / name).read_bytes()).hexdigest()
+            for name in ("graph.single-child.sqlite", "graph.repeated-child.sqlite",
+                         "graph-update.sqlite", "graph-admission.sqlite")
+        }
         assert fingerprint() == manifest
         report["databaseSha256"] = hashlib.sha256((evidence / "fixture.sqlite").read_bytes()).hexdigest()
         report["passed"] = True
