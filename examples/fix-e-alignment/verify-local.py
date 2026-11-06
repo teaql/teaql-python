@@ -277,6 +277,22 @@ def main():
             assert len(summaries) == 1 and summaries[0]["passed"] and summaries[0]["round"] == index
             assert summaries[0]["cases"] == expression_cases and summaries[0]["terminalObservations"] == 2
         report["expressionBoundaryDatabaseSha256"] = hashlib.sha256((evidence / "expression-boundaries.sqlite").read_bytes()).hexdigest()
+        report["concurrentQueries"] = []
+        report["concurrentQueryApplicationSha256"] = hashlib.sha256((EXAMPLE / "concurrent_query.py").read_bytes()).hexdigest()
+        for index in (1, 2):
+            command = [sys.executable, str(EXAMPLE / "concurrent_query.py"),
+                       "--database", str(evidence / "concurrent-query.sqlite"), "--round", str(index)]
+            log = evidence / f"concurrent-query-round-{index}.log"
+            with log.open("w") as output:
+                result = subprocess.run(command, cwd=REPO, env=environment, stdout=output,
+                                        stderr=subprocess.STDOUT, check=False, timeout=45)
+            report["concurrentQueries"].append({"command": command, "exitCode": result.returncode,
+                                               "logSha256": hashlib.sha256(log.read_bytes()).hexdigest()})
+            assert result.returncode == 0, log.read_text()[-12000:]
+            rows = [json.loads(line[len("PYTHON_CONCURRENT_QUERY="):]) for line in log.read_text().splitlines()
+                    if line.startswith("PYTHON_CONCURRENT_QUERY=")]
+            assert len(rows) == 1 and rows[0]["passed"] and rows[0]["round"] == index
+        report["concurrentQueryDatabaseSha256"] = hashlib.sha256((evidence / "concurrent-query.sqlite").read_bytes()).hexdigest()
         assert fingerprint() == manifest
         report["databaseSha256"] = hashlib.sha256((evidence / "fixture.sqlite").read_bytes()).hexdigest()
         report["passed"] = True
