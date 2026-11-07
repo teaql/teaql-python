@@ -37,7 +37,7 @@ async def main():
             .purpose('prepare standard scalar streams').execute_for_one(context))
         ids = []
         for index in range(3):
-            row = Q.customer_orders().comment('create scalar stream row').purpose('prepare bounded stream input').new_entity(context)
+            row = await Q.customer_orders().comment('create scalar stream row').purpose('prepare bounded stream input').new_entity(context)
             row.update_platform(platform).update_order_number('STREAM-' + nonce + str(index)).update_description('Scalar stream row')
             await row.audit_as('seed scalar stream row').save(context)
             ids.append(E.customer_order(row).id().eval())
