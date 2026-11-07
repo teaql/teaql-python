@@ -25,8 +25,8 @@ GENERATED_SEARCH_MODELS = MappingProxyType({
            "name": "string",
            "code": "string",
            "color": "string",
-           "display_order": "integer",
-           "displayOrder": "integer",
+           "display_order": "decimal",
+           "displayOrder": "decimal",
            "version": "integer",
         }),
         "query_fields": MappingProxyType({

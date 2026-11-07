@@ -169,14 +169,8 @@ class Platform:
             return
         visited.add(object_identity)
         if self._action == "Create" and getattr(self, "id", None) is None:
-            service = context.require_resource("dataService")
-            allocator = getattr(service, "next_id", None)
-            if not callable(allocator):
-                raise RuntimeError(
-                    "Configured dataService does not support stable ID reservation"
-                )
             old_key = self._teaql_entity_key()
-            self.id = int(await allocator("Platform"))
+            self.id = await context.next_id("Platform")
             self._loaded_fields.add("id")
             self._ledger_id = self.id
             new_key = self._teaql_entity_key()

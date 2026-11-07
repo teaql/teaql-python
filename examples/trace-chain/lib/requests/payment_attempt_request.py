@@ -338,6 +338,7 @@ class PaymentAttemptRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
+        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_payment(self):
         self.query.group_by("payment")
@@ -345,6 +346,7 @@ class PaymentAttemptRequest:
 
     def group_by_payment_as(self, ret_name: str):
         self.query.group_by("payment")
+        self.query.project_expr(ret_name, column("payment"))
         return self
     def group_by_reference_code(self):
         self.query.group_by("reference_code")
@@ -352,6 +354,7 @@ class PaymentAttemptRequest:
 
     def group_by_reference_code_as(self, ret_name: str):
         self.query.group_by("reference_code")
+        self.query.project_expr(ret_name, column("reference_code"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -359,6 +362,7 @@ class PaymentAttemptRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
+        self.query.project_expr(ret_name, column("version"))
         return self
     def facet_by_payment_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
@@ -375,12 +379,14 @@ class ExecutablePaymentAttemptRequest:
         self._request.comment(c)
         return self
 
-    def new_entity(self, context) -> PaymentAttempt:
+    async def new_entity(self, context) -> PaymentAttempt:
         request = self._request
         QueryIntent(request._comment, request._purpose)
+        identity = await context.next_id("PaymentAttempt")
         entity = context.initialize_entity("PaymentAttempt", PaymentAttempt())
         if not isinstance(entity, PaymentAttempt):
             raise TypeError("entity initializer returned an incompatible PaymentAttempt")
+        entity.update_id(identity)
         return entity
 
     async def execute_for_result(self, context):

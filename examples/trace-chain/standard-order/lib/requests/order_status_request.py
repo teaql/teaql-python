@@ -606,6 +606,7 @@ class OrderStatusRequest:
 
     def group_by_platform_as(self, ret_name: str):
         self.query.group_by("platform")
+        self.query.project_expr(ret_name, column("platform"))
         return self
     def group_by_id(self):
         self.query.group_by("id")
@@ -613,6 +614,7 @@ class OrderStatusRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
+        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_name(self):
         self.query.group_by("name")
@@ -620,6 +622,7 @@ class OrderStatusRequest:
 
     def group_by_name_as(self, ret_name: str):
         self.query.group_by("name")
+        self.query.project_expr(ret_name, column("name"))
         return self
     def group_by_code(self):
         self.query.group_by("code")
@@ -627,6 +630,7 @@ class OrderStatusRequest:
 
     def group_by_code_as(self, ret_name: str):
         self.query.group_by("code")
+        self.query.project_expr(ret_name, column("code"))
         return self
     def group_by_color(self):
         self.query.group_by("color")
@@ -634,6 +638,7 @@ class OrderStatusRequest:
 
     def group_by_color_as(self, ret_name: str):
         self.query.group_by("color")
+        self.query.project_expr(ret_name, column("color"))
         return self
     def group_by_display_order(self):
         self.query.group_by("display_order")
@@ -641,6 +646,7 @@ class OrderStatusRequest:
 
     def group_by_display_order_as(self, ret_name: str):
         self.query.group_by("display_order")
+        self.query.project_expr(ret_name, column("display_order"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -648,6 +654,7 @@ class OrderStatusRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
+        self.query.project_expr(ret_name, column("version"))
         return self
     def select_customer_order_list(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -821,21 +828,21 @@ class ExecutableOrderStatusRequest:
         self._request.comment(c)
         return self
 
-    def new_entity(self, context) -> OrderStatus:
+    async def new_entity(self, context) -> OrderStatus:
         request = self._request
-        if not request._comment or not request._comment.strip() or not request._purpose or not request._purpose.strip():
-            raise ValueError("Security audit failure: non-empty comment() and purpose() are required before new_entity()")
+        QueryIntent(request._comment, request._purpose)
+        identity = await context.next_id("OrderStatus")
         entity = context.initialize_entity("OrderStatus", OrderStatus())
         if not isinstance(entity, OrderStatus):
             raise TypeError("entity initializer returned an incompatible OrderStatus")
+        entity.update_id(identity)
         return entity
 
     async def execute_for_result(self, context):
         self = self._request
-        if not self._purpose or not self._purpose.strip() or not self._comment or not self._comment.strip():
-            raise Exception("Security audit failure: comment() and purpose() must be called before execute_for_rows()")
+        req = QueryRequest(self.query, _comment=self._comment, _purpose=self._purpose)
+        req = context.prepare_query_request(req)
         service = context.require_resource("dataService")
-        req = QueryRequest(context.prepare_query(self.query), _comment=self._comment, _purpose=self._purpose)
         return await service.query(context, req)
 
     async def execute_for_rows(self, context):

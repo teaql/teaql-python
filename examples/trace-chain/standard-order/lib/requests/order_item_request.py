@@ -546,6 +546,7 @@ class OrderItemRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
+        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_customer_order(self):
         self.query.group_by("customer_order")
@@ -553,6 +554,7 @@ class OrderItemRequest:
 
     def group_by_customer_order_as(self, ret_name: str):
         self.query.group_by("customer_order")
+        self.query.project_expr(ret_name, column("customer_order"))
         return self
     def group_by_product_name(self):
         self.query.group_by("product_name")
@@ -560,6 +562,7 @@ class OrderItemRequest:
 
     def group_by_product_name_as(self, ret_name: str):
         self.query.group_by("product_name")
+        self.query.project_expr(ret_name, column("product_name"))
         return self
     def group_by_quantity(self):
         self.query.group_by("quantity")
@@ -567,6 +570,7 @@ class OrderItemRequest:
 
     def group_by_quantity_as(self, ret_name: str):
         self.query.group_by("quantity")
+        self.query.project_expr(ret_name, column("quantity"))
         return self
     def group_by_unit_price(self):
         self.query.group_by("unit_price")
@@ -574,6 +578,7 @@ class OrderItemRequest:
 
     def group_by_unit_price_as(self, ret_name: str):
         self.query.group_by("unit_price")
+        self.query.project_expr(ret_name, column("unit_price"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -581,6 +586,7 @@ class OrderItemRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
+        self.query.project_expr(ret_name, column("version"))
         return self
     def facet_by_customer_order_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
@@ -597,21 +603,21 @@ class ExecutableOrderItemRequest:
         self._request.comment(c)
         return self
 
-    def new_entity(self, context) -> OrderItem:
+    async def new_entity(self, context) -> OrderItem:
         request = self._request
-        if not request._comment or not request._comment.strip() or not request._purpose or not request._purpose.strip():
-            raise ValueError("Security audit failure: non-empty comment() and purpose() are required before new_entity()")
+        QueryIntent(request._comment, request._purpose)
+        identity = await context.next_id("OrderItem")
         entity = context.initialize_entity("OrderItem", OrderItem())
         if not isinstance(entity, OrderItem):
             raise TypeError("entity initializer returned an incompatible OrderItem")
+        entity.update_id(identity)
         return entity
 
     async def execute_for_result(self, context):
         self = self._request
-        if not self._purpose or not self._purpose.strip() or not self._comment or not self._comment.strip():
-            raise Exception("Security audit failure: comment() and purpose() must be called before execute_for_rows()")
+        req = QueryRequest(self.query, _comment=self._comment, _purpose=self._purpose)
+        req = context.prepare_query_request(req)
         service = context.require_resource("dataService")
-        req = QueryRequest(context.prepare_query(self.query), _comment=self._comment, _purpose=self._purpose)
         return await service.query(context, req)
 
     async def execute_for_rows(self, context):

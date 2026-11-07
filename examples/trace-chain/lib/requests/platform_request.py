@@ -310,6 +310,7 @@ class PlatformRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
+        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_name(self):
         self.query.group_by("name")
@@ -317,6 +318,7 @@ class PlatformRequest:
 
     def group_by_name_as(self, ret_name: str):
         self.query.group_by("name")
+        self.query.project_expr(ret_name, column("name"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -324,6 +326,7 @@ class PlatformRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
+        self.query.project_expr(ret_name, column("version"))
         return self
     def select_customer_order_list(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -380,12 +383,14 @@ class ExecutablePlatformRequest:
         self._request.comment(c)
         return self
 
-    def new_entity(self, context) -> Platform:
+    async def new_entity(self, context) -> Platform:
         request = self._request
         QueryIntent(request._comment, request._purpose)
+        identity = await context.next_id("Platform")
         entity = context.initialize_entity("Platform", Platform())
         if not isinstance(entity, Platform):
             raise TypeError("entity initializer returned an incompatible Platform")
+        entity.update_id(identity)
         return entity
 
     async def execute_for_result(self, context):
