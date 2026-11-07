@@ -63,16 +63,17 @@ async def verify(context, platform, service, sink, logging):
     annotated.audit_as('annotated newly allocated child')
     root.order_item_list().extend([annotated, sibling])
     # Observe only native ledger state. No explicit ID assignment or trace injection.
-    temporary = [entity._teaql_entity_key() for entity in (root, annotated, sibling)]
-    assert all(isinstance(key.id, int) and key.id < 0 for key in temporary)
-    assert len(set(temporary)) == 3
+    reserved = [entity._teaql_entity_key() for entity in (root, annotated, sibling)]
+    assert all(type(key.id) is int and key.id > 0 for key in reserved)
+    assert len(set(reserved)) == 3
     assert all(key in entity._entity_root.new_keys()
-               for entity, key in zip((root, annotated, sibling), temporary))
+               for entity, key in zip((root, annotated, sibling), reserved))
     reset(service, sink, context)
     await root.audit_as('create graph with allocated identities').save(context)
     identities = [E.customer_order(root).id().eval(), E.order_item(annotated).id().eval(),
                   E.order_item(sibling).id().eval()]
     assert all(isinstance(identity, int) and identity > 0 for identity in identities)
+    assert identities == [key.id for key in reserved], 'save must preserve the IDs reserved at creation'
     assert identities[1] != identities[2]
     reason = 'create graph with allocated identities'
     root_node = ('CustomerOrder', identities[0], reason)
@@ -82,12 +83,12 @@ async def verify(context, platform, service, sink, logging):
         ('OrderItem', identities[2]): [root_node],
     }
     verify_sinks(service, sink, context, expected, reason, 'insert', logging)
-    for entity, old, identity in zip((root, annotated, sibling), temporary, identities):
+    for entity, old, identity in zip((root, annotated, sibling), reserved, identities):
         ledger = entity._entity_root
         assert old not in ledger.new_keys() and not ledger.has_pending(old)
         assert not ledger.has_pending(EntityKey(old.entity, identity))
     print('ASSIGNED_IDENTITY_OBSERVED ' + json.dumps(dict(
-        logging=logging, temporary=[(key.entity, key.id) for key in temporary],
+        logging=logging, reserved=[(key.entity, key.id) for key in reserved],
         commands=service.requests,
         sql=[dict(comment=item.comment, sql=item.parameterized_sql,
                   parameters=[scalar(value) for value in item.parameters],
