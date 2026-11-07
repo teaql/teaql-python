@@ -2,7 +2,7 @@ from typing import Dict, Any, Optional, List, Callable, TypeVar
 import asyncio
 import contextvars
 from copy import deepcopy
-from inspect import signature
+from inspect import iscoroutinefunction, signature
 from dataclasses import dataclass
 from array import array
 from datetime import date, datetime, timedelta, timezone
@@ -668,8 +668,20 @@ class UserContext:
     def generate_id(self, entity: str) -> Optional[int]:
         raise RuntimeError("synchronous generate_id is unsupported; use an async InternalIdAllocator")
 
-    def next_id(self, entity: str) -> int:
-        raise RuntimeError("synchronous next_id is unsupported; use an async InternalIdAllocator")
+    async def next_id(self, entity: str) -> int:
+        """Reserve identity before creation; never fall back after allocator failure."""
+        if not isinstance(entity, str) or not entity.strip():
+            raise ValueError("an entity name is required for ID allocation")
+        allocator = self._internal_id_allocator
+        if allocator is None:
+            allocator = self.require_resource("dataService")
+        allocate = getattr(allocator, "next_id", None)
+        if not callable(allocate) or not iscoroutinefunction(allocate):
+            raise TypeError("ID allocation requires an async next_id capability")
+        identity = await allocate(entity)
+        if type(identity) is not int or not 0 < identity < 2**64:
+            raise ValueError("ID allocator must return a positive unsigned-64 identity")
+        return identity
 
     def entity(self, name: str) -> Optional[Any]:
         if self._metadata and hasattr(self._metadata, "entity"):
