@@ -105,10 +105,10 @@ async def main():
     # making a missing old-value snapshot appear private.
     alphabetic_nonce = lambda: uuid.uuid4().hex[:16].translate(str.maketrans('0123456789', 'ghijklmnop'))
     secret = 'PRIVATE-PAYMENT-' + alphabetic_nonce()
-    root = new(Q.customer_orders(), context).update_platform(platform)
+    root = (await new(Q.customer_orders(), context)).update_platform(platform)
     root.update_order_number(label).update_description('privacy graph')
-    item = new(Q.order_items(), context).update_customer_order(root).update_name('ordinary sibling')
-    payment = new(Q.payments(), context).update_customer_order(root).update_reference_code(secret)
+    item = (await new(Q.order_items(), context)).update_customer_order(root).update_name('ordinary sibling')
+    payment = (await new(Q.payments(), context)).update_customer_order(root).update_reference_code(secret)
     root.order_item_list().append(item)
     root.payment_list().append(payment)
     for phase in ('create', 'update'):

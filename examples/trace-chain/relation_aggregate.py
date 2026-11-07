@@ -31,12 +31,12 @@ async def main():
     platform = await (Q.platforms().with_id_is(1).limit(1).comment('reuse bootstrap root')
                       .purpose('prepare aggregate example').execute_for_one(context))
     secret = 'PRIVATE-AGGREGATE-' + uuid.uuid4().hex
-    order = new(Q.customer_orders(), context).update_platform(platform)
+    order = (await new(Q.customer_orders(), context)).update_platform(platform)
     order.update_order_number('AGG-' + uuid.uuid4().hex).update_description('aggregate original')
     for name in (secret, 'public item'):
-        order.order_item_list().append(new(Q.order_items(), context)
+        order.order_item_list().append((await new(Q.order_items(), context))
             .update_customer_order(order).update_name(name))
-    payment = (new(Q.payments(), context).update_customer_order(order)
+    payment = ((await new(Q.payments(), context)).update_customer_order(order)
                .update_reference_code('AGG-PAY-' + uuid.uuid4().hex))
     order.payment_list().append(payment)
     await order.audit_as('seed aggregate graph').save(context)

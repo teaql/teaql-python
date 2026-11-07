@@ -88,7 +88,7 @@ async def main():
         assert len(sink.events) == first, 'repeated seed must not write'
         platform = await (Q.platforms().with_id_is(1).limit(1).comment('load seeded graph platform')
                           .purpose('prepare standard graph example').execute_for_one(context))
-        graph = make_graph(context, platform, 'GRAPH-' + nonce)
+        graph = await make_graph(context, platform, 'GRAPH-' + nonce)
         order, item, payment, attempt, shipment, removed = graph
         reason = 'GRAPH-create-' + nonce
         reset(service, sink, context)
@@ -122,7 +122,7 @@ async def main():
             .execute_for_one(context))
         assert E.order_item(deleted).version().eval() < 0
 
-        retry = make_graph(context, platform, 'RETRY-' + nonce)
+        retry = await make_graph(context, platform, 'RETRY-' + nonce)
         reason = 'GRAPH-rollback-' + nonce
         reset(service, sink, context)
         service.inject = True

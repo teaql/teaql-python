@@ -56,10 +56,10 @@ async def verify(context, platform, service, sink, logging):
     else:
         context.disable_sql_log()
     label = 'ASSIGNED-' + uuid.uuid4().hex
-    root = new(Q.customer_orders(), context).update_platform(platform)
+    root = (await new(Q.customer_orders(), context)).update_platform(platform)
     root.update_order_number(label).update_description('new assigned graph')
-    annotated = new(Q.order_items(), context).update_customer_order(root).update_name('annotated ' + label)
-    sibling = new(Q.order_items(), context).update_customer_order(root).update_name('ordinary ' + label)
+    annotated = (await new(Q.order_items(), context)).update_customer_order(root).update_name('annotated ' + label)
+    sibling = (await new(Q.order_items(), context)).update_customer_order(root).update_name('ordinary ' + label)
     annotated.audit_as('annotated newly allocated child')
     root.order_item_list().extend([annotated, sibling])
     # Observe only native ledger state. No explicit ID assignment or trace injection.

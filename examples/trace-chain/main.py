@@ -191,19 +191,19 @@ class AuditSink:
         self.events.append(event)
 
 
-def new(request, context):
-    return request.comment('what: construct a trace example entity').purpose(
+async def new(request, context):
+    return await request.comment('what: construct a trace example entity').purpose(
         'why: verify generated graph behavior').new_entity(context)
 
 
-def make_graph(context, platform, label):
-    order = new(Q.customer_orders(), context).update_platform(platform)
+async def make_graph(context, platform, label):
+    order = (await new(Q.customer_orders(), context)).update_platform(platform)
     order.update_order_number(label).update_description('Trace example draft')
-    available = new(Q.order_items(), context).update_customer_order(order).update_name('Available item')
-    removed = new(Q.order_items(), context).update_customer_order(order).update_name('Unavailable item')
-    payment = new(Q.payments(), context).update_customer_order(order).update_reference_code(label + '-payment')
-    attempt = new(Q.payment_attempts(), context).update_payment(payment).update_reference_code(label + '-attempt')
-    shipment = new(Q.shipments(), context).update_customer_order(order).update_reference_code(label + '-shipment')
+    available = (await new(Q.order_items(), context)).update_customer_order(order).update_name('Available item')
+    removed = (await new(Q.order_items(), context)).update_customer_order(order).update_name('Unavailable item')
+    payment = (await new(Q.payments(), context)).update_customer_order(order).update_reference_code(label + '-payment')
+    attempt = (await new(Q.payment_attempts(), context)).update_payment(payment).update_reference_code(label + '-attempt')
+    shipment = (await new(Q.shipments(), context)).update_customer_order(order).update_reference_code(label + '-shipment')
     payment.payment_attempt_list().append(attempt)
     order.order_item_list().extend([available, removed])
     order.payment_list().append(payment)
@@ -329,7 +329,7 @@ async def main():
     assert len(platforms) == 1
     platform = platforms[0]
 
-    rejected = make_graph(context, platform, label + '-rejected')
+    rejected = await make_graph(context, platform, label + '-rejected')
     rejected[2].audit_as('valid child reason cannot substitute for root')
     reset(service, sink, context)
     policy_calls.clear()
@@ -346,7 +346,7 @@ async def main():
     assert service.begins == 0 and service.requests == [] and sink.events == [] and policy_calls == []
     print('PASS: missing/empty/blank root intent rejected before any transaction, despite valid child intent')
 
-    graph = make_graph(context, platform, label)
+    graph = await make_graph(context, platform, label)
     order, item, payment, attempt, shipment, removed = graph
     reset(service, sink, context)
     await order.audit_as('prepare complete graph').save(context)
@@ -442,7 +442,7 @@ async def main():
             ('provider', 'sqlite', ''), ('sql', 'select', '')], 'canonical generated path at every physical boundary'
     print('PASS: generated query traverses three actual relations with inherited intent')
 
-    graphs = [make_graph(context, platform, label + '-' + name) for name in ('first', 'second')]
+    graphs = [await make_graph(context, platform, label + '-' + name) for name in ('first', 'second')]
     reset(service, sink, context)
     await asyncio.gather(*(g[0].audit_as('independent ' + name).save(context)
         for g, name in zip(graphs, ('first', 'second'))))
@@ -464,7 +464,7 @@ async def main():
     print('PASS: two concurrent generated graph saves in one real Context remain isolated')
 
     for failure in ('execute_sql', 'fetch_all_sql'):
-        failed = make_graph(context, platform, label + '-' + failure)
+        failed = await make_graph(context, platform, label + '-' + failure)
         failed[2].audit_as('authorize failing payment')
         reset(service, sink, context)
         service.fault = failure

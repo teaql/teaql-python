@@ -77,10 +77,10 @@ def observe(scenario, service, sink, context):
 
 async def seed(context, platform, children=1):
     label = 'OWN-' + uuid.uuid4().hex
-    order = new(Q.customer_orders(), context).update_platform(platform)
+    order = (await new(Q.customer_orders(), context)).update_platform(platform)
     order.update_order_number(label).update_description('original ' + label)
     for index in range(children):
-        child = new(Q.order_items(), context).update_customer_order(order).update_name(label + str(index))
+        child = (await new(Q.order_items(), context)).update_customer_order(order).update_name(label + str(index))
         order.order_item_list().append(child)
     await order.audit_as('prepare ownership graph').save(context)
     return order
