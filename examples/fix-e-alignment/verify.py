@@ -60,7 +60,7 @@ async def verify(options):
         else:
             raise AssertionError("NotLoaded must not be treated as loaded null or fallback")
 
-    partial = PurchaseOrder(id=900, version=1)
+    partial = PurchaseOrder.from_json(json.dumps({"id": "900", "version": "1"}))
     missing(E.purchase_order(partial).tenant().name(), "/tenant", "/tenant/name",
             "E.purchase_order(<root>).tenant()<broken>.name().eval()")
     missing(E.purchase_order(partial).tenant().purchase_order_list().first().tenant().name(),
@@ -72,10 +72,10 @@ async def verify(options):
     missing(E.purchase_order(partial).internal_note(), "/internalNote", "/internalNote",
             "E.purchase_order(<root>).internal_note()<broken>.or_if_null(<fallback>)",
             terminal="or_if_null", fallback="PRIVATE-FALLBACK")
-    late = PurchaseOrder(id=901, version=1, tenant=Tenant(id=1, version=1))
+    late = PurchaseOrder.from_json(json.dumps({"id": "901", "version": "1", "tenant": {"id": "1", "version": "1"}}))
     missing(E.purchase_order(late).tenant().name(), "/tenant/name", "/tenant/name",
             "E.purchase_order(<root>).tenant().name()<broken>.eval()")
-    nulls = PurchaseOrder(id=902, version=1, tenant=None, internal_note=None, order_item_list=[])
+    nulls = PurchaseOrder.from_json(json.dumps({"id": "902", "version": "1", "tenant": None, "internalNote": None, "orderItemList": []}))
     assert E.purchase_order(nulls).tenant().name().eval() is None
     assert E.purchase_order(nulls).internal_note().or_if_null("fallback") == "fallback"
     assert E.purchase_order(nulls).order_item_list().first().product_name().eval() is None
@@ -89,11 +89,11 @@ async def verify(options):
                .with_business_clock(FixedBusinessClock(first))
                .with_active_root(ContextEntityRef("Tenant", 1)))
     await context.ensure_schema()
-    order = (Q.purchase_orders().comment("Prepare the clock fixture order")
-             .purpose("Verify generated Fix and E behavior").new_entity(context))
+    order = ((await Q.purchase_orders().comment("Prepare the clock fixture order")
+             .purpose("Verify generated Fix and E behavior").new_entity(context)))
     order.update_contact_phone("5550100").update_internal_note(None)
-    child = (Q.order_items().comment("Prepare the clock fixture item")
-             .purpose("Verify one captured clock across a saved graph").new_entity(context))
+    child = ((await Q.order_items().comment("Prepare the clock fixture item")
+             .purpose("Verify one captured clock across a saved graph").new_entity(context)))
     child.update_product_name("Synthetic fixture item").update_unit_price(Decimal("10.00"))
     order.order_item_list().append(child)
     saved = await order.audit_as("Create the synthetic Fix graph").save(context)

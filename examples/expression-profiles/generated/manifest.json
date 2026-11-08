@@ -1,383 +1,413 @@
 {
-  "profiles" : {
-    "camelCase" : {
-      "files" : {
-        "runtime_module.py" : "967dbb7d790ccc07597787416d58afb6aaa3d0ec031f8ce33421c68248d57611",
-        "teaql-i18n.json" : "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163",
-        "requests/type_platform_request.py" : "aff77b54d44aae520dd88f9d9eef67992a2b322006cceebc6ce5cdd85e0afc42",
-        "requests/scalar_type_probe_request.py" : "0b50059754f203a58291512675d22fbf13ca942a31fbac95b7915542f5913581",
-        "pyproject.toml" : "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
-        "models/__init__.py" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "requests/__init__.py" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "generated_search_models.py" : "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19",
-        "E.py" : "5e6a69648c561528bf6168391e9d3b3c8946e0918425909ed64c27e6499974dc",
-        "Q.py" : "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
-        "models/type_platform.py" : "33c22fb82f6ba00388a1aa66e7b6b1aae61ea549c198fe165f4840aeb160d1cd",
-        "models/scalar_type_probe.py" : "c3ffa0d2bc563d1950ee4aba7cd4fc8b3dbd386946e65297a2e631e7a3f76bd0"
+  "profiles": {
+    "camelCase": {
+      "files": {
+        "E.py": "5e6a69648c561528bf6168391e9d3b3c8946e0918425909ed64c27e6499974dc",
+        "models/type_platform.py": "187e55283d4c90598b6a377780885d618bea6e12dd40317a677ed4c206b63cb2",
+        "models/scalar_type_probe.py": "b74161f134a13159cf19aa02f7edb9a8a02ec24d60c40d495c7c3c71ce0d861f",
+        "pyproject.toml": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "generated_search_models.py": "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19",
+        "requests/type_platform_request.py": "9d6a7936229398b820b2bc205549eed88841c3fb39db17f6b9d0c07f71b64c86",
+        "requests/scalar_type_probe_request.py": "da370a89ee656d706e277c26168ba26fe5a220ae729d16f720e256ee66697aa4",
+        "runtime_module.py": "5e1a4b5476e8bd732b2e3e98a2f80e1668b9b4f8656bbfc5135598f049d894e7",
+        "Q.py": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
+        "teaql-i18n.json": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163"
       },
-      "evaluation" : {
-        "solids" : [ {
-          "ruleId" : "KSML-UPLOAD-001",
-          "title" : "Model upload is non-empty",
-          "message" : "The upload contains 1 files.",
-          "path" : "model.zip",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : null,
-          "lineNumber" : null,
-          "reportTarget" : "model.zip",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-UPLOAD-005",
-          "title" : "Valid entrypoint found",
-          "message" : "Resolved entrypoint: model.xml",
-          "path" : "model.xml",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "model.xml",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-XML-002",
-          "title" : "XML is well-formed",
-          "message" : "The XML document model.xml was parsed successfully.",
-          "path" : "model.xml",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "model.xml",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-ROOT-003",
-          "title" : "Standard root name",
-          "message" : "Root name 'scalar-type-conformance-service' is well-formed.",
-          "path" : "/root",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "/root",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-ROOT-008",
-          "title" : "Default JSON field naming",
-          "message" : "External JSON business fields use the default camelCase profile.",
-          "path" : "/root",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "/root",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-OBJECT-001",
-          "title" : "Object display metadata exists",
-          "message" : "Object 'type_platform' defines display name, module, and module key metadata.",
-          "path" : "/root/type_platform",
-          "objectName" : "type_platform",
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 7,
-          "reportTarget" : "type_platform",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-OBJECT-001",
-          "title" : "Object display metadata exists",
-          "message" : "Object 'scalar_type_probe' defines display name, module, and module key metadata.",
-          "path" : "/root/scalar_type_probe",
-          "objectName" : "scalar_type_probe",
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 12,
-          "reportTarget" : "scalar_type_probe",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-REFERENCE-003",
-          "title" : "Reference target exists",
-          "message" : "Reference 'type_platform' in 'scalar_type_probe' successfully resolves to target object 'type_platform'.",
-          "path" : "/root/scalar_type_probe/type_platform",
-          "objectName" : "scalar_type_probe",
-          "fieldName" : "type_platform",
-          "xmlPath" : "model.xml",
-          "lineNumber" : 15,
-          "reportTarget" : "scalar_type_probe.type_platform",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-DOMAIN-ROOT-003",
-          "title" : "One domain root found",
-          "message" : "Exactly one domain root candidate 'type_platform' was found.",
-          "path" : "/root",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "/root",
-          "action" : "Check agents/ERROR-FIX.md"
-        } ],
-        "warnings" : [ ],
-        "suggestions" : [ ],
-        "errors" : [ ],
-        "privacyFindings" : [ ],
-        "privacyRegions" : [ ],
-        "errorSummaries" : [ ]
+      "evaluation": {
+        "solids": [
+          {
+            "ruleId": "KSML-UPLOAD-001",
+            "title": "Model upload is non-empty",
+            "message": "The upload contains 1 files.",
+            "path": "model.zip",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": null,
+            "lineNumber": null,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "model.zip"
+          },
+          {
+            "ruleId": "KSML-UPLOAD-005",
+            "title": "Valid entrypoint found",
+            "message": "Resolved entrypoint: model.xml",
+            "path": "model.xml",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "model.xml"
+          },
+          {
+            "ruleId": "KSML-XML-002",
+            "title": "XML is well-formed",
+            "message": "The XML document model.xml was parsed successfully.",
+            "path": "model.xml",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "model.xml"
+          },
+          {
+            "ruleId": "KSML-ROOT-003",
+            "title": "Standard root name",
+            "message": "Root name 'scalar-type-conformance-service' is well-formed.",
+            "path": "/root",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "/root"
+          },
+          {
+            "ruleId": "KSML-ROOT-008",
+            "title": "Default JSON field naming",
+            "message": "External JSON business fields use the default camelCase profile.",
+            "path": "/root",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "/root"
+          },
+          {
+            "ruleId": "KSML-OBJECT-001",
+            "title": "Object display metadata exists",
+            "message": "Object 'type_platform' defines display name, module, and module key metadata.",
+            "path": "/root/type_platform",
+            "objectName": "type_platform",
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 7,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "type_platform"
+          },
+          {
+            "ruleId": "KSML-OBJECT-001",
+            "title": "Object display metadata exists",
+            "message": "Object 'scalar_type_probe' defines display name, module, and module key metadata.",
+            "path": "/root/scalar_type_probe",
+            "objectName": "scalar_type_probe",
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 12,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "scalar_type_probe"
+          },
+          {
+            "ruleId": "KSML-REFERENCE-003",
+            "title": "Reference target exists",
+            "message": "Reference 'type_platform' in 'scalar_type_probe' successfully resolves to target object 'type_platform'.",
+            "path": "/root/scalar_type_probe/type_platform",
+            "objectName": "scalar_type_probe",
+            "fieldName": "type_platform",
+            "xmlPath": "model.xml",
+            "lineNumber": 15,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "scalar_type_probe.type_platform"
+          },
+          {
+            "ruleId": "KSML-DOMAIN-ROOT-003",
+            "title": "One domain root found",
+            "message": "Exactly one domain root candidate 'type_platform' was found.",
+            "path": "/root",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "/root"
+          }
+        ],
+        "warnings": [],
+        "suggestions": [],
+        "errors": [],
+        "privacyFindings": [],
+        "privacyRegions": [],
+        "errorSummaries": []
       },
-      "modelSha256" : "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762"
+      "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762"
     },
-    "snake_case" : {
-      "files" : {
-        "runtime_module.py" : "b935f1b64b8de57d420a6daa56d5b354f2c654f0111b1f064d22b21e3b8996e3",
-        "teaql-i18n.json" : "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163",
-        "requests/type_platform_request.py" : "aff77b54d44aae520dd88f9d9eef67992a2b322006cceebc6ce5cdd85e0afc42",
-        "requests/scalar_type_probe_request.py" : "0b50059754f203a58291512675d22fbf13ca942a31fbac95b7915542f5913581",
-        "pyproject.toml" : "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
-        "models/__init__.py" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "requests/__init__.py" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "generated_search_models.py" : "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19",
-        "E.py" : "f638b4cee0dff6c8a360aa0d3e55d16fc81a5cf73911cd483ded31843282dd7e",
-        "Q.py" : "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
-        "models/type_platform.py" : "56b13e38506ce7853092333c92375ec5dcaebc3c7b879bdcdb78e9efea466d73",
-        "models/scalar_type_probe.py" : "943dda8ca9743e08d27ad148f4ec21a80f79fa157390c6b1b759ea2f04b1ede0"
+    "snake_case": {
+      "files": {
+        "E.py": "f638b4cee0dff6c8a360aa0d3e55d16fc81a5cf73911cd483ded31843282dd7e",
+        "models/type_platform.py": "6a75e969823ec7bbce80dcc3c706771a45239f08dc39aab5d949518e5fee3c9c",
+        "models/scalar_type_probe.py": "b7d3070d1be81ff45d62d7e0cb3f5258fd0551033877a2e20b05a57db3885053",
+        "pyproject.toml": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "generated_search_models.py": "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19",
+        "requests/type_platform_request.py": "9d6a7936229398b820b2bc205549eed88841c3fb39db17f6b9d0c07f71b64c86",
+        "requests/scalar_type_probe_request.py": "da370a89ee656d706e277c26168ba26fe5a220ae729d16f720e256ee66697aa4",
+        "runtime_module.py": "34666986ad9f96f5b8d058034700d7f31371563c20c4ff2b3977de83c68f5d20",
+        "Q.py": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
+        "teaql-i18n.json": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163"
       },
-      "evaluation" : {
-        "solids" : [ {
-          "ruleId" : "KSML-UPLOAD-001",
-          "title" : "Model upload is non-empty",
-          "message" : "The upload contains 1 files.",
-          "path" : "model.zip",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : null,
-          "lineNumber" : null,
-          "reportTarget" : "model.zip",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-UPLOAD-005",
-          "title" : "Valid entrypoint found",
-          "message" : "Resolved entrypoint: model.xml",
-          "path" : "model.xml",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "model.xml",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-XML-002",
-          "title" : "XML is well-formed",
-          "message" : "The XML document model.xml was parsed successfully.",
-          "path" : "model.xml",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "model.xml",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-ROOT-003",
-          "title" : "Standard root name",
-          "message" : "Root name 'scalar-type-conformance-service' is well-formed.",
-          "path" : "/root",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "/root",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-ROOT-008",
-          "title" : "Explicit JSON field naming",
-          "message" : "External JSON business fields use the snake_case profile.",
-          "path" : "/root/@json_field_naming",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "/root/@json_field_naming",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-OBJECT-001",
-          "title" : "Object display metadata exists",
-          "message" : "Object 'type_platform' defines display name, module, and module key metadata.",
-          "path" : "/root/type_platform",
-          "objectName" : "type_platform",
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 7,
-          "reportTarget" : "type_platform",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-OBJECT-001",
-          "title" : "Object display metadata exists",
-          "message" : "Object 'scalar_type_probe' defines display name, module, and module key metadata.",
-          "path" : "/root/scalar_type_probe",
-          "objectName" : "scalar_type_probe",
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 12,
-          "reportTarget" : "scalar_type_probe",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-REFERENCE-003",
-          "title" : "Reference target exists",
-          "message" : "Reference 'type_platform' in 'scalar_type_probe' successfully resolves to target object 'type_platform'.",
-          "path" : "/root/scalar_type_probe/type_platform",
-          "objectName" : "scalar_type_probe",
-          "fieldName" : "type_platform",
-          "xmlPath" : "model.xml",
-          "lineNumber" : 15,
-          "reportTarget" : "scalar_type_probe.type_platform",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-DOMAIN-ROOT-003",
-          "title" : "One domain root found",
-          "message" : "Exactly one domain root candidate 'type_platform' was found.",
-          "path" : "/root",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "/root",
-          "action" : "Check agents/ERROR-FIX.md"
-        } ],
-        "warnings" : [ ],
-        "suggestions" : [ ],
-        "errors" : [ ],
-        "privacyFindings" : [ ],
-        "privacyRegions" : [ ],
-        "errorSummaries" : [ ]
+      "evaluation": {
+        "solids": [
+          {
+            "ruleId": "KSML-UPLOAD-001",
+            "title": "Model upload is non-empty",
+            "message": "The upload contains 1 files.",
+            "path": "model.zip",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": null,
+            "lineNumber": null,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "model.zip"
+          },
+          {
+            "ruleId": "KSML-UPLOAD-005",
+            "title": "Valid entrypoint found",
+            "message": "Resolved entrypoint: model.xml",
+            "path": "model.xml",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "model.xml"
+          },
+          {
+            "ruleId": "KSML-XML-002",
+            "title": "XML is well-formed",
+            "message": "The XML document model.xml was parsed successfully.",
+            "path": "model.xml",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "model.xml"
+          },
+          {
+            "ruleId": "KSML-ROOT-003",
+            "title": "Standard root name",
+            "message": "Root name 'scalar-type-conformance-service' is well-formed.",
+            "path": "/root",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "/root"
+          },
+          {
+            "ruleId": "KSML-ROOT-008",
+            "title": "Explicit JSON field naming",
+            "message": "External JSON business fields use the snake_case profile.",
+            "path": "/root/@json_field_naming",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "/root/@json_field_naming"
+          },
+          {
+            "ruleId": "KSML-OBJECT-001",
+            "title": "Object display metadata exists",
+            "message": "Object 'type_platform' defines display name, module, and module key metadata.",
+            "path": "/root/type_platform",
+            "objectName": "type_platform",
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 7,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "type_platform"
+          },
+          {
+            "ruleId": "KSML-OBJECT-001",
+            "title": "Object display metadata exists",
+            "message": "Object 'scalar_type_probe' defines display name, module, and module key metadata.",
+            "path": "/root/scalar_type_probe",
+            "objectName": "scalar_type_probe",
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 12,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "scalar_type_probe"
+          },
+          {
+            "ruleId": "KSML-REFERENCE-003",
+            "title": "Reference target exists",
+            "message": "Reference 'type_platform' in 'scalar_type_probe' successfully resolves to target object 'type_platform'.",
+            "path": "/root/scalar_type_probe/type_platform",
+            "objectName": "scalar_type_probe",
+            "fieldName": "type_platform",
+            "xmlPath": "model.xml",
+            "lineNumber": 15,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "scalar_type_probe.type_platform"
+          },
+          {
+            "ruleId": "KSML-DOMAIN-ROOT-003",
+            "title": "One domain root found",
+            "message": "Exactly one domain root candidate 'type_platform' was found.",
+            "path": "/root",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "/root"
+          }
+        ],
+        "warnings": [],
+        "suggestions": [],
+        "errors": [],
+        "privacyFindings": [],
+        "privacyRegions": [],
+        "errorSummaries": []
       },
-      "modelSha256" : "2dbbcfea6057a5dc7c7c356ea4d0dacec5d5165538f6a9c5903d4d3b64ee13c6"
+      "modelSha256": "2dbbcfea6057a5dc7c7c356ea4d0dacec5d5165538f6a9c5903d4d3b64ee13c6"
     },
-    "PascalCase" : {
-      "files" : {
-        "runtime_module.py" : "a4b8fa4781db46dd288d1801d995b6a155305e7ff2590a552d1a32109411b80e",
-        "teaql-i18n.json" : "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163",
-        "requests/type_platform_request.py" : "aff77b54d44aae520dd88f9d9eef67992a2b322006cceebc6ce5cdd85e0afc42",
-        "requests/scalar_type_probe_request.py" : "0b50059754f203a58291512675d22fbf13ca942a31fbac95b7915542f5913581",
-        "pyproject.toml" : "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
-        "models/__init__.py" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "requests/__init__.py" : "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-        "generated_search_models.py" : "71340aaa1799f954a597e79ac510705b3cfe1adba4244fb56531aad91e5facf3",
-        "E.py" : "e547e613c0ca390743dbf12205e1769d9f526e097a8d4d1a7dc6d773a6debcaf",
-        "Q.py" : "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
-        "models/type_platform.py" : "09b2d5fe04c17d00935bbe871c6e2bab78e0345e0434fb2291742d4cbb748e25",
-        "models/scalar_type_probe.py" : "bfa35e95f2103652dd390c1fc71dcf83bc5e3a5d11fced4d3a1e75686e5c5755"
+    "PascalCase": {
+      "files": {
+        "E.py": "e547e613c0ca390743dbf12205e1769d9f526e097a8d4d1a7dc6d773a6debcaf",
+        "models/type_platform.py": "e5d1e80603cb135793fa2d12563cb3c56e5a81243e9f8468672a6ed0daa57683",
+        "models/scalar_type_probe.py": "61302a9860bf5fd4fb6b2c69471d81e471dd78de2dc6f19be433ad19a249e65d",
+        "pyproject.toml": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "generated_search_models.py": "71340aaa1799f954a597e79ac510705b3cfe1adba4244fb56531aad91e5facf3",
+        "requests/type_platform_request.py": "9d6a7936229398b820b2bc205549eed88841c3fb39db17f6b9d0c07f71b64c86",
+        "requests/scalar_type_probe_request.py": "da370a89ee656d706e277c26168ba26fe5a220ae729d16f720e256ee66697aa4",
+        "runtime_module.py": "4d5475c1bf526a9badd11056c30094585d609d526674a387bb04b8858a9a6f1a",
+        "Q.py": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
+        "teaql-i18n.json": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163"
       },
-      "evaluation" : {
-        "solids" : [ {
-          "ruleId" : "KSML-UPLOAD-001",
-          "title" : "Model upload is non-empty",
-          "message" : "The upload contains 1 files.",
-          "path" : "model.zip",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : null,
-          "lineNumber" : null,
-          "reportTarget" : "model.zip",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-UPLOAD-005",
-          "title" : "Valid entrypoint found",
-          "message" : "Resolved entrypoint: model.xml",
-          "path" : "model.xml",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "model.xml",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-XML-002",
-          "title" : "XML is well-formed",
-          "message" : "The XML document model.xml was parsed successfully.",
-          "path" : "model.xml",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "model.xml",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-ROOT-003",
-          "title" : "Standard root name",
-          "message" : "Root name 'scalar-type-conformance-service' is well-formed.",
-          "path" : "/root",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "/root",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-ROOT-008",
-          "title" : "Explicit JSON field naming",
-          "message" : "External JSON business fields use the PascalCase profile.",
-          "path" : "/root/@json_field_naming",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "/root/@json_field_naming",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-OBJECT-001",
-          "title" : "Object display metadata exists",
-          "message" : "Object 'type_platform' defines display name, module, and module key metadata.",
-          "path" : "/root/type_platform",
-          "objectName" : "type_platform",
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 7,
-          "reportTarget" : "type_platform",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-OBJECT-001",
-          "title" : "Object display metadata exists",
-          "message" : "Object 'scalar_type_probe' defines display name, module, and module key metadata.",
-          "path" : "/root/scalar_type_probe",
-          "objectName" : "scalar_type_probe",
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 12,
-          "reportTarget" : "scalar_type_probe",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-REFERENCE-003",
-          "title" : "Reference target exists",
-          "message" : "Reference 'type_platform' in 'scalar_type_probe' successfully resolves to target object 'type_platform'.",
-          "path" : "/root/scalar_type_probe/type_platform",
-          "objectName" : "scalar_type_probe",
-          "fieldName" : "type_platform",
-          "xmlPath" : "model.xml",
-          "lineNumber" : 15,
-          "reportTarget" : "scalar_type_probe.type_platform",
-          "action" : "Check agents/ERROR-FIX.md"
-        }, {
-          "ruleId" : "KSML-DOMAIN-ROOT-003",
-          "title" : "One domain root found",
-          "message" : "Exactly one domain root candidate 'type_platform' was found.",
-          "path" : "/root",
-          "objectName" : null,
-          "fieldName" : null,
-          "xmlPath" : "model.xml",
-          "lineNumber" : 2,
-          "reportTarget" : "/root",
-          "action" : "Check agents/ERROR-FIX.md"
-        } ],
-        "warnings" : [ ],
-        "suggestions" : [ ],
-        "errors" : [ ],
-        "privacyFindings" : [ ],
-        "privacyRegions" : [ ],
-        "errorSummaries" : [ ]
+      "evaluation": {
+        "solids": [
+          {
+            "ruleId": "KSML-UPLOAD-001",
+            "title": "Model upload is non-empty",
+            "message": "The upload contains 1 files.",
+            "path": "model.zip",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": null,
+            "lineNumber": null,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "model.zip"
+          },
+          {
+            "ruleId": "KSML-UPLOAD-005",
+            "title": "Valid entrypoint found",
+            "message": "Resolved entrypoint: model.xml",
+            "path": "model.xml",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "model.xml"
+          },
+          {
+            "ruleId": "KSML-XML-002",
+            "title": "XML is well-formed",
+            "message": "The XML document model.xml was parsed successfully.",
+            "path": "model.xml",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "model.xml"
+          },
+          {
+            "ruleId": "KSML-ROOT-003",
+            "title": "Standard root name",
+            "message": "Root name 'scalar-type-conformance-service' is well-formed.",
+            "path": "/root",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "/root"
+          },
+          {
+            "ruleId": "KSML-ROOT-008",
+            "title": "Explicit JSON field naming",
+            "message": "External JSON business fields use the PascalCase profile.",
+            "path": "/root/@json_field_naming",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "/root/@json_field_naming"
+          },
+          {
+            "ruleId": "KSML-OBJECT-001",
+            "title": "Object display metadata exists",
+            "message": "Object 'type_platform' defines display name, module, and module key metadata.",
+            "path": "/root/type_platform",
+            "objectName": "type_platform",
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 7,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "type_platform"
+          },
+          {
+            "ruleId": "KSML-OBJECT-001",
+            "title": "Object display metadata exists",
+            "message": "Object 'scalar_type_probe' defines display name, module, and module key metadata.",
+            "path": "/root/scalar_type_probe",
+            "objectName": "scalar_type_probe",
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 12,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "scalar_type_probe"
+          },
+          {
+            "ruleId": "KSML-REFERENCE-003",
+            "title": "Reference target exists",
+            "message": "Reference 'type_platform' in 'scalar_type_probe' successfully resolves to target object 'type_platform'.",
+            "path": "/root/scalar_type_probe/type_platform",
+            "objectName": "scalar_type_probe",
+            "fieldName": "type_platform",
+            "xmlPath": "model.xml",
+            "lineNumber": 15,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "scalar_type_probe.type_platform"
+          },
+          {
+            "ruleId": "KSML-DOMAIN-ROOT-003",
+            "title": "One domain root found",
+            "message": "Exactly one domain root candidate 'type_platform' was found.",
+            "path": "/root",
+            "objectName": null,
+            "fieldName": null,
+            "xmlPath": "model.xml",
+            "lineNumber": 2,
+            "action": "Check agents/ERROR-FIX.md",
+            "reportTarget": "/root"
+          }
+        ],
+        "warnings": [],
+        "suggestions": [],
+        "errors": [],
+        "privacyFindings": [],
+        "privacyRegions": [],
+        "errorSummaries": []
       },
-      "modelSha256" : "f836540a765f8c372bd7103a25a83ca316797253079ac63f8a1ef5ee4ded027d"
+      "modelSha256": "f836540a765f8c372bd7103a25a83ca316797253079ac63f8a1ef5ee4ded027d"
     }
   },
-  "localSourceOnly" : true,
-  "baseModelSha256" : "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
-  "schema" : "teaql.generated-expression-model-profiles/v1",
-  "language" : "python"
+  "localSourceOnly": true,
+  "baseModelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
+  "schema": "teaql.generated-expression-model-profiles/v1",
+  "language": "python"
 }

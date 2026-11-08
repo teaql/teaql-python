@@ -712,6 +712,7 @@ class TaskStatusRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
+        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_name(self):
         self.query.group_by("name")
@@ -719,6 +720,7 @@ class TaskStatusRequest:
 
     def group_by_name_as(self, ret_name: str):
         self.query.group_by("name")
+        self.query.project_expr(ret_name, column("name"))
         return self
     def group_by_code(self):
         self.query.group_by("code")
@@ -726,6 +728,7 @@ class TaskStatusRequest:
 
     def group_by_code_as(self, ret_name: str):
         self.query.group_by("code")
+        self.query.project_expr(ret_name, column("code"))
         return self
     def group_by_color(self):
         self.query.group_by("color")
@@ -733,6 +736,7 @@ class TaskStatusRequest:
 
     def group_by_color_as(self, ret_name: str):
         self.query.group_by("color")
+        self.query.project_expr(ret_name, column("color"))
         return self
     def group_by_display_order(self):
         self.query.group_by("display_order")
@@ -740,6 +744,7 @@ class TaskStatusRequest:
 
     def group_by_display_order_as(self, ret_name: str):
         self.query.group_by("display_order")
+        self.query.project_expr(ret_name, column("display_order"))
         return self
     def group_by_progress(self):
         self.query.group_by("progress")
@@ -747,6 +752,7 @@ class TaskStatusRequest:
 
     def group_by_progress_as(self, ret_name: str):
         self.query.group_by("progress")
+        self.query.project_expr(ret_name, column("progress"))
         return self
     def group_by_platform(self):
         self.query.group_by("platform")
@@ -754,6 +760,7 @@ class TaskStatusRequest:
 
     def group_by_platform_as(self, ret_name: str):
         self.query.group_by("platform")
+        self.query.project_expr(ret_name, column("platform"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -761,6 +768,7 @@ class TaskStatusRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
+        self.query.project_expr(ret_name, column("version"))
         return self
     def select_task_list(self):
         from requests.task_request import TaskRequest
@@ -823,10 +831,11 @@ class ExecutableTaskStatusRequest:
         self._request.comment(c)
         return self
 
-    def new_entity(self, context) -> TaskStatus:
+    async def new_entity(self, context) -> TaskStatus:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        entity = context.initialize_entity("TaskStatus", TaskStatus())
+        identity = await context.next_id("TaskStatus")
+        entity = context.initialize_entity("TaskStatus", TaskStatus._teaql_from_reserved_id(identity))
         if not isinstance(entity, TaskStatus):
             raise TypeError("entity initializer returned an incompatible TaskStatus")
         return entity
@@ -852,7 +861,7 @@ class ExecutableTaskStatusRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: TaskStatus(_entity_root=EntityRoot(), **row),
+            lambda row: TaskStatus._teaql_from_record(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -871,4 +880,4 @@ class ExecutableTaskStatusRequest:
         root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: TaskStatus(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: TaskStatus._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)

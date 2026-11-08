@@ -107,7 +107,7 @@ async def main():
     marker = "entity-json-" + uuid4().hex
     try:
         await context.ensure_schema()
-        original = new_probe(context, marker, Decimal("9007199254740993.123456789"))
+        original = (await new_probe(context, marker, Decimal("9007199254740993.123456789")))
         original.update_required_boolean(False)
         original.update_optional_string("")
         original.update_optional_boolean(False)

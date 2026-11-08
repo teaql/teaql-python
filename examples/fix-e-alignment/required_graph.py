@@ -40,11 +40,11 @@ async def verify(options):
     try:
         await context.ensure_schema()
         assert calls, "counter must observe actual provider setup"
-        order = (Q.purchase_orders().comment("Prepare an invalid child graph")
-                 .purpose("Reject before parent or child ID reservation").new_entity(context))
+        order = ((await Q.purchase_orders().comment("Prepare an invalid child graph")
+                 .purpose("Reject before parent or child ID reservation").new_entity(context)))
         order.update_contact_phone("5550100").update_internal_note(None)
-        child = (Q.order_items().comment("Prepare a missing product name")
-                 .purpose("Exercise indexed required input diagnostics").new_entity(context))
+        child = ((await Q.order_items().comment("Prepare a missing product name")
+                 .purpose("Exercise indexed required input diagnostics").new_entity(context)))
         child.update_unit_price(Decimal("10.00"))
         order.order_item_list().append(child)
         before = len(calls)
@@ -97,8 +97,8 @@ async def verify(options):
         # preparation that parent has no assigned ID: retain the typed reference
         # until final preflight, rather than comparing two None IDs as equal.
         child.update_product_name("Corrected synthetic product")
-        replacement = (Q.purchase_orders().comment("Prepare a new owner for an existing child")
-                       .purpose("Verify unresolved reference identity survives preparation").new_entity(context))
+        replacement = ((await Q.purchase_orders().comment("Prepare a new owner for an existing child")
+                       .purpose("Verify unresolved reference identity survives preparation").new_entity(context)))
         replacement.update_contact_phone("5550101").update_internal_note(None)
         replacement.order_item_list().append(child)
         await replacement.audit_as("Move one existing child to a new parent").save(context)

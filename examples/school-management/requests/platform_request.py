@@ -505,6 +505,7 @@ class PlatformRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
+        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_name(self):
         self.query.group_by("name")
@@ -512,6 +513,7 @@ class PlatformRequest:
 
     def group_by_name_as(self, ret_name: str):
         self.query.group_by("name")
+        self.query.project_expr(ret_name, column("name"))
         return self
     def group_by_base_url(self):
         self.query.group_by("base_url")
@@ -519,6 +521,7 @@ class PlatformRequest:
 
     def group_by_base_url_as(self, ret_name: str):
         self.query.group_by("base_url")
+        self.query.project_expr(ret_name, column("base_url"))
         return self
     def group_by_create_time(self):
         self.query.group_by("create_time")
@@ -526,6 +529,7 @@ class PlatformRequest:
 
     def group_by_create_time_as(self, ret_name: str):
         self.query.group_by("create_time")
+        self.query.project_expr(ret_name, column("create_time"))
         return self
     def group_by_update_time(self):
         self.query.group_by("update_time")
@@ -533,6 +537,7 @@ class PlatformRequest:
 
     def group_by_update_time_as(self, ret_name: str):
         self.query.group_by("update_time")
+        self.query.project_expr(ret_name, column("update_time"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -540,6 +545,7 @@ class PlatformRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
+        self.query.project_expr(ret_name, column("version"))
         return self
     def select_school_type_list(self):
         from requests.school_type_request import SchoolTypeRequest
@@ -864,10 +870,11 @@ class ExecutablePlatformRequest:
         self._request.comment(c)
         return self
 
-    def new_entity(self, context) -> Platform:
+    async def new_entity(self, context) -> Platform:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        entity = context.initialize_entity("Platform", Platform())
+        identity = await context.next_id("Platform")
+        entity = context.initialize_entity("Platform", Platform._teaql_from_reserved_id(identity))
         if not isinstance(entity, Platform):
             raise TypeError("entity initializer returned an incompatible Platform")
         return entity
@@ -893,7 +900,7 @@ class ExecutablePlatformRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: Platform(_entity_root=EntityRoot(), **row),
+            lambda row: Platform._teaql_from_record(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -912,4 +919,4 @@ class ExecutablePlatformRequest:
         root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: Platform(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: Platform._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)

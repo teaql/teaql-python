@@ -55,11 +55,11 @@ async def main(database, round_number):
     try:
         await context.ensure_schema()
         for label in ("alpha", "beta"):
-            order = (Q.purchase_orders().comment("Prepare " + label + " query fixture")
-                     .purpose("Verify generated queries own independent intent").new_entity(context))
+            order = ((await Q.purchase_orders().comment("Prepare " + label + " query fixture")
+                     .purpose("Verify generated queries own independent intent").new_entity(context)))
             order.update_contact_phone(phones[label]).update_internal_note(None)
-            child = (Q.order_items().comment("Prepare " + label + " child")
-                     .purpose("Verify nested generated Q and loaded E").new_entity(context))
+            child = ((await Q.order_items().comment("Prepare " + label + " child")
+                     .purpose("Verify nested generated Q and loaded E").new_entity(context)))
             child.update_product_name(label + " child").update_unit_price(Decimal("1.00"))
             order.order_item_list().append(child)
             await order.audit_as("Seed " + label + " graph for request isolation").save(context)

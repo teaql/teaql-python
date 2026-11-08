@@ -18,9 +18,9 @@ def request(marker):
     return Q.scalar_type_probes().with_required_string_is(marker).limit(20)
 
 
-def new_probe(context, marker, amount):
-    row = (Q.scalar_type_probes().comment("prepare exact scalar probe")
-           .purpose("verify generated mutation").new_entity(context))
+async def new_probe(context, marker, amount):
+    row = ((await Q.scalar_type_probes().comment("prepare exact scalar probe")
+           .purpose("verify generated mutation").new_entity(context)))
     row.update_type_platform(TypePlatform.refer(1))
     row.update_required_string(marker)
     row.update_optional_string(None)
@@ -55,7 +55,7 @@ async def main():
         await context.ensure_schema()
         values = [Decimal(text) for text in ("123456789012.3456789", "3.50", "2", "10", "-0.1")]
         for amount in values:
-            row = new_probe(context, marker, amount)
+            row = (await new_probe(context, marker, amount))
             await row.audit_as("create exact scalar fixture").save(context)
             assert row.id is not None and row.version == 1
             assert E.scalar_type_probe(row).required_decimal().eval() == amount

@@ -77,17 +77,17 @@ async def main(database, round_number):
 
     try:
         await context.ensure_schema()
-        order = (Q.purchase_orders().comment("Prepare the expression graph")
-                 .purpose("Verify generated E terminals and side-effect boundaries").new_entity(context))
+        order = ((await Q.purchase_orders().comment("Prepare the expression graph")
+                 .purpose("Verify generated E terminals and side-effect boundaries").new_entity(context)))
         order.update_contact_phone("5550960").update_internal_note(None)
         for i in range(3):
-            child = (Q.order_items().comment("Prepare an expression item")
-                     .purpose("Exercise real numeric list indices").new_entity(context))
+            child = ((await Q.order_items().comment("Prepare an expression item")
+                     .purpose("Exercise real numeric list indices").new_entity(context)))
             child.update_product_name("Expression item " + str(i)).update_unit_price(Decimal("10.00"))
             order.order_item_list().append(child)
         await order.audit_as("Create the bounded expression graph").save(context)
-        empty = (Q.purchase_orders().comment("Prepare an empty expression owner")
-                 .purpose("Distinguish loaded empty collections from NotLoaded").new_entity(context))
+        empty = ((await Q.purchase_orders().comment("Prepare an empty expression owner")
+                 .purpose("Distinguish loaded empty collections from NotLoaded").new_entity(context)))
         empty.update_contact_phone("5550962").update_internal_note(None)
         await empty.audit_as("Create the loaded-empty expression control").save(context)
         order.update_contact_phone("5550961")

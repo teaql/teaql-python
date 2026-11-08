@@ -156,12 +156,12 @@ async def main():
         await context.ensure_schema()
         parents = []
         for suffix in ("original", "replacement"):
-            parent = (Q.type_platforms().comment("prepare canonical naming parent")
-                      .purpose("verify relation identity").new_entity(context))
+            parent = ((await Q.type_platforms().comment("prepare canonical naming parent")
+                      .purpose("verify relation identity").new_entity(context)))
             parent.update_name(marker + "-" + suffix)
             await parent.audit_as("create canonical naming parent").save(context)
             parents.append(parent)
-        rows = [new_probe(context, marker + "-" + suffix, Decimal("3.50")) for suffix in ("first", "second")]
+        rows = [(await new_probe(context, marker + "-" + suffix, Decimal("3.50"))) for suffix in ("first", "second")]
         for row in rows:
             row.update_type_platform(TypePlatform.refer(parents[0].id))
             values = pending(row)
@@ -188,7 +188,7 @@ async def main():
         ]
         for operation in ("create", "update"):
             for name, fields in bad_fields:
-                candidate = (new_probe(context, marker, Decimal("3.50")) if operation == "create"
+                candidate = ((await new_probe(context, marker, Decimal("3.50"))) if operation == "create"
                              else await load(context, rows[0].id))
                 for field, value in fields.items():
                     candidate._entity_root.set(candidate._teaql_entity_key(), field, Value.from_any(value))
@@ -203,7 +203,7 @@ async def main():
                 assert before == (dict(observed.calls), observations.authorizations, len(checker.records), len(policy.plans), len(audit.events))
                 namespace_checks.append(operation + "/" + name)
         for operation in ("create", "update"):
-            candidate = (new_probe(context, marker, Decimal("3.50")) if operation == "create"
+            candidate = ((await new_probe(context, marker, Decimal("3.50"))) if operation == "create"
                          else await load(context, rows[0].id))
             candidate.update_required_string(None)
             before = (dict(observed.calls), observations.authorizations, len(audit.events))

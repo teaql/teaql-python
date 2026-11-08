@@ -164,7 +164,8 @@ async def _ensure_generated_bootstrap_once(context):
     try:
         platform_1 = await (Q.platforms().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if platform_1 is None:
-            platform_1 = Platform._teaql_new_with_fixed_id(1)
+            platform_1 = await Q.platforms().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            platform_1.update_id(1)
             platform_1.update_name("Commerce Test Platform")
             try:
                 await platform_1.audit_as('create model root Platform(1)').save(context)
@@ -180,7 +181,8 @@ async def _ensure_generated_bootstrap_once(context):
         context.with_active_root(ContextEntityRef("Platform", 1))
         order_status_1001 = await (Q.order_statuses().with_id_is(1001).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if order_status_1001 is None:
-            order_status_1001 = OrderStatus._teaql_new_with_fixed_id(1001)
+            order_status_1001 = await Q.order_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            order_status_1001.update_id(1001)
             order_status_1001.update_platform(Platform.refer(1))
             order_status_1001.update_name("New")
             order_status_1001.update_code("NEW")
@@ -217,7 +219,8 @@ async def _ensure_generated_bootstrap_once(context):
             await order_status_1001.audit_as('reconcile model constant OrderStatus(1001)').save(context)
         order_status_1002 = await (Q.order_statuses().with_id_is(1002).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if order_status_1002 is None:
-            order_status_1002 = OrderStatus._teaql_new_with_fixed_id(1002)
+            order_status_1002 = await Q.order_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            order_status_1002.update_id(1002)
             order_status_1002.update_platform(Platform.refer(1))
             order_status_1002.update_name("Paid")
             order_status_1002.update_code("PAID")
@@ -254,7 +257,8 @@ async def _ensure_generated_bootstrap_once(context):
             await order_status_1002.audit_as('reconcile model constant OrderStatus(1002)').save(context)
         order_status_1003 = await (Q.order_statuses().with_id_is(1003).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if order_status_1003 is None:
-            order_status_1003 = OrderStatus._teaql_new_with_fixed_id(1003)
+            order_status_1003 = await Q.order_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            order_status_1003.update_id(1003)
             order_status_1003.update_platform(Platform.refer(1))
             order_status_1003.update_name("Cancelled")
             order_status_1003.update_code("CANCELLED")

@@ -162,7 +162,8 @@ async def _ensure_generated_bootstrap_once(context):
     try:
         platform_1 = await (Q.platforms().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if platform_1 is None:
-            platform_1 = Platform._teaql_new_with_fixed_id(1)
+            platform_1 = await Q.platforms().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            platform_1.update_id(1)
             platform_1.update_name("Campus Learning Platform")
             platform_1.update_base_url("https://campus.example.com")
             try:
@@ -179,7 +180,8 @@ async def _ensure_generated_bootstrap_once(context):
         context.with_active_root(ContextEntityRef("Platform", 1))
         school_type_1001 = await (Q.school_types().with_id_is(1001).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if school_type_1001 is None:
-            school_type_1001 = SchoolType._teaql_new_with_fixed_id(1001)
+            school_type_1001 = await Q.school_types().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            school_type_1001.update_id(1001)
             school_type_1001.update_platform(Platform.refer(1))
             school_type_1001.update_name("Primary")
             school_type_1001.update_code("PRIMARY")
@@ -212,7 +214,8 @@ async def _ensure_generated_bootstrap_once(context):
             await school_type_1001.audit_as('reconcile model constant SchoolType(1001)').save(context)
         school_type_1002 = await (Q.school_types().with_id_is(1002).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if school_type_1002 is None:
-            school_type_1002 = SchoolType._teaql_new_with_fixed_id(1002)
+            school_type_1002 = await Q.school_types().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            school_type_1002.update_id(1002)
             school_type_1002.update_platform(Platform.refer(1))
             school_type_1002.update_name("Secondary")
             school_type_1002.update_code("SECONDARY")

@@ -9,8 +9,8 @@ async def verify_page_stream(context, id_a, id_b):
 
     before = await (Q.purchase_orders().limit(20).comment("Inspect the page ownership fixture")
                     .purpose("Establish the bounded expected exact total").execute_for_list(context))
-    sentinel = (Q.purchase_orders().comment("Prepare a page-offset sentinel")
-                .purpose("Test a genuinely nonzero offset without excluding the tested owners").new_entity(context))
+    sentinel = ((await Q.purchase_orders().comment("Prepare a page-offset sentinel")
+                .purpose("Test a genuinely nonzero offset without excluding the tested owners").new_entity(context)))
     sentinel.update_contact_phone("5550500").update_internal_note(None)
     await sentinel.audit_as("Save the synthetic page sentinel").save(context)
     expected_total = len(before) + 1

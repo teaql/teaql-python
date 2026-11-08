@@ -180,7 +180,8 @@ async def _ensure_generated_bootstrap_once(context):
     try:
         tenant_1 = await (Q.tenants().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if tenant_1 is None:
-            tenant_1 = Tenant._teaql_new_with_fixed_id(1)
+            tenant_1 = await Q.tenants().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            tenant_1.update_id(1)
             tenant_1.update_name("Tenant Name")
             try:
                 await tenant_1.audit_as('create model root Tenant(1)').save(context)

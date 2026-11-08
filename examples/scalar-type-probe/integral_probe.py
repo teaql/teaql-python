@@ -42,7 +42,7 @@ async def main():
     checks = []
     try:
         await context.ensure_schema()
-        row = new_probe(context, marker, Decimal("3.50"))
+        row = (await new_probe(context, marker, Decimal("3.50")))
         row.update_required_integer(2**31 - 1)
         row.update_required_long(2**63 - 1)
         await row.audit_as("calibrate exact integral provider observers").save(context)
@@ -68,7 +68,7 @@ async def main():
         ]
         for operation in ("create", "update"):
             for name, field, value in cases:
-                candidate = new_probe(context, marker, Decimal("3.50")) if operation == "create" else await reload(context, row.id)
+                candidate = (await new_probe(context, marker, Decimal("3.50"))) if operation == "create" else await reload(context, row.id)
                 candidate.update_required_string("must not be committed")
                 fix = InjectedFix(field, value)
                 context.with_checker_registry(fix)
@@ -93,7 +93,7 @@ async def main():
         assert E.scalar_type_probe(unchanged).type_platform_id().eval() == 1
         for field, value in (("required_integer", 2**31), ("optional_integer", -(2**31) - 1)):
             for operation in ("create", "update"):
-                candidate = new_probe(context, marker, Decimal("3.50")) if operation == "create" else await reload(context, row.id)
+                candidate = (await new_probe(context, marker, Decimal("3.50"))) if operation == "create" else await reload(context, row.id)
                 getattr(candidate, "update_" + field)(value)
                 before = dict(service.calls)
                 try:
@@ -113,7 +113,7 @@ async def main():
                 original.checker("ScalarTypeProbe").check_and_fix(context, record, location, results)
                 record["required_long"] = Value.Decimal(Decimal("9223372036854775807.0"))
         context.with_checker_registry(Repair())
-        valid = new_probe(context, marker, Decimal("3.50"))
+        valid = (await new_probe(context, marker, Decimal("3.50")))
         await valid.audit_as("persist exact integral Decimal from custom Fix").save(context)
         context.with_checker_registry(original)
         loaded = await reload(context, valid.id)

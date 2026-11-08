@@ -616,6 +616,7 @@ class ProductRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
+        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_name(self):
         self.query.group_by("name")
@@ -623,6 +624,7 @@ class ProductRequest:
 
     def group_by_name_as(self, ret_name: str):
         self.query.group_by("name")
+        self.query.project_expr(ret_name, column("name"))
         return self
     def group_by_sku(self):
         self.query.group_by("sku")
@@ -630,6 +632,7 @@ class ProductRequest:
 
     def group_by_sku_as(self, ret_name: str):
         self.query.group_by("sku")
+        self.query.project_expr(ret_name, column("sku"))
         return self
     def group_by_image_url(self):
         self.query.group_by("image_url")
@@ -637,6 +640,7 @@ class ProductRequest:
 
     def group_by_image_url_as(self, ret_name: str):
         self.query.group_by("image_url")
+        self.query.project_expr(ret_name, column("image_url"))
         return self
     def group_by_commerce_platform(self):
         self.query.group_by("commerce_platform")
@@ -644,6 +648,7 @@ class ProductRequest:
 
     def group_by_commerce_platform_as(self, ret_name: str):
         self.query.group_by("commerce_platform")
+        self.query.project_expr(ret_name, column("commerce_platform"))
         return self
     def group_by_create_time(self):
         self.query.group_by("create_time")
@@ -651,6 +656,7 @@ class ProductRequest:
 
     def group_by_create_time_as(self, ret_name: str):
         self.query.group_by("create_time")
+        self.query.project_expr(ret_name, column("create_time"))
         return self
     def group_by_update_time(self):
         self.query.group_by("update_time")
@@ -658,6 +664,7 @@ class ProductRequest:
 
     def group_by_update_time_as(self, ret_name: str):
         self.query.group_by("update_time")
+        self.query.project_expr(ret_name, column("update_time"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -665,6 +672,7 @@ class ProductRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
+        self.query.project_expr(ret_name, column("version"))
         return self
     def select_order_line_list(self):
         from requests.order_line_request import OrderLineRequest
@@ -838,10 +846,11 @@ class ExecutableProductRequest:
         self._request.comment(c)
         return self
 
-    def new_entity(self, context) -> Product:
+    async def new_entity(self, context) -> Product:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        entity = context.initialize_entity("Product", Product())
+        identity = await context.next_id("Product")
+        entity = context.initialize_entity("Product", Product._teaql_from_reserved_id(identity))
         if not isinstance(entity, Product):
             raise TypeError("entity initializer returned an incompatible Product")
         return entity
@@ -867,7 +876,7 @@ class ExecutableProductRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: Product(_entity_root=EntityRoot(), **row),
+            lambda row: Product._teaql_from_record(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -886,4 +895,4 @@ class ExecutableProductRequest:
         root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: Product(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: Product._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)

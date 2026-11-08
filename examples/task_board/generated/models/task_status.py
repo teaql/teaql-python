@@ -5,10 +5,10 @@ from teaql.core.value import Value
 from teaql.core.request_intent import MutationIntent
 from teaql.core.projection_properties import ProjectionProperties
 from teaql.runtime.loaded_scalar_snapshot import LoadedScalarSnapshots
+from teaql.core.entity_creation import EntityCreationError, EntityCreationState
 from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
 from teaql.runtime import EntityJSONField, EntityJSONSchema, JsonFieldNamingProfile
 from importlib import import_module
-import itertools
 from models.platform import Platform
 
 
@@ -24,7 +24,6 @@ class TaskStatus:
         EntityJSONField("version", "version", "version"),
         EntityJSONField("task_list", "_task_list", "many", factory=lambda: getattr(import_module("models.task"), "Task"), loaded_name="task_list")
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
-    _teaql_temporary_ids = itertools.count(1)
 
     def to_json(self, *, profile=None):
         """Typed model JSON; no query, mutation or transport authorization."""
@@ -37,19 +36,34 @@ class TaskStatus:
 
     @classmethod
     def refer(cls, entity_id):
-        return cls(id=entity_id)
+        return cls._teaql_from_record(id=entity_id)
 
     @classmethod
-    def _teaql_new_with_fixed_id(cls, entity_id):
-        """Generated bootstrap capability; application code must not call it."""
-        return cls(id=entity_id)._teaql_force_create()
+    def _teaql_from_reserved_id(cls, entity_id):
+        """Generated Q plumbing, called only after Context reservation."""
+        EntityCreationState.RESERVED.require_reserved(entity_id)
+        entity = object.__new__(cls)
+        entity._teaql_initialize_record(EntityCreationState.RESERVED, id=entity_id)
+        return entity
+
+    @classmethod
+    def _teaql_from_record(cls, **kwargs):
+        """Hydration never allocates an ID or creates insert intent."""
+        entity = object.__new__(cls)
+        entity._teaql_initialize_record(EntityCreationState.HYDRATED, **kwargs)
+        return entity
 
     def _teaql_force_create(self):
+        self._creation_state.require_reserved(getattr(self, "id", None))
         self._action = "Create"
         self._entity_root.mark_as_new(self._teaql_entity_key())
         return self
 
     def __init__(self, **kwargs):
+        raise EntityCreationError()
+
+    def _teaql_initialize_record(self, creation_state, **kwargs):
+        self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
         if "id" in kwargs and "id" not in kwargs:
             kwargs["id"] = kwargs.pop("id")
@@ -69,7 +83,7 @@ class TaskStatus:
             kwargs["version"] = kwargs.pop("version")
         self._projection_properties = ProjectionProperties(kwargs,
             ["id", "name", "code", "color", "displayOrder", "progress", "platform", "version", "task_list"])
-        self._action = "Update" if kwargs.get("id") else "Create"
+        self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
         self.id = kwargs.get("id")
@@ -89,28 +103,26 @@ class TaskStatus:
         self.version = kwargs.get("version")
 
         if isinstance(self.platform, dict):
-            self.platform = Platform(**self.platform)
+            self.platform = Platform._teaql_from_record(**self.platform)
         self._task_list = kwargs.get("task_list", [])
-        if "task_list" in kwargs or kwargs.get("id") is None:
+        if "task_list" in kwargs or creation_state is EntityCreationState.RESERVED:
             self._loaded_fields.add("task_list")
         if self._task_list:
             from models.task import Task
             source = self._task_list
             hydrated = [
-                item if isinstance(item, Task) else Task(_entity_root=self._entity_root, **item)
+                item if isinstance(item, Task) else Task._teaql_from_record(_entity_root=self._entity_root, **item)
                 for item in source
             ]
             self._task_list = (SmartList(hydrated, facets=source.facets, total_count=source.total_count)
                 if isinstance(source, SmartList) else hydrated)
         self._ledger_id = getattr(self, "id", None)
-        if self._ledger_id is None:
-            self._ledger_id = -next(self._teaql_temporary_ids)
         key = self._teaql_entity_key()
         if self._action == "Create":
             self._entity_root.mark_as_new(key)
         elif getattr(self, "version", None) is not None:
             self._entity_root.set_original_version(key, int(self.version))
-        LoadedScalarSnapshots.capture(self, self._teaql_snapshot_values())
+        LoadedScalarSnapshots.capture(self, self._teaql_snapshot_values(), origin=creation_state)
 
     def _teaql_snapshot_values(self):
         payload = {}
@@ -164,7 +176,7 @@ class TaskStatus:
         return self
 
     async def save(self, context):
-        # Validate the root reason before ID allocation or provider access.
+        # Validate intent and creation provenance before callbacks/provider access.
         MutationIntent(self._comment)
         self._teaql_validate_input_graph(context, set())
         return await context.execute_graph_save(
@@ -175,6 +187,8 @@ class TaskStatus:
         if id(self) in visited:
             return
         visited.add(id(self))
+        self._creation_state.validate_mutation(self._action, getattr(self, "id", None),
+            getattr(self, "version", None), self._entity_root.has_pending(self._teaql_entity_key()))
         LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
@@ -221,32 +235,20 @@ class TaskStatus:
         if object_identity in visited:
             return
         visited.add(object_identity)
-        if self._action == "Create" and getattr(self, "id", None) is None:
-            service = context.require_resource("dataService")
-            allocator = getattr(service, "next_id", None)
-            if not callable(allocator):
-                raise RuntimeError(
-                    "Configured dataService does not support stable ID reservation"
-                )
-            old_key = self._teaql_entity_key()
-            self.id = int(await allocator("TaskStatus"))
-            self._loaded_fields.add("id")
-            self._ledger_id = self.id
-            new_key = self._teaql_entity_key()
-            self._entity_root.rekey(old_key, new_key)
-            self._entity_root.set(new_key, "id", Value.I64(self.id))
+        if self._action == "Create":
+            self._creation_state.require_reserved(getattr(self, "id", None))
         await self._teaql_ensure_business_ids(context)
         for child in self._task_list:
             child._teaql_attach_root(self._entity_root)
             await child._teaql_reserve_graph_ids(context, visited)
 
     async def _teaql_prepare_graph(self, context, session):
-        # Complete all input/Fix checks before reserving any graph identity.
-        # Stable IDs then make the final policy plan and TraceScope concrete.
+        # Internal IDs are already reserved by Context-bound construction.
+        # Complete input/Fix checks before admitting the final mutation plan.
         self._teaql_validate_input_graph(context, set())
         session._generated.admit_graph(self)
         self._teaql_prepare_input_graph(context, set(), session)
-        # Fix may edit a sibling or its version; re-admit the whole graph before IDs.
+        # Fix may edit a sibling or its version; re-admit the whole graph.
         self._teaql_validate_input_graph(context, set(), validate_required=True)
         await self._teaql_reserve_graph_ids(context, set())
         self._teaql_preflight_graph(context, session)
@@ -268,10 +270,11 @@ class TaskStatus:
                 deferred_fields=())
         for index, child in enumerate(self._task_list):
             child._teaql_attach_root(self._entity_root)
-            # The object reference exists even before either endpoint has a stable ID.
-            # Do not confuse two absent IDs with an already-established association.
+            # A missing read projection is unknown, not a request to reparent a child.
+            # Only new entities or a loaded FK can establish a changed association.
             current = getattr(child, "status", None)
-            if current is not self and (self.id is None or getattr(current, "id", current) != self.id):
+            if (current is not self and getattr(current, "id", current) != self.id
+                    and (child._action == "Create" or "status" in child._loaded_fields)):
                 child.update_status(self)
             try:
                 child._teaql_prepare_input_graph(context, visited, session)
@@ -384,7 +387,8 @@ class TaskStatus:
         for index, child in enumerate(self._task_list):
             child._teaql_attach_root(self._entity_root)
             current = getattr(child, "status", None)
-            if getattr(current, "id", current) != self.id:
+            if (getattr(current, "id", current) != self.id
+                    and (child._action == "Create" or "status" in child._loaded_fields)):
                 child.update_status(self)
             try:
                 child._teaql_preflight_graph(context, session, scope)
@@ -422,6 +426,8 @@ class TaskStatus:
             )
         rollback_payload = {field: getattr(self, field, None) for field in self._loaded_fields | {"id", "version"}}
         rollback_snapshot = LoadedScalarSnapshots.values(self)
+        rollback_origin = LoadedScalarSnapshots.origin(self)
+        rollback_creation_state = self._creation_state
         rollback_ledger_id = self._ledger_id
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
@@ -484,7 +490,8 @@ class TaskStatus:
             self._ledger_id = rollback_ledger_id
             self._action = rollback_action
             self._loaded_fields = rollback_loaded_fields
-            LoadedScalarSnapshots.restore(self, rollback_snapshot)
+            self._creation_state = rollback_creation_state
+            LoadedScalarSnapshots.restore(self, rollback_snapshot, origin=rollback_origin)
             if old_key != new_key:
                 self._entity_root.rekey(new_key, old_key)
         session.after_rollback(rollback_entity)
@@ -495,6 +502,7 @@ class TaskStatus:
         if action != "Delete":
             await self._teaql_cascade_children(context, session, scope)
         def commit_entity():
+            self._creation_state = EntityCreationState.HYDRATED
             LoadedScalarSnapshots.capture(self, self._teaql_snapshot_values())
             self._entity_root.clear_entity(new_key)
             if getattr(self, "version", None) is not None:
@@ -509,7 +517,8 @@ class TaskStatus:
             for index, child in enumerate(children):
                 child._teaql_attach_root(self._entity_root)
                 current = getattr(child, member, None)
-                if getattr(current, "id", current) != self.id:
+                if (getattr(current, "id", current) != self.id
+                        and (child._action == "Create" or member in child._loaded_fields)):
                     getattr(child, updater)(self)
                 try:
                     await child._teaql_save_within_graph(context, session, scope)

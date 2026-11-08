@@ -68,11 +68,11 @@ async def main(database, round_number):
     cases = []
     try:
         await context.ensure_schema()
-        order = (Q.purchase_orders().comment("Prepare an owned partial-ancestor test graph")
-                 .purpose("Verify modified-only loading completeness").new_entity(context))
+        order = ((await Q.purchase_orders().comment("Prepare an owned partial-ancestor test graph")
+                 .purpose("Verify modified-only loading completeness").new_entity(context)))
         order.update_contact_phone("555060" + str(round_number)).update_internal_note(None)
-        child = (Q.order_items().comment("Prepare the complete leaf")
-                 .purpose("Calibrate real SQLite graph persistence").new_entity(context))
+        child = ((await Q.order_items().comment("Prepare the complete leaf")
+                 .purpose("Calibrate real SQLite graph persistence").new_entity(context)))
         child.update_product_name("Partial graph initial " + str(round_number)).update_unit_price(Decimal("10.00"))
         order.order_item_list().append(child)
         await order.audit_as("Create the partial-ancestor loading control").save(context)
@@ -146,12 +146,12 @@ async def main(database, round_number):
         cases.append("partial-leaf-rejected-twice-before-provider-with-intent-retained")
 
         # Internal cascade wiring is not permission to replace the trusted root.
-        outside = (Q.tenants().comment("Prepare another independently persisted root")
-                   .purpose("Verify managed reverse wiring retains Context-root checks").new_entity(context))
+        outside = ((await Q.tenants().comment("Prepare another independently persisted root")
+                   .purpose("Verify managed reverse wiring retains Context-root checks").new_entity(context)))
         outside.update_name("Outside active root " + str(round_number))
         await outside.audit_as("Create the independent root control").save(context)
-        wrong = (Q.purchase_orders().comment("Prepare a child below the wrong active root")
-                 .purpose("Reject a cascade association that contradicts Context").new_entity(context))
+        wrong = ((await Q.purchase_orders().comment("Prepare a child below the wrong active root")
+                 .purpose("Reject a cascade association that contradicts Context").new_entity(context)))
         wrong.update_contact_phone("555069" + str(round_number)).update_internal_note(None)
         outside.purchase_order_list().append(wrong)
         before_calls = dict(service.calls)

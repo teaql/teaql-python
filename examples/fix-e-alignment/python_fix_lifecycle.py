@@ -108,11 +108,11 @@ async def verify(args):
     primary = context()
     registry = primary.require_resource('checker_registry')
 
-    def graph(current, label):
-        order = (Q.purchase_orders().comment('Prepare ' + label)
-                 .purpose('Verify generated Fix boundaries').new_entity(current))
-        child = (Q.order_items().comment('Prepare the Fix lifecycle child')
-                 .purpose('Verify repeated-child identity through real save').new_entity(current))
+    async def graph(current, label):
+        order = ((await Q.purchase_orders().comment('Prepare ' + label)
+                 .purpose('Verify generated Fix boundaries').new_entity(current)))
+        child = ((await Q.order_items().comment('Prepare the Fix lifecycle child')
+                 .purpose('Verify repeated-child identity through real save').new_entity(current)))
         order.update_contact_phone('5550760').update_internal_note(canary)
         child.update_product_name('Fix lifecycle item').update_unit_price(Decimal('17.25'))
         order.order_item_list().extend([child, child])
@@ -147,7 +147,7 @@ async def verify(args):
         # Bootstrap is fixture setup, not an application graph under test.
         clock.calls = 0
         before = storage(args.database)
-        order, child = graph(primary, 'one advancing-clock graph')
+        order, child = (await graph(primary, 'one advancing-clock graph'))
         reset()
         reads = clock.calls
         await order.audit_as('Save one repeated-child graph with a trusted root').save(primary)
@@ -200,7 +200,7 @@ async def verify(args):
              immutableSnapshot=True, previousSnapshotPreserved=True)
 
         other = context()
-        second, second_child = graph(other, 'an independent Context')
+        second, second_child = (await graph(other, 'an independent Context'))
         other_registry = other.require_resource('checker_registry')
         meter.counts.clear()
         reads = clock.calls
@@ -214,7 +214,7 @@ async def verify(args):
              distinctInstant=True, oneClockPerInvocation=True, invocationStateReleased=True)
 
         for mode in ('checker', 'provider', 'cancel'):
-            pending, leaf = graph(primary, mode + ' failure followed by retry')
+            pending, leaf = (await graph(primary, mode + ' failure followed by retry'))
             baseline = storage(args.database)
             reset()
             reads = clock.calls
@@ -272,7 +272,7 @@ async def verify(args):
         for label, root in (('missing', None), ('wrong-type', ContextEntityRef('OtherType', 1)),
                             ('zero-id', ContextEntityRef('Tenant', 0))):
             untrusted = context(root)
-            candidate, _ = graph(untrusted, 'untrusted root admission')
+            candidate, _ = (await graph(untrusted, 'untrusted root admission'))
             reset()
             reads = clock.calls
             try:

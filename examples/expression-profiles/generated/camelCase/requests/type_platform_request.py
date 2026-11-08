@@ -310,6 +310,7 @@ class TypePlatformRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
+        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_name(self):
         self.query.group_by("name")
@@ -317,6 +318,7 @@ class TypePlatformRequest:
 
     def group_by_name_as(self, ret_name: str):
         self.query.group_by("name")
+        self.query.project_expr(ret_name, column("name"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -324,6 +326,7 @@ class TypePlatformRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
+        self.query.project_expr(ret_name, column("version"))
         return self
     def select_scalar_type_probe_list(self):
         from requests.scalar_type_probe_request import ScalarTypeProbeRequest
@@ -1499,10 +1502,11 @@ class ExecutableTypePlatformRequest:
         self._request.comment(c)
         return self
 
-    def new_entity(self, context) -> TypePlatform:
+    async def new_entity(self, context) -> TypePlatform:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        entity = context.initialize_entity("TypePlatform", TypePlatform())
+        identity = await context.next_id("TypePlatform")
+        entity = context.initialize_entity("TypePlatform", TypePlatform._teaql_from_reserved_id(identity))
         if not isinstance(entity, TypePlatform):
             raise TypeError("entity initializer returned an incompatible TypePlatform")
         return entity
@@ -1528,7 +1532,7 @@ class ExecutableTypePlatformRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: TypePlatform(_entity_root=EntityRoot(), **row),
+            lambda row: TypePlatform._teaql_from_record(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -1547,4 +1551,4 @@ class ExecutableTypePlatformRequest:
         root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: TypePlatform(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: TypePlatform._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)

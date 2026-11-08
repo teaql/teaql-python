@@ -40,7 +40,8 @@ async def main() -> None:
     await context.ensure_schema()
     print("PASS ensure_schema (explicit SQLite DDL)")
 
-    invalid = WorkItem(platform=1)
+    invalid = (await Q.work_items().comment("Prepare invalid work item")
+        .purpose("Verify Checker rejects missing title").new_entity(context)).update_platform(1)
     try:
         await invalid.audit_as("Checker must reject a missing title").save(context)
         raise AssertionError("Checker accepted a missing required title")
@@ -53,7 +54,9 @@ async def main() -> None:
     assert len(rows_after_rejection) == 0
     print("PASS Checker (canonical title key, rejected before persistence)")
 
-    created = WorkItem(title="Verify Python runtime", platform=1)
+    created = (await Q.work_items().comment("Prepare conformance work item")
+        .purpose("Verify reserved identity persistence").new_entity(context))
+    created.update_title("Verify Python runtime").update_platform(1)
     await created.audit_as("Create conformance work item").save(context)
     assert created.id is not None and created.version == 1
     print(f"PASS Create (id={created.id}, version={created.version})")

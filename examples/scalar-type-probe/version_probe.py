@@ -79,10 +79,10 @@ async def main():
     try:
         await context.ensure_schema()
         await context.ensure_schema()
-        independent = new_probe(context, marker + "-independent-pending", Decimal("2.00"))
+        independent = (await new_probe(context, marker + "-independent-pending", Decimal("2.00")))
         independent_before = pending(independent)
         for index, note in enumerate((None, "retained note")):
-            row = new_probe(context, marker + "-live-" + str(index), Decimal("3.50"))
+            row = (await new_probe(context, marker + "-live-" + str(index), Decimal("3.50")))
             row.update_optional_string(note)
             await row.audit_as("create a generated live version fixture").save(context)
             inject("scalar_type_probe_data", row.id, MAX - 1)
@@ -114,7 +114,7 @@ async def main():
             assert counters() == before and actual.version == MAX
             record("unchanged-exhausted-noop", id=actual.id, zeroHooksAndProvider=True)
 
-            deleted = new_probe(context, marker + "-delete-" + str(index), Decimal("4.50"))
+            deleted = (await new_probe(context, marker + "-delete-" + str(index), Decimal("4.50")))
             deleted.update_optional_string(note)
             await deleted.audit_as("create a generated deletion fixture").save(context)
             inject("scalar_type_probe_data", deleted.id, MAX)
@@ -126,13 +126,13 @@ async def main():
             assert deleted._teaql_entity_key() in deleted._entity_root.deleted_keys()
             record("maximum-delete-and-repeat-rejection", id=deleted.id, version=str(deleted.version), nullableNote=note is None)
 
-        parent = (Q.type_platforms().comment("prepare a version graph owner")
-            .purpose("verify early graph-wide version admission").new_entity(context))
+        parent = ((await Q.type_platforms().comment("prepare a version graph owner")
+            .purpose("verify early graph-wide version admission").new_entity(context)))
         parent.update_name(marker + "-owner")
         await parent.audit_as("create the generated graph owner").save(context)
         children = []
         for index in range(2):
-            child = new_probe(context, marker + "-child-" + str(index), Decimal("5.50"))
+            child = (await new_probe(context, marker + "-child-" + str(index), Decimal("5.50")))
             child.update_type_platform(parent)
             await child.audit_as("create the generated graph child").save(context)
             children.append(child)
@@ -180,8 +180,8 @@ async def main():
         context.with_checker_registry(checker)
         record("post-Fix-graph-admission", parentId=owner.id, zeroProviderAndPolicy=True)
 
-        untouched = (Q.type_platforms().comment("prepare an unchanged exhausted relation")
-            .purpose("do not confuse reference loading with mutation").new_entity(context))
+        untouched = ((await Q.type_platforms().comment("prepare an unchanged exhausted relation")
+            .purpose("do not confuse reference loading with mutation").new_entity(context)))
         untouched.update_name(marker + "-unchanged-reference")
         await untouched.audit_as("create the reference-only parent").save(context)
         inject("type_platform_data", untouched.id, MAX)

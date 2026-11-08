@@ -95,7 +95,7 @@ async def main():
         existing = await (Q.schools().with_name_is(name).limit(1).comment('find retained fixture')
             .purpose('idempotent seed').execute_for_list(context))
         if not existing:
-            school = Q.schools().comment('initialize fixture').purpose('idempotent seed').new_entity(context)
+            school = (await Q.schools().comment('initialize fixture').purpose('idempotent seed').new_entity(context))
             (school.update_platform(1).update_school_type(1001).update_name(name)
                 .update_address('12 River Road').update_established_date('1995-09-01')
                 .update_student_capacity(800).update_active(True))

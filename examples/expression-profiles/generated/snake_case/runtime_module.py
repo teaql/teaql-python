@@ -133,7 +133,8 @@ async def _ensure_generated_bootstrap_once(context):
     try:
         type_platform_1 = await (Q.type_platforms().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if type_platform_1 is None:
-            type_platform_1 = TypePlatform._teaql_new_with_fixed_id(1)
+            type_platform_1 = await Q.type_platforms().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            type_platform_1.update_id(1)
             type_platform_1.update_name("Scalar Type Conformance")
             try:
                 await type_platform_1.audit_as('create model root TypePlatform(1)').save(context)

@@ -110,20 +110,20 @@ async def run(source, output, fixture):
         context.with_checker_registry(Registry())
         return context, client
 
-    def parent(context):
-        row = (Q.purchase_orders().comment("Prepare the Checker boundary order")
-            .purpose("Verify generated audited persistence boundaries").new_entity(context))
+    async def parent(context):
+        row = ((await Q.purchase_orders().comment("Prepare the Checker boundary order")
+            .purpose("Verify generated audited persistence boundaries").new_entity(context)))
         row.update_contact_phone("5550100").update_internal_note(None)
         return row
 
-    def child(context):
-        row = (Q.order_items().comment("Prepare the Checker boundary item")
-            .purpose("Verify generated required references and numeric constraints").new_entity(context))
+    async def child(context):
+        row = ((await Q.order_items().comment("Prepare the Checker boundary item")
+            .purpose("Verify generated required references and numeric constraints").new_entity(context)))
         row.update_product_name("Boundary item").update_unit_price(Decimal("10.00"))
         return row
 
-    def graph(context):
-        p, c = parent(context), child(context); p.order_item_list().append(c)
+    async def graph(context):
+        p, c = (await parent(context)), (await child(context)); p.order_item_list().append(c)
         return p, c
 
     def clean(context):
@@ -149,9 +149,19 @@ async def run(source, output, fixture):
 
     dry_database = output / "never-created.sqlite"
     dry, dry_client = setup(dry_database)
+    class DryAllocator:
+        def __init__(self): self.levels = {}
+        async def next_id(self, entity):
+            self.levels[entity] = self.levels.get(entity, 0) + 1
+            return self.levels[entity]
+        async def ensure_id_floor(self, entity, floor):
+            self.levels[entity] = max(self.levels.get(entity, 0), floor)
+    # Creation still reserves through Context. This no-schema Checker case
+    # deliberately selects memory allocation to preserve its zero-SQL oracle.
+    dry.with_internal_id_allocator(DryAllocator())
     before = counts.copy()
     checks = checker_calls.copy()
-    await rejected(dry, parent(dry).update_contact_phone("X" * 33), [("max_length", "contact_phone")])
+    await rejected(dry, (await parent(dry)).update_contact_phone("X" * 33), [("max_length", "contact_phone")])
     assert counts == before and not dry_database.exists()
     assert checker_calls["PurchaseOrder"] > checks["PurchaseOrder"]
     emit(0, "module-checker-without-schema", schemaCalled=False, databaseCreated=False,
@@ -163,14 +173,14 @@ async def run(source, output, fixture):
     try:
         await context.ensure_schema()
         for round_number in (1, 2):
-            owner, item = graph(context); before = counts.copy()
+            owner, item = (await graph(context)); before = counts.copy()
             await owner.audit_as("Persist the positive boundary graph control").save(context)
             delta = counts - before
             assert delta["parentInserts"] == delta["childInserts"] == 1
             emit(round_number, "exact-provider-calibration", parentID=owner.id, childID=item.id,
                  parentInserts=delta["parentInserts"], childInserts=delta["childInserts"])
 
-            await rejected(context, child(context), [("required", "purchase_order")])
+            await rejected(context, (await child(context)), [("required", "purchase_order")])
             emit(round_number, "required-relation", rule="required", modelPath="purchase_order", zeroIO=True)
 
             owner.update_contact_phone(None)
@@ -197,7 +207,7 @@ async def run(source, output, fixture):
                 ("minimum-string", lambda p, c: c.update_product_name(""), "min_length", "product_name"),
                 ("maximum-string", lambda p, c: c.update_product_name("X" * 81), "max_length", "product_name"),
             ]:
-                p, c = graph(context); change(p, c)
+                p, c = (await graph(context)); change(p, c)
                 error, _ = await rejected(context, p, [(rule, "order_item_list[0]." + field)])
                 v = next(v for v in error.violations if v.rule_id == rule)
                 native = str(v.location)
@@ -206,7 +216,7 @@ async def run(source, output, fixture):
                 emit(round_number, name, rule=rule, nativeLocation=native, entityType=v.entity_type,
                      wire=v.to_wire(), zeroIO=True)
 
-            p, c = graph(context); fix["mode"] = "reject"
+            p, c = (await graph(context)); fix["mode"] = "reject"
             await rejected(context, p, [("required", "order_item_list[0].product_name"), ("min", "order_item_list[0].unit_price")])
             assert E.order_item(c).unit_price().eval() == Decimal("10.00")
             assert E.order_item(c).product_name().eval() == "Boundary item"
@@ -231,7 +241,7 @@ async def run(source, output, fixture):
                     raw = json.loads(text)
                     normalized = normalize_wire_input(raw["payload/order"], meta, "/payload~1order")
                     stages["mapped"] += 1
-                    obj = parent(context).update_contact_phone(normalized.values["contact_phone"])
+                    obj = (await parent(context)).update_contact_phone(normalized.values["contact_phone"])
                     stages["save"] += 1
                     try: return await obj.audit_as("Save a normalized real JSON input").save(context)
                     except CheckException as error:

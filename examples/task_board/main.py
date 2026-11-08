@@ -26,7 +26,9 @@ async def main():
     try:
         await context.ensure_schema()
         await context.ensure_schema()
-        task = Task(name="Build Robot Arm", platform=1).update_status_to_planned()
+        task = (await Q.tasks().comment("Prepare demo robot task")
+            .purpose("Verify managed task creation").new_entity(context))
+        task.update_name("Build Robot Arm").update_platform(1).update_status_to_planned()
         await task.audit_as("create demo robot task").save(context)
         loaded = await (Q.tasks().with_id_is(task.id).limit(1)
                         .select_status_with(Q.task_statuses().limit(1))
@@ -49,7 +51,9 @@ async def main():
                           .execute_for_stream(context, chunk_size=1)):
             streamed.append(row)
         assert len(streamed) == 1 and streamed[0].name == "Build Robot Arm V2"
-        entry = TaskExecutionLog(task=task.id, action="RENAME", detail="PRIVATE-TASK-DETAIL")
+        entry = (await Q.task_execution_logs().comment("Prepare rename evidence")
+            .purpose("Verify governed task log creation").new_entity(context))
+        entry.update_task(task.id).update_action("RENAME").update_detail("PRIVATE-TASK-DETAIL")
         await entry.audit_as("record PRIVATE-TASK-DETAIL rename evidence").save(context)
         rows = await (Q.task_execution_logs().with_id_is(entry.id).with_detail_is("PRIVATE-TASK-DETAIL").limit(1)
                       .comment("read PRIVATE-TASK-DETAIL evidence").purpose("verify PRIVATE-TASK-DETAIL is persisted")

@@ -699,6 +699,7 @@ class OrderSearchPresetRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
+        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_name(self):
         self.query.group_by("name")
@@ -706,6 +707,7 @@ class OrderSearchPresetRequest:
 
     def group_by_name_as(self, ret_name: str):
         self.query.group_by("name")
+        self.query.project_expr(ret_name, column("name"))
         return self
     def group_by_filter_json(self):
         self.query.group_by("filter_json")
@@ -713,6 +715,7 @@ class OrderSearchPresetRequest:
 
     def group_by_filter_json_as(self, ret_name: str):
         self.query.group_by("filter_json")
+        self.query.project_expr(ret_name, column("filter_json"))
         return self
     def group_by_request_id(self):
         self.query.group_by("request_id")
@@ -720,6 +723,7 @@ class OrderSearchPresetRequest:
 
     def group_by_request_id_as(self, ret_name: str):
         self.query.group_by("request_id")
+        self.query.project_expr(ret_name, column("request_id"))
         return self
     def group_by_owner_user_id(self):
         self.query.group_by("owner_user_id")
@@ -727,6 +731,7 @@ class OrderSearchPresetRequest:
 
     def group_by_owner_user_id_as(self, ret_name: str):
         self.query.group_by("owner_user_id")
+        self.query.project_expr(ret_name, column("owner_user_id"))
         return self
     def group_by_commerce_platform(self):
         self.query.group_by("commerce_platform")
@@ -734,6 +739,7 @@ class OrderSearchPresetRequest:
 
     def group_by_commerce_platform_as(self, ret_name: str):
         self.query.group_by("commerce_platform")
+        self.query.project_expr(ret_name, column("commerce_platform"))
         return self
     def group_by_create_time(self):
         self.query.group_by("create_time")
@@ -741,6 +747,7 @@ class OrderSearchPresetRequest:
 
     def group_by_create_time_as(self, ret_name: str):
         self.query.group_by("create_time")
+        self.query.project_expr(ret_name, column("create_time"))
         return self
     def group_by_update_time(self):
         self.query.group_by("update_time")
@@ -748,6 +755,7 @@ class OrderSearchPresetRequest:
 
     def group_by_update_time_as(self, ret_name: str):
         self.query.group_by("update_time")
+        self.query.project_expr(ret_name, column("update_time"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -755,6 +763,7 @@ class OrderSearchPresetRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
+        self.query.project_expr(ret_name, column("version"))
         return self
     def facet_by_commerce_platform_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
@@ -771,10 +780,11 @@ class ExecutableOrderSearchPresetRequest:
         self._request.comment(c)
         return self
 
-    def new_entity(self, context) -> OrderSearchPreset:
+    async def new_entity(self, context) -> OrderSearchPreset:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        entity = context.initialize_entity("OrderSearchPreset", OrderSearchPreset())
+        identity = await context.next_id("OrderSearchPreset")
+        entity = context.initialize_entity("OrderSearchPreset", OrderSearchPreset._teaql_from_reserved_id(identity))
         if not isinstance(entity, OrderSearchPreset):
             raise TypeError("entity initializer returned an incompatible OrderSearchPreset")
         return entity
@@ -800,7 +810,7 @@ class ExecutableOrderSearchPresetRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: OrderSearchPreset(_entity_root=EntityRoot(), **row),
+            lambda row: OrderSearchPreset._teaql_from_record(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -819,4 +829,4 @@ class ExecutableOrderSearchPresetRequest:
         root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: OrderSearchPreset(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: OrderSearchPreset._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)

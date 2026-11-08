@@ -159,12 +159,12 @@ async def main():
         return result, observed
 
     async def seed(label, values):
-        parent = (Q.type_platforms().comment("initialize aggregate bucket")
+        parent = ((await Q.type_platforms().comment("initialize aggregate bucket")
                   .purpose("prepare deterministic empty aggregate input")
-                  .new_entity(context).update_name(label))
+                  .new_entity(context)).update_name(label))
         await parent.audit_as("create aggregate bucket through generated mutation").save(context)
         for value in values:
-            child = (new_probe(context, label, Decimal("1.00"))
+            child = ((await new_probe(context, label, Decimal("1.00")))
                      .update_type_platform(parent).update_optional_integer(value))
             await child.audit_as("create aggregate contribution through generated mutation").save(context)
         return E.type_platform(parent).id().eval()

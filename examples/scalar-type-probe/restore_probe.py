@@ -51,7 +51,7 @@ async def main():
         assert sql.authorizations == authorizations and sql.statements == statements
     try:
         await context.ensure_schema()
-        seed = new_probe(context, "restore-" + uuid4().hex, Decimal("37.00"))
+        seed = (await new_probe(context, "restore-" + uuid4().hex, Decimal("37.00")))
         await seed.audit_as("create an independent restoration fixture").save(context)
         row = await load(context, seed.id)
         original = E.scalar_type_probe(row).required_string().eval()
@@ -153,12 +153,12 @@ async def main():
         assert row.version == 5 and math.copysign(1.0, changed) == -1
         case("signed-zero-intent", id=row.id, version=row.version, sqliteSignedZeroReadbackNotClaimed=True)
 
-        parent = (Q.type_platforms().comment("prepare a graph restoration owner")
-                  .purpose("test a clean parent with changed children").new_entity(context))
+        parent = ((await Q.type_platforms().comment("prepare a graph restoration owner")
+                  .purpose("test a clean parent with changed children").new_entity(context)))
         parent.update_name("restoration owner " + uuid4().hex)
         await parent.audit_as("create the independent graph owner").save(context)
         for index in range(2):
-            child = new_probe(context, "restore-child-" + str(index) + "-" + uuid4().hex, Decimal("37.00"))
+            child = (await new_probe(context, "restore-child-" + str(index) + "-" + uuid4().hex, Decimal("37.00")))
             child.update_type_platform(parent)
             await child.audit_as("create a graph restoration child").save(context)
         graph = await (Q.type_platforms().with_id_is(parent.id).limit(1)

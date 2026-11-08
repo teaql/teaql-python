@@ -160,7 +160,8 @@ async def _ensure_generated_bootstrap_once(context):
     try:
         platform_1 = await (Q.platforms().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if platform_1 is None:
-            platform_1 = Platform._teaql_new_with_fixed_id(1)
+            platform_1 = await Q.platforms().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            platform_1.update_id(1)
             platform_1.update_name("Trace Chain Verification")
             try:
                 await platform_1.audit_as('create model root Platform(1)').save(context)

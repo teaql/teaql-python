@@ -155,7 +155,8 @@ async def _ensure_generated_bootstrap_once(context):
     try:
         platform_1 = await (Q.platforms().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if platform_1 is None:
-            platform_1 = Platform._teaql_new_with_fixed_id(1)
+            platform_1 = await Q.platforms().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            platform_1.update_id(1)
             platform_1.update_name("Robot System")
             platform_1.update_user_email("string()")
             try:
@@ -172,7 +173,8 @@ async def _ensure_generated_bootstrap_once(context):
         context.with_active_root(ContextEntityRef("Platform", 1))
         task_status_1001 = await (Q.task_statuses().with_id_is(1001).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if task_status_1001 is None:
-            task_status_1001 = TaskStatus._teaql_new_with_fixed_id(1001)
+            task_status_1001 = await Q.task_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            task_status_1001.update_id(1001)
             task_status_1001.update_name("Planned")
             task_status_1001.update_code("PLANNED")
             task_status_1001.update_color("#94A3B8")
@@ -213,7 +215,8 @@ async def _ensure_generated_bootstrap_once(context):
             await task_status_1001.audit_as('reconcile model constant TaskStatus(1001)').save(context)
         task_status_1002 = await (Q.task_statuses().with_id_is(1002).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if task_status_1002 is None:
-            task_status_1002 = TaskStatus._teaql_new_with_fixed_id(1002)
+            task_status_1002 = await Q.task_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            task_status_1002.update_id(1002)
             task_status_1002.update_name("Ready")
             task_status_1002.update_code("READY")
             task_status_1002.update_color("#3B82F6")
@@ -254,7 +257,8 @@ async def _ensure_generated_bootstrap_once(context):
             await task_status_1002.audit_as('reconcile model constant TaskStatus(1002)').save(context)
         task_status_1003 = await (Q.task_statuses().with_id_is(1003).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if task_status_1003 is None:
-            task_status_1003 = TaskStatus._teaql_new_with_fixed_id(1003)
+            task_status_1003 = await Q.task_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            task_status_1003.update_id(1003)
             task_status_1003.update_name("Executing")
             task_status_1003.update_code("EXECUTING")
             task_status_1003.update_color("#F59E0B")
@@ -295,7 +299,8 @@ async def _ensure_generated_bootstrap_once(context):
             await task_status_1003.audit_as('reconcile model constant TaskStatus(1003)').save(context)
         task_status_1004 = await (Q.task_statuses().with_id_is(1004).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if task_status_1004 is None:
-            task_status_1004 = TaskStatus._teaql_new_with_fixed_id(1004)
+            task_status_1004 = await Q.task_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            task_status_1004.update_id(1004)
             task_status_1004.update_name("Verified")
             task_status_1004.update_code("VERIFIED")
             task_status_1004.update_color("#16A34A")

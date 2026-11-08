@@ -57,9 +57,9 @@ async def main(database, round_number):
 
     async def seed():
         context.with_business_clock(FixedBusinessClock(first))
-        row = (Q.purchase_orders().comment("Prepare an independent projection fixture")
+        row = ((await Q.purchase_orders().comment("Prepare an independent projection fixture")
                .purpose("Verify query-view isolation and independent pending mutations")
-               .new_entity(context))
+               .new_entity(context)))
         row.update_contact_phone("5550700").update_internal_note(None)
         before = dict(calls)
         await row.audit_as("Create the projection fixture through generated mutation").save(context)

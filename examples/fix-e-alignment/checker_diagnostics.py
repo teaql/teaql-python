@@ -72,12 +72,12 @@ async def verify(database):
     await context.ensure_schema()
     observations, failures = [], []
 
-    def graph():
-        parent = (Q.purchase_orders().comment("Prepare Checker diagnostic order")
-                  .purpose("Verify ordinary generated save rejects invalid input").new_entity(context))
+    async def graph():
+        parent = ((await Q.purchase_orders().comment("Prepare Checker diagnostic order")
+                  .purpose("Verify ordinary generated save rejects invalid input").new_entity(context)))
         parent.update_contact_phone("5550100").update_internal_note(None)
-        child = (Q.order_items().comment("Prepare Checker diagnostic child")
-                 .purpose("Verify nested violations retain their declaring type").new_entity(context))
+        child = ((await Q.order_items().comment("Prepare Checker diagnostic child")
+                 .purpose("Verify nested violations retain their declaring type").new_entity(context)))
         child.update_product_name("Synthetic checker item").update_unit_price(Decimal("10.00"))
         parent.order_item_list().append(child)
         return parent, child
@@ -90,7 +90,7 @@ async def verify(database):
 
     for round_number in (1, 2):
         context.set_locale_code("en")
-        parent, child = graph()
+        parent, child = (await graph())
         before = counts.copy()
         saved = await parent.audit_as("Persist the valid Checker observation control").save(context)
         assert all(counts[name] > before[name] for name in ("connections", "authorizations", "statements"))
@@ -115,7 +115,7 @@ async def verify(database):
              lambda p, c: p.update_contact_phone(None)),
         ]
         for name, expected_type, expected_path, expected_rule, locale, change in cases:
-            parent, child = graph()
+            parent, child = (await graph())
             change(parent, child)
             context.set_locale_code(locale)
             before = counts.copy()
@@ -186,7 +186,7 @@ async def verify(database):
                                        source_instance_path="/order_item_list/0/product~1name~0alias"))
                 return Checker()
 
-        parent, child = graph()
+        parent, child = (await graph())
         context.with_checker_registry(AliasRegistry())
         before = counts.copy()
         try:

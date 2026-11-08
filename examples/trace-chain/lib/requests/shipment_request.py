@@ -383,10 +383,9 @@ class ExecutableShipmentRequest:
         request = self._request
         QueryIntent(request._comment, request._purpose)
         identity = await context.next_id("Shipment")
-        entity = context.initialize_entity("Shipment", Shipment())
+        entity = context.initialize_entity("Shipment", Shipment._teaql_from_reserved_id(identity))
         if not isinstance(entity, Shipment):
             raise TypeError("entity initializer returned an incompatible Shipment")
-        entity.update_id(identity)
         return entity
 
     async def execute_for_result(self, context):
@@ -410,7 +409,7 @@ class ExecutableShipmentRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: Shipment(_entity_root=EntityRoot(), **row),
+            lambda row: Shipment._teaql_from_record(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -429,4 +428,4 @@ class ExecutableShipmentRequest:
         root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: Shipment(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: Shipment._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)

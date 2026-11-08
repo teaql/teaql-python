@@ -20,6 +20,7 @@ else
   evidence_directory="$(mktemp -d -t teaql-python-examples-evidence.XXXXXXXX)"
 fi
 export TEAQL_CONFORMANCE_DB="$evidence_directory/conformance.sqlite"
+export TEAQL_MANAGED_CREATION_DB="$evidence_directory/managed-creation.sqlite"
 export TEAQL_SCHOOL_MANAGEMENT_DB="$evidence_directory/school.sqlite"
 export TEAQL_SCALAR_PROBE_DB="$evidence_directory/scalar.sqlite"
 export TEAQL_FIX_E_EVIDENCE_DIR="$evidence_directory/fix-e"
@@ -45,6 +46,8 @@ python "$repo/examples/fix-e-alignment/verify-local.py"
 TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$evidence_directory/expression-profiles" \
   python "$repo/examples/expression-profiles/verify-local.py"
 PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
+PYTHONPATH="$repo/src" python "$repo/examples/conformance/app/managed_creation.py"
+PYTHONPATH="$repo/src" python "$repo/examples/conformance/app/managed_sqlite.py"
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/conformance" -p 'test_sql_log_intent.py' -v
 PYTHONPATH="$repo/examples/school-management:$repo/src" python -m app.main
 bash "$repo/scripts/verify-school-bootstrap-example.sh"

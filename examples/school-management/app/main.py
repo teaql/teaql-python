@@ -46,7 +46,12 @@ async def verify_request_intent(context, client):
                 raise AssertionError('stream must not open')
         except RequestIntentError as error:
             assert error.code == 'REQUEST_COMMENT_REQUIRED'
-        entity = Q.schools().comment('prepare unsaved school').purpose('verify save gate').new_entity(context)
+        assert calls == [], calls
+        entity = (await Q.schools().comment('prepare unsaved school').purpose('verify save gate').new_entity(context))
+        assert calls == ['id allocator'], calls
+        reserved_id = entity.id
+        assert type(reserved_id) is int and reserved_id > 0
+        calls.clear()
         for reason in (None, '\u0085'):
             try:
                 if reason is not None:
@@ -56,7 +61,7 @@ async def verify_request_intent(context, client):
             except RequestIntentError as error:
                 assert error.code == 'REQUEST_COMMENT_REQUIRED'
         assert calls == [], calls
-        assert entity.id is None
+        assert entity.id == reserved_id
     finally:
         client.next_id = original_allocator
         context.clear_request_policy()
@@ -145,8 +150,8 @@ async def main() -> None:
     assert reconciled.name == "Primary"
     assert reconciled.version == first_primary_version + 1
 
-    school = Q.schools().comment("Create the example school").purpose(
-        "Verify generated Python mutations").new_entity(context)
+    school = (await Q.schools().comment("Create the example school").purpose(
+        "Verify generated Python mutations").new_entity(context))
     school.update_platform(Platform.refer(platform.id))
     school.update_school_type(SchoolType.refer(primary.id))
     school.update_name("Riverside Primary School")

@@ -44,23 +44,24 @@ async def seed(context):
         print("[seed] deterministic data already exists; no duplicate rows added")
         return
 
-    now = datetime(2026, 8, 13, 9, 0, 0)
     platform = await (Q.commerce_platforms().with_id_is(1)
         .comment("Load generated commerce root").purpose("Seed quick-start data")
         .execute_for_one(context))
     assert platform is not None
-    customer = await save(Customer(name="Acme Retail", email="masked-in-quick-start",
-                                   commercePlatform=platform.id, createTime=now, updateTime=now), context,
-                          "Create masked quick-start customer")
+    customer = (await Q.customers().comment("Prepare quick-start customer")
+        .purpose("Seed deterministic local data").new_entity(context))
+    customer.update_name("Acme Retail").update_email("masked-in-quick-start").update_commerce_platform(platform.id)
+    await save(customer, context, "Create masked quick-start customer")
     pending = await (Q.order_statuses().with_id_is(1001)
         .comment("Load generated pending status").purpose("Seed quick-start data")
         .execute_for_one(context))
     assert pending is not None
-    await save(CustomerOrder(orderNumber="WEB-2026-001", orderDate=date(2026, 8, 12),
-                             totalAmount=Decimal("129.95"), status=pending.id,
-                             customer=customer.id, commercePlatform=platform.id,
-                             createTime=now, updateTime=now), context,
-               "Create deterministic quick-start order")
+    order = (await Q.customer_orders().comment("Prepare deterministic quick-start order")
+        .purpose("Seed the order-management example").new_entity(context))
+    order.update_order_number("WEB-2026-001").update_order_date(date(2026, 8, 12))
+    order.update_total_amount(Decimal("129.95")).update_status(pending.id)
+    order.update_customer(customer.id).update_commerce_platform(platform.id)
+    await save(order, context, "Create deterministic quick-start order")
     print("[seed] inserted deterministic platform, customer, status, and order")
 
 
@@ -97,10 +98,11 @@ async def main():
         .purpose("Persist the operator's reusable search")
         .execute_for_one(context))
     if preset is None:
-        preset = OrderSearchPreset(name="Pending web orders", filterJson='{"order_number":"WEB-"}',
-                                   requestId=request_id, ownerUserId="quick-start-user",
-                                   commercePlatform=rows[0].commercePlatform,
-                                   createTime=datetime.now(), updateTime=datetime.now())
+        preset = (await Q.order_search_presets().comment("Prepare reusable search preset")
+            .purpose("Persist the operator search").new_entity(context))
+        preset.update_name("Pending web orders").update_filter_json('{"order_number":"WEB-"}')
+        preset.update_request_id(request_id).update_owner_user_id("quick-start-user")
+        preset.update_commerce_platform(rows[0].commercePlatform)
         await save(preset, context, "Save idempotent quick-start search preset")
         print(f"[mutation] saved preset #{preset.id}")
     else:
