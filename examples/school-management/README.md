@@ -9,15 +9,19 @@ mutation behavior.
 ```bash
 python -m venv .venv
 . .venv/bin/activate
-pip install -e .
+pip install -e ../..
 python -m app.main
 ```
 
 Expected result:
 
 ```text
-PASS Python School Management: idempotent bootstrap, multi-word hydration, and forward relations
+PASS Python School Management: bootstrap, portable Query parity, and forward relations
 ```
+
+Run from `examples/school-management`. The editable dependency is this
+repository's runtime; do not substitute an older public package when verifying
+new generated code. New entities use the awaited, Context-bound Q factory.
 
 ## Generated bootstrap Trace Chain gate
 
