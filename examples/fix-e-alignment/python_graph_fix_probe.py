@@ -105,12 +105,17 @@ async def scenario(args, name):
     registry = RecordingRegistry(context.require_resource("checker_registry"), meter)
     context.with_checker_registry(registry)
 
+    allocations_before_creation = meter.effects()["ids"]
     order = ((await Q.purchase_orders().comment("Prepare the graph Fix order")
              .purpose("Verify generated graph identity and once-per-save Fix")
              .new_entity(context)))
     child = ((await Q.order_items().comment("Prepare the graph Fix child")
              .purpose("Verify one child object reached through two list entries")
              .new_entity(context)))
+    construction_reservations = meter.effects()["ids"] - allocations_before_creation
+    reserved_ids = (order.id, child.id)
+    assert construction_reservations == 2
+    assert all(type(identity) is int and identity > 0 for identity in reserved_ids)
     order.update_contact_phone("5550710").update_internal_note(None)
     child.update_product_name("Graph fixture item").update_unit_price(Decimal("12.34"))
     order.order_item_list().append(child)
@@ -142,14 +147,16 @@ async def scenario(args, name):
         assert E.purchase_order(saved).version().eval() == 1
         assert E.order_item(item).version().eval() == 1
         assert E.order_item(item).unit_price().eval() == Decimal("12.34")
-    passed = (failure is None and once and effects == {
-        "begins": 1, "queries": 0, "ids": 2, "mutations": 2,
+    passed = (failure is None and once and (order.id, child.id) == reserved_ids and effects == {
+        "begins": 1, "queries": 0, "ids": 0, "mutations": 2,
         "commits": 1, "rollbacks": 0})
     row = {"case": name, "round": args.round, "passed": passed,
            "saved": saved is not None, "fixOnce": once,
            "clockCaptures": clock.calls - before_clock, "visits": visits,
            "effects": effects, "error": failure,
            "parentId": order.id, "childId": child.id,
+           "constructionReservations": construction_reservations,
+           "savedReservedIdentities": (order.id, child.id) == reserved_ids,
            "runtimeFile": inspect.getfile(UserContext),
            "database": str(database)}
     print("PYTHON_GRAPH_FIX_CASE=" + json.dumps(row, sort_keys=True))

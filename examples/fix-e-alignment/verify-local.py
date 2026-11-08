@@ -210,8 +210,9 @@ def main():
             for row in rows:
                 assert row["round"] == index and row["saved"] and row["fixOnce"]
                 assert row["clockCaptures"] == 1 and row["error"] is None
+                assert row["constructionReservations"] == 2 and row["savedReservedIdentities"] is True
                 assert Path(row["runtimeFile"]).resolve() == REPO / "src/teaql/runtime/context.py"
-                assert row["effects"] == {"begins": 1, "queries": 0, "ids": 2,
+                assert row["effects"] == {"begins": 1, "queries": 0, "ids": 0,
                                            "mutations": 2, "commits": 1, "rollbacks": 0}
                 assert len(row["visits"]) == 2
                 assert all(not any(visit["providerEffectsDuringFix"].values()) for visit in row["visits"])
