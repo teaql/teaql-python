@@ -3,8 +3,8 @@
     "camelCase": {
       "files": {
         "E.py": "5e6a69648c561528bf6168391e9d3b3c8946e0918425909ed64c27e6499974dc",
-        "models/type_platform.py": "187e55283d4c90598b6a377780885d618bea6e12dd40317a677ed4c206b63cb2",
-        "models/scalar_type_probe.py": "b74161f134a13159cf19aa02f7edb9a8a02ec24d60c40d495c7c3c71ce0d861f",
+        "models/type_platform.py": "50b82b3f9945c55773a6d3addb1886873fcb81fa88c5354e037d5176c3c13b38",
+        "models/scalar_type_probe.py": "05ad162982357faa5a3dfaffb168c0e7de8b3febf10435b42e8691b0019b7e58",
         "pyproject.toml": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
         "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -138,8 +138,8 @@
     "snake_case": {
       "files": {
         "E.py": "f638b4cee0dff6c8a360aa0d3e55d16fc81a5cf73911cd483ded31843282dd7e",
-        "models/type_platform.py": "6a75e969823ec7bbce80dcc3c706771a45239f08dc39aab5d949518e5fee3c9c",
-        "models/scalar_type_probe.py": "b7d3070d1be81ff45d62d7e0cb3f5258fd0551033877a2e20b05a57db3885053",
+        "models/type_platform.py": "3030def201c11a415a480e1fe928076bd6ebc2210e43e4bb17976eef5d6dde86",
+        "models/scalar_type_probe.py": "74d7c54be005259404afde7e44422428a182777927880aea7380f704a56320b3",
         "pyproject.toml": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
         "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -273,8 +273,8 @@
     "PascalCase": {
       "files": {
         "E.py": "e547e613c0ca390743dbf12205e1769d9f526e097a8d4d1a7dc6d773a6debcaf",
-        "models/type_platform.py": "e5d1e80603cb135793fa2d12563cb3c56e5a81243e9f8468672a6ed0daa57683",
-        "models/scalar_type_probe.py": "61302a9860bf5fd4fb6b2c69471d81e471dd78de2dc6f19be433ad19a249e65d",
+        "models/type_platform.py": "64f72935d5412a8e048f79bd2d408046bf3221c1bcc00f059771ce173c200610",
+        "models/scalar_type_probe.py": "021ff367c02c73b3963b643ca87c6d263124168fdab9cee27cceae7852616258",
         "pyproject.toml": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
         "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
         "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",

@@ -145,7 +145,7 @@ class TypePlatform:
             return
         visited.add(id(self))
         self._creation_state.validate_mutation(self._action, getattr(self, "id", None),
-            getattr(self, "version", None), self._entity_root.has_pending(self._teaql_entity_key()))
+            LoadedScalarSnapshots.persisted_version(self), self._entity_root.has_pending(self._teaql_entity_key()))
         LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})

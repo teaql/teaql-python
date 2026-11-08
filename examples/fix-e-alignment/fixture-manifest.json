@@ -2,11 +2,11 @@
   "schema": "teaql.generated-example-fixture/v1",
   "language": "python",
   "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
-  "generatedManifestSha256": "3e1654a1ca59581e6cab46275bb6b5a30327f84155a0bdbe246a362e8bad9ca4",
-  "previousFixtureManifestSha256": "649c977a3fe5284dcb10f1829240bff14364e451257ea8af0c3b58d0cf2a5618",
+  "generatedManifestSha256": "d194383e1ec5018de322c266f624b7265e450c0180c0de14fd4ac637decbc57d",
+  "previousFixtureManifestSha256": "c6ee392d7106c5c028bc9106c0568346f60961bb50f387cb26d7e63f6f122c69",
   "producerSource": {
-    "commit": "116ff55d4ad96cc89cd018623c2efda629dfe355",
-    "sourceContentsSha256": "160ff0c478d0a0cca93babd6f011e58161ebfb13920731375c791341631233cc"
+    "commit": "309ff174c93efee3544f1d7e876821f44c06d59b",
+    "sourceContentsSha256": "7dfe339d629b591e517c17a2746b8e5167bc81f3323f147ba028f1b7cf394f12"
   },
   "producerReportSha256": "bdff8e4dc60ef3b537537599af23a1b783058a6749f0ebfdd97af7931469dc96",
   "evaluatedScope": "python-lib-core",
@@ -14,9 +14,9 @@
   "evaluationWarnings": 4,
   "files": {
     "E.py": "3a1bb923330c41e3a56403cd46c558efbc02d76406c3d2c31ef959fd18fec680",
-    "models/tenant.py": "8b5ca786dd6658b8f86f962e400882712907622ab5e0c3818e7f629c9b392056",
-    "models/purchase_order.py": "9e9eb1444897419ae3591eda1d02ba5735799da9f3ded9a602df16ac51631c89",
-    "models/order_item.py": "cc6c85ed428ae2fd71a9a1b83342934eb71d66fb2fb576ef80de2cb005ac39a2",
+    "models/tenant.py": "f8e59d8e35ef5639646dbf954b41e8be7cd6ff5e064639da861f5181112ad3d0",
+    "models/purchase_order.py": "454afad54a010e424f905979a3e89b0454c78802f7736186e8e4c351c7b215a9",
+    "models/order_item.py": "d6074bc066c56d3448f38554e5caec02814ed927c6a83054ce8b98b90cb30140",
     "pyproject.toml": "df5a97996a6c312e64e8bdb58e9e79bfdda18cd0d0b03e8747bb8260836c321d",
     "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
@@ -28,7 +28,7 @@
     "Q.py": "110a04fe7434e902455505b6d9c76d433aed068a3279b22f9106742b6be685a3",
     "teaql-i18n.json": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014"
   },
-  "generatorCommit": "116ff55d4ad96cc89cd018623c2efda629dfe355",
-  "generatorSourceContentsSha256": "160ff0c478d0a0cca93babd6f011e58161ebfb13920731375c791341631233cc",
-  "producerReceiptSha256": "79d29b23d5130df0d2cb730a9a2198f4698a06739f39a7cfd0e37ce6d4435863"
+  "generatorCommit": "309ff174c93efee3544f1d7e876821f44c06d59b",
+  "generatorSourceContentsSha256": "7dfe339d629b591e517c17a2746b8e5167bc81f3323f147ba028f1b7cf394f12",
+  "producerReceiptSha256": "d45d60a4b013dbde01c8325641a6975f4a1c1627b836fe197dba1c9e82a7c557"
 }
