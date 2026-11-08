@@ -237,11 +237,14 @@ async def run(source, output, fixture):
                 meta = create_wire_entity_metadata("PurchaseOrder", ["contact_phone"], profile,
                     {"contact_phone": ["legacy/phone~"]})
                 standard = profile.render("contact_phone")
+                # Identity preparation is a separate service phase. The
+                # observed JSON mapping/checker window must remain zero-I/O.
+                obj = await parent(context)
                 async def submit(text):
                     raw = json.loads(text)
                     normalized = normalize_wire_input(raw["payload/order"], meta, "/payload~1order")
                     stages["mapped"] += 1
-                    obj = (await parent(context)).update_contact_phone(normalized.values["contact_phone"])
+                    obj.update_contact_phone(normalized.values["contact_phone"])
                     stages["save"] += 1
                     try: return await obj.audit_as("Save a normalized real JSON input").save(context)
                     except CheckException as error:
