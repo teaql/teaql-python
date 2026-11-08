@@ -57,14 +57,19 @@ async def main(database, round_number):
 
     async def seed():
         context.with_business_clock(FixedBusinessClock(first))
+        allocations_before_creation = calls["allocations"]
         row = ((await Q.purchase_orders().comment("Prepare an independent projection fixture")
                .purpose("Verify query-view isolation and independent pending mutations")
                .new_entity(context)))
+        reserved_id = row.id
+        assert type(reserved_id) is int and reserved_id > 0
+        assert calls["allocations"] == allocations_before_creation + 1
         row.update_contact_phone("5550700").update_internal_note(None)
         before = dict(calls)
         await row.audit_as("Create the projection fixture through generated mutation").save(context)
         assert calls["mutations"] > before["mutations"] and calls["commits"] > before["commits"]
-        assert calls["allocations"] > before["allocations"] and calls["audits"] > before["audits"]
+        assert calls["allocations"] == before["allocations"] and row.id == reserved_id
+        assert calls["audits"] > before["audits"]
         return row
 
     async def full(identity):
