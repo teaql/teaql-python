@@ -109,10 +109,13 @@ async def verify(args):
     registry = primary.require_resource('checker_registry')
 
     async def graph(current, label):
+        allocations_before = meter.effects()['ids']
         order = ((await Q.purchase_orders().comment('Prepare ' + label)
                  .purpose('Verify generated Fix boundaries').new_entity(current)))
         child = ((await Q.order_items().comment('Prepare the Fix lifecycle child')
                  .purpose('Verify repeated-child identity through real save').new_entity(current)))
+        assert meter.effects()['ids'] == allocations_before + 2
+        assert type(order.id) is int and order.id > 0 and type(child.id) is int and child.id > 0
         order.update_contact_phone('5550760').update_internal_note(canary)
         child.update_product_name('Fix lifecycle item').update_unit_price(Decimal('17.25'))
         order.order_item_list().extend([child, child])
@@ -148,12 +151,14 @@ async def verify(args):
         clock.calls = 0
         before = storage(args.database)
         order, child = (await graph(primary, 'one advancing-clock graph'))
+        created_ids = (order.id, child.id)
         reset()
         reads = clock.calls
         await order.audit_as('Save one repeated-child graph with a trusted root').save(primary)
         assert clock.calls - reads == 1
         visits(registry, 'insert')
-        assert meter.effects() == dict(begins=1, queries=0, ids=2, mutations=2, commits=1, rollbacks=0)
+        assert meter.effects() == dict(begins=1, queries=0, ids=0, mutations=2, commits=1, rollbacks=0)
+        assert (order.id, child.id) == created_ids
         create_effects, create_visits = meter.effects(), list(registry.visits)
         created = E.purchase_order(order).create_time().eval()
         assert E.order_item(child).create_time().eval() == created
