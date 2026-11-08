@@ -80,6 +80,8 @@ async def main():
         await context.ensure_schema()
         await context.ensure_schema()
         independent = (await new_probe(context, marker + "-independent-pending", Decimal("2.00")))
+        independent_id = independent.id
+        assert type(independent_id) is int and independent_id > 0
         independent_before = pending(independent)
         for index, note in enumerate((None, "retained note")):
             row = (await new_probe(context, marker + "-live-" + str(index), Decimal("3.50")))
@@ -99,7 +101,7 @@ async def main():
             record("last-update-and-json", id=row.id, version=str(row.version), nullableNote=note is None)
             row.update_required_string(marker + "-must-remain-pending-" + str(index))
             await rejected(row, "reject an exhausted generated update", "VERSION_EXHAUSTED")
-            assert independent.id is None and pending(independent) == independent_before
+            assert independent.id == independent_id and pending(independent) == independent_before
             actual = await load(context, row.id)
             assert actual.version == MAX and E.scalar_type_probe(actual).optional_string().eval() == note
             assert E.scalar_type_probe(actual).required_string().eval() == marker + "-last-legal-" + str(index)
@@ -204,14 +206,14 @@ async def main():
         context.with_checker_registry(LateFixRegistry())
         before_calls, before_policy, before_audit = dict(observed.calls), len(policy.plans), len(audit.events)
         try:
-            await late_owner.audit_as("reject late parent intent before reserving the new child ID").save(context)
-            raise AssertionError("late Fix intent bypassed complete pre-ID admission")
+            await late_owner.audit_as("reject late parent intent without reallocating the child ID").save(context)
+            raise AssertionError("late Fix intent bypassed complete mutation admission")
         except MutationVersionError:
             pass
-        assert independent.id is None and dict(observed.calls) == before_calls
+        assert independent.id == independent_id and dict(observed.calls) == before_calls
         assert len(policy.plans) == before_policy and len(audit.events) == before_audit
         context.with_checker_registry(checker)
-        record("late-Fix-before-new-ID", parentId=late_owner.id, zeroProviderAndPolicy=True, childIdUnassigned=True)
+        record("late-Fix-no-reallocation", parentId=late_owner.id, zeroProviderAndPolicy=True, reservedChildIdPreserved=True)
         late_owner.update_name(E.type_platform(reference).name().eval())
         await late_owner.audit_as("save the repaired graph without updating its exhausted parent").save(context)
         assert independent.version == 1 and reference.version == MAX

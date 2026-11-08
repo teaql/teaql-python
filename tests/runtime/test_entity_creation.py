@@ -31,9 +31,15 @@ class EntityCreationTests(unittest.TestCase):
     def test_hydrated_mutation_requires_persisted_identity_and_version(self):
         EntityCreationState.HYDRATED.validate_mutation("Update", 7, 3, True)
         EntityCreationState.HYDRATED.validate_mutation("Delete", 7, 3, True)
-        for identity, version in ((None, 3), (0, 3), (7, None), (7, 0), (7, True), (7, "3")):
+        for identity, version in ((None, 3), (0, 3), (7, None), (7, True), (7, "3")):
             with self.assertRaises(EntityCreationError):
                 EntityCreationState.HYDRATED.validate_mutation("Update", identity, version, True)
+        from teaql.core.mutation_version import MutationVersionError, next_mutation_version
+        for version in (0, -1, -(1 << 63)):
+            EntityCreationState.HYDRATED.validate_mutation("Update", 7, version, True)
+            with self.assertRaises(MutationVersionError) as caught:
+                next_mutation_version("update", version)
+            self.assertEqual(caught.exception.code, "INVALID_VERSION_STATE")
         for state in (EntityCreationState.UNMANAGED, EntityCreationState.RESERVED):
             with self.assertRaises(EntityCreationError):
                 state.validate_mutation("Update", 7, 3, True)
@@ -49,13 +55,22 @@ class EntityCreationTests(unittest.TestCase):
         values = {"id": Value.I64(7), "name": Value.Text("same")}
         self.assertIs(LoadedScalarSnapshots.origin(entity), EntityCreationState.UNMANAGED)
         LoadedScalarSnapshots.capture(entity, values, origin=EntityCreationState.RESERVED)
+        self.assertIsNone(LoadedScalarSnapshots.persisted_version(entity))
         saved = LoadedScalarSnapshots.values(entity)
         origin = LoadedScalarSnapshots.origin(entity)
         LoadedScalarSnapshots.capture(entity, {"id": Value.I64(7), "version": Value.I64(1)})
         self.assertIs(LoadedScalarSnapshots.origin(entity), EntityCreationState.HYDRATED)
+        self.assertEqual(LoadedScalarSnapshots.persisted_version(entity), 1)
         LoadedScalarSnapshots.restore(entity, saved, origin=origin)
         self.assertIs(LoadedScalarSnapshots.origin(entity), EntityCreationState.RESERVED)
         self.assertEqual(LoadedScalarSnapshots.values(entity)["name"].val, "same")
+        LoadedScalarSnapshots.capture(entity, values)
+        entity.version = 1
+        self.assertIsNone(LoadedScalarSnapshots.persisted_version(entity))
+        with self.assertRaises(EntityCreationError):
+            EntityCreationState.HYDRATED.validate_mutation("Update", 7,
+                LoadedScalarSnapshots.persisted_version(entity), True)
+        del entity.version
         self.assertEqual(vars(entity), {})
 
 

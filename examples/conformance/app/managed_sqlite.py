@@ -96,7 +96,7 @@ async def flow(context, allocator, provider, round_number):
     unchanged = await items(created.id).execute_for_one(context)
     assert unchanged.version == 1
 
-    versionless = WorkItem.from_json(json.dumps({"id": str(created.id), "title": "snapshot without version"}))
+    versionless = WorkItem.from_json(json.dumps({"id": str(created.id), "title": "snapshot without version", "description": None, "platform": "1"}))
     versionless.update_title("must reject before callbacks")
     original_execute = context.execute_graph_save
     def unexpected_execution(*args, **kwargs):
@@ -108,6 +108,18 @@ async def flow(context, allocator, provider, round_number):
         assert error.code == "ENTITY_CREATION_CONTEXT_REQUIRED"
     else:
         raise AssertionError("Versionless hydrated mutation was accepted")
+    finally:
+        context.execute_graph_save = original_execute
+
+    # An ordinary updater cannot manufacture a persisted-version baseline.
+    versionless.update_version(1)
+    context.execute_graph_save = unexpected_execution
+    try:
+        await versionless.audit_as("Reject a version filled after hydration").save(context)
+    except EntityCreationError as error:
+        assert error.code == "ENTITY_CREATION_CONTEXT_REQUIRED"
+    else:
+        raise AssertionError("Versionless snapshot manufactured a persisted version")
     finally:
         context.execute_graph_save = original_execute
 

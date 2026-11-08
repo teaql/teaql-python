@@ -60,6 +60,14 @@ class LoadedScalarSnapshots:
         return cls._origins.get(entity, EntityCreationState.UNMANAGED)
 
     @classmethod
+    def persisted_version(cls, entity):
+        """Read admission provenance, never a later mutable carrier value."""
+        if cls.origin(entity) is not EntityCreationState.HYDRATED:
+            return None
+        value = cls._values.get(entity, {}).get('version')
+        return value.val if isinstance(value, Value) and type(value.val) is int else None
+
+    @classmethod
     def restore(cls, entity, values, *, origin=EntityCreationState.HYDRATED):
         cls.capture(entity, values, origin=origin)
 

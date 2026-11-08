@@ -215,6 +215,8 @@ async def verify(args):
 
         for mode in ('checker', 'provider', 'cancel'):
             pending, leaf = (await graph(primary, mode + ' failure followed by retry'))
+            reserved_ids = (pending.id, leaf.id)
+            assert all(type(identity) is int and identity > 0 for identity in reserved_ids)
             baseline = storage(args.database)
             reset()
             reads = clock.calls
@@ -245,9 +247,9 @@ async def verify(args):
             clean(primary)
             assert storage(args.database) == baseline
             failed_effects, failed_visits = meter.effects(), list(registry.visits)
+            assert (pending.id, leaf.id) == reserved_ids
             if mode == 'checker':
                 assert not any(meter.effects().values())
-                assert pending.id is None and leaf.id is None
             else:
                 assert meter.effects()['mutations'] == 2 and meter.effects()['rollbacks'] == 1 and meter.effects()['commits'] == 0
             control.reject_checker, control.mode = False, None

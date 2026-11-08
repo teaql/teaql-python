@@ -28,11 +28,13 @@ class EntityCreationState(Enum):
         if self is not EntityCreationState.RESERVED or not _positive_identity(identity):
             raise EntityCreationError()
 
-    def validate_mutation(self, action, identity, version, pending):
+    def validate_mutation(self, action, identity, persisted_version, pending):
         if not pending:
             return
         if action == "Create":
             self.require_reserved(identity)
         elif (action not in ("Update", "Delete") or self is not EntityCreationState.HYDRATED or not _positive_identity(identity)
-              or type(version) is not int or version <= 0):
+              or type(persisted_version) is not int):
             raise EntityCreationError()
+        # Persisted tombstones/exhausted values still have read provenance.
+        # The shared version validator owns their precise lifecycle errors.

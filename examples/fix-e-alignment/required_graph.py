@@ -41,13 +41,15 @@ async def verify(options):
         await context.ensure_schema()
         assert calls, "counter must observe actual provider setup"
         order = ((await Q.purchase_orders().comment("Prepare an invalid child graph")
-                 .purpose("Reject before parent or child ID reservation").new_entity(context)))
+                 .purpose("Reject before parent or child persistence").new_entity(context)))
         order.update_contact_phone("5550100").update_internal_note(None)
         child = ((await Q.order_items().comment("Prepare a missing product name")
                  .purpose("Exercise indexed required input diagnostics").new_entity(context)))
         child.update_unit_price(Decimal("10.00"))
         order.order_item_list().append(child)
         before = len(calls)
+        reserved_ids = (order.id, child.id)
+        assert all(type(identity) is int and identity > 0 for identity in reserved_ids)
         clock_before = clock.calls
         try:
             await order.audit_as("Reject incomplete child input").save(context)
@@ -57,10 +59,10 @@ async def verify(options):
             assert failure.location.model_path == "order_item_list[0].product_name"
             assert failure.location.instance_path == "/orderItemList/0/productName"
         assert len(calls) == before, f"rejected child touched provider: {calls[before:]}"
-        assert order.id is None and child.id is None
+        assert (order.id, child.id) == reserved_ids
         # Business Required is evaluated after customer Fix. An unsuccessful
         # preparation captures one graph clock, but still performs no provider
-        # calls and reserves no identities. Identity/root admission is earlier.
+        # calls or additional reservations. Identities already exist on creation.
         assert clock.calls == clock_before + 1
         retry_clock_before = clock.calls
 
@@ -93,9 +95,8 @@ async def verify(options):
         assert unchanged.version == 1
         assert E.order_item(unchanged).product_name().eval() == "Corrected synthetic product"
 
-        # A persisted child can move to a newly created parent. During pure
-        # preparation that parent has no assigned ID: retain the typed reference
-        # until final preflight, rather than comparing two None IDs as equal.
+        # A persisted child can move to a newly created parent. Its reserved
+        # identity and the changed FK must survive preparation and final checks.
         child.update_product_name("Corrected synthetic product")
         replacement = ((await Q.purchase_orders().comment("Prepare a new owner for an existing child")
                        .purpose("Verify unresolved reference identity survives preparation").new_entity(context)))
