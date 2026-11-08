@@ -294,9 +294,12 @@ async def verify(args):
         for invalid in ('explicit-create', 'wrong-update-context', 'move-existing-owner'):
             current = primary if invalid != 'wrong-update-context' else context(ContextEntityRef('Tenant', 2))
             if invalid == 'explicit-create':
-                # A constructor argument is an explicit loaded field. Writing
-                # an attribute on a NotLoaded field is not a generated update.
-                target = type(order)(tenant=2)
+                target = await Q.purchase_orders().comment('Prepare conflicting owner input').purpose('Verify early root mismatch rejection').new_entity(current)
+                # Deliberate negative carrier injection, not a public creation
+                # API or recommended application update. Mark the submitted
+                # owner as present so the mismatch cannot be silently ignored.
+                target.tenant = 2
+                target._loaded_fields.add('tenant')
                 target.update_contact_phone('5550762').update_internal_note(canary)
             else:
                 target = await (Q.purchase_orders().with_id_is(order.id).limit(1)
