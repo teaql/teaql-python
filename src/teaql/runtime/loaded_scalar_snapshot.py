@@ -7,6 +7,7 @@ from struct import pack
 from weakref import WeakKeyDictionary
 
 from teaql.core.value import Timestamp, Value
+from teaql.core.entity_creation import EntityCreationState
 
 
 def _same_representation(left, right, depth=0):
@@ -38,11 +39,15 @@ def _same_representation(left, right, depth=0):
 class LoadedScalarSnapshots:
     _values = WeakKeyDictionary()
     _owners = WeakKeyDictionary()
+    _origins = WeakKeyDictionary()
     same_value = staticmethod(_same_representation)
 
     @classmethod
-    def capture(cls, entity, values):
+    def capture(cls, entity, values, *, origin=EntityCreationState.HYDRATED):
+        if not isinstance(origin, EntityCreationState):
+            raise TypeError('Snapshot origin must be process-local creation provenance')
         cls._values[entity] = deepcopy(values)
+        cls._origins[entity] = origin
         key = getattr(entity, '_teaql_entity_key', None)
         cls._owners[entity] = key() if callable(key) else None
 
@@ -51,8 +56,12 @@ class LoadedScalarSnapshots:
         return deepcopy(cls._values.get(entity, {}))
 
     @classmethod
-    def restore(cls, entity, values):
-        cls.capture(entity, values)
+    def origin(cls, entity):
+        return cls._origins.get(entity, EntityCreationState.UNMANAGED)
+
+    @classmethod
+    def restore(cls, entity, values, *, origin=EntityCreationState.HYDRATED):
+        cls.capture(entity, values, origin=origin)
 
     @classmethod
     def discard_restored_fields(cls, entity, context):
@@ -72,6 +81,8 @@ class LoadedScalarSnapshots:
         pending = ledger._pending_values(key)
         context._validate_mutation_fields(key.entity, pending)
         if getattr(entity, '_action', None) != 'Update' or key in ledger.new_keys() or key in ledger.deleted_keys():
+            return ()
+        if cls.origin(entity) is not EntityCreationState.HYDRATED:
             return ()
         baseline = cls._values.get(entity)
         owner = cls._owners.get(entity)

@@ -317,7 +317,11 @@ class EntityJSONSchema:
             field = fields[canonical]
             values[field.loaded_name or field.native_name] = self._convert(field, raw, True, profile,
                 child_location, child_pointer, set(), depth + 1)
-        return entity_class(**values)
+        hydrate = getattr(entity_class, "_teaql_from_record", None)
+        # Generated models have a read-only hydration capability. Handwritten
+        # adapters retain their constructor contract; never infer insert intent
+        # from the presence or absence of an ID in a JSON document.
+        return hydrate(**values) if callable(hydrate) else entity_class(**values)
 
     def _convert(self, field, value, decoding, profile, location, pointer, active, depth):
         value = _unwrap(value)
