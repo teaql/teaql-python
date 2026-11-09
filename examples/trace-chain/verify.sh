@@ -44,6 +44,13 @@ for other_db in "$TEAQL_TRACE_CHAIN_DB" "$TEAQL_TRACE_CHAIN_SHARED_DB" "$TEAQL_T
   fi
 done
 export PYTHONPATH="$example/lib:$repo/src${PYTHONPATH:+:$PYTHONPATH}"
+mixed_database="${TEAQL_TRACE_CHAIN_MIXED_DB:-$TEAQL_TRACE_CHAIN_DB.mixed-graph.sqlite}"
+for other_db in "$TEAQL_TRACE_CHAIN_DB" "$TEAQL_TRACE_CHAIN_SHARED_DB" "$TEAQL_TRACE_CHAIN_PAGE_STREAM_DB" "$TEAQL_TRACE_CHAIN_AGGREGATE_DB" "$TEAQL_TRACE_CHAIN_CHECKER_DB"; do
+  if [[ "$mixed_database" == "$other_db" ]]; then
+    echo 'FAIL: mixed mutations require a separate retained database' >&2
+    exit 1
+  fi
+done
 snapshot="$(mktemp)"
 (cd "$example/lib" && rg --files --hidden -g '!**/__pycache__/**' | LC_ALL=C sort | xargs -d '\n' sha256sum) > "$snapshot"
 echo "Generated library manifest: $snapshot"
@@ -107,6 +114,13 @@ for attempt in first second; do
     python "$example/checker_overlap.py" | tee "$checker_log"
   rg -Fq 'PASS: Python generated Checker overlap 4 scenarios; accepted-only command/SQL/audit; serialized callbacks' "$checker_log"
   echo "PASS: generated Checker overlap $attempt; evidence $checker_log"
+  mixed_round=1
+  [[ "$attempt" != second ]] || mixed_round=2
+  mixed_log="$(mktemp -t teaql-python-mixed.XXXXXX.log)"
+  TEAQL_MIXED_GRAPH_DB="$mixed_database" TEAQL_MIXED_GRAPH_ROUND="$mixed_round" \
+    timeout --kill-after=5s 60s python "$example/mixed_graph.py" | tee "$mixed_log"
+  [[ "$(rg -c '^PYTHON_MIXED_GRAPH ' "$mixed_log")" == 6 ]]
+  echo "PASS: generated mixed create/update/delete $attempt; evidence $mixed_log"
 done
 (cd "$example/lib" && sha256sum --check "$snapshot")
 echo "PASS: two runs on the same database; generated library hashes unchanged"

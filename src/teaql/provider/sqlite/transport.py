@@ -177,6 +177,7 @@ class _SqliteTransaction(SqlTransactionTransportTx):
         self.db = db
         self._bind_values = bind_values
         self._decode_value = decode_value
+        self._closed = False
 
     async def fetch_all_sql(self, query: CompiledQuery) -> List[Dict[str, Any]]:
         self.db.row_factory = aiosqlite.Row
@@ -197,11 +198,28 @@ class _SqliteTransaction(SqlTransactionTransportTx):
     async def commit_sql(self) -> None:
         try:
             await self.db.commit()
-        finally:
-            await self.db.close()
+        except BaseException:
+            # A deferred constraint can fail at COMMIT, after every mutation
+            # and readback succeeded. Roll back while the connection is live,
+            # then preserve that original commit error even if cleanup fails.
+            try:
+                await self.rollback_sql()
+            except BaseException:
+                pass
+            raise
+        else:
+            await self._close()
 
     async def rollback_sql(self) -> None:
+        if self._closed:
+            return
         try:
             await self.db.rollback()
         finally:
+            await self._close()
+
+    async def _close(self) -> None:
+        try:
             await self.db.close()
+        finally:
+            self._closed = True
