@@ -1,7 +1,10 @@
 from typing import Any, Callable, Dict, Generic, Iterable, List, Optional, TypeVar
 from dataclasses import dataclass
+from copy import deepcopy
 
 T = TypeVar("T")
+U = TypeVar("U")
+K = TypeVar("K")
 
 @dataclass(frozen=True)
 class TeaQLPage(Generic[T]):
@@ -11,31 +14,83 @@ class TeaQLPage(Generic[T]):
     limit: int
 
 class SmartList(List[T], Generic[T]):
-    def __init__(self, data: Iterable[T] = (), facets: Optional[Dict[str, Any]] = None,
-                 total_count: Optional[int] = None, aggregations: Optional[Dict[str, Any]] = None):
+    """Typed rows plus a source-query metadata snapshot.
+
+    Construction copies metadata recursively; entity rows retain normal list semantics.
+    In-place edits retain the source snapshot. Derived filter/flat_map clear it.
+    """
+    def __init__(self, data: Iterable[T] = (),
+                 facets: Optional[Dict[str, 'SmartList[Dict[str, Any]]']] = None,
+                 total_count: Optional[int] = None, aggregations: Optional[Dict[str, Any]] = None,
+                 *, summary: Optional[Dict[str, Any]] = None):
         super().__init__(data)
-        self.facets = facets or {}
-        self.total_count = total_count if total_count is not None else len(self)
-        self.aggregations = dict(aggregations or {})
+        if total_count is not None and (isinstance(total_count, bool)
+                or not isinstance(total_count, int) or total_count < 0):
+            raise ValueError("total_count must be an exact non-negative integer")
+        self.facets: Dict[str, SmartList[Dict[str, Any]]] = {
+            name: deepcopy(facet) if isinstance(facet, SmartList) else SmartList(facet)
+            for name, facet in (facets or {}).items()
+        }
+        self.total_count = total_count
+        self.aggregations = deepcopy(aggregations or {})
+        self.summary = deepcopy(summary or {})
+        self._is_loaded = True
+
+    @classmethod
+    def empty(cls) -> 'SmartList[T]':
+        result = cls()
+        result._is_loaded = False
+        return result
+
+    @property
+    def is_loaded(self) -> bool:
+        return self._is_loaded
+
+    def total_count_or_len(self) -> int:
+        return self.total_count if self.total_count is not None else len(self)
 
     @property
     def data(self) -> 'SmartList[T]':
         return self
 
-    def facet(self, name: str) -> Any:
+    def facet(self, name: str) -> Optional['SmartList[Dict[str, Any]]']:
         return self.facets.get(name)
 
-    def map(self, f: Callable[[T], Any]) -> 'SmartList[Any]':
-        return SmartList((f(x) for x in self), self.facets, self.total_count, self.aggregations)
+    def remove_facet(self, name: str) -> Optional['SmartList[Dict[str, Any]]']:
+        return self.facets.pop(name, None)
 
-    def filter(self, f) -> 'SmartList':
-        return SmartList((x for x in self if f(x)), self.facets, self.total_count, self.aggregations)
+    def take_facets(self) -> Dict[str, 'SmartList[Dict[str, Any]]']:
+        facets, self.facets = self.facets, {}
+        return facets
 
-    def flat_map(self, f) -> 'SmartList':
-        result = []
-        for x in self:
-            result.extend(f(x))
-        return SmartList(result, self.facets, self.total_count, self.aggregations)
+    def map(self, f: Callable[[T], U]) -> 'SmartList[U]':
+        result = SmartList((f(x) for x in self), self.facets, self.total_count,
+                           self.aggregations, summary=self.summary)
+        result._is_loaded = self._is_loaded
+        return result
+
+    def filter(self, f: Callable[[T], bool]) -> 'SmartList[T]':
+        result = SmartList(x for x in self if f(x))
+        result._is_loaded = self._is_loaded
+        return result
+
+    def flat_map(self, f: Callable[[T], Iterable[U]]) -> 'SmartList[U]':
+        result = SmartList(value for x in self for value in f(x))
+        result._is_loaded = self._is_loaded
+        return result
+
+    def merge_by(self, incoming: Iterable[T], key: Callable[[T], K]) -> None:
+        positions = {key(item): index for index, item in enumerate(self)}
+        for item in incoming:
+            item_key = key(item)
+            if item_key in positions:
+                self[positions[item_key]] = item
+            else:
+                positions[item_key] = len(self)
+                self.append(item)
+
+    def identity_map(self, key: Callable[[T], K]) -> Dict[K, T]:
+        return {key(item): item for item in self}
 
     def first(self) -> Any:
         return self[0] if self else None
@@ -63,8 +118,8 @@ def to_list(lst: SmartList) -> List[Any]:
 def to_set(lst: SmartList) -> set:
     return set(lst.data)
 
-def identity_map(lst: SmartList) -> Dict[Any, Any]:
-    return {x: x for x in lst.data}
+def identity_map(lst: SmartList[T], key_func: Callable[[T], K] = lambda value: value) -> Dict[K, T]:
+    return lst.identity_map(key_func)
 
 def group_by(lst: SmartList, key_func) -> Dict[Any, List[Any]]:
     result = {}
@@ -84,7 +139,7 @@ def ids(lst: SmartList) -> List[Any]:
     return [x.get('id') if isinstance(x, dict) else getattr(x, 'id', None) for x in lst.data]
 
 def map_by_id(lst: SmartList) -> Dict[Any, Any]:
-    return { (x.get('id') if isinstance(x, dict) else getattr(x, 'id', None)): x for x in lst.data }
+    return {identifier: item for identifier, item in zip(ids(lst), lst) if identifier is not None}
 
 def versions(lst: SmartList) -> List[Any]:
     return [x.get('version') if isinstance(x, dict) else getattr(x, 'version', None) for x in lst.data]

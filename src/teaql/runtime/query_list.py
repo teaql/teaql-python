@@ -51,6 +51,8 @@ async def execute_typed_list(context, request: QueryRequest, hydrate: Callable[[
     service = context.require_resource('dataService')
 
     async def execute():
+        if root.query.group_by_items:
+            raise ValueError('grouped projections require a separate projection result boundary')
         total = None
         row_query = root.query
         if count_operation is None:
@@ -60,8 +62,8 @@ async def execute_typed_list(context, request: QueryRequest, hydrate: Callable[[
             query = deepcopy(root.query)
             query.aggregates = [item for item in query.aggregates
                                 if not (item.function == AggregateFunction.Count and item.alias == count_alias)]
-            rows_request = root.with_query(query)
             row_query = query
+            rows_request = root.with_query(query)
 
             async def count():
                 result = await service.query(context, root.for_count(count_alias, count_operation))
@@ -78,9 +80,18 @@ async def execute_typed_list(context, request: QueryRequest, hydrate: Callable[[
             else:
                 total = await count()
                 row_result = await service.query(context, rows_request)
-        return SmartList((capture_entity_query_properties(hydrate(row), row_query)
-                          for row in row_result.rows), facets=row_result.facets,
-                         total_count=total, aggregations={count_alias: total} if count_alias is not None else {})
+        aggregations = {count_alias: total} if count_alias is not None else {}
+        if row_query.aggregates:
+            if len(row_result.rows) != 1:
+                raise RuntimeError('dataService did not return one scalar aggregation result')
+            values = row_result.rows[0]
+            aggregations.update({item.alias: values[item.alias] for item in row_query.aggregates
+                                 if item.alias in values})
+            rows = ()
+        else:
+            rows = (capture_entity_query_properties(hydrate(row), row_query)
+                    for row in row_result.rows)
+        return SmartList(rows, facets=row_result.facets, total_count=total, aggregations=aggregations)
 
     return await observe_query_operation(context, service, root, execute,
                                          lambda result: {'teaql.result.cardinality': len(result)})

@@ -42,6 +42,11 @@ def test_web_response_from_smart_list():
     assert resp.recordCount == 10
     assert resp.facets == {"f1": [3, 4]}
 
+@pytest.mark.parametrize('total', [None, 0, 5])
+def test_web_response_does_not_substitute_length_for_exact_total(total):
+    response = WebResponse.from_smart_list(SmartList([], total_count=total))
+    assert response.model_dump()['recordCount'] == total
+
 @patch('teaql.runtime.env.ServiceRuntimeFromEnv.build_context')
 def test_get_tea_context(mock_build):
     mock_ctx = MagicMock()

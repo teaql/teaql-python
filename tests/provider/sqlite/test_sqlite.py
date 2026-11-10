@@ -235,6 +235,22 @@ async def test_schema_provider_does_not_interpret_legacy_bootstrap_graphs(temp_d
     assert constants == []
 
 @pytest.mark.asyncio
+async def test_bigint_primary_key_readback_uses_assigned_identity_not_sqlite_rowid(temp_db, schema_provider, service):
+    async with aiosqlite.connect(temp_db) as db:
+        await db.execute("CREATE TABLE users (id BIGINT PRIMARY KEY, name VARCHAR(255), version BIGINT)")
+        await db.commit()
+    request = MutationRequest(InsertCommand("User", {
+        "id": Value.I64(4096), "name": Value.Text("Assigned"), "version": Value.I64(1),
+    }), comment="verify modeled identity across shared SQLite schemas")
+    result = await service.mutate(None, request)
+    assert result.persisted_record == {"id": 4096, "name": "Assigned", "version": 1}
+    assert result.generated_values["id"].val == 4096
+    async with aiosqlite.connect(temp_db) as db:
+        cursor = await db.execute("SELECT rowid, id FROM users")
+        assert await cursor.fetchall() == [(1, 4096)]
+
+
+@pytest.mark.asyncio
 async def test_crud(temp_db, schema_provider, service):
     async with aiosqlite.connect(temp_db) as db:
         await db.execute("CREATE TABLE users (id INTEGER PRIMARY KEY, name VARCHAR(255), version INTEGER)")
