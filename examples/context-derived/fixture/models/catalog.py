@@ -112,6 +112,16 @@ class Catalog:
     def _teaql_entity_key(self):
         return EntityKey("Catalog", self._ledger_id)
 
+    def _teaql_restore_fixed_values(self, values):
+        """Runtime-owned restoration supplies only known, equal scalar values."""
+        if "name" in values:
+            value = values["name"]
+            raw = value.val if isinstance(value, Value) else value
+            self.name = raw
+
+
+        pass
+
     def get_dynamic_property(self, name):
         return self._projection_properties.get(name)
 

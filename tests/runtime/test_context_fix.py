@@ -19,6 +19,7 @@ def fixture():
                   .property(PropertyDescriptor("id", DataType.I64).is_id())
                   .property(PropertyDescriptor("version", DataType.I64).is_version())
                   .property(PropertyDescriptor("name", DataType.Text)))
+    descriptor.property(PropertyDescriptor("note", DataType.Text))
     descriptor.property(PropertyDescriptor("born_at", DataType.Timestamp).on_create_from_context("now"))
     descriptor.property(PropertyDescriptor("touched_at", DataType.Timestamp).on_create_from_context("now").on_update_from_context("now"))
     for name in ("source_ip", "opened_by", "last_ip", "changed_by"):
@@ -38,6 +39,11 @@ def fixture():
                     ContextFix.apply(context, record, prop.name, fn)
             if record.get("name") == Value.Text("INVALID"):
                 results.append(CheckResult("required", ObjectLocation().property("name")))
+            if record.get("name") in (Value.Text("NORMALIZE"), Value.Text("REPAIR_OTHER")):
+                other = record["name"] == Value.Text("REPAIR_OTHER")
+                record["name"] = Value.Text("same")
+                if other:
+                    record["note"] = Value.Text("business repair")
 
     context = (RuntimeModule().schema_entity(descriptor).checker("Probe", Checker()).into_context()
                .with_business_clock(FixedBusinessClock(B)))
@@ -83,6 +89,29 @@ def test_restored_business_values_are_not_independent_mutations():
     values = {"name": Value.Text("same")}
     context.check_and_fix_mutation(update(values, deepcopy(values)))
     assert not requests and values == {"name": Value.Text("same")}
+
+
+def test_normalized_business_edit_discards_only_automatic_context():
+    context, _, requests = fixture()
+    values = {"name": Value.Text("NORMALIZE")}
+    context.check_and_fix_mutation(update(values, {"name": Value.Text("same")}))
+    assert requests, "the initially dirty object must run Fix once"
+    assert values == {"name": Value.Text("same")}
+
+
+def test_normalized_business_edit_with_another_repair_keeps_context():
+    context, _, _ = fixture()
+    values = {"name": Value.Text("REPAIR_OTHER")}
+    context.check_and_fix_mutation(update(values, {"name": Value.Text("same"), "note": Value.Text("before")}))
+    assert values["note"] == Value.Text("business repair")
+    assert values["last_ip"] == Value.Text("B:last_ip")
+
+
+def test_normalized_edit_without_known_baseline_is_not_cancelled():
+    context, _, _ = fixture()
+    values = {"name": Value.Text("NORMALIZE")}
+    context.check_and_fix_mutation(update(values))
+    assert values["name"] == Value.Text("same") and values["last_ip"] == Value.Text("B:last_ip")
 
 
 def test_failed_check_discards_context_but_keeps_caller_value_and_allows_retry():

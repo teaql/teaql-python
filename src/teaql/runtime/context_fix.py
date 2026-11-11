@@ -52,10 +52,12 @@ class ContextFix:
         fields = _fields(context, entity)
         operation = operation or context.get_resource("fix_operation")
         old = old_values or {}
-        eligible = operation == "insert" or (operation == "update" and any(
-            isinstance(name, str) and name not in fields and name not in ("id", "version") and not name.startswith("_")
-            and (name not in old or not LoadedScalarSnapshots.same_value(value, old[name]))
-            for name, value in record.items()))
+        def has_business_change():
+            return operation == "insert" or (operation == "update" and any(
+                isinstance(name, str) and name not in fields and name not in ("id", "version") and not name.startswith("_")
+                and (name not in old or not LoadedScalarSnapshots.same_value(value, old[name]))
+                for name, value in record.items()))
+        eligible = has_business_change()
         before = {name: deepcopy(record[name]) for name in fields if name in record}
         frame = dict(context=context, entity=entity, record=record, location=location or ObjectLocation(),
                      fields=fields, operation=operation, eligible=eligible, now=_UNSET)
@@ -69,6 +71,16 @@ class ContextFix:
                 else:
                     record.pop(name, None)
             raise
+        else:
+            # Fix may repair the final business edit back to its baseline.
+            # Keep business repairs; do not let copied Context values persist
+            # as the sole remaining change, and do not execute Fix again.
+            if operation == "update" and not has_business_change():
+                for name in fields:
+                    if name in before:
+                        record[name] = deepcopy(before[name])
+                    else:
+                        record.pop(name, None)
         finally:
             _active.reset(token)
 

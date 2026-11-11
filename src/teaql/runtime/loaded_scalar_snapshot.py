@@ -108,5 +108,10 @@ class LoadedScalarSnapshots:
         fields = {prop.name for prop in getattr(descriptor, 'properties', ()) if not prop._is_id and not prop._is_version}
         restored = tuple(field for field, value in pending.items()
                          if field in fields and field in baseline and _same_representation(baseline[field], value))
+        # Generated native-member mapping, not JSON serialization or inferred
+        # casing. The callback changes values only; it never loads or saves.
+        restore_values = getattr(entity, '_teaql_restore_fixed_values', None)
+        if restored and callable(restore_values):
+            restore_values({field: deepcopy(baseline[field]) for field in restored})
         ledger._discard_fields(key, restored)
         return restored

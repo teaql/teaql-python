@@ -166,6 +166,51 @@ class Entry:
     def _teaql_entity_key(self):
         return EntityKey("Entry", self._ledger_id)
 
+    def _teaql_restore_fixed_values(self, values):
+        """Runtime-owned restoration supplies only known, equal scalar values."""
+        if "name" in values:
+            value = values["name"]
+            raw = value.val if isinstance(value, Value) else value
+            self.name = raw
+
+        if "born_at" in values:
+            value = values["born_at"]
+            raw = value.val if isinstance(value, Value) else value
+            self.bornAt = raw
+
+        if "touched_at" in values:
+            value = values["touched_at"]
+            raw = value.val if isinstance(value, Value) else value
+            self.touchedAt = raw
+
+        if "source_ip" in values:
+            value = values["source_ip"]
+            raw = value.val if isinstance(value, Value) else value
+            self.sourceIp = raw
+
+        if "last_ip" in values:
+            value = values["last_ip"]
+            raw = value.val if isinstance(value, Value) else value
+            self.lastIp = raw
+
+        if "opened_by" in values:
+            value = values["opened_by"]
+            raw = value.val if isinstance(value, Value) else value
+            self.openedBy = raw
+
+        if "changed_by" in values:
+            value = values["changed_by"]
+            raw = value.val if isinstance(value, Value) else value
+            self.changedBy = raw
+
+        if "guarded_token" in values:
+            value = values["guarded_token"]
+            raw = value.val if isinstance(value, Value) else value
+            self.guardedToken = raw
+
+
+        pass
+
     def get_dynamic_property(self, name):
         return self._projection_properties.get(name)
 

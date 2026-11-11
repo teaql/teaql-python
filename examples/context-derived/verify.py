@@ -9,7 +9,7 @@ from pathlib import Path
 import sqlite3
 
 import teaql
-from teaql.core.value import Timestamp
+from teaql.core.value import Timestamp, Value
 from teaql.data_service import SQLiteTeaQLClient
 from teaql.runtime import ContextFix, CheckException, FixedBusinessClock, UserContext
 from E import E
@@ -58,6 +58,7 @@ async def main():
                 prop.on_update_from_context("identity")
         registry = context.get_resource("checker_registry")
         generated = registry.checker("Entry")
+        normalized_name = "first"
 
         class Checker:
             def check_and_fix(self, ctx, record, location, results):
@@ -66,6 +67,8 @@ async def main():
                         continue
                     ContextFix.apply(ctx, record, field, "identity")
                 generated.check_and_fix(ctx, record, location, results)
+                if record.get("name") == Value.Text("NORMALIZE"):
+                    record["name"] = Value.Text(normalized_name)
 
         class Registry:
             def checker(self, entity):
@@ -130,6 +133,13 @@ async def main():
         stored = await load(identity)
         assert stored.version == original_version and stored.lastIp == "A:last_ip" and millis(stored.touchedAt) == millis(A)
 
+        first.update_name("NORMALIZE")
+        calls.clear()
+        await first.audit_as("Normalize the last business edit back to its persisted value").save(context)
+        assert not calls and len(events) == audits
+        assert first.name == "first" and first.version == original_version
+        assert first.lastIp == "A:last_ip" and millis(first.touchedAt) == millis(A)
+
         first.update_name("n" * 101)
         calls.clear()
         await rejected(first.audit_as("Reject invalid business value").save(context), "/name")
@@ -173,6 +183,30 @@ async def main():
         await parent.audit_as("Retry with just one dirty child").save(context)
         assert len(events) == audits + 1 and parent.version == parent_version
         assert (await load(identity)).lastIp == "C:last_ip" and (await load(second.id)).lastIp == "A:last_ip"
+
+        mixed = (await Q.catalogs().with_id_is(1).limit(1).comment("Load a mixed normalization graph")
+                 .purpose("Preserve valid sibling work and prepared-source guards").execute_for_list(context))[0]
+        first, second = await load(identity), await load(second.id)
+        mixed.entry_list().extend((first, second))
+        normalized_name = "graph edit"
+        normalized_version = first.version
+        first.update_name("NORMALIZE")
+        second.update_name("mixed sibling")
+        audits = len(events)
+        calls.clear()
+        await mixed.audit_as("Normalize one child while committing its sibling").save(context)
+        assert len(events) == audits + 1 and first.version == normalized_version
+        assert first.name == "graph edit" and millis(first.touchedAt) == millis(C)
+        first.update_name("NORMALIZE")
+        second.update_name("z" * 101)
+        audits = len(events)
+        calls.clear()
+        await rejected(mixed.audit_as("Reject a sibling after normalizing another child").save(context), "/entryList/1/name")
+        assert not calls and len(events) == audits
+        assert first.name == "graph edit" and second.name == "z" * 101
+        second.update_name("mixed sibling")
+        await mixed.audit_as("Restore invalid sibling without retaining Context intent").save(context)
+        assert not calls and len(events) == audits
         # Independent, read-only storage oracle; no seed or mutation SQL.
         with sqlite3.connect(database.resolve().as_uri() + "?mode=ro&immutable=1", uri=True) as db:
             row = db.execute("SELECT name,last_ip,source_ip,version FROM entry_data WHERE id=?", (identity,)).fetchone()
