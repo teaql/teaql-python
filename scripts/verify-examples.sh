@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(business-clock business-id conformance expression-profiles facet-trace fix-e-alignment internal-id mutation-policy object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management task_board trace-chain typed-extension-spi)
+expected=(business-clock business-id conformance context-derived expression-profiles facet-trace fix-e-alignment internal-id mutation-policy object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management task_board trace-chain typed-extension-spi)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -26,12 +26,7 @@ export TEAQL_SCALAR_PROBE_DB="$evidence_directory/scalar.sqlite"
 export TEAQL_FIX_E_EVIDENCE_DIR="$evidence_directory/fix-e"
 echo "Retained compact Python example inventory evidence: $evidence_directory"
 
-mapfile -t embedded_runtime_dirs < <(find "$repo/examples" -type d -name teaql -print)
-if ((${#embedded_runtime_dirs[@]})); then
-  printf 'generated examples must depend on the packaged runtime; embedded teaql snapshot: %s\n' \
-    "${embedded_runtime_dirs[@]}" >&2
-  exit 1
-fi
+python "$repo/scripts/verify_generated_runtime_boundary.py" "$repo/examples"
 if rg -l 'include\s*=.*teaql\*' "$repo/examples" --glob pyproject.toml >/dev/null; then
   echo 'generated example package discovery must not include an embedded teaql namespace' >&2
   exit 1
@@ -43,6 +38,7 @@ bash "$repo/examples/scalar-type-probe/verify-restoration.sh" "$evidence_directo
 bash "$repo/examples/scalar-type-probe/verify-version.sh" "$evidence_directory/version.sqlite"
 bash "$repo/examples/scalar-type-probe/verify-empty.sh" "$evidence_directory/empty-aggregates.sqlite"
 python "$repo/examples/fix-e-alignment/verify-local.py"
+TEAQL_CONTEXT_FIX_EVIDENCE_DIR="$evidence_directory/context-derived" python "$repo/examples/context-derived/verify-local.py"
 TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$evidence_directory/expression-profiles" \
   python "$repo/examples/expression-profiles/verify-local.py"
 PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main

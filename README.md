@@ -132,6 +132,11 @@ approval emits a warning; it is not automatic rejection. Marking for deletion
 stages a change—the audited Save performs it. Atomicity is provider/route scoped,
 not a distributed transaction across unrelated databases.
 
+Automatic Context values (clock, IP, actor) supplement an independently changed
+entity; a different Context cannot turn an unchanged save into an update.
+The [Context Fix example](examples/context-derived/) demonstrates staged values,
+field-level errors, graph rollback and retry using generated Q/E and audited save.
+
 ## Automatic logs without handwritten logging code
 
 **Debuggability and operability are core design goals.** The Q and Save

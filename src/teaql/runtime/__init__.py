@@ -8,6 +8,7 @@ from .tools import (
     Tools, ToolToken, ToolUnavailableError,
 )
 from .module import RuntimeModule, DefaultEntityDataServiceBehavior
+from .context_fix import ContextFix, ContextFixInput
 from .graph_session import GraphMutationSession, GraphCommittedError
 from .store import DataStore
 from .audit import RawAuditEvent, SafeAuditEvent, MutationAuditKind

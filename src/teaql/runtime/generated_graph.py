@@ -135,12 +135,12 @@ class _GeneratedGraphPreparation:
         if previous is not entity:
             _changed(command.entity, "ambiguous_mutation_view")
         deferred = frozenset(deferred_fields)
-        try:
-            self.session.context._check_and_fix_mutation_input(command, deferred_fields=deferred)
-        finally:
-            for field, value in getattr(command, 'values', {}).items():
-                if field not in ('id', 'version'):
-                    entity._entity_root.set(entity._teaql_entity_key(), field, value)
+        from .context_fix import ContextFix
+        ContextFix.capture_graph(self.session.context, entity)
+        self.session.context._check_and_fix_mutation_input(command, deferred_fields=deferred)
+        for field, value in getattr(command, 'values', {}).items():
+            if field not in ('id', 'version'):
+                entity._entity_root.set(entity._teaql_entity_key(), field, value)
         # The normal generated admission pass also removes known-baseline
         # equal changes. Snapshot the same normalized ledger, including when
         # the Business Clock equals an already persisted update timestamp.

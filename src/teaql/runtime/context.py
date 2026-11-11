@@ -752,6 +752,11 @@ class UserContext:
         validate_input(self, entity, field, expected_type, action, original, current, pending)
 
     def check_and_fix_record_at(self, entity: str, record: Any, location: Any):
+        from .context_fix import ContextFix
+        with ContextFix.scope(self, entity, record, location):
+            return self._check_and_fix_record_at(entity, record, location)
+
+    def _check_and_fix_record_at(self, entity: str, record: Any, location: Any):
         from .scalar_validation import finite_scalar_results, integral_scalar_results, pending_reference_values
         from .checker_privacy import _CheckBatch, capture
         from .i18n import CheckException
@@ -790,6 +795,18 @@ class UserContext:
             raise CheckException(results)
 
     def check_and_fix_mutation(self, mutation: Any):
+        from .context_fix import ContextFix
+        from teaql.core.mutation_version import validate_mutation_versions
+        validate_mutation_versions(mutation)
+        entity, record = getattr(mutation, "entity", None), getattr(mutation, "values", None)
+        if not entity or record is None:
+            return self._check_and_fix_mutation(mutation)
+        operation = type(mutation).__name__.replace("Command", "").lower()
+        with ContextFix.scope(self, entity, record, operation=operation,
+                              old_values=getattr(mutation, "old_values", None)):
+            return self._check_and_fix_mutation(mutation)
+
+    def _check_and_fix_mutation(self, mutation: Any):
         """Run generated fixes and checks before a mutation reaches a provider."""
         from teaql.core.mutation_version import validate_mutation_versions
         from .checker_privacy import _CheckBatch, capture

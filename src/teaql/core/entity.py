@@ -148,6 +148,23 @@ class EntityRoot:
                     if not values:
                         change_set._changes.pop(key, None)
 
+    def _capture_fields(self, key: EntityKey, fields, current_key=None):
+        """Invocation undo of automatic fields, never a Context-owned ledger."""
+        names = tuple(fields)
+        with self._lock:
+            captured = [(change_set, {field: deepcopy(values[field]) for field in names if field in values})
+                        for change_set in self._change_sets
+                        for values in (change_set._changes.get(key, {}),)]
+        def undo():
+            target = current_key() if current_key else key
+            with self._lock:
+                self._discard_fields(target, names)
+                for change_set, before in captured:
+                    if any(change_set is active for active in self._change_sets):
+                        for field, value in before.items():
+                            change_set.set(target, field, deepcopy(value))
+        return undo
+
     def mark_as_new(self, key: EntityKey) -> None:
         with self._lock:
             self._new_keys.add(key)

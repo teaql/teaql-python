@@ -9,6 +9,8 @@ class PropertyDescriptor:
         self.nullable = True
         self.generated_on_insert = False
         self.generated_on_update = False
+        self.create_function = None
+        self.update_function = None
         self.log_policy_val = 'unknown'
     def log_policy(self, policy):
         """Trusted schema policy; incoming requests cannot override it."""
@@ -37,6 +39,16 @@ class PropertyDescriptor:
         """Trusted generated metadata, not a caller-supplied validation bypass."""
         self.generated_on_insert = insert
         self.generated_on_update = update
+        return self
+
+    def on_create_from_context(self, function):
+        self.create_function = function
+        self.generated_on_insert = True
+        return self
+
+    def on_update_from_context(self, function):
+        self.update_function = function
+        self.generated_on_update = True
         return self
 
 class RelationDescriptor:
