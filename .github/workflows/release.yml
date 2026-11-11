@@ -1,22 +1,45 @@
 name: Publish Python package
 
 on:
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: Existing immutable signed Python release tag
+        required: true
+        type: string
   push:
     tags:
       - "python-v*"
 
+env:
+  TEAQL_RELEASE_TAG: ${{ inputs.release_tag || github.ref_name }}
+
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
+      - name: Validate immutable release tag input
+        shell: bash
+        run: '[[ "$TEAQL_RELEASE_TAG" =~ ^python-v[0-9]+\.[0-9]+\.[0-9]+$ ]]'
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ inputs.release_tag || github.ref }}
+      - name: Verify checked out tag source
+        shell: bash
+        run: |
+          test "$(git cat-file -t "$TEAQL_RELEASE_TAG")" = tag
+          test "$(git rev-parse "$TEAQL_RELEASE_TAG^{commit}")" = "$(git rev-parse HEAD)"
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
       - run: python -m pip install --upgrade build
-      - run: python -m pip install --editable ".[test,telemetry]"
+      - run: python -m pip install --editable ".[test,telemetry,object-storage-s3]"
       - name: Verify tag matches package version
-        run: test "${GITHUB_REF_NAME#python-v}" = "$(python -c 'import importlib.metadata; print(importlib.metadata.version("teaql"))')"
+        shell: bash
+        run: |
+          test "${TEAQL_RELEASE_TAG#python-v}" = "$(python -c 'import importlib.metadata; print(importlib.metadata.version("teaql"))')"
       - run: python -m pytest
       - run: python -m build
       - uses: actions/upload-artifact@v4
