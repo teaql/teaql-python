@@ -93,7 +93,7 @@ def junit(file):
 
 
 def generated():
-    fixture = REPO / "examples/context-derived/fixture"
+    fixture = REPO / "examples/natural-messages/fixture"
     manifest = fixture / "generated-files.json"
     files = json.loads(manifest.read_text())
     for name, digest in files.items():
@@ -120,7 +120,7 @@ def main():
     def interrupted(signum, frame):
         raise SystemExit(128 + signum)
     signal.signal(signal.SIGTERM, interrupted)
-    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONPATH=os.pathsep.join((str(REPO / "src"), str(REPO / "examples/context-derived/fixture"))),
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONPATH=os.pathsep.join((str(REPO / "src"), str(REPO / "examples/natural-messages/fixture"))),
         TEAQL_TELEMETRY_ENABLED="false", TMPDIR=str(scratch))
     for name in list(env):
         if any(token in name for token in ("TOKEN", "PASSWORD", "SECRET", "AUTH", "API_KEY")):
@@ -162,7 +162,9 @@ def main():
                     extra={"TEAQL_NATURAL_MESSAGES_DB": str(output / "example.sqlite")})
                 responses = [json.loads(line.partition("=")[2]) for line in log.splitlines() if line.startswith("PY_NATURAL_RESPONSE=")]
                 frames = [json.loads(line.partition("=")[2]) for line in log.splitlines() if line.startswith("PY_NATURAL_SQLITE_PASS=")]
-                assert len(responses) == 3 and len(frames) == 1 and frames[0]["passed"]
+                assert len(responses) == 4 and len(frames) == 1 and frames[0]["passed"]
+                assert frames[0]["automaticMetadata"] and frames[0]["originalGeneratedChecker"]
+                assert frames[0]["unchangedParent"] and frames[0]["customerRendererCalls"] == 1
                 (output / f"responses-{round_number}.json").write_text(json.dumps(responses, ensure_ascii=False, indent=2) + "\n")
                 report["rounds"].append(dict(round=round_number, **frames[0]))
                 assert generated() == report["fixture"] and source() == report["sourceHashes"]

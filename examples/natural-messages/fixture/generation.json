@@ -1,0 +1,12 @@
+{
+  "schema": "teaql.generated-example-provenance/v1",
+  "generatorCommit": "493b45cc0c1df2f87873a513f7adb3ad7a3da405",
+  "upstreamTest": "com.skynet.codegenerator.PythonNaturalMessagesGenerationTest",
+  "fixtureOutputProperty": "teaql.python.natural.fixture.output",
+  "scope": "python-lib-core",
+  "runtimeDependency": "local repository source",
+  "generationReceipt": "teaql-conformance/evidence/2026-11-12-natural-checker-python-generation-origin-qualified/receipt.json",
+  "generationReceiptSha256": "e61907c9f1dfc1addfc261dccd05eb91d8585fb69503f76b8225b9d2dd714884",
+  "implementationHandEdited": false,
+  "publicPublication": false
+}

@@ -1,23 +1,33 @@
 # Natural Checker messages through a generated SQLite graph
 
 Run `python examples/natural-messages/verify-local.py` from this checkout. The
-example runs twice on one isolated database, using the unchanged generated
-Catalog/Entry library under `../context-derived/fixture` and this local runtime.
+example runs twice on one isolated database, using the evaluated generated
+Catalog/Entry library under `fixture/` and this repository's local runtime.
 Set `TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR` to a new absolute path to retain evidence
 at a chosen location. The verifier otherwise prints its temporary evidence path.
 
 Generated bounded Q, loaded E and audited graph saves demonstrate:
 
 - English and Chinese required messages locating the second child.
-- A masked name with an eight-scalar bound and its original nine-scalar length.
+- The actual generated 100-scalar name bound and an original 101-scalar length.
+- A customer renderer called once, with masked arguments and safe text retained
+  when the child error receives its final graph path.
 - Zero provider/transaction activity and no audit on rejection.
 - A corrected save that writes/audits only the second child, with independent
   SQLite readback at version 2.
 
-Application-owned metadata supplies passive presentation labels, sensitivity
-and a small name constraint; the generated fixture is not edited. Required
-IP/actor example fields use the existing Context Fix customization seam. This
-does not claim automatic generation of the new presentation resources.
+The generated module installs passive model vocabulary, native Checkers and
+model-declared name sensitivity. The application does not install presentation
+metadata, replace Checkers, or alter generated field constraints. Null-name
+failures are rejected before graph admission; their final messages use the
+explicit Catalog origin even though only children are modified. Length failures
+retain the same origin through normal graph preparation. The unchanged parent
+does not gain a version or an audit event.
+
+`fixture/generated-files.json` records the generated implementation hashes.
+`fixture/evaluation.json` is the model evaluation, and
+`fixture/generation.json` pins its generator/source receipt. Regenerate using
+the upstream test named there; never patch generated implementation files.
 
 Run the complete native suite and shared golden/negative cases with:
 

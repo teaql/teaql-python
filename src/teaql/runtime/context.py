@@ -726,6 +726,22 @@ class UserContext:
                 warnings=warnings, natural_origin=origin, resolve=self.entity, owner=origin[1])
         return owned
 
+    def _validate_generated_graph_input(self, origin, validate):
+        """Render the completed early-validation path before graph admission.
+
+        The generated root supplies its type explicitly, including when only
+        a child is writable. Configuration is invocation-local; no object graph
+        or Context state is retained by a violation.
+        """
+        from .i18n import CheckException
+        configuration = self.capture_checker_messages()
+        try:
+            return validate()
+        except CheckException as failure:
+            failure.refresh_presentation(self.render_checker_graph_results(
+                failure.violations, configuration, (configuration.model, origin)))
+            raise
+
     def generate_id(self, entity: str) -> Optional[int]:
         raise RuntimeError("synchronous generate_id is unsupported; use an async InternalIdAllocator")
 
@@ -946,7 +962,15 @@ class UserContext:
                 results.append(CheckResult("required", ObjectLocation().property(prop.name),
                                            entity_type=mutation.entity))
         if results:
-            self.translate_check_results(results)
+            from .checker_privacy import _CheckBatch, capture
+            from .checker_messages import bind_origin
+            configuration = self.capture_checker_messages()
+            results = _CheckBatch(bind_origin(results, configuration.model, mutation.entity),
+                mutation.entity, capture(values, self.entity, mutation.entity), configuration)
+            try:
+                self.translate_check_results(results)
+            finally:
+                results.scope = ((), ())
             raise CheckException(results)
 
     def _check_and_fix_mutation_input(self, mutation: Any, *, deferred_fields=()):

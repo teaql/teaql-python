@@ -1,0 +1,5 @@
+<root name="natural-message-service" org="example" data_service="sqlite" teaql_python_version="0.5.0.dev0">
+  <catalog _name="catalog" _zh_CN="目录" name="名称：Catalog"/>
+  <entry _name="entry" _zh_CN="明细" catalog="catalog()" name="名称：Entry"
+         born_at="createTime()" touched_at="updateTime()" _audit_mask_fields="name"/>
+</root>

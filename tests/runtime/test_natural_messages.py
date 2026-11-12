@@ -42,6 +42,68 @@ def catalog(locales):
     return json.dumps({"schema": "teaql.checker-messages/v1", "defaultLocale": "en", "locales": locales})
 
 
+def test_early_required_input_keeps_declaring_type_and_explicit_graph_origin():
+    from teaql.core.meta import PropertyDescriptor
+    from teaql.core.mutation import UpdateCommand
+    from teaql.core.value import DataType
+    ctx = context()
+    ctx.register_entity(EntityDescriptor("Entry").property(PropertyDescriptor("name", DataType.Text).required()))
+    command = UpdateCommand.new("Entry", 7).expected_version(1).value("name", None)
+    captured = []
+    def validate():
+        try:
+            ctx._validate_required_mutation_input(command)
+        except CheckException as error:
+            assert error.violations[0].message == "The name is required."
+            failure = CheckException([error.violations[0].prefixed_by(location(["entry_list", 1]))])
+            captured.append(failure)
+            raise failure from None
+    with pytest.raises(CheckException) as caught:
+        ctx._validate_generated_graph_input("Catalog", validate)
+    assert caught.value is captured[0]
+    result = caught.value.violations[0]
+    assert result.message == "The name of the 2nd entry is required."
+    assert result.entity_type == "Entry" and result.location.model_path == "entry_list[1].name"
+    assert result.to_wire()["instancePath"] == "/entryList/1/name"
+    assert ctx._graph_session is None
+
+
+def test_early_graph_boundary_preserves_safe_customer_text_without_second_call():
+    from teaql.core.meta import PropertyDescriptor
+    from teaql.core.mutation import UpdateCommand
+    from teaql.core.value import DataType
+    secret, calls = "early-private-literal", []
+    ctx = context()
+    ctx.register_entity(EntityDescriptor("Entry").audit_mask_fields(["note"]).property(
+        PropertyDescriptor("name", DataType.Text).required()).property(PropertyDescriptor("note", DataType.Text)))
+    def renderer(request):
+        calls.append(request)
+        return CheckerMessageOutput("Private " + secret)
+    ctx.install_checker_message_renderer(renderer)
+    command = UpdateCommand.new("Entry", 7).expected_version(1).value("name", None).value("note", secret)
+    def validate():
+        try:
+            ctx._validate_required_mutation_input(command)
+        except CheckException as error:
+            raise CheckException([error.violations[0].prefixed_by(location(["entry_list", 1]))]) from None
+    with pytest.raises(CheckException) as caught:
+        ctx._validate_generated_graph_input("Catalog", validate)
+    assert len(calls) == 1
+    assert caught.value.violations[0].message == "Private [REDACTED]"
+    assert secret not in str(caught.value)
+
+
+def test_early_graph_boundary_returns_values_and_preserves_other_failures():
+    ctx = context()
+    assert ctx._validate_generated_graph_input("Catalog", lambda: 42) == 42
+    failure = RuntimeError("validation-control")
+    def validate():
+        raise failure
+    with pytest.raises(RuntimeError) as caught:
+        ctx._validate_generated_graph_input("Catalog", validate)
+    assert caught.value is failure
+
+
 @pytest.mark.parametrize("case", [*FIXTURE["cases"], *ROOTS["cases"]], ids=lambda case: case["name"])
 def test_shared_twenty_four_golden_cases(case):
     path = location(case["path"])
