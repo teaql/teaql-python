@@ -249,3 +249,14 @@ def test_reused_safe_plan_reprojects_new_sensitive_values_without_reopening_temp
     ctx.translate_check_results([source])
     assert secret not in source.message and "Private [REDACTED]" in source.message
     assert str(len(secret)) in source.message and source.input_value == "[REDACTED]"
+
+
+def test_context_composition_warms_resources_before_error_rendering(monkeypatch):
+    monkeypatch.setattr(I18nCatalog, "_builtin", None)
+    ctx = context()
+    assert I18nCatalog._builtin is not None
+    def forbidden(*args, **kwargs):
+        raise AssertionError("message rendering attempted file I/O")
+    monkeypatch.setattr(Path, "read_text", forbidden)
+    result = ctx.translate_check_results_from("Catalog", [CheckResult("required", location(["entry_list", 1, "name"]))])[0]
+    assert result.message == "The name of the 2nd entry is required."

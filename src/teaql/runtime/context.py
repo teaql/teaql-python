@@ -142,6 +142,8 @@ class UserContext:
         self._checker_presentation_model = EMPTY
         self._checker_message_renderer = standard_checker_message_renderer
         self._checker_message_warning = default_checker_message_warning
+        from .i18n import I18nCatalog
+        I18nCatalog.builtin()  # Warm legacy fallback resources at composition, not at a validation failure.
 
     def begin_fix_evidence(self):
         self._fix_evidence_current = []
