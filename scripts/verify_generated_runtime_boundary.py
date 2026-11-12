@@ -1,4 +1,4 @@
-"""Reject embedded runtimes; allow only hashed generator provenance metadata."""
+"""Reject embedded runtimes; allow only enumerated, hashed passive metadata."""
 import hashlib
 import json
 from pathlib import Path
@@ -12,15 +12,21 @@ def verify(examples):
         children = list(package.iterdir())
         metadata = package / "model-provenance.json"
         manifest = package.parent / "generated-files.json"
-        if len(children) != 1 or children[0] != metadata or metadata.is_symlink() or not metadata.is_file():
+        allowed = {"model-provenance.json", "checker-model.json"}
+        if (not children or {file.name for file in children} - allowed
+                or metadata not in children or any(file.is_symlink() or not file.is_file() for file in children)):
             raise ValueError(f"embedded teaql runtime snapshot: {package}")
         if manifest.is_symlink() or not manifest.is_file():
             raise ValueError(f"unowned generator provenance: {package}")
-        expected = json.loads(manifest.read_text()).get("teaql/model-provenance.json")
-        if expected != hashlib.sha256(metadata.read_bytes()).hexdigest():
-            raise ValueError(f"generator provenance hash mismatch: {metadata}")
+        hashes = json.loads(manifest.read_text())
+        for file in children:
+            if hashes.get("teaql/" + file.name) != hashlib.sha256(file.read_bytes()).hexdigest():
+                raise ValueError(f"generator metadata hash mismatch: {file}")
         if json.loads(metadata.read_text()).get("schemaVersion") != 1:
             raise ValueError(f"unknown generator provenance schema: {metadata}")
+        checker = package / "checker-model.json"
+        if checker in children and json.loads(checker.read_text()).get("schema") != "teaql.checker-model/v1":
+            raise ValueError(f"unknown checker presentation schema: {checker}")
     for module in Path(examples).rglob("teaql.py"):
         raise ValueError(f"embedded teaql runtime module: {module}")
 
