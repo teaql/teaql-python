@@ -135,6 +135,13 @@ class UserContext:
         self._explicit_schema_provider = False
         from .mutation_policy import MutationPolicyRuntimeState
         self._mutation_policy = MutationPolicyRuntimeState()
+        from .checker_message_catalog import BUILTIN
+        from .checker_message_presentation import EMPTY
+        from .checker_messages import standard_checker_message_renderer, default_checker_message_warning
+        self._checker_message_catalog = BUILTIN
+        self._checker_presentation_model = EMPTY
+        self._checker_message_renderer = standard_checker_message_renderer
+        self._checker_message_warning = default_checker_message_warning
 
     def begin_fix_evidence(self):
         self._fix_evidence_current = []
@@ -262,7 +269,12 @@ class UserContext:
             session.context._mutation_policy.ensure_graph_complete()
             if transaction is not None:
                 await self._finish_graph_transaction(transaction, "commit", session.context)
-        except BaseException:
+        except BaseException as failure:
+            from .i18n import CheckException
+            if session is not None and isinstance(failure, CheckException):
+                failure.refresh_presentation(session.context.render_checker_graph_results(
+                    failure.violations, session._checker_messages,
+                    (session._checker_messages.model, session._checker_origin)))
             try:
                 if transaction is not None:
                     await self._finish_graph_transaction(transaction, "rollback", session.context if session else self)
@@ -665,6 +677,53 @@ class UserContext:
         from .i18n import I18nCatalog
         return self.get_resource("i18n_catalog") or I18nCatalog.builtin()
 
+    def install_checker_message_catalog(self, source):
+        from .checker_message_catalog import CheckerMessageCatalog
+        catalog = CheckerMessageCatalog.from_json(source)
+        self._checker_message_catalog = catalog
+        return self
+
+    def install_checker_presentation_model(self, model):
+        from .checker_message_presentation import CheckerPresentationModel
+        if not isinstance(model, CheckerPresentationModel):
+            raise TypeError("Checker presentation model is required")
+        self._checker_presentation_model = model
+        return self
+
+    def install_checker_message_renderer(self, renderer):
+        if not callable(renderer):
+            raise TypeError("Checker renderer must be callable")
+        self._checker_message_renderer = renderer
+        return self
+
+    def install_checker_message_warning(self, sink):
+        if not callable(sink):
+            raise TypeError("Checker warning sink must be callable")
+        self._checker_message_warning = sink
+        return self
+
+    def capture_checker_messages(self):
+        from .checker_messages import CheckerMessageConfiguration
+        from .i18n import Locale
+        return CheckerMessageConfiguration(self._checker_presentation_model, self._checker_message_catalog,
+            self.i18n_catalog(), Locale.parse(self.language()), self._checker_message_renderer, self._checker_message_warning)
+
+    def translate_check_results_from(self, origin, results):
+        from .checker_messages import bind_origin
+        config = self.capture_checker_messages()
+        results[:] = bind_origin(results, config.model, origin)
+        return self.translate_check_results(results)
+
+    def render_checker_graph_results(self, results, config, origin):
+        from .checker_privacy import clone, translate
+        if type(self).translate_check_results is not UserContext.translate_check_results:
+            return list(results)  # A customer's explicit Context hook stays authoritative.
+        warnings, owned = set(), [clone(result) for result in results]
+        for result in owned:
+            translate(config.legacy, result, config.locale, natural_config=config,
+                warnings=warnings, natural_origin=origin, resolve=self.entity, owner=origin[1])
+        return owned
+
     def generate_id(self, entity: str) -> Optional[int]:
         raise RuntimeError("synchronous generate_id is unsupported; use an async InternalIdAllocator")
 
@@ -760,6 +819,8 @@ class UserContext:
         from .scalar_validation import finite_scalar_results, integral_scalar_results, pending_reference_values
         from .checker_privacy import _CheckBatch, capture
         from .i18n import CheckException
+        from .checker_messages import bind_origin
+        checker_messages = self.capture_checker_messages()
         self._validate_mutation_fields(entity, record, location)
         before_scope = capture(record, self.entity, entity)
         descriptor = self.entity(entity)
@@ -787,7 +848,8 @@ class UserContext:
             
         if results:
             after_scope = capture(record, self.entity, entity)
-            results = _CheckBatch(results, entity, tuple(a + b for a, b in zip(before_scope, after_scope)))
+            results = _CheckBatch(bind_origin(results, checker_messages.model, entity), entity,
+                tuple(a + b for a, b in zip(before_scope, after_scope)), checker_messages)
             try:
                 self.translate_check_results(results)
             finally:
@@ -939,9 +1001,15 @@ class UserContext:
 
     def translate_check_results(self, results: Any):
         from .checker_privacy import translate
+        from .checker_messages import bind_origin
+        configuration = getattr(results, "configuration", None) or self.capture_checker_messages()
+        warnings = set()
+        owner = getattr(results, "owner", None)
         for r in results:
+            if owner and not hasattr(r, "_natural_presentation"):
+                r._natural_presentation = bind_origin([r], configuration.model, owner)[0]._natural_presentation
             translate(self.i18n_catalog(), r, self.language(), resolve=self.entity,
-                      owner=getattr(results, "owner", None), scope=getattr(results, "scope", ((), ())))
+                      owner=owner, scope=getattr(results, "scope", ((), ())), natural_config=configuration, warnings=warnings)
         return results
 
     async def send_audit_event(self, event: Any):

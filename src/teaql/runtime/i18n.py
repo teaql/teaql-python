@@ -126,6 +126,8 @@ class CheckResult:
         result = replace(self, location=self.location.prefixed_by(prefix))
         if hasattr(self, "_presentation"):
             result._presentation = self._presentation
+        if hasattr(self, "_natural_presentation"):
+            result._natural_presentation = self._natural_presentation
         return result
     def to_wire(self, profile:JsonFieldNamingProfile=JsonFieldNamingProfile.CAMEL_CASE)->dict[str,Any]:
         from .checker_privacy import project
@@ -156,6 +158,12 @@ class CheckException(Exception):
     def __repr__(self):
         return f"CheckException({str(self)!r})"
 
+    def refresh_presentation(self, violations):
+        from .checker_privacy import project
+        self.violations = [project(result) for result in violations]
+        self.args = ("Check failed: " + "; ".join(
+            safe.message or repr(safe) for safe in (project(r, force_safe=True) for r in self.violations)),)
+
 class I18nCatalog:
     _builtin=None
     def __init__(self, locales:Mapping[str,Any], fallback=None):
@@ -171,6 +179,8 @@ class I18nCatalog:
             cls._builtin=cls.from_dict(payload)
         return cls._builtin
     def _find(self,code,key): return self._locales.get(code,{}).get("messages",{}).get(key)
+    def application_message(self,locale,key):
+        return None if self is I18nCatalog.builtin() else self._find(locale.value,key)
     def message(self,locale,key):
         return self._find(locale.value,key) or (self._fallback and self._fallback._find(locale.value,key)) or self._find("en",key) or (self._fallback and self._fallback._find("en",key)) or key
     def translate_check_result(self,result,locale):

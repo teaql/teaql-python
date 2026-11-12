@@ -11,6 +11,8 @@ class RuntimeModule:
         self._generated_bootstraps: List[Any] = []
         self._schema_entities: List[Any] = []
         self._wire_metadata: Dict[str, Any] = {}
+        from .checker_message_presentation import EMPTY
+        self._checker_presentation = EMPTY
 
     @classmethod
     def new(cls) -> 'RuntimeModule':
@@ -65,8 +67,17 @@ class RuntimeModule:
         self._schema_entities.append(descriptor)
         return self
 
+    def checker_presentation(self, model) -> 'RuntimeModule':
+        from .checker_message_presentation import CheckerPresentationModel
+        if not isinstance(model, CheckerPresentationModel):
+            raise TypeError("Checker presentation model is required")
+        self._checker_presentation = model
+        return self
+
     def and_module(self, other: 'RuntimeModule') -> 'RuntimeModule':
+        presentation = self._checker_presentation.merge(other._checker_presentation)
         combined = RuntimeModule.new()
+        combined._checker_presentation = presentation
         combined._entities = [*self._entities, *other._entities]
         combined._behaviors = {**self._behaviors, **other._behaviors}
         combined._dependencies = {**self._dependencies, **other._dependencies}
@@ -89,6 +100,9 @@ class RuntimeModule:
         return combined
 
     def apply_to(self, context: UserContext):
+        from .checker_message_presentation import EMPTY
+        if self._checker_presentation is not EMPTY:
+            context.install_checker_presentation_model(self._checker_presentation)
         for name, dep in self._dependencies.items():
             context.insert_resource(name, dep)
         installed_entities = self._schema_entities or self._entities

@@ -82,5 +82,18 @@ def test_root_diagnostics_preserve_full_canonical_path_and_render_all_profiles(l
     assert wire["instancePath"] == prefix.property("account_root").instance_path_for(profile)
     assert wire["location"][-1] == {"kind": "property", "name": "account_root"}
     assert "checker." not in wire["message"]
-    assert "purchase_order_list[0].order_item_list[0].account_root" in wire["message"]
+    # Human presentation no longer repeats the native path; the canonical path
+    # and every machine segment remain unchanged. Unknown custom rules receive
+    # a complete localized generic sentence and both owning collection positions.
+    from teaql.runtime import Locale
+    from teaql.runtime.checker_message_catalog import BUILTIN
+    selected = Locale.parse(locale)
+    classifier = "项" if selected in (Locale.CHINESE_SIMPLIFIED, Locale.CHINESE_TRADITIONAL) else ""
+    owners = [BUILTIN.item(selected, name, 0, classifier) for name in ("purchase order list", "order item list")]
+    expected = BUILTIN.select(selected, "checker.invalid", "deep").render({
+        "field": "account root", "objectPath": BUILTIN.separator(selected).join(owners)})
+    assert wire["message"] == expected
+    assert result.location.model_path == "purchase_order_list[0].order_item_list[0].account_root"
+    assert wire["location"] == [{"kind": "property", "name": "purchase_order_list"}, {"kind": "index", "index": 0},
+        {"kind": "property", "name": "order_item_list"}, {"kind": "index", "index": 0}, {"kind": "property", "name": "account_root"}]
     assert "inputValue" not in wire and "systemValue" not in wire

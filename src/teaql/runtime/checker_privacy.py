@@ -32,11 +32,12 @@ class _Presentation:
 class _CheckBatch(list):
     # Raw strings live only in this invocation's argument, never in Context,
     # result presentation metadata or the exception's retained violations.
-    __slots__ = ("owner", "scope")
+    __slots__ = ("owner", "scope", "configuration")
 
-    def __init__(self, results, owner, scope):
+    def __init__(self, results, owner, scope, configuration=None):
         super().__init__(clone(result) for result in results)
         self.owner, self.scope = owner, scope
+        self.configuration = configuration
         for result in self:
             if not result.entity_type or not result.entity_type.strip():
                 result.entity_type = owner
@@ -252,7 +253,8 @@ def _render(template, values, secrets, builtin):
     return "".join(parts)
 
 
-def project(result, *, resolve=None, owner=None, scope=((), ()), catalog=None, locale=None, force_safe=False):
+def project(result, *, resolve=None, owner=None, scope=((), ()), catalog=None, locale=None, force_safe=False,
+            natural_config=None, warnings=None, natural_origin=None):
     from .i18n import I18nCatalog
     output = clone(result)
     raw_input, raw_system = _raw(result.input_value), _raw(result.system_value)
@@ -287,7 +289,13 @@ def project(result, *, resolve=None, owner=None, scope=((), ()), catalog=None, l
     safe_secrets += tuple(_changed_strings(raw_system, safe_system))
     display_secrets += tuple(_changed_strings(raw_system, display_system))
     automatic = result.message is None or bool(same_message and previous.automatic_message)
-    if catalog is not None and automatic:
+    if natural_config is not None and automatic:
+        from .checker_messages import render_natural
+        safe_message, binding = render_natural(natural_config, result, input_value=safe_input, system_value=safe_system,
+            length=length, secrets=safe_secrets, rule=_rule_key(result.rule_id), seen=warnings if warnings is not None else set(), forced=natural_origin)
+        output._natural_presentation = binding
+        display_message = safe_message
+    elif catalog is not None and automatic:
         key = _rule_key(result.rule_id)
         template = catalog.message(locale, key)
         builtin = template == I18nCatalog.builtin().message(locale, key)
@@ -306,8 +314,11 @@ def project(result, *, resolve=None, owner=None, scope=((), ()), catalog=None, l
     return output
 
 
-def translate(catalog, result, locale, *, resolve=None, owner=None, scope=((), ())):
-    output = project(result, resolve=resolve, owner=owner, scope=scope, catalog=catalog, locale=locale)
+def translate(catalog, result, locale, *, resolve=None, owner=None, scope=((), ()), natural_config=None, warnings=None, natural_origin=None):
+    output = project(result, resolve=resolve, owner=owner, scope=scope, catalog=catalog, locale=locale,
+                     natural_config=natural_config, warnings=warnings, natural_origin=natural_origin)
     result.input_value, result.system_value, result.message = output.input_value, output.system_value, output.message
     result._presentation = output._presentation
+    if hasattr(output, "_natural_presentation"):
+        result._natural_presentation = output._natural_presentation
     return result

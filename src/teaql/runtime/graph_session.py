@@ -29,6 +29,8 @@ class GraphMutationSession:
         self._committed = False
         self._preparing = False
         self._prepared_mutations = {}
+        self._checker_messages = context.capture_checker_messages()
+        self._checker_origin = None
         from .generated_graph import _GeneratedGraphPreparation
         self._generated = _GeneratedGraphPreparation(self)
         self._generated_plan_complete = False
@@ -171,3 +173,4 @@ class GraphMutationSession:
         self._generated.clear()
         self._generated_plan_complete = False
         self._preparing = False
+        self._checker_origin = None

@@ -110,6 +110,8 @@ class _GeneratedGraphPreparation:
     def admit_graph(self, root):
         """Reject distinct pending views before attaching/merging any ledger."""
         self._active()
+        if self.session._checker_origin is None:
+            self.session._checker_origin = root._teaql_entity_key().entity
         seen = set()
         def visit(entity):
             if id(entity) in seen:
