@@ -229,11 +229,8 @@ class SelectQuery:
                 f"QUERY_HARD_LIMIT_EXCEEDED: requested limit {self.slice.limit} "
                 f"exceeds hard limit {ceiling}"
             )
-        for relation in self.relations:
-            if relation.query is not None:
-                relation.query._apply_list_limit(10_000)
-        for child in self.child_enhancements:
-            child._apply_list_limit(10_000)
+        # This ceiling protects the outer result, never a nested contributing
+        # population. Explicit child Top-N/offset remains part of that query.
 
     def for_exact_count(self, alias: str = "__teaql_total") -> 'SelectQuery':
         count_query = deepcopy(self)

@@ -548,7 +548,11 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         assembly = getattr(request, '_relation_assembly', None)
         request = request.with_query(request.query)
         self._sync_generated_schema(context)
-        request.query.prepare_for_list()
+        # Ownership is captured by QueryRequest, not supplied in wire data.
+        # Internal relation/statistics/facet requests must not acquire the
+        # outer result's default ceiling on re-entry to this executor.
+        if request.parent_request is None:
+            request.query.prepare_for_list()
         execution_query, retained_order, retained_empty = await self._prepare_id_set_page(context, request)
         if retained_empty:
             now = datetime.now()
