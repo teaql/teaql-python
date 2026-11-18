@@ -1,4 +1,5 @@
 """Run the real example; do not infer governance from process exit zero alone."""
+import json
 import os
 from pathlib import Path
 import subprocess
@@ -12,6 +13,8 @@ class TaskBoardLogContractTest(unittest.TestCase):
         repo = Path(__file__).resolve().parents[2]
         env = dict(os.environ)
         env.pop("TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS", None)
+        env.pop("TEAQL_LOG_FORMAT", None)
+        env["TEAQL_LOG_ENDPOINT"] = "stdout"
         env["PYTHONPATH"] = str(repo / "src")
         with tempfile.TemporaryDirectory(prefix="teaql-task-board-test-") as temporary:
             env["TEAQL_TASK_BOARD_DB"] = str(Path(temporary) / "task-board.db")
@@ -19,28 +22,28 @@ class TaskBoardLogContractTest(unittest.TestCase):
                                     env=env, capture_output=True, text=True, timeout=90)
         output = result.stdout + result.stderr
         self.assertEqual(0, result.returncode, output)
+        records = [json.loads(line) for line in output.splitlines() if line.startswith("{")]
         queries = writes = 0
-        for line in output.splitlines():
-            if not line.startswith("[TeaQL SQL]"):
+        for row in records:
+            if row.get("category") != "SQL":
                 continue
-            if "[select]" in line or "[query]" in line:
+            if row.get("event") in ("sql.select", "sql.query"):
                 queries += 1
-                self.assertNotIn("comment=None", line)
-                self.assertNotIn("purpose=None", line)
-                self.assertNotIn("comment= purpose=", line)
-                self.assertNotIn("purpose= auditReason=", line)
-            elif any(f"[{kind}]" in line for kind in ("insert", "update", "delete")):
+                self.assertTrue(row.get("comment") and row["comment"].strip(), row)
+                self.assertTrue(row.get("purpose") and row["purpose"].strip(), row)
+            elif row.get("event") in ("sql.insert", "sql.update", "sql.delete"):
                 writes += 1
-                self.assertNotIn("auditReason=None", line)
-                self.assertNotIn("auditReason= tracePath=", line)
+                self.assertTrue(row.get("audit_reason") and row["audit_reason"].strip(), row)
         self.assertGreater(queries, 0, output)
         self.assertGreater(writes, 0, output)
         self.assertIn("PASS task board: governed Q/E/mutation and masked detail", output)
         self.assertNotIn("PRIVATE-TASK-DETAIL", output)
         self.assertIn("'PR***************IL' /* masked */", output)
         self.assertIn("'RENAME'", output)
-        self.assertIn("comment='page renamed task' purpose='verify paginated task intent'", output)
-        self.assertIn("comment='stream renamed task' purpose='verify streamed task intent'", output)
+        self.assertTrue(any(row.get("comment") == "page renamed task" and
+                            row.get("purpose") == "verify paginated task intent" for row in records))
+        self.assertTrue(any(row.get("comment") == "stream renamed task" and
+                            row.get("purpose") == "verify streamed task intent" for row in records))
 
 
 if __name__ == "__main__":

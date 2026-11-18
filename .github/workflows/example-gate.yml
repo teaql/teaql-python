@@ -41,7 +41,20 @@ jobs:
           done
           docker logs teaql-python-example-s3
           exit 1
-      - run: ./scripts/verify-examples.sh
+      - name: Verify all retained examples
+        run: ./scripts/verify-examples.sh
+        env:
+          TEAQL_EXAMPLES_EVIDENCE_DIR: ${{ runner.temp }}/teaql-python-examples-evidence
+      - name: Retain compact example diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-example-evidence
+          path: |
+            ${{ runner.temp }}/teaql-python-examples-evidence/
+            logs/*.log
+          if-no-files-found: warn
+          retention-days: 7
       - name: Stop dedicated S3 example fixture
         if: always()
         run: docker rm -f teaql-python-example-s3 || true

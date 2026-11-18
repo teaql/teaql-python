@@ -99,10 +99,14 @@ _default_id_set_store = InMemoryIdSetStore()
 
 
 class UserContext:
-    def __init__(self):
+    def __init__(self, *, runtime_logger=None, log_name=None, model_names=()):
+        from .logging import RuntimeLogger, default_runtime_logger
+        self._runtime_logger = runtime_logger if runtime_logger is not None else (
+            RuntimeLogger(log_name, model_names=model_names)
+            if log_name is not None or model_names else default_runtime_logger())
         self._resources: Dict[str, Any] = {}
         self._resources["sql_log_options"] = SqlLogOptions.all()
-        self._resources["diagnostic_sql_log_sink"] = TextDiagnosticSqlLogSink()
+        self._resources["diagnostic_sql_log_sink"] = RuntimeDiagnosticSqlLogSink(self._runtime_logger)
         self._metadata: Optional[Any] = None
         self._user_identifier: str = ""
         self._entities: List[Any] = []
@@ -166,8 +170,8 @@ class UserContext:
         return tuple(self._fix_evidence_last)
 
     @classmethod
-    def new(cls) -> 'UserContext':
-        return cls()
+    def new(cls, **logging_configuration) -> 'UserContext':
+        return cls(**logging_configuration)
 
     def with_active_root(self, root: ContextEntityRef) -> 'UserContext':
         if not isinstance(root, ContextEntityRef):
@@ -242,7 +246,7 @@ class UserContext:
             # cleanup. It starts only after admission to the existing save gate;
             # generated entities do not initialize SDKs or create manual spans.
             return await observe_runtime_operation(
-                self._runtime_telemetry, RuntimeOperation('mutation', 'graph.save'),
+                self.operation_telemetry(), RuntimeOperation('mutation', 'graph.save'),
                 lambda: self._execute_graph_transaction(work, intent, GraphMutationSession, prepare))
 
     async def _execute_graph_transaction(self, work, intent, session_type, prepare=None):
@@ -373,6 +377,11 @@ class UserContext:
 
     def runtime_telemetry(self) -> RuntimeTelemetryAdapter:
         return self._runtime_telemetry
+
+    def operation_telemetry(self):
+        """Observe local runtime operations without replacing the installed SPI."""
+        from .logging import RuntimeLogTelemetry
+        return RuntimeLogTelemetry(self._runtime_telemetry, self._runtime_logger)
 
     def set_id_set_store(self, store: Any) -> None:
         if store is None:
@@ -1054,7 +1063,11 @@ class UserContext:
     async def _deliver_audit_event(self, event: Any, safe_event: Any):
         from .audit import deliver
         from .telemetry import RuntimeOperation, start_runtime_operation
-        scope = start_runtime_operation(self._runtime_telemetry, RuntimeOperation(
+        descriptor = self.entity(event.entity)
+        logging_event = event._runtime_log_safe(
+            getattr(descriptor, "audit_mask_fields_val", []) if descriptor else [],
+            getattr(descriptor, "audit_value_max_len_val", None) if descriptor else None)
+        scope = start_runtime_operation(self.operation_telemetry(), RuntimeOperation(
             "audit", f"{event.entity}.audit", {
                 "teaql.entity.type": event.entity,
                 "teaql.mutation.kind": event.kind.value,
@@ -1075,6 +1088,16 @@ class UserContext:
                     failures.append(error)
             if failures:
                 raise failures[0]
+            try:
+                self._runtime_logger.write('INFO', 'audit.' + logging_event.kind.value, 'TeaQL audit event',
+                    category='AUDIT', outcome='success', entity=logging_event.entity,
+                    entity_id=str(logging_event.entity_id),
+                    fields=[{'field': item.field, 'value': item.value, 'masked': item.masked,
+                             'truncated': item.truncated} for item in logging_event.fields],
+                    trace_chain=[str(node) for node in logging_event.trace_chain])
+            except Exception:
+                from .logging import _failure
+                _failure('log_write_failed', self._runtime_logger.log_name)
             scope.success()
         except BaseException as error:
             scope.failure(error)
@@ -1250,6 +1273,7 @@ class UserContext:
             parameter_log_policies=getattr(metadata, 'parameter_log_policies', None),
             sql_origin=getattr(metadata, 'sql_origin', None),
             execution_outcome=getattr(metadata, 'execution_outcome', None),
+            telemetry_correlation=correlation,
             started_at=started_at,
             ended_at=ended_at,
             elapsed=ended_at - started_at,
@@ -1465,7 +1489,7 @@ class UserContext:
         from .telemetry import RuntimeOperation, observe_runtime_operation_sync
 
         return observe_runtime_operation_sync(
-            self.runtime_telemetry(),
+            self.operation_telemetry(),
             RuntimeOperation("cache", name, {"teaql.cache.operation": operation}),
             work,
             completion,
@@ -1604,11 +1628,32 @@ class SqlLogEntry:
     execution_outcome: Optional[str] = None
     mutation_lineage: tuple[Any, ...] = ()
     trace_chain: tuple[Any, ...] = ()
+    telemetry_correlation: Any = field(default=None, repr=False, compare=False)
 
 class DiagnosticSqlLogSink:
-    """Policy-projected SQL destination; the text sink is installed by default."""
+    """Policy-projected SQL destination; the structured runtime sink is the default."""
     def write(self, entry: SqlLogEntry) -> None:
         raise NotImplementedError
+
+class RuntimeDiagnosticSqlLogSink(DiagnosticSqlLogSink):
+    def __init__(self, logger):
+        self._logger = logger
+
+    def write(self, entry: SqlLogEntry) -> None:
+        from .log_privacy import sql_log_projection
+        entry = sql_log_projection(entry)
+        outcome = entry.execution_outcome or 'success'
+        level = 'ERROR' if outcome in ('failure', 'error') else 'WARN' if outcome == 'retrying' else 'INFO'
+        identity = getattr(entry.telemetry_correlation, 'trace_id', None)
+        correlation_fields = {'trace_id': identity} if identity else {}
+        self._logger.write(level, 'sql.' + entry.operation.name.lower(), 'TeaQL SQL execution',
+            category='SQL', outcome=outcome, sql=entry.debug_sql,
+            log_mode=entry.log_mode, omission_reason=entry.omission_reason,
+            comment=entry.comment, purpose=entry.purpose, audit_reason=entry.audit_reason,
+            duration_ms=entry.elapsed.total_seconds() * 1000 if entry.elapsed else 0,
+            result_count=entry.result_count, affected_rows=entry.affected_rows,
+            trace_chain=[str(node) for node in entry.trace_chain],
+            trace_path=[str(node) for node in entry.trace_path], **correlation_fields)
 
 class TextDiagnosticSqlLogSink(DiagnosticSqlLogSink):
     def __init__(self, writer=print):

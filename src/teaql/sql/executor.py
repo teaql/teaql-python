@@ -1,3 +1,4 @@
+from teaql.runtime.logging import telemetry_for_context
 from abc import ABC, abstractmethod
 from typing import List, Dict, Any, Optional, AsyncIterator
 from copy import deepcopy
@@ -476,7 +477,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         outcome = 'cancelled'
         from teaql.runtime.query_stream import stream_observation
         observation = stream_observation(context, self, request)
-        telemetry = context.runtime_telemetry() if context is not None else None
+        telemetry = telemetry_for_context(context)
         statement = start_runtime_operation(telemetry, RuntimeOperation('provider', f'{self.dialect.kind()}.stream', {
             'teaql.provider.kind': str(self.dialect.kind()), 'teaql.provider.operation': 'query',
             'teaql.provider.execution': 'statement'}))
@@ -591,7 +592,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
             
         start = datetime.now()
         try:
-            telemetry = context.runtime_telemetry() if context is not None else None
+            telemetry = telemetry_for_context(context)
             statement = start_runtime_operation(telemetry, RuntimeOperation("provider", f"{self.dialect.kind()}.query", {
                     "teaql.provider.kind": str(self.dialect.kind()),
                     "teaql.provider.operation": "query",
@@ -834,7 +835,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         if parent_desc is None:
             raise CompileError(SqlCompileError(f"unknown entity: {query.entity}"))
         for load in query.relations:
-            telemetry = context.runtime_telemetry() if context is not None else None
+            telemetry = telemetry_for_context(context)
             relation_scope = start_runtime_operation(telemetry, RuntimeOperation(
                 "relation_load", f"{query.entity}.{load.name}", {
                     "teaql.entity.type": query.entity,
@@ -1030,7 +1031,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
                 elif not context.consume_mutation_checked(data):
                     context.check_and_fix_mutation(data)
             check(request._data)
-        telemetry = context.runtime_telemetry() if context is not None else None
+        telemetry = telemetry_for_context(context)
         scope = (
             context.mutation_policy_execution(request)
             if context is not None
@@ -1169,7 +1170,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         operation = {'insert': DataServiceOperation.Insert, 'update': DataServiceOperation.Update,
                      'delete': DataServiceOperation.Delete, 'recover': DataServiceOperation.Recover}[op]
         try:
-            telemetry = context.runtime_telemetry() if context is not None else None
+            telemetry = telemetry_for_context(context)
             statement = start_runtime_operation(telemetry, RuntimeOperation("provider", f"{self.dialect.kind()}.mutation", {
                     "teaql.provider.kind": str(self.dialect.kind()),
                     "teaql.provider.operation": op,
