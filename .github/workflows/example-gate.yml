@@ -8,6 +8,7 @@ jobs:
   examples:
     runs-on: ubuntu-latest
     env:
+      TEAQL_EXAMPLES_EVIDENCE_DIR: ${{ runner.temp }}/teaql-python-examples-evidence
       TEAQL_S3_ENDPOINT: http://127.0.0.1:19010
       TEAQL_S3_BUCKET: teaql-python-example-ci
       TEAQL_S3_ACCESS_KEY: teaql-python-example-ci
@@ -42,6 +43,16 @@ jobs:
           docker logs teaql-python-example-s3
           exit 1
       - run: ./scripts/verify-examples.sh
+      - name: Retain compact example diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: python-example-evidence
+          path: |
+            ${{ runner.temp }}/teaql-python-examples-evidence/
+            logs/*.log
+          if-no-files-found: warn
+          retention-days: 7
       - name: Stop dedicated S3 example fixture
         if: always()
         run: docker rm -f teaql-python-example-s3 || true
