@@ -1,4 +1,5 @@
 """Lazy typed stream ownership and delivered-row accounting for generated Q."""
+from teaql.runtime.logging import telemetry_for_context
 import asyncio
 from contextvars import ContextVar
 
@@ -48,7 +49,7 @@ class TypedStream:
 
     def _activate(self):
         if self.scope is None:
-            self.scope = start_runtime_operation(self.context.runtime_telemetry(), RuntimeOperation(
+            self.scope = start_runtime_operation(telemetry_for_context(self.context), RuntimeOperation(
                 'query', self.request.query.entity + '.stream', {'teaql.entity.type': self.request.query.entity}))
             self.scopes.append(self.scope)
         else:

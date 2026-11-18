@@ -1,5 +1,6 @@
 """Invocation-local list execution shared by generated libraries and providers."""
 from __future__ import annotations
+from teaql.runtime.logging import telemetry_for_context
 
 import asyncio
 import math
@@ -31,7 +32,7 @@ async def observe_query_operation(context, service, request: QueryRequest,
         return await work()
     token = _query_owner.set(owner)
     try:
-        telemetry = context.runtime_telemetry() if context is not None else None
+        telemetry = telemetry_for_context(context)
         return await observe_runtime_operation(
             telemetry, RuntimeOperation('query', f'{request.root_request.query.entity}.list', {
                 'teaql.entity.type': request.root_request.query.entity,

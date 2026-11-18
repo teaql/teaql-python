@@ -1,4 +1,5 @@
 """Synchronous binary stream facade; async applications can use asyncio.to_thread."""
+from teaql.runtime.logging import telemetry_for_context
 from dataclasses import dataclass
 from typing import Protocol, Optional, BinaryIO, Callable
 from io import BytesIO
@@ -39,7 +40,7 @@ class _Receipt:
     def __init__(self, invocation, operation):
         self.invocation, self.operation = invocation, operation
         self.started, self.ended = time.monotonic(), False
-        self.scope = start_runtime_operation(invocation.context.runtime_telemetry(), RuntimeOperation("object_storage", operation))
+        self.scope = start_runtime_operation(telemetry_for_context(invocation.context), RuntimeOperation("object_storage", operation))
         self.scope.activate()
 
     def detach(self):
