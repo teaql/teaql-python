@@ -31,8 +31,14 @@ class RawAuditEvent:
     _intent_privacy: Any = field(default=None, repr=False, compare=False)
 
     def safe(self, mask_fields: List[str], max_length: Optional[int]) -> "SafeAuditEvent":
-        from .log_privacy import REDACTED, credential_name, payload_has_credentials, plaintext_enabled, scrub, value_strings
-        allow = plaintext_enabled()
+        from .log_privacy import plaintext_enabled
+        return self._project(mask_fields, max_length, plaintext_enabled())
+
+    def _runtime_log_safe(self, mask_fields: List[str], max_length: Optional[int]) -> "SafeAuditEvent":
+        return self._project(mask_fields, max_length, False)
+
+    def _project(self, mask_fields: List[str], max_length: Optional[int], allow: bool) -> "SafeAuditEvent":
+        from .log_privacy import REDACTED, credential_name, payload_has_credentials, scrub, value_strings
         secrets = []
         fields = []
         for change in self.changes:

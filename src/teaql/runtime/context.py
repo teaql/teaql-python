@@ -1063,6 +1063,10 @@ class UserContext:
     async def _deliver_audit_event(self, event: Any, safe_event: Any):
         from .audit import deliver
         from .telemetry import RuntimeOperation, start_runtime_operation
+        descriptor = self.entity(event.entity)
+        logging_event = event._runtime_log_safe(
+            getattr(descriptor, "audit_mask_fields_val", []) if descriptor else [],
+            getattr(descriptor, "audit_value_max_len_val", None) if descriptor else None)
         scope = start_runtime_operation(self.operation_telemetry(), RuntimeOperation(
             "audit", f"{event.entity}.audit", {
                 "teaql.entity.type": event.entity,
@@ -1085,12 +1089,12 @@ class UserContext:
             if failures:
                 raise failures[0]
             try:
-                self._runtime_logger.write('INFO', 'audit.' + safe_event.kind.value, 'TeaQL audit event',
-                    category='AUDIT', outcome='success', entity=safe_event.entity,
-                    entity_id=str(safe_event.entity_id),
+                self._runtime_logger.write('INFO', 'audit.' + logging_event.kind.value, 'TeaQL audit event',
+                    category='AUDIT', outcome='success', entity=logging_event.entity,
+                    entity_id=str(logging_event.entity_id),
                     fields=[{'field': item.field, 'value': item.value, 'masked': item.masked,
-                             'truncated': item.truncated} for item in safe_event.fields],
-                    trace_chain=[str(node) for node in safe_event.trace_chain])
+                             'truncated': item.truncated} for item in logging_event.fields],
+                    trace_chain=[str(node) for node in logging_event.trace_chain])
             except Exception:
                 from .logging import _failure
                 _failure('log_write_failed', self._runtime_logger.log_name)

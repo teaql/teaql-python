@@ -62,6 +62,39 @@ def read(path, presentation):
     return events(path.read_text(encoding='utf-8'), presentation)
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize('presentation', ['json', 'human'])
+@pytest.mark.parametrize('acknowledged', [False, True])
+async def test_ordinary_audit_stays_masked_with_plaintext_debug_ack(tmp_path, monkeypatch, presentation, acknowledged):
+    from teaql.runtime.audit import AuditFieldChange, MutationAuditKind, RawAuditEvent
+    monkeypatch.setenv('TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS',
+        'I_UNDERSTAND_SENSITIVE_DATA_MAY_BE_WRITTEN_TO_DISK' if acknowledged else '')
+    logger = RuntimeLogger(log_format=presentation, environment={}, working_directory=tmp_path)
+    context = UserContext.new(runtime_logger=logger)
+    collected = []
+    class Collector:
+        async def on_safe_event(self, _context, event):
+            collected.append(event)
+    context.with_app_audit_event_sink(Collector())
+    raw = RawAuditEvent(MutationAuditKind.CREATED, 'Customer', 42, (
+        AuditFieldChange('name', new_value='PRIVATE-AUDIT-BUSINESS'),
+        AuditFieldChange('address', new_value='1 Runtime Road'),
+        AuditFieldChange('password', new_value='PASSWORD-CANARY'),
+    ))
+    descriptor = SimpleNamespace(audit_mask_fields_val=['name'], audit_value_max_len_val=None)
+    with patch.object(context, 'entity', return_value=descriptor):
+        await context.send_audit_event(raw)
+    data = logger.path.read_text()
+    assert 'PRIVATE-AUDIT-BUSINESS' not in data and 'PASSWORD-CANARY' not in data
+    audit = next(row for row in read(logger.path, presentation) if row.get('category') == 'AUDIT')
+    fields = {item['field']: item for item in audit['fields']}
+    assert fields['name']['masked'] is True
+    assert fields['address']['value'] == '1 Runtime Road' and fields['address']['masked'] is False
+    assert raw.changes[0].new_value == 'PRIVATE-AUDIT-BUSINESS'
+    assert len(collected) == 1
+    assert next(field for field in collected[0].fields if field.field == 'name').masked is not acknowledged
+
+
 @pytest.mark.parametrize('presentation', ['json', 'human'])
 @pytest.mark.parametrize('explicit,domain,models,name', [
     ('application', 'domain', ['model'], 'application'),
