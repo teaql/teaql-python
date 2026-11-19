@@ -165,10 +165,12 @@ async def verify(args):
         assert E.purchase_order(order).tenant_id().eval() == E.order_item(child).tenant_id().eval() == 1
         assert E.purchase_order(order).internal_note().eval() == canary
         evidence = primary.last_fix_evidence()
-        # Generated insert Fix records update_time for its absent-value fill
-        # and its unconditional update rule. Both refer to the same clock;
-        # the contract requires safe provenance, not one event per field.
-        assert len(evidence) == 8
+        # Insert applies each declared create function once; update functions
+        # belong to update operations. Every framework assignment stays visible.
+        expected_provenance = {(entity, name) for entity in ('PurchaseOrder', 'OrderItem')
+                               for name in ('tenant', 'create_time', 'update_time')}
+        assert len(evidence) == 6, tuple(asdict(item) for item in evidence)
+        assert {(item.entity_type, item.model_path) for item in evidence} == expected_provenance
         assert all(tuple(field.name for field in fields(item)) == ('entity_type', 'model_path', 'source', 'source_label') for item in evidence)
         assert {item.source for item in evidence} == {'clock', 'context'}
         assert {item.model_path for item in evidence} == {'create_time', 'update_time', 'tenant'}
