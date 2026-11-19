@@ -5,6 +5,7 @@
   "files": {
     "E.py": "3a1bb923330c41e3a56403cd46c558efbc02d76406c3d2c31ef959fd18fec680",
     "Q.py": "110a04fe7434e902455505b6d9c76d433aed068a3279b22f9106742b6be685a3",
+    "generated-files.json": "f945e2223bf475b536caa37214d1ef9260f985d29d1d0898933b6f49cee53294",
     "generated_search_models.py": "a1fc7d496d0ca1e789452df2d6d694641e3fd3017859133228fe9953975889ef",
     "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
     "models/order_item.py": "f40254dac5446fc2b95be644d46259a2c0018b6dc298ab5ee5efbd7a6e569869",

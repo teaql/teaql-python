@@ -1223,6 +1223,68 @@
       }
     }
   ],
+  "passiveMetadataIndexes": [
+    {
+      "path": "examples/conformance/generated-files.json",
+      "rawGeneratedSourceChanged": false,
+      "sha256": "595f63e159fc50b6eddd0ce05373b72b6db422da7fe3ba1d737e34a209dd8630"
+    },
+    {
+      "path": "examples/expression-profiles/generated/PascalCase/generated-files.json",
+      "rawGeneratedSourceChanged": false,
+      "sha256": "433595f8752b28c486b410bc0511616a90123fe7ce065e4258564545b5d9e1fd"
+    },
+    {
+      "path": "examples/expression-profiles/generated/camelCase/generated-files.json",
+      "rawGeneratedSourceChanged": false,
+      "sha256": "800505a67d880e3529c62d749148037160a4511614ad057262189c71ede80998"
+    },
+    {
+      "path": "examples/expression-profiles/generated/snake_case/generated-files.json",
+      "rawGeneratedSourceChanged": false,
+      "sha256": "6687e4d43030222ed17f5c45a246d770e660411ecc813dc5483bbcb1e0639289"
+    },
+    {
+      "path": "examples/facet-trace/lib/generated-files.json",
+      "rawGeneratedSourceChanged": false,
+      "sha256": "677a8668379fd60a5121dc029bde024a2fce8375aa4e575ce44c2ee3092d4952"
+    },
+    {
+      "path": "examples/fix-e-alignment/generated/generated-files.json",
+      "rawGeneratedSourceChanged": false,
+      "sha256": "f945e2223bf475b536caa37214d1ef9260f985d29d1d0898933b6f49cee53294"
+    },
+    {
+      "path": "examples/order-management/python-lib-core/generated-files.json",
+      "rawGeneratedSourceChanged": false,
+      "sha256": "7450ecf52df751ab481c72a2ed9b5684f6910fa93518386f2b7c651ccf8c1ba7"
+    },
+    {
+      "path": "examples/scalar-type-probe/generated/generated-files.json",
+      "rawGeneratedSourceChanged": false,
+      "sha256": "800505a67d880e3529c62d749148037160a4511614ad057262189c71ede80998"
+    },
+    {
+      "path": "examples/school-management/generated-files.json",
+      "rawGeneratedSourceChanged": false,
+      "sha256": "89b384c7b29241e0e5c5f4edc19a27a391ca66b40d90f340667f61c878595ae4"
+    },
+    {
+      "path": "examples/task_board/generated/generated-files.json",
+      "rawGeneratedSourceChanged": false,
+      "sha256": "e6855ffd13c9a273c84b6fb0d70958293ce2984e193b29894c027487c427b372"
+    },
+    {
+      "path": "examples/trace-chain/lib/generated-files.json",
+      "rawGeneratedSourceChanged": false,
+      "sha256": "fcce23f887a6b4b507767a6b09909d729722de4ca861030d07603b350b1935a7"
+    },
+    {
+      "path": "examples/trace-chain/standard-order/lib/generated-files.json",
+      "rawGeneratedSourceChanged": false,
+      "sha256": "4431d711f5c982db20ce2537d626a6f7244f9e0a46fc3247916a561240f79d45"
+    }
+  ],
   "runtimeBaseCommit": "615b6c18ea377d05cef3d8a823c072e2f7794548",
   "schema": "teaql.runtime-current-generated-examples/v1",
   "sourceCodeHandEdited": false
