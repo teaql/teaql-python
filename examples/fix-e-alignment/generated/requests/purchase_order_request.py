@@ -533,7 +533,6 @@ class PurchaseOrderRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_tenant(self):
         self.query.group_by("tenant")
@@ -541,7 +540,6 @@ class PurchaseOrderRequest:
 
     def group_by_tenant_as(self, ret_name: str):
         self.query.group_by("tenant")
-        self.query.project_expr(ret_name, column("tenant"))
         return self
     def group_by_contact_phone(self):
         self.query.group_by("contact_phone")
@@ -549,7 +547,6 @@ class PurchaseOrderRequest:
 
     def group_by_contact_phone_as(self, ret_name: str):
         self.query.group_by("contact_phone")
-        self.query.project_expr(ret_name, column("contact_phone"))
         return self
     def group_by_internal_note(self):
         self.query.group_by("internal_note")
@@ -557,7 +554,6 @@ class PurchaseOrderRequest:
 
     def group_by_internal_note_as(self, ret_name: str):
         self.query.group_by("internal_note")
-        self.query.project_expr(ret_name, column("internal_note"))
         return self
     def group_by_create_time(self):
         self.query.group_by("create_time")
@@ -565,7 +561,6 @@ class PurchaseOrderRequest:
 
     def group_by_create_time_as(self, ret_name: str):
         self.query.group_by("create_time")
-        self.query.project_expr(ret_name, column("create_time"))
         return self
     def group_by_update_time(self):
         self.query.group_by("update_time")
@@ -573,7 +568,6 @@ class PurchaseOrderRequest:
 
     def group_by_update_time_as(self, ret_name: str):
         self.query.group_by("update_time")
-        self.query.project_expr(ret_name, column("update_time"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -581,7 +575,6 @@ class PurchaseOrderRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
         return self
     def select_order_item_list(self):
         from requests.order_item_request import OrderItemRequest
@@ -755,11 +748,10 @@ class ExecutablePurchaseOrderRequest:
         self._request.comment(c)
         return self
 
-    async def new_entity(self, context) -> PurchaseOrder:
+    def new_entity(self, context) -> PurchaseOrder:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        identity = await context.next_id("PurchaseOrder")
-        entity = context.initialize_entity("PurchaseOrder", PurchaseOrder._teaql_from_reserved_id(identity))
+        entity = context.initialize_entity("PurchaseOrder", PurchaseOrder())
         if not isinstance(entity, PurchaseOrder):
             raise TypeError("entity initializer returned an incompatible PurchaseOrder")
         return entity
@@ -785,7 +777,7 @@ class ExecutablePurchaseOrderRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: PurchaseOrder._teaql_from_record(_entity_root=EntityRoot(), **row),
+            lambda row: PurchaseOrder(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -802,6 +794,8 @@ class ExecutablePurchaseOrderRequest:
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
         root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
+        if root.query.aggregates or root.query.group_by_items or root.query.object_group_bys:
+            raise ValueError("Entity streams require entity rows; use a record or aggregation query")
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: PurchaseOrder._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: PurchaseOrder(_entity_root=EntityRoot(), **row), chunk_size)

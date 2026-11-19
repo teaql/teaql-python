@@ -523,7 +523,6 @@ class SchoolTypeRequest:
 
     def group_by_platform_as(self, ret_name: str):
         self.query.group_by("platform")
-        self.query.project_expr(ret_name, column("platform"))
         return self
     def group_by_id(self):
         self.query.group_by("id")
@@ -531,7 +530,6 @@ class SchoolTypeRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_name(self):
         self.query.group_by("name")
@@ -539,7 +537,6 @@ class SchoolTypeRequest:
 
     def group_by_name_as(self, ret_name: str):
         self.query.group_by("name")
-        self.query.project_expr(ret_name, column("name"))
         return self
     def group_by_code(self):
         self.query.group_by("code")
@@ -547,7 +544,6 @@ class SchoolTypeRequest:
 
     def group_by_code_as(self, ret_name: str):
         self.query.group_by("code")
-        self.query.project_expr(ret_name, column("code"))
         return self
     def group_by_display_order(self):
         self.query.group_by("display_order")
@@ -555,7 +551,6 @@ class SchoolTypeRequest:
 
     def group_by_display_order_as(self, ret_name: str):
         self.query.group_by("display_order")
-        self.query.project_expr(ret_name, column("display_order"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -563,7 +558,6 @@ class SchoolTypeRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
         return self
     def select_school_list(self):
         from requests.school_request import SchoolRequest
@@ -737,11 +731,10 @@ class ExecutableSchoolTypeRequest:
         self._request.comment(c)
         return self
 
-    async def new_entity(self, context) -> SchoolType:
+    def new_entity(self, context) -> SchoolType:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        identity = await context.next_id("SchoolType")
-        entity = context.initialize_entity("SchoolType", SchoolType._teaql_from_reserved_id(identity))
+        entity = context.initialize_entity("SchoolType", SchoolType())
         if not isinstance(entity, SchoolType):
             raise TypeError("entity initializer returned an incompatible SchoolType")
         return entity
@@ -767,7 +760,7 @@ class ExecutableSchoolTypeRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: SchoolType._teaql_from_record(_entity_root=EntityRoot(), **row),
+            lambda row: SchoolType(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -784,6 +777,8 @@ class ExecutableSchoolTypeRequest:
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
         root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
+        if root.query.aggregates or root.query.group_by_items or root.query.object_group_bys:
+            raise ValueError("Entity streams require entity rows; use a record or aggregation query")
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: SchoolType._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: SchoolType(_entity_root=EntityRoot(), **row), chunk_size)

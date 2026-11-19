@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
-from teaql.runtime import CheckResult, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.runtime import CheckResult, ContextFix, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.runtime import CheckerPresentationModel
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
 from teaql.core.value import DataType
 from Q import Q
@@ -34,7 +35,6 @@ def _teaql_entity_id(value):
 class _PlatformChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "name" not in record) or ("name" in record and _teaql_is_null(record["name"])):
             results.append(CheckResult("required", ObjectLocation().property("name")))
         if "name" in record and _teaql_raw(record["name"]) is not None and len(_teaql_raw(record["name"])) > 100:
@@ -45,7 +45,6 @@ class _PlatformChecker:
 class _WorkItemChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "title" not in record) or ("title" in record and _teaql_is_null(record["title"])):
             results.append(CheckResult("required", ObjectLocation().property("title")))
         if "title" in record and _teaql_raw(record["title"]) is not None and not len(_teaql_raw(record["title"])) >= 1:
@@ -80,8 +79,7 @@ async def _ensure_generated_bootstrap_once(context):
     try:
         platform_1 = await (Q.platforms().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if platform_1 is None:
-            platform_1 = await Q.platforms().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            platform_1.update_id(1)
+            platform_1 = Platform._teaql_new_with_fixed_id(1)
             platform_1.update_name("Runtime Example")
             try:
                 await platform_1.audit_as('create model root Platform(1)').save(context)
@@ -112,6 +110,7 @@ async def _ensure_generated_bootstrap(context):
 
 
 # Passive generated manifest. Call ensure_schema() separately and explicitly.
+_CHECKER_PRESENTATION = CheckerPresentationModel.from_json("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:f026153870cc54db18171cbbe02db1db174f3dea513e9d21e0ffe8af787ebaed\",\"entities\":{\"Platform\":{\"labels\":{\"en\":\"Platform\"},\"fields\":[{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]},{\"name\":\"work_item_list\",\"targetType\":\"WorkItem\",\"labels\":{\"en\":\"Work Item\"},\"aliases\":[\"WorkItemList\",\"workItemList\"]}]},\"WorkItem\":{\"labels\":{\"en\":\"Work Item\"},\"fields\":[{\"name\":\"description\",\"labels\":{\"en\":\"description\"},\"aliases\":[\"Description\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"platform\",\"targetType\":\"Platform\",\"labels\":{\"en\":\"Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"title\",\"labels\":{\"en\":\"title\"},\"aliases\":[\"Title\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}")
 GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Platform)
     .schema_entity(_Platform_DESCRIPTOR)
     .checker("Platform", _PlatformChecker())
@@ -119,5 +118,6 @@ GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Platform)
     .schema_entity(_WorkItem_DESCRIPTOR)
     .checker("WorkItem", _WorkItemChecker())
     .wire_metadata("WorkItem", create_wire_entity_metadata("WorkItem", ["id", "title", "description", "platform", "version"], JsonFieldNamingProfile.parse("camelCase"), {"id": ["id"], "title": ["title"], "description": ["description"], "platform": ["platform"], "version": ["version"]}))
+    .checker_presentation(_CHECKER_PRESENTATION)
     .generated_bootstrap(_ensure_generated_bootstrap)
 )

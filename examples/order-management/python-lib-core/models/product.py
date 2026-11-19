@@ -1,14 +1,14 @@
 from teaql.core.mutation import InsertCommand, UpdateCommand, DeleteCommand, MutationRequest
-from teaql.core.mutation_version import validate_mutation_versions
 from teaql.core.list import SmartList
 from teaql.core.value import Value
 from teaql.core.request_intent import MutationIntent
 from teaql.core.projection_properties import ProjectionProperties
 from teaql.runtime.loaded_scalar_snapshot import LoadedScalarSnapshots
-from teaql.core.entity_creation import EntityCreationError, EntityCreationState
 from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
 from teaql.runtime import EntityJSONField, EntityJSONSchema, JsonFieldNamingProfile
 from importlib import import_module
+import itertools
+from copy import copy
 from models.commerce_platform import CommercePlatform
 
 
@@ -24,10 +24,27 @@ class Product:
         EntityJSONField("version", "version", "version"),
         EntityJSONField("order_line_list", "_order_line_list", "many", factory=lambda: getattr(import_module("models.order_line"), "OrderLine"), loaded_name="order_line_list")
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
+    _teaql_temporary_ids = itertools.count(1)
 
     def to_json(self, *, profile=None):
         """Typed model JSON; no query, mutation or transport authorization."""
-        return self._teaql_json_schema.dumps(self, profile=profile)
+        return self._teaql_json_schema.dumps(self._teaql_json_view({}), profile=profile)
+
+    def _teaql_json_view(self, seen):
+        """Detached presentation state; never marks live relations as loaded."""
+        if id(self) in seen:
+            return seen[id(self)]
+        view = copy(self)
+        seen[id(self)] = view
+        view._loaded_fields = set(self._loaded_fields)
+        value = self.commercePlatform
+        if hasattr(value, "_teaql_json_view"):
+            view.commercePlatform = value._teaql_json_view(seen)
+        children = self._order_line_list
+        if children.is_loaded or any(child._entity_root.has_pending(child._teaql_entity_key()) for child in children):
+            view._loaded_fields.add("order_line_list")
+        view._order_line_list = [child._teaql_json_view(seen) for child in children]
+        return view
 
     @classmethod
     def from_json(cls, payload, *, profile=None):
@@ -36,34 +53,19 @@ class Product:
 
     @classmethod
     def refer(cls, entity_id):
-        return cls._teaql_from_record(id=entity_id)
+        return cls(id=entity_id)
 
     @classmethod
-    def _teaql_from_reserved_id(cls, entity_id):
-        """Generated Q plumbing, called only after Context reservation."""
-        EntityCreationState.RESERVED.require_reserved(entity_id)
-        entity = object.__new__(cls)
-        entity._teaql_initialize_record(EntityCreationState.RESERVED, id=entity_id)
-        return entity
-
-    @classmethod
-    def _teaql_from_record(cls, **kwargs):
-        """Hydration never allocates an ID or creates insert intent."""
-        entity = object.__new__(cls)
-        entity._teaql_initialize_record(EntityCreationState.HYDRATED, **kwargs)
-        return entity
+    def _teaql_new_with_fixed_id(cls, entity_id):
+        """Generated bootstrap capability; application code must not call it."""
+        return cls(id=entity_id)._teaql_force_create()
 
     def _teaql_force_create(self):
-        self._creation_state.require_reserved(getattr(self, "id", None))
         self._action = "Create"
         self._entity_root.mark_as_new(self._teaql_entity_key())
         return self
 
     def __init__(self, **kwargs):
-        raise EntityCreationError()
-
-    def _teaql_initialize_record(self, creation_state, **kwargs):
-        self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
         if "id" in kwargs and "id" not in kwargs:
             kwargs["id"] = kwargs.pop("id")
@@ -83,7 +85,7 @@ class Product:
             kwargs["version"] = kwargs.pop("version")
         self._projection_properties = ProjectionProperties(kwargs,
             ["id", "name", "sku", "imageUrl", "commercePlatform", "createTime", "updateTime", "version", "order_line_list"])
-        self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
+        self._action = "Update" if kwargs.get("id") else "Create"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
         self.id = kwargs.get("id")
@@ -103,26 +105,27 @@ class Product:
         self.version = kwargs.get("version")
 
         if isinstance(self.commercePlatform, dict):
-            self.commercePlatform = CommercePlatform._teaql_from_record(**self.commercePlatform)
-        self._order_line_list = kwargs.get("order_line_list", [])
-        if "order_line_list" in kwargs or creation_state is EntityCreationState.RESERVED:
+            self.commercePlatform = CommercePlatform(**self.commercePlatform)
+        if "order_line_list" in kwargs or kwargs.get("id") is None:
+            supplied = kwargs.get("order_line_list")
+            self._order_line_list = supplied.map(lambda item: item) if isinstance(supplied, SmartList) else SmartList(supplied or ())
             self._loaded_fields.add("order_line_list")
+        else:
+            self._order_line_list = SmartList.empty()
         if self._order_line_list:
             from models.order_line import OrderLine
-            source = self._order_line_list
-            hydrated = [
-                item if isinstance(item, OrderLine) else OrderLine._teaql_from_record(_entity_root=self._entity_root, **item)
-                for item in source
-            ]
-            self._order_line_list = (SmartList(hydrated, facets=source.facets, total_count=source.total_count)
-                if isinstance(source, SmartList) else hydrated)
+            self._order_line_list = self._order_line_list.map(
+                lambda item: item if isinstance(item, OrderLine) else OrderLine(_entity_root=self._entity_root, **item)
+            )
         self._ledger_id = getattr(self, "id", None)
+        if self._ledger_id is None:
+            self._ledger_id = -next(self._teaql_temporary_ids)
         key = self._teaql_entity_key()
         if self._action == "Create":
             self._entity_root.mark_as_new(key)
         elif getattr(self, "version", None) is not None:
             self._entity_root.set_original_version(key, int(self.version))
-        LoadedScalarSnapshots.capture(self, self._teaql_snapshot_values(), origin=creation_state)
+        LoadedScalarSnapshots.capture(self, self._teaql_snapshot_values())
 
     def _teaql_snapshot_values(self):
         payload = {}
@@ -155,6 +158,36 @@ class Product:
     def _teaql_entity_key(self):
         return EntityKey("Product", self._ledger_id)
 
+    def _teaql_restore_fixed_values(self, values):
+        """Runtime-owned restoration supplies only known, equal scalar values."""
+        if "name" in values:
+            value = values["name"]
+            raw = value.val if isinstance(value, Value) else value
+            self.name = raw
+
+        if "sku" in values:
+            value = values["sku"]
+            raw = value.val if isinstance(value, Value) else value
+            self.sku = raw
+
+        if "image_url" in values:
+            value = values["image_url"]
+            raw = value.val if isinstance(value, Value) else value
+            self.imageUrl = raw
+
+        if "create_time" in values:
+            value = values["create_time"]
+            raw = value.val if isinstance(value, Value) else value
+            self.createTime = raw
+
+        if "update_time" in values:
+            value = values["update_time"]
+            raw = value.val if isinstance(value, Value) else value
+            self.updateTime = raw
+
+
+        pass
+
     def get_dynamic_property(self, name):
         return self._projection_properties.get(name)
 
@@ -176,19 +209,18 @@ class Product:
         return self
 
     async def save(self, context):
-        # Validate intent and creation provenance before callbacks/provider access.
+        # Validate the root reason before ID allocation or provider access.
         MutationIntent(self._comment)
-        self._teaql_validate_input_graph(context, set())
+        context._validate_generated_graph_input("Product",
+            lambda: self._teaql_validate_input_graph(context, set()))
         return await context.execute_graph_save(
             lambda session: self._teaql_save_within_graph(session.context, session),
             prepare=lambda session: self._teaql_prepare_graph(session.context, session), comment=self._comment)
 
-    def _teaql_validate_input_graph(self, context, visited, parent_field=None, validate_required=False):
+    def _teaql_validate_input_graph(self, context, visited, parent_field=None):
         if id(self) in visited:
             return
         visited.add(id(self))
-        self._creation_state.validate_mutation(self._action, getattr(self, "id", None),
-            LoadedScalarSnapshots.persisted_version(self), self._entity_root.has_pending(self._teaql_entity_key()))
         LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
@@ -210,15 +242,11 @@ class Product:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity", entity_type="Product")])
                 if "version" not in self._loaded_fields:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="Product")])
-            # Required business values may be supplied by customer Fix. Root,
-            # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
-            validate_mutation_versions(command)
-            if validate_required:
-                context._validate_required_mutation_input(command, parent_field=parent_field)
+            context._validate_required_mutation_input(command, parent_field=parent_field)
         for index, child in enumerate(self._order_line_list):
             try:
-                child._teaql_validate_input_graph(context, visited, "product", validate_required=validate_required)
+                child._teaql_validate_input_graph(context, visited, "product")
             except CheckException as error:
                 prefix = ObjectLocation().property("order_line_list").index(index)
                 raise CheckException([
@@ -235,49 +263,57 @@ class Product:
         if object_identity in visited:
             return
         visited.add(object_identity)
-        if self._action == "Create":
-            self._creation_state.require_reserved(getattr(self, "id", None))
+        if self._action == "Create" and getattr(self, "id", None) is None:
+            service = context.require_resource("dataService")
+            allocator = getattr(service, "next_id", None)
+            if not callable(allocator):
+                raise RuntimeError(
+                    "Configured dataService does not support stable ID reservation"
+                )
+            old_key = self._teaql_entity_key()
+            self.id = int(await allocator("Product"))
+            self._loaded_fields.add("id")
+            self._ledger_id = self.id
+            new_key = self._teaql_entity_key()
+            self._entity_root.rekey(old_key, new_key)
+            self._entity_root.set(new_key, "id", Value.I64(self.id))
         await self._teaql_ensure_business_ids(context)
         for child in self._order_line_list:
             child._teaql_attach_root(self._entity_root)
             await child._teaql_reserve_graph_ids(context, visited)
 
     async def _teaql_prepare_graph(self, context, session):
-        # Internal IDs are already reserved by Context-bound construction.
-        # Complete input/Fix checks before admitting the final mutation plan.
+        # Complete all input/Fix checks before reserving any graph identity.
+        # Stable IDs then make the final policy plan and TraceScope concrete.
         self._teaql_validate_input_graph(context, set())
         session._generated.admit_graph(self)
-        self._teaql_prepare_input_graph(context, set(), session)
-        # Fix may edit a sibling or its version; re-admit the whole graph.
-        self._teaql_validate_input_graph(context, set(), validate_required=True)
+        self._teaql_prepare_input_graph(context, set())
+        # Fix may edit a sibling or its version; re-admit the whole graph before IDs.
+        self._teaql_validate_input_graph(context, set())
         await self._teaql_reserve_graph_ids(context, set())
         self._teaql_preflight_graph(context, session)
         session._seal_generated_plan()
 
-    def _teaql_prepare_input_graph(self, context, visited, session):
+    def _teaql_prepare_input_graph(self, context, visited):
         if id(self) in visited:
             return
         visited.add(id(self))
-        LoadedScalarSnapshots.discard_restored_fields(self, context)
+        session = context._graph_session
         session._generated.observe(self)
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("Product", ledger)
-            # A fresh invocation starts from caller-owned Create attributes,
-            # not retained output from a previously rejected Fix invocation.
-            action, cmd = self._teaql_build_command(include_fixed=False)
-            session._generated.fix(self, action, cmd,
-                deferred_fields=())
+            _action, cmd = self._teaql_build_command()
+            session._generated.fix(self, _action, cmd, deferred_fields=())
         for index, child in enumerate(self._order_line_list):
             child._teaql_attach_root(self._entity_root)
-            # A missing read projection is unknown, not a request to reparent a child.
-            # Only new entities or a loaded FK can establish a changed association.
-            current = getattr(child, "product", None)
-            if (current is not self and getattr(current, "id", current) != self.id
-                    and (child._action == "Create" or "product" in child._loaded_fields)):
+            # The object reference exists even before either endpoint has a stable ID.
+            # Do not confuse two absent IDs with an already-established association.
+            if getattr(child, "product", None) is not self:
                 child.update_product(self)
             try:
-                child._teaql_prepare_input_graph(context, visited, session)
+                child._teaql_prepare_input_graph(context, visited)
             except CheckException as error:
                 prefix = ObjectLocation().property("order_line_list").index(index)
                 raise CheckException([
@@ -286,7 +322,7 @@ class Product:
                 ]) from error
 
     def _teaql_graph_relations(self):
-        return {"order_line_list": tuple(self._order_line_list),}
+        return {"order_line_list": tuple(self._order_line_list)}
 
     def _teaql_scalar_payload(self):
         payload = {}
@@ -320,15 +356,10 @@ class Product:
 
         return payload
 
-    def _teaql_build_command(self, include_fixed=True):
+    def _teaql_build_command(self):
         payload = self._teaql_scalar_payload()
         action = self._action
-        if action == "Create" and include_fixed:
-            # Preparation Fix values live in the ledger until commit. Rebuilding
-            # from entity attributes alone must not discard those checked values.
-            ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
-            payload.update({field: value for field, value in ledger.items() if field not in ("id", "version")})
-        elif action == "Update":
+        if action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
         if "commerce_platform" in payload:
@@ -377,18 +408,12 @@ class Product:
                 if "version" not in self._loaded_fields:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="Product")])
             action, cmd = self._teaql_build_command()
-            try:
-                action, cmd = session._generated.finalize(self, action, cmd)
-            finally:
-                for field, value in getattr(cmd, "values", {}).items():
-                    if field not in ("id", "version"):
-                        self._entity_root.set(self._teaql_entity_key(), field, value)
+            action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
         for index, child in enumerate(self._order_line_list):
             child._teaql_attach_root(self._entity_root)
             current = getattr(child, "product", None)
-            if (getattr(current, "id", current) != self.id
-                    and (child._action == "Create" or "product" in child._loaded_fields)):
+            if getattr(current, "id", current) != self.id:
                 child.update_product(self)
             try:
                 child._teaql_preflight_graph(context, session, scope)
@@ -402,6 +427,7 @@ class Product:
     async def _teaql_save_within_graph(self, context, session, parent=None):
         if not session._generated.visit("write", self):
             return self
+        session._generated.validate()
         if parent is None:
             MutationIntent(self._comment)
 
@@ -426,8 +452,6 @@ class Product:
             )
         rollback_payload = {field: getattr(self, field, None) for field in self._loaded_fields | {"id", "version"}}
         rollback_snapshot = LoadedScalarSnapshots.values(self)
-        rollback_origin = LoadedScalarSnapshots.origin(self)
-        rollback_creation_state = self._creation_state
         rollback_ledger_id = self._ledger_id
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
@@ -490,23 +514,23 @@ class Product:
             self._ledger_id = rollback_ledger_id
             self._action = rollback_action
             self._loaded_fields = rollback_loaded_fields
-            self._creation_state = rollback_creation_state
-            LoadedScalarSnapshots.restore(self, rollback_snapshot, origin=rollback_origin)
+            LoadedScalarSnapshots.restore(self, rollback_snapshot)
             if old_key != new_key:
                 self._entity_root.rekey(new_key, old_key)
         session.after_rollback(rollback_entity)
         if action != "Delete":
             self._action = "Update"
-
         session._generated.accepted(self)
+
         if action != "Delete":
             await self._teaql_cascade_children(context, session, scope)
         def commit_entity():
-            self._creation_state = EntityCreationState.HYDRATED
+            session._generated.validate()
             LoadedScalarSnapshots.capture(self, self._teaql_snapshot_values())
             self._entity_root.clear_entity(new_key)
             if getattr(self, "version", None) is not None:
                 self._entity_root.accept_committed_version(new_key, int(self.version))
+            session._generated.accepted(self)
         session.after_commit(commit_entity)
         return self
 
@@ -517,8 +541,7 @@ class Product:
             for index, child in enumerate(children):
                 child._teaql_attach_root(self._entity_root)
                 current = getattr(child, member, None)
-                if (getattr(current, "id", current) != self.id
-                        and (child._action == "Create" or member in child._loaded_fields)):
+                if getattr(current, "id", current) != self.id:
                     getattr(child, updater)(self)
                 try:
                     await child._teaql_save_within_graph(context, session, scope)
@@ -605,6 +628,5 @@ class Product:
             else Value.from_any(self.commercePlatform))
         return self
 
-    def order_line_list(self) -> list:
-        self._loaded_fields.add("order_line_list")
+    def order_line_list(self) -> "SmartList[OrderLine]":
         return self._order_line_list

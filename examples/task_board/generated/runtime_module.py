@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
-from teaql.runtime import CheckResult, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.runtime import CheckResult, ContextFix, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.runtime import CheckerPresentationModel
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
 from teaql.core.value import DataType
 from Q import Q
@@ -36,10 +37,8 @@ def _teaql_entity_id(value):
 class _PlatformChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
-        if operation == "insert" and ("founded" not in record or _teaql_is_null(record["founded"])):
-            record["founded"] = Value.from_any(now)
-            context.record_fix_evidence("Platform", "founded", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "founded", "now", [], location_name="founded")
 
 
 
@@ -61,7 +60,6 @@ class _PlatformChecker:
 class _TaskStatusChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "name" not in record) or ("name" in record and _teaql_is_null(record["name"])):
             results.append(CheckResult("required", ObjectLocation().property("name")))
         if "name" in record and _teaql_raw(record["name"]) is not None and len(_teaql_raw(record["name"])) > 100:
@@ -91,7 +89,6 @@ class _TaskStatusChecker:
 class _TaskChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "name" not in record) or ("name" in record and _teaql_is_null(record["name"])):
             results.append(CheckResult("required", ObjectLocation().property("name")))
         if "name" in record and _teaql_raw(record["name"]) is not None and not len(_teaql_raw(record["name"])) >= 1:
@@ -110,7 +107,6 @@ class _TaskChecker:
 class _TaskExecutionLogChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "task" not in record) or ("task" in record and _teaql_is_null(record["task"])):
             results.append(CheckResult("required", ObjectLocation().property("task")))
 
@@ -128,7 +124,7 @@ class _TaskExecutionLogChecker:
 
 _Platform_DESCRIPTOR = (EntityDescriptor("Platform")
     .audit_mask_fields([])
-    .table_name("platform_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("founded", DataType.Timestamp).column_name("founded").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("user_email", DataType.Text).column_name("user_email").log_policy("plain").required()).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("task_status_list", "TaskStatus").local("id").foreign("platform").many()).relation(RelationDescriptor("task_list", "Task").local("id").foreign("platform").many())
+    .table_name("platform_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("founded", DataType.Timestamp).column_name("founded").log_policy("plain").required().fixed_by_runtime(insert=True).on_create_from_context("now")).property(PropertyDescriptor("user_email", DataType.Text).column_name("user_email").log_policy("plain").required()).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("task_status_list", "TaskStatus").local("id").foreign("platform").many()).relation(RelationDescriptor("task_list", "Task").local("id").foreign("platform").many())
 )
 
 _TaskStatus_DESCRIPTOR = (EntityDescriptor("TaskStatus")
@@ -155,8 +151,7 @@ async def _ensure_generated_bootstrap_once(context):
     try:
         platform_1 = await (Q.platforms().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if platform_1 is None:
-            platform_1 = await Q.platforms().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            platform_1.update_id(1)
+            platform_1 = Platform._teaql_new_with_fixed_id(1)
             platform_1.update_name("Robot System")
             platform_1.update_user_email("string()")
             try:
@@ -173,8 +168,7 @@ async def _ensure_generated_bootstrap_once(context):
         context.with_active_root(ContextEntityRef("Platform", 1))
         task_status_1001 = await (Q.task_statuses().with_id_is(1001).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if task_status_1001 is None:
-            task_status_1001 = await Q.task_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            task_status_1001.update_id(1001)
+            task_status_1001 = TaskStatus._teaql_new_with_fixed_id(1001)
             task_status_1001.update_name("Planned")
             task_status_1001.update_code("PLANNED")
             task_status_1001.update_color("#94A3B8")
@@ -215,8 +209,7 @@ async def _ensure_generated_bootstrap_once(context):
             await task_status_1001.audit_as('reconcile model constant TaskStatus(1001)').save(context)
         task_status_1002 = await (Q.task_statuses().with_id_is(1002).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if task_status_1002 is None:
-            task_status_1002 = await Q.task_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            task_status_1002.update_id(1002)
+            task_status_1002 = TaskStatus._teaql_new_with_fixed_id(1002)
             task_status_1002.update_name("Ready")
             task_status_1002.update_code("READY")
             task_status_1002.update_color("#3B82F6")
@@ -257,8 +250,7 @@ async def _ensure_generated_bootstrap_once(context):
             await task_status_1002.audit_as('reconcile model constant TaskStatus(1002)').save(context)
         task_status_1003 = await (Q.task_statuses().with_id_is(1003).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if task_status_1003 is None:
-            task_status_1003 = await Q.task_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            task_status_1003.update_id(1003)
+            task_status_1003 = TaskStatus._teaql_new_with_fixed_id(1003)
             task_status_1003.update_name("Executing")
             task_status_1003.update_code("EXECUTING")
             task_status_1003.update_color("#F59E0B")
@@ -299,8 +291,7 @@ async def _ensure_generated_bootstrap_once(context):
             await task_status_1003.audit_as('reconcile model constant TaskStatus(1003)').save(context)
         task_status_1004 = await (Q.task_statuses().with_id_is(1004).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if task_status_1004 is None:
-            task_status_1004 = await Q.task_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            task_status_1004.update_id(1004)
+            task_status_1004 = TaskStatus._teaql_new_with_fixed_id(1004)
             task_status_1004.update_name("Verified")
             task_status_1004.update_code("VERIFIED")
             task_status_1004.update_color("#16A34A")
@@ -356,6 +347,7 @@ async def _ensure_generated_bootstrap(context):
 
 
 # Passive generated manifest. Call ensure_schema() separately and explicitly.
+_CHECKER_PRESENTATION = CheckerPresentationModel.from_json("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:dff2f0a6d3adc2fa5562040379fac7f1e4bede0acb5c076b6fd701a51dca1bc1\",\"entities\":{\"Platform\":{\"labels\":{\"en\":\"Platform\"},\"fields\":[{\"name\":\"founded\",\"labels\":{\"en\":\"founded\"},\"aliases\":[\"Founded\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"task_list\",\"targetType\":\"Task\",\"labels\":{\"en\":\"Task\"},\"aliases\":[\"TaskList\",\"taskList\"]},{\"name\":\"task_status_list\",\"targetType\":\"TaskStatus\",\"labels\":{\"en\":\"Task Status\"},\"aliases\":[\"TaskStatusList\",\"taskStatusList\"]},{\"name\":\"user_email\",\"labels\":{\"en\":\"user email\"},\"aliases\":[\"UserEmail\",\"userEmail\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"Task\":{\"labels\":{\"en\":\"Task\"},\"fields\":[{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"platform\",\"targetType\":\"Platform\",\"labels\":{\"en\":\"Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"status\",\"targetType\":\"TaskStatus\",\"labels\":{\"en\":\"Task Status\"},\"aliases\":[\"Status\"]},{\"name\":\"task_execution_log_list\",\"targetType\":\"TaskExecutionLog\",\"labels\":{\"en\":\"Task Execution Log\"},\"aliases\":[\"TaskExecutionLogList\",\"taskExecutionLogList\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"TaskExecutionLog\":{\"labels\":{\"en\":\"Task Execution Log\"},\"fields\":[{\"name\":\"action\",\"labels\":{\"en\":\"action\"},\"aliases\":[\"Action\"]},{\"name\":\"detail\",\"labels\":{\"en\":\"detail\"},\"aliases\":[\"Detail\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"task\",\"targetType\":\"Task\",\"labels\":{\"en\":\"Task\"},\"aliases\":[\"Task\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"TaskStatus\":{\"labels\":{\"en\":\"Task Status\"},\"fields\":[{\"name\":\"code\",\"labels\":{\"en\":\"code\"},\"aliases\":[\"Code\"]},{\"name\":\"color\",\"labels\":{\"en\":\"color\"},\"aliases\":[\"Color\"]},{\"name\":\"display_order\",\"labels\":{\"en\":\"display order\"},\"aliases\":[\"DisplayOrder\",\"displayOrder\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"platform\",\"targetType\":\"Platform\",\"labels\":{\"en\":\"Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"progress\",\"labels\":{\"en\":\"progress\"},\"aliases\":[\"Progress\"]},{\"name\":\"task_list\",\"targetType\":\"Task\",\"labels\":{\"en\":\"Task\"},\"aliases\":[\"TaskList\",\"taskList\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}")
 GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Platform)
     .schema_entity(_Platform_DESCRIPTOR)
     .checker("Platform", _PlatformChecker())
@@ -369,5 +361,6 @@ GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Platform)
     .schema_entity(_TaskExecutionLog_DESCRIPTOR)
     .checker("TaskExecutionLog", _TaskExecutionLogChecker())
     .wire_metadata("TaskExecutionLog", create_wire_entity_metadata("TaskExecutionLog", ["id", "task", "action", "detail", "version"], JsonFieldNamingProfile.parse("camelCase"), {"id": ["id"], "task": ["task"], "action": ["action"], "detail": ["detail"], "version": ["version"]}))
+    .checker_presentation(_CHECKER_PRESENTATION)
     .generated_bootstrap(_ensure_generated_bootstrap)
 )

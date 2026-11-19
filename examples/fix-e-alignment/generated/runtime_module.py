@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
-from teaql.runtime import CheckResult, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.runtime import CheckResult, ContextFix, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.runtime import CheckerPresentationModel
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
 from teaql.core.value import DataType
 from Q import Q
@@ -35,7 +36,6 @@ def _teaql_entity_id(value):
 class _TenantChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "name" not in record) or ("name" in record and _teaql_is_null(record["name"])):
             results.append(CheckResult("required", ObjectLocation().property("name")))
         if "name" in record and _teaql_raw(record["name"]) is not None and not len(_teaql_raw(record["name"])) >= 1:
@@ -48,7 +48,6 @@ class _TenantChecker:
 class _PurchaseOrderChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if operation == "insert":
             root = context.require_active_root("Tenant")
             if "tenant" in record and not _teaql_is_null(record["tenant"]):
@@ -64,16 +63,13 @@ class _PurchaseOrderChecker:
 
 
 
-        if operation == "insert" and ("create_time" not in record or _teaql_is_null(record["create_time"])):
-            record["create_time"] = Value.from_any(now)
-            context.record_fix_evidence("PurchaseOrder", "create_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "create_time", "now", [], location_name="create_time")
 
-        if operation == "insert" and ("update_time" not in record or _teaql_is_null(record["update_time"])):
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("PurchaseOrder", "update_time", "clock", "graphClock")
-        if operation == "insert" or operation == "update":
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("PurchaseOrder", "update_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
+        if operation == "update":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
 
 
         if (operation == "insert" and "tenant" not in record) or ("tenant" in record and _teaql_is_null(record["tenant"])):
@@ -100,7 +96,6 @@ class _PurchaseOrderChecker:
 class _OrderItemChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if operation == "insert":
             root = context.require_active_root("Tenant")
             if "tenant" in record and not _teaql_is_null(record["tenant"]):
@@ -116,16 +111,13 @@ class _OrderItemChecker:
 
 
 
-        if operation == "insert" and ("create_time" not in record or _teaql_is_null(record["create_time"])):
-            record["create_time"] = Value.from_any(now)
-            context.record_fix_evidence("OrderItem", "create_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "create_time", "now", [], location_name="create_time")
 
-        if operation == "insert" and ("update_time" not in record or _teaql_is_null(record["update_time"])):
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("OrderItem", "update_time", "clock", "graphClock")
-        if operation == "insert" or operation == "update":
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("OrderItem", "update_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
+        if operation == "update":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
 
 
         if (operation == "insert" and "purchase_order" not in record) or ("purchase_order" in record and _teaql_is_null(record["purchase_order"])):
@@ -163,12 +155,12 @@ _Tenant_DESCRIPTOR = (EntityDescriptor("Tenant")
 
 _PurchaseOrder_DESCRIPTOR = (EntityDescriptor("PurchaseOrder")
     .audit_mask_fields([])
-    .table_name("purchase_order_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("tenant", DataType.I64).column_name("tenant").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("contact_phone", DataType.Text).column_name("contact_phone").log_policy("plain").required()).property(PropertyDescriptor("internal_note", DataType.Text).column_name("internal_note").log_policy("plain")).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True)).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("tenant", "Tenant").local("tenant").foreign("id")).relation(RelationDescriptor("order_item_list", "OrderItem").local("id").foreign("purchase_order").many())
+    .table_name("purchase_order_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("tenant", DataType.I64).column_name("tenant").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("contact_phone", DataType.Text).column_name("contact_phone").log_policy("plain").required()).property(PropertyDescriptor("internal_note", DataType.Text).column_name("internal_note").log_policy("plain")).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True).on_create_from_context("now")).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True).on_create_from_context("now").on_update_from_context("now")).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("tenant", "Tenant").local("tenant").foreign("id")).relation(RelationDescriptor("order_item_list", "OrderItem").local("id").foreign("purchase_order").many())
 )
 
 _OrderItem_DESCRIPTOR = (EntityDescriptor("OrderItem")
     .audit_mask_fields([])
-    .table_name("order_item_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("purchase_order", DataType.I64).column_name("purchase_order").log_policy("plain").required()).property(PropertyDescriptor("tenant", DataType.I64).column_name("tenant").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("product_name", DataType.Text).column_name("product_name").log_policy("plain").required()).property(PropertyDescriptor("unit_price", DataType.Decimal).column_name("unit_price").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True)).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("purchase_order", "PurchaseOrder").local("purchase_order").foreign("id")).relation(RelationDescriptor("tenant", "Tenant").local("tenant").foreign("id"))
+    .table_name("order_item_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("purchase_order", DataType.I64).column_name("purchase_order").log_policy("plain").required()).property(PropertyDescriptor("tenant", DataType.I64).column_name("tenant").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("product_name", DataType.Text).column_name("product_name").log_policy("plain").required()).property(PropertyDescriptor("unit_price", DataType.Decimal).column_name("unit_price").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True).on_create_from_context("now")).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True).on_create_from_context("now").on_update_from_context("now")).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("purchase_order", "PurchaseOrder").local("purchase_order").foreign("id")).relation(RelationDescriptor("tenant", "Tenant").local("tenant").foreign("id"))
 )
 
 async def _ensure_generated_bootstrap_once(context):
@@ -180,8 +172,7 @@ async def _ensure_generated_bootstrap_once(context):
     try:
         tenant_1 = await (Q.tenants().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if tenant_1 is None:
-            tenant_1 = await Q.tenants().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            tenant_1.update_id(1)
+            tenant_1 = Tenant._teaql_new_with_fixed_id(1)
             tenant_1.update_name("Tenant Name")
             try:
                 await tenant_1.audit_as('create model root Tenant(1)').save(context)
@@ -212,6 +203,7 @@ async def _ensure_generated_bootstrap(context):
 
 
 # Passive generated manifest. Call ensure_schema() separately and explicitly.
+_CHECKER_PRESENTATION = CheckerPresentationModel.from_json("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:cbc03c71084d5ff17fe312ca583e790e692d2ecb065fe3a55ec2398eb9189248\",\"entities\":{\"OrderItem\":{\"labels\":{\"en\":\"order item\"},\"fields\":[{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"product_name\",\"labels\":{\"en\":\"product name\"},\"aliases\":[\"ProductName\",\"productName\"]},{\"name\":\"purchase_order\",\"targetType\":\"PurchaseOrder\",\"labels\":{\"en\":\"purchase order\"},\"aliases\":[\"PurchaseOrder\",\"purchaseOrder\"]},{\"name\":\"tenant\",\"targetType\":\"Tenant\",\"labels\":{\"en\":\"tenant\"},\"aliases\":[\"Tenant\"]},{\"name\":\"unit_price\",\"labels\":{\"en\":\"unit price\"},\"aliases\":[\"UnitPrice\",\"unitPrice\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"PurchaseOrder\":{\"labels\":{\"en\":\"purchase order\"},\"fields\":[{\"name\":\"contact_phone\",\"labels\":{\"en\":\"contact phone\"},\"aliases\":[\"ContactPhone\",\"contactPhone\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"internal_note\",\"labels\":{\"en\":\"internal note\"},\"aliases\":[\"InternalNote\",\"internalNote\"]},{\"name\":\"order_item_list\",\"targetType\":\"OrderItem\",\"labels\":{\"en\":\"order item\"},\"aliases\":[\"OrderItemList\",\"orderItemList\"]},{\"name\":\"tenant\",\"targetType\":\"Tenant\",\"labels\":{\"en\":\"tenant\"},\"aliases\":[\"Tenant\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"Tenant\":{\"labels\":{\"en\":\"tenant\"},\"fields\":[{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"order_item_list\",\"targetType\":\"OrderItem\",\"labels\":{\"en\":\"order item\"},\"aliases\":[\"OrderItemList\",\"orderItemList\"]},{\"name\":\"purchase_order_list\",\"targetType\":\"PurchaseOrder\",\"labels\":{\"en\":\"purchase order\"},\"aliases\":[\"PurchaseOrderList\",\"purchaseOrderList\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}")
 GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Tenant)
     .schema_entity(_Tenant_DESCRIPTOR)
     .checker("Tenant", _TenantChecker())
@@ -222,5 +214,6 @@ GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Tenant)
     .schema_entity(_OrderItem_DESCRIPTOR)
     .checker("OrderItem", _OrderItemChecker())
     .wire_metadata("OrderItem", create_wire_entity_metadata("OrderItem", ["id", "purchase_order", "tenant", "product_name", "unit_price", "create_time", "update_time", "version"], JsonFieldNamingProfile.parse("camelCase"), {"id": ["id"], "purchase_order": ["purchase_order"], "tenant": ["tenant"], "product_name": ["product_name"], "unit_price": ["unit_price"], "create_time": ["create_time"], "update_time": ["update_time"], "version": ["version"]}))
+    .checker_presentation(_CHECKER_PRESENTATION)
     .generated_bootstrap(_ensure_generated_bootstrap)
 )

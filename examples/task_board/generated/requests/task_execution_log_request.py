@@ -421,7 +421,6 @@ class TaskExecutionLogRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_task(self):
         self.query.group_by("task")
@@ -429,7 +428,6 @@ class TaskExecutionLogRequest:
 
     def group_by_task_as(self, ret_name: str):
         self.query.group_by("task")
-        self.query.project_expr(ret_name, column("task"))
         return self
     def group_by_action(self):
         self.query.group_by("action")
@@ -437,7 +435,6 @@ class TaskExecutionLogRequest:
 
     def group_by_action_as(self, ret_name: str):
         self.query.group_by("action")
-        self.query.project_expr(ret_name, column("action"))
         return self
     def group_by_detail(self):
         self.query.group_by("detail")
@@ -445,7 +442,6 @@ class TaskExecutionLogRequest:
 
     def group_by_detail_as(self, ret_name: str):
         self.query.group_by("detail")
-        self.query.project_expr(ret_name, column("detail"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -453,7 +449,6 @@ class TaskExecutionLogRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
         return self
     def facet_by_task_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
@@ -470,11 +465,10 @@ class ExecutableTaskExecutionLogRequest:
         self._request.comment(c)
         return self
 
-    async def new_entity(self, context) -> TaskExecutionLog:
+    def new_entity(self, context) -> TaskExecutionLog:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        identity = await context.next_id("TaskExecutionLog")
-        entity = context.initialize_entity("TaskExecutionLog", TaskExecutionLog._teaql_from_reserved_id(identity))
+        entity = context.initialize_entity("TaskExecutionLog", TaskExecutionLog())
         if not isinstance(entity, TaskExecutionLog):
             raise TypeError("entity initializer returned an incompatible TaskExecutionLog")
         return entity
@@ -500,7 +494,7 @@ class ExecutableTaskExecutionLogRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: TaskExecutionLog._teaql_from_record(_entity_root=EntityRoot(), **row),
+            lambda row: TaskExecutionLog(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -517,6 +511,8 @@ class ExecutableTaskExecutionLogRequest:
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
         root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
+        if root.query.aggregates or root.query.group_by_items or root.query.object_group_bys:
+            raise ValueError("Entity streams require entity rows; use a record or aggregation query")
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: TaskExecutionLog._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: TaskExecutionLog(_entity_root=EntityRoot(), **row), chunk_size)

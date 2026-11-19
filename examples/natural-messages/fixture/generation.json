@@ -1,12 +1,35 @@
 {
-  "schema": "teaql.generated-example-provenance/v1",
-  "generatorCommit": "493b45cc0c1df2f87873a513f7adb3ad7a3da405",
-  "upstreamTest": "com.skynet.codegenerator.PythonNaturalMessagesGenerationTest",
-  "fixtureOutputProperty": "teaql.python.natural.fixture.output",
-  "scope": "python-lib-core",
-  "runtimeDependency": "local repository source",
-  "generationReceipt": "teaql-conformance/evidence/2026-11-12-natural-checker-python-generation-origin-qualified/receipt.json",
-  "generationReceiptSha256": "e61907c9f1dfc1addfc261dccd05eb91d8585fb69503f76b8225b9d2dd714884",
+  "evaluatedScope": "python-lib-core",
+  "evaluationErrors": 0,
+  "evaluationWarnings": 2,
+  "generatedManifestSha256": "6b104f2b39476f7c879ac5e565cd3ee3f33c4cf04ec2aa5ab43337c1562d64fd",
+  "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/natural-messages/fixture/model/receipt.json",
+  "generationReceiptSha256": "057bcdb100db432e99f65f73a4a0fa5ce71fc1863f2eb921c21b56846d4edac2",
+  "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+  "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+  "generatorRelease": "v4.2.0",
   "implementationHandEdited": false,
-  "publicPublication": false
+  "modelSha256": "871c28ee976d0fc0e35c21305870cf21f83bd0aed0b758bbf217b51ae65299b1",
+  "previousGeneration": {
+    "fixtureOutputProperty": "teaql.python.natural.fixture.output",
+    "generationReceipt": "teaql-conformance/evidence/2026-11-12-natural-checker-python-generation-origin-qualified/receipt.json",
+    "generationReceiptSha256": "e61907c9f1dfc1addfc261dccd05eb91d8585fb69503f76b8225b9d2dd714884",
+    "generatorCommit": "493b45cc0c1df2f87873a513f7adb3ad7a3da405",
+    "implementationHandEdited": false,
+    "publicPublication": false,
+    "runtimeDependency": "local repository source",
+    "schema": "teaql.generated-example-provenance/v1",
+    "scope": "python-lib-core",
+    "upstreamTest": "com.skynet.codegenerator.PythonNaturalMessagesGenerationTest"
+  },
+  "producerReceiptSha256": "057bcdb100db432e99f65f73a4a0fa5ce71fc1863f2eb921c21b56846d4edac2",
+  "producerSource": {
+    "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+    "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+    "release": "v4.2.0"
+  },
+  "publicPublication": false,
+  "runtimeDependency": "local repository source",
+  "schema": "teaql.generated-example-provenance/v1",
+  "scope": "python-lib-core"
 }

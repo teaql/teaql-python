@@ -1,0 +1,1229 @@
+{
+  "generator": {
+    "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+    "releaseURL": "https://github.com/teaql/teaql-code-gen/releases/tag/v4.2.0",
+    "sourceCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+    "tag": "v4.2.0"
+  },
+  "installationReceiptSHA256": "ddf103df0daa060962986e92d230cc201fcc78293198a4c5b107cdbe09346680",
+  "libraries": [
+    {
+      "archiveSHA256": "6fb1042fc6929896034fe736fbd28ba655f1d84933a35c9c050fcf972c4b298f",
+      "destination": "examples/conformance",
+      "generatedFiles": {
+        "examples/conformance/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "2b183807b5f191f06273c6338772b7fa0dc9f9b28f14b497f70f6555cfeba780"
+        },
+        "examples/conformance/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "4ea3d328abc7e0a487da8f861a857831f054d35e4c3a4f4e2bcf3287ec77ee3a"
+        },
+        "examples/conformance/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "2569dc8cfaf1aa826068b33ebbe40fcc2292a3680122ea72704bf24e81a908f1"
+        },
+        "examples/conformance/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/conformance/models/platform.py": {
+          "emittedPath": "models/platform.py",
+          "sha256": "49f2b53e16e809e0ca4b35276ff1a4d773d855d4032459f4c3751e2ece025041"
+        },
+        "examples/conformance/models/work_item.py": {
+          "emittedPath": "models/work_item.py",
+          "sha256": "f84edb948955475178fd51d56740663ac9a5b5d1c3210278b2627475cec496a5"
+        },
+        "examples/conformance/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/conformance/requests/platform_request.py": {
+          "emittedPath": "requests/platform_request.py",
+          "sha256": "5f6d449db0ee82eb831f7d4aebb6a4697a043262b428d0fc70ad9a3c29b4c2cd"
+        },
+        "examples/conformance/requests/work_item_request.py": {
+          "emittedPath": "requests/work_item_request.py",
+          "sha256": "ede7266e714d4b5288c020274be87ca88647c686680e2d10e1df9875bee9e3d6"
+        },
+        "examples/conformance/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "eca4dc4677798959cb01b1223efd9b6796e5fda3a76bec9e569f6eab9e370ba1"
+        },
+        "examples/conformance/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "fa0ea9576dccfb6ef4e940b00b53abb843ee492741e98da5001e6ea2ad79b2cb"
+        },
+        "examples/conformance/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "4824e2986933569c4d827ca44cae7e3a028012aec1e7dbacd245fff5fd5ffe1b"
+        },
+        "examples/conformance/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "6710ca9864c596bf2413ab1eee0ba59b94cc73b57e7fec6ad4a13f482a3cdfea"
+        }
+      },
+      "model": "examples/conformance/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "d797f10e54653b2671fbf80eb815f5ac6c11753621afc0a9210bfebaaba543ef",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/conformance/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "0a59f66db2487fdd0430087dd5985ae780225c088ad800679cb57c593c6bcee7",
+        "producerReceiptSha256": "eb27f3d6fafaca1e1a2b31f3ee29d9e4f73393d97c321ceb6b040a01f0ee533a",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/conformance/pyproject.toml": {
+          "emittedSHA256": "968efdf70bdead1cff11d5fe9c399351dac17e2a26c9977ee023ef8415567eba",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "68141676dcebb9419edad114c23b5bcf6725efc040972dcd8ba6407a1629bb10"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "e5dfafb1138147920cad8d95563817bb7c9b110c2596dd79b3fbae83fc1a8096",
+      "destination": "examples/expression-profiles/generated/PascalCase",
+      "generatedFiles": {
+        "examples/expression-profiles/generated/PascalCase/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "e547e613c0ca390743dbf12205e1769d9f526e097a8d4d1a7dc6d773a6debcaf"
+        },
+        "examples/expression-profiles/generated/PascalCase/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b"
+        },
+        "examples/expression-profiles/generated/PascalCase/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "71340aaa1799f954a597e79ac510705b3cfe1adba4244fb56531aad91e5facf3"
+        },
+        "examples/expression-profiles/generated/PascalCase/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/expression-profiles/generated/PascalCase/models/scalar_type_probe.py": {
+          "emittedPath": "models/scalar_type_probe.py",
+          "sha256": "1a24ffd1020083e00f763ed952a6a3249f9c9af6e2b0ee137ad8de902daa6bea"
+        },
+        "examples/expression-profiles/generated/PascalCase/models/type_platform.py": {
+          "emittedPath": "models/type_platform.py",
+          "sha256": "376cdcd0620753808aa55ca5a32b09e8c031369e918784a28f603768f05bd957"
+        },
+        "examples/expression-profiles/generated/PascalCase/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/expression-profiles/generated/PascalCase/requests/scalar_type_probe_request.py": {
+          "emittedPath": "requests/scalar_type_probe_request.py",
+          "sha256": "33ecfc55e89e1889ecba2f8997cb31ff7a3519ee41f642b9b626fc1c44b4fb73"
+        },
+        "examples/expression-profiles/generated/PascalCase/requests/type_platform_request.py": {
+          "emittedPath": "requests/type_platform_request.py",
+          "sha256": "7e0fb6b848398e6283ccfae47c54bc2a0ba31b6a3650c779ddc3e05045464f9b"
+        },
+        "examples/expression-profiles/generated/PascalCase/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "f3aa216cf70e6ecf3d004070cefdabb6f0848acbca4601f0c35b2af3b4b446c0"
+        },
+        "examples/expression-profiles/generated/PascalCase/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163"
+        },
+        "examples/expression-profiles/generated/PascalCase/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "ce4ae61861d89991e89b2762d48bb448ad04ad18853c9c5d5ea4e0c7ac093bab"
+        },
+        "examples/expression-profiles/generated/PascalCase/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "ae427ef988d132abf6690f6dd0988e045249b7897a9ab1e3adee5c6ff789157b"
+        }
+      },
+      "model": "examples/expression-profiles/generated/PascalCase/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "d22d422a1d4c34eeaf8f37a2b253036651f92bdc65badf9b8f5f5c60f4d986f9",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/expression-profiles/generated/PascalCase/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "f836540a765f8c372bd7103a25a83ca316797253079ac63f8a1ef5ee4ded027d",
+        "producerReceiptSha256": "76973e78cb8bb26b425e9f424101fea0c3771023693ddeff57c96d320f74593e",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/expression-profiles/generated/PascalCase/pyproject.toml": {
+          "emittedSHA256": "58aa48d6a0a85e79fc3f15fc756dbbafef00c07d66cfda1aa30cc30130e34e23",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "51b0f7ed7a7d61bfe24eb0ad4af4f2b9f72e3938673c1042ec404feb4d035e17",
+      "destination": "examples/expression-profiles/generated/camelCase",
+      "generatedFiles": {
+        "examples/expression-profiles/generated/camelCase/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "5e6a69648c561528bf6168391e9d3b3c8946e0918425909ed64c27e6499974dc"
+        },
+        "examples/expression-profiles/generated/camelCase/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b"
+        },
+        "examples/expression-profiles/generated/camelCase/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19"
+        },
+        "examples/expression-profiles/generated/camelCase/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/expression-profiles/generated/camelCase/models/scalar_type_probe.py": {
+          "emittedPath": "models/scalar_type_probe.py",
+          "sha256": "718db4393913194788bd3d115da7fa1597d9cf2fc5fce15bd4d060b458b8a54d"
+        },
+        "examples/expression-profiles/generated/camelCase/models/type_platform.py": {
+          "emittedPath": "models/type_platform.py",
+          "sha256": "bac15365f32ea9fc261e253dcc5fd2c28c568a562901bcf7c99173d7d0854abb"
+        },
+        "examples/expression-profiles/generated/camelCase/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/expression-profiles/generated/camelCase/requests/scalar_type_probe_request.py": {
+          "emittedPath": "requests/scalar_type_probe_request.py",
+          "sha256": "33ecfc55e89e1889ecba2f8997cb31ff7a3519ee41f642b9b626fc1c44b4fb73"
+        },
+        "examples/expression-profiles/generated/camelCase/requests/type_platform_request.py": {
+          "emittedPath": "requests/type_platform_request.py",
+          "sha256": "7e0fb6b848398e6283ccfae47c54bc2a0ba31b6a3650c779ddc3e05045464f9b"
+        },
+        "examples/expression-profiles/generated/camelCase/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "4ea87ddac1a0d6daf42c5b8740df560a3ad17c5d8f37fbfb4e6c1dcf8b4dec10"
+        },
+        "examples/expression-profiles/generated/camelCase/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163"
+        },
+        "examples/expression-profiles/generated/camelCase/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "ce4ae61861d89991e89b2762d48bb448ad04ad18853c9c5d5ea4e0c7ac093bab"
+        },
+        "examples/expression-profiles/generated/camelCase/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "84e6e6a9d56404f3923357514c795575e617b670ac6ea413306a4203b80ff14e"
+        }
+      },
+      "model": "examples/expression-profiles/generated/camelCase/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "005e8ed34516efbd6b3c94dad3680edadef193bfb977f16d246bc273aac65211",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/expression-profiles/generated/camelCase/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
+        "producerReceiptSha256": "529b6bab77e0975ec273b1bed66a34c19716fd5555922a34d7be8af0894b2f43",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/expression-profiles/generated/camelCase/pyproject.toml": {
+          "emittedSHA256": "58aa48d6a0a85e79fc3f15fc756dbbafef00c07d66cfda1aa30cc30130e34e23",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "a5b75914ef44417820a107b9c7764589d3d49d64296462808d644c8485d606ba",
+      "destination": "examples/expression-profiles/generated/snake_case",
+      "generatedFiles": {
+        "examples/expression-profiles/generated/snake_case/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "f638b4cee0dff6c8a360aa0d3e55d16fc81a5cf73911cd483ded31843282dd7e"
+        },
+        "examples/expression-profiles/generated/snake_case/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b"
+        },
+        "examples/expression-profiles/generated/snake_case/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19"
+        },
+        "examples/expression-profiles/generated/snake_case/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/expression-profiles/generated/snake_case/models/scalar_type_probe.py": {
+          "emittedPath": "models/scalar_type_probe.py",
+          "sha256": "149df1f4eb0f2984a0cded78b5541731ce41b62fb9de9115f95f8d20a99c765f"
+        },
+        "examples/expression-profiles/generated/snake_case/models/type_platform.py": {
+          "emittedPath": "models/type_platform.py",
+          "sha256": "cfae4914a502117b1d1897c8d97b13d94c754d6d8014a2d2fa5a9195a9a061d4"
+        },
+        "examples/expression-profiles/generated/snake_case/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/expression-profiles/generated/snake_case/requests/scalar_type_probe_request.py": {
+          "emittedPath": "requests/scalar_type_probe_request.py",
+          "sha256": "33ecfc55e89e1889ecba2f8997cb31ff7a3519ee41f642b9b626fc1c44b4fb73"
+        },
+        "examples/expression-profiles/generated/snake_case/requests/type_platform_request.py": {
+          "emittedPath": "requests/type_platform_request.py",
+          "sha256": "7e0fb6b848398e6283ccfae47c54bc2a0ba31b6a3650c779ddc3e05045464f9b"
+        },
+        "examples/expression-profiles/generated/snake_case/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "31f9148eca3c8d6ec8c819e8a76abfe1257ec945ad943567f0b486165c24eb6e"
+        },
+        "examples/expression-profiles/generated/snake_case/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163"
+        },
+        "examples/expression-profiles/generated/snake_case/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "ce4ae61861d89991e89b2762d48bb448ad04ad18853c9c5d5ea4e0c7ac093bab"
+        },
+        "examples/expression-profiles/generated/snake_case/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "aae97b2ed5d87ede29d03b620225b0cd242b8e088d6ec9fc8cdf7629ff200a98"
+        }
+      },
+      "model": "examples/expression-profiles/generated/snake_case/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "6e52c4c604a594093325aadde39783b49bb70c84791c0a72dbd3f518c2725edb",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/expression-profiles/generated/snake_case/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "2dbbcfea6057a5dc7c7c356ea4d0dacec5d5165538f6a9c5903d4d3b64ee13c6",
+        "producerReceiptSha256": "8ad5251b7c9735071dc71c251bec1ac23d1791485fad5f1e546a57e3080eade9",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/expression-profiles/generated/snake_case/pyproject.toml": {
+          "emittedSHA256": "58aa48d6a0a85e79fc3f15fc756dbbafef00c07d66cfda1aa30cc30130e34e23",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "1792f046ed2ea8701a2e28ca277351b759402683975b8a2dcbb53aac4f9b0f47",
+      "destination": "examples/facet-trace/lib",
+      "generatedFiles": {
+        "examples/facet-trace/lib/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "6b0228a1ba820c82f549a7089e0c118161beeced5176375e823a92ff10d91707"
+        },
+        "examples/facet-trace/lib/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "32d715a390697c2918fb06e89a77041c9a915482882ea1f8137e722fe576cf14"
+        },
+        "examples/facet-trace/lib/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "9a119d9fa9cb1442f3ecf332107306b71e483945619e0263eff6ecc24258d452"
+        },
+        "examples/facet-trace/lib/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/facet-trace/lib/models/platform.py": {
+          "emittedPath": "models/platform.py",
+          "sha256": "cd88051bb650699b84e5685b8f3ce4aad755f1329b55d74cfcda786022c6b482"
+        },
+        "examples/facet-trace/lib/models/school.py": {
+          "emittedPath": "models/school.py",
+          "sha256": "1c2b9fa4a63b42b43706ad388dcc11438a76db5b154a19b229823817f484c921"
+        },
+        "examples/facet-trace/lib/models/school_type.py": {
+          "emittedPath": "models/school_type.py",
+          "sha256": "13570a38ef5bc054432856fd3dad28b5da104f6deba4ca9921b580f8da324fac"
+        },
+        "examples/facet-trace/lib/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/facet-trace/lib/requests/platform_request.py": {
+          "emittedPath": "requests/platform_request.py",
+          "sha256": "1c8da25de2ce694c164d9957e6daed745b9beea891c34cd9b25b5bef19bb1a14"
+        },
+        "examples/facet-trace/lib/requests/school_request.py": {
+          "emittedPath": "requests/school_request.py",
+          "sha256": "b2003b3b8019391105eb02f88c9fa45afdb3adf5ca99caa4a8b304d3df8cc75a"
+        },
+        "examples/facet-trace/lib/requests/school_type_request.py": {
+          "emittedPath": "requests/school_type_request.py",
+          "sha256": "bbe4b6573527082832ec754e7a687eacfe4044a084bcccf989cc6e5f9f74bf37"
+        },
+        "examples/facet-trace/lib/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "0e3f0d6ed7beb3051c020169034ac33dfd698c41019b91ae7824a0da1802c452"
+        },
+        "examples/facet-trace/lib/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "785b10a761a7e3d13b88878bc8702546b19f9bc637d28e76fa780fc79f97ca3d"
+        },
+        "examples/facet-trace/lib/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "8e28ee16cddc21191816ed05999142fccb870bf42795f5a1f21268ebd4469e71"
+        },
+        "examples/facet-trace/lib/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "9b96c818b9b6a05b5298a98e97a8d6bf48596f85e508d43c8c584ba034317fb6"
+        }
+      },
+      "model": "examples/facet-trace/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "c7fe0f79a639c909711df193ef5deb3cb32016c8dbfcb2914b4287331ea60e29",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/facet-trace/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "9fc6724c828e10aca8cea9f53b65460f26577f74ba5396f04376ad4f20ddc30e",
+        "producerReceiptSha256": "0d847063eab6ea348bc879b44625ebbc0e848086dc135d32587bcf220dc3cec3",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/facet-trace/lib/pyproject.toml": {
+          "emittedSHA256": "2dd9f861117185d87b7c5e40afeaf515f94450c0af0d8e7342f36822e7faa47a",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "8f836836029df3b1eb15ae0a249c514e3df42e513d182b5b02af38d1c0505c1e"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "fd36c050da0bfc4158bd4eec450bf8cbf8c2c6dd0477edad0702314c5663db16",
+      "destination": "examples/fix-e-alignment/generated",
+      "generatedFiles": {
+        "examples/fix-e-alignment/generated/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "3a1bb923330c41e3a56403cd46c558efbc02d76406c3d2c31ef959fd18fec680"
+        },
+        "examples/fix-e-alignment/generated/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "110a04fe7434e902455505b6d9c76d433aed068a3279b22f9106742b6be685a3"
+        },
+        "examples/fix-e-alignment/generated/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "a1fc7d496d0ca1e789452df2d6d694641e3fd3017859133228fe9953975889ef"
+        },
+        "examples/fix-e-alignment/generated/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/fix-e-alignment/generated/models/order_item.py": {
+          "emittedPath": "models/order_item.py",
+          "sha256": "f40254dac5446fc2b95be644d46259a2c0018b6dc298ab5ee5efbd7a6e569869"
+        },
+        "examples/fix-e-alignment/generated/models/purchase_order.py": {
+          "emittedPath": "models/purchase_order.py",
+          "sha256": "96801a22012eba01dc9ae25e0b209025465e167635cd702b836e0bd11fbbf657"
+        },
+        "examples/fix-e-alignment/generated/models/tenant.py": {
+          "emittedPath": "models/tenant.py",
+          "sha256": "ce552992f8a81c13bf9e13d787906490584eb403ab1e5cc88acd31a33f9a9277"
+        },
+        "examples/fix-e-alignment/generated/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/fix-e-alignment/generated/requests/order_item_request.py": {
+          "emittedPath": "requests/order_item_request.py",
+          "sha256": "2327ce8b4e2e7d9b5e99a4567704b3aa213212aaea23af64f9b7272b7573f352"
+        },
+        "examples/fix-e-alignment/generated/requests/purchase_order_request.py": {
+          "emittedPath": "requests/purchase_order_request.py",
+          "sha256": "10c19ecc92707610c632602e216b1140ea2eae0f52e29e69952390b6056470d2"
+        },
+        "examples/fix-e-alignment/generated/requests/tenant_request.py": {
+          "emittedPath": "requests/tenant_request.py",
+          "sha256": "4c796325a1fcaabe3afd241dc1bfd66e5206bf02d2c03500b318b7975551d3d5"
+        },
+        "examples/fix-e-alignment/generated/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "1271dbc727431bd9e375dcaa5251f528f482131c3c376e7e6ae5e14918a5a7e3"
+        },
+        "examples/fix-e-alignment/generated/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014"
+        },
+        "examples/fix-e-alignment/generated/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "92144f0d6092e143784685a82a9dd67c1672665bbe50fa6ca57b9ad441325b45"
+        },
+        "examples/fix-e-alignment/generated/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "79aa8ed9ea90394fb39f6a20a880522c85bbe02559877679c8637653bff3547a"
+        }
+      },
+      "model": "examples/fix-e-alignment/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 4,
+        "generatedManifestSha256": "7a28d135c456cdfa4eb70a4ccfdbd60aafbb3c5984ed63e560bfb2c7a110eb7f",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/fix-e-alignment/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
+        "producerReceiptSha256": "4a35068e6b6ab36be348aa96c0c6d9885ab0299d3bb0f852eedd8e4d2705b593",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/fix-e-alignment/generated/pyproject.toml": {
+          "emittedSHA256": "38795d7778c0bb687ac4097606243740f722d0a33c8ea37e7e217509e4635a76",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "df5a97996a6c312e64e8bdb58e9e79bfdda18cd0d0b03e8747bb8260836c321d"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "9018923cf5a1828f3e8a7e0f10705ba69d9651efd978caaa8bc581e342253697",
+      "destination": "examples/natural-messages/fixture",
+      "generatedFiles": {
+        "examples/natural-messages/fixture/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "b65d0f228a15e69d30016463e7b0f8dbee305394f18f1e8fbdf07252c707da14"
+        },
+        "examples/natural-messages/fixture/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "d203912175a89813932f55d2b5f16549499e51df93f4816d4c080a275f45ab1a"
+        },
+        "examples/natural-messages/fixture/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "d06314b31c5603944bd10ff271e59cde4e4614de7cefbb7f9f7b6a498bf2dabf"
+        },
+        "examples/natural-messages/fixture/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/natural-messages/fixture/models/catalog.py": {
+          "emittedPath": "models/catalog.py",
+          "sha256": "11205320ee7adc29130022c97486d9403ded29c3be098bfb1aae970122b3ecbb"
+        },
+        "examples/natural-messages/fixture/models/entry.py": {
+          "emittedPath": "models/entry.py",
+          "sha256": "80d5930f54bc0c6a62d3b69d652de6050e3c50c5ca9d7a43b82a3e96539d854c"
+        },
+        "examples/natural-messages/fixture/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/natural-messages/fixture/requests/catalog_request.py": {
+          "emittedPath": "requests/catalog_request.py",
+          "sha256": "b66a29e2194de774644cc82e3b4aaa19d10c77869ef2c255e07a44d0e82bad6e"
+        },
+        "examples/natural-messages/fixture/requests/entry_request.py": {
+          "emittedPath": "requests/entry_request.py",
+          "sha256": "a0d0020571817f84dd1238d53b8eaa93a54085e42165d0b2e22d6f5382c3c106"
+        },
+        "examples/natural-messages/fixture/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "349b63f0812e3bf8f5d29bea8a73062cbb01e9c6a34f03fe5c3357a091c61ccd"
+        },
+        "examples/natural-messages/fixture/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "3142adc809a66c3f45df816e926967273ba7fcf3470c00629fcd6fa8da693f06"
+        },
+        "examples/natural-messages/fixture/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "5ac0524fcb22c68970fc358b685d10081e47048af423951514e8d28ec2bd0bc6"
+        },
+        "examples/natural-messages/fixture/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "579c3813729fce3c3d2a3a642cbbffde195333d8bb35d390fe7d6003b3b226ce"
+        }
+      },
+      "model": "examples/natural-messages/fixture/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 2,
+        "generatedManifestSha256": "6b104f2b39476f7c879ac5e565cd3ee3f33c4cf04ec2aa5ab43337c1562d64fd",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/natural-messages/fixture/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "871c28ee976d0fc0e35c21305870cf21f83bd0aed0b758bbf217b51ae65299b1",
+        "producerReceiptSha256": "057bcdb100db432e99f65f73a4a0fa5ce71fc1863f2eb921c21b56846d4edac2",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/natural-messages/fixture/pyproject.toml": {
+          "emittedSHA256": "8a1f34e986cdd6b2e0da0be6ea59cc93118750d23feadc7b537857faea25b662",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "9be227a0ab978a7492d10ad42aecac4ba2c5bdc3eae65181db255d729d21bac1"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "505a901b6c1a2225f5f742bf591b4720df08e537d4a9e7fef2e46b15b5cf00b7",
+      "destination": "examples/order-management/python-lib-core",
+      "generatedFiles": {
+        "examples/order-management/python-lib-core/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "fdc5db0942c4d40682246c7904d818e0d73f10bb4c77bf40ec3b74f1b47bb647"
+        },
+        "examples/order-management/python-lib-core/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "11f3f78ac21f10bc2bfcb0c1a223131097c44a03dd79eebf2e0b4a4949998d72"
+        },
+        "examples/order-management/python-lib-core/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "5b4e80478c6892138845c2686581039a56f4c4d33786d2fa1995acceb355acf8"
+        },
+        "examples/order-management/python-lib-core/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/order-management/python-lib-core/models/commerce_platform.py": {
+          "emittedPath": "models/commerce_platform.py",
+          "sha256": "9b3c2370855685c179ce74b2d051edec65a482282017c0085ddb6010fd6b0989"
+        },
+        "examples/order-management/python-lib-core/models/customer.py": {
+          "emittedPath": "models/customer.py",
+          "sha256": "699a8218d60e4f6f19c8d96bd89d1424f9074a5daba2e40af509f5ae478a528b"
+        },
+        "examples/order-management/python-lib-core/models/customer_order.py": {
+          "emittedPath": "models/customer_order.py",
+          "sha256": "6dc4c06769bc67b89975fd022ff557d8502e3ff67eb1688dfdd39d27c6e285dd"
+        },
+        "examples/order-management/python-lib-core/models/order_line.py": {
+          "emittedPath": "models/order_line.py",
+          "sha256": "69254b88febf68a5326c2a0dc505a2ebaa4c6cdd818fafccc53dc891dbb5e747"
+        },
+        "examples/order-management/python-lib-core/models/order_search_preset.py": {
+          "emittedPath": "models/order_search_preset.py",
+          "sha256": "696cee46dcad1e33fb818f18f5a7c0743e22314293ea23d5a17dcd7bd147c3c6"
+        },
+        "examples/order-management/python-lib-core/models/order_status.py": {
+          "emittedPath": "models/order_status.py",
+          "sha256": "96a0f3ee00f7162e647f028f1bd0c9de51ad3cdee3dc8f48438d5877da57a761"
+        },
+        "examples/order-management/python-lib-core/models/product.py": {
+          "emittedPath": "models/product.py",
+          "sha256": "b7953f1e1b2b9ac0610dd793fd8524e66917c48322a34553d2b169352b689376"
+        },
+        "examples/order-management/python-lib-core/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/order-management/python-lib-core/requests/commerce_platform_request.py": {
+          "emittedPath": "requests/commerce_platform_request.py",
+          "sha256": "464f529ebdb5dc6ddfc029c242a2d8323dd174a94bd6817c8cb6f95163257a63"
+        },
+        "examples/order-management/python-lib-core/requests/customer_order_request.py": {
+          "emittedPath": "requests/customer_order_request.py",
+          "sha256": "3e055043b777be422cb600e337e17dfed6148e9b9de24c7fc86fe19a0df634ae"
+        },
+        "examples/order-management/python-lib-core/requests/customer_request.py": {
+          "emittedPath": "requests/customer_request.py",
+          "sha256": "ff9b328651e40d312402c64a7d3da6b39e5cb3b96b9074d3b9fe238156afd3af"
+        },
+        "examples/order-management/python-lib-core/requests/order_line_request.py": {
+          "emittedPath": "requests/order_line_request.py",
+          "sha256": "099aa55644dd4101f4f2b0bf47efb6ba6d990475501d4201c385aa1a61a24887"
+        },
+        "examples/order-management/python-lib-core/requests/order_search_preset_request.py": {
+          "emittedPath": "requests/order_search_preset_request.py",
+          "sha256": "06ae77f6ac5e9d54938896fc67de961a71929914473944bc80f5df0cd631d7ad"
+        },
+        "examples/order-management/python-lib-core/requests/order_status_request.py": {
+          "emittedPath": "requests/order_status_request.py",
+          "sha256": "0594ebd5f6fc47a930065f2d84800811729fde61a4f2c39c21adb04dac4bea33"
+        },
+        "examples/order-management/python-lib-core/requests/product_request.py": {
+          "emittedPath": "requests/product_request.py",
+          "sha256": "508e4a7679dbf9704a4de467a0117b3b57e9466a69b62fafc5cd56b1b348d379"
+        },
+        "examples/order-management/python-lib-core/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "37d03c905f7b19918b25d03fb5e43dea7c1753c7e9f63049ec137460936afbae"
+        },
+        "examples/order-management/python-lib-core/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "4ae750ac80a6d6ccf296d8fe61d4db0f3cc4b66a285f8926720dfb87d4a42135"
+        },
+        "examples/order-management/python-lib-core/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "82f1556c56fd3ed10f2e947da68d0defb73215bf2192ccd213cc9c7e8eae9b95"
+        },
+        "examples/order-management/python-lib-core/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "1504732c62686028f264f485a9459b8903cddcd4c58a9d6a844f0104f9648401"
+        }
+      },
+      "model": "examples/order-management/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 7,
+        "generatedManifestSha256": "f5b00b7bb383706dc5ded6ab631017c335d7e9c76b65ab94f307fc6c362f86fa",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/order-management/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "a50951aa0df35cac1f4ed64ef0646860941916aed1ec0919b5b299ef4ad6a303",
+        "producerReceiptSha256": "f3e674e0bb7e1eaf7a229300e4bf6247018a1bbf9e2b6ce6e84baed621b262ad",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/order-management/python-lib-core/pyproject.toml": {
+          "emittedSHA256": "43159f3ce7158a8ca6226b09fdaa22e88713a2ba0ed4a979ecb72054fc585233",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "ec723b242ced7c4fbf425b6129cb554bc4e511cc26d38af4a8cae37707a2fd90"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "51b0f7ed7a7d61bfe24eb0ad4af4f2b9f72e3938673c1042ec404feb4d035e17",
+      "destination": "examples/scalar-type-probe/generated",
+      "generatedFiles": {
+        "examples/scalar-type-probe/generated/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "5e6a69648c561528bf6168391e9d3b3c8946e0918425909ed64c27e6499974dc"
+        },
+        "examples/scalar-type-probe/generated/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b"
+        },
+        "examples/scalar-type-probe/generated/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19"
+        },
+        "examples/scalar-type-probe/generated/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/scalar-type-probe/generated/models/scalar_type_probe.py": {
+          "emittedPath": "models/scalar_type_probe.py",
+          "sha256": "718db4393913194788bd3d115da7fa1597d9cf2fc5fce15bd4d060b458b8a54d"
+        },
+        "examples/scalar-type-probe/generated/models/type_platform.py": {
+          "emittedPath": "models/type_platform.py",
+          "sha256": "bac15365f32ea9fc261e253dcc5fd2c28c568a562901bcf7c99173d7d0854abb"
+        },
+        "examples/scalar-type-probe/generated/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/scalar-type-probe/generated/requests/scalar_type_probe_request.py": {
+          "emittedPath": "requests/scalar_type_probe_request.py",
+          "sha256": "33ecfc55e89e1889ecba2f8997cb31ff7a3519ee41f642b9b626fc1c44b4fb73"
+        },
+        "examples/scalar-type-probe/generated/requests/type_platform_request.py": {
+          "emittedPath": "requests/type_platform_request.py",
+          "sha256": "7e0fb6b848398e6283ccfae47c54bc2a0ba31b6a3650c779ddc3e05045464f9b"
+        },
+        "examples/scalar-type-probe/generated/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "4ea87ddac1a0d6daf42c5b8740df560a3ad17c5d8f37fbfb4e6c1dcf8b4dec10"
+        },
+        "examples/scalar-type-probe/generated/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163"
+        },
+        "examples/scalar-type-probe/generated/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "ce4ae61861d89991e89b2762d48bb448ad04ad18853c9c5d5ea4e0c7ac093bab"
+        },
+        "examples/scalar-type-probe/generated/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "84e6e6a9d56404f3923357514c795575e617b670ac6ea413306a4203b80ff14e"
+        }
+      },
+      "model": "examples/scalar-type-probe/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "005e8ed34516efbd6b3c94dad3680edadef193bfb977f16d246bc273aac65211",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/scalar-type-probe/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
+        "producerReceiptSha256": "b31847566d64cc3dd54c87388a53ee42a0c7571d8af74ece41002293e9cc203a",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/scalar-type-probe/generated/pyproject.toml": {
+          "emittedSHA256": "58aa48d6a0a85e79fc3f15fc756dbbafef00c07d66cfda1aa30cc30130e34e23",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "ff4c888043fc6dac9426dd780f53a21aaa9a7dc86b836e3392d0599483aad82b",
+      "destination": "examples/school-management",
+      "generatedFiles": {
+        "examples/school-management/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "6b0228a1ba820c82f549a7089e0c118161beeced5176375e823a92ff10d91707"
+        },
+        "examples/school-management/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "32d715a390697c2918fb06e89a77041c9a915482882ea1f8137e722fe576cf14"
+        },
+        "examples/school-management/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "9a119d9fa9cb1442f3ecf332107306b71e483945619e0263eff6ecc24258d452"
+        },
+        "examples/school-management/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/school-management/models/platform.py": {
+          "emittedPath": "models/platform.py",
+          "sha256": "cd88051bb650699b84e5685b8f3ce4aad755f1329b55d74cfcda786022c6b482"
+        },
+        "examples/school-management/models/school.py": {
+          "emittedPath": "models/school.py",
+          "sha256": "1c2b9fa4a63b42b43706ad388dcc11438a76db5b154a19b229823817f484c921"
+        },
+        "examples/school-management/models/school_type.py": {
+          "emittedPath": "models/school_type.py",
+          "sha256": "13570a38ef5bc054432856fd3dad28b5da104f6deba4ca9921b580f8da324fac"
+        },
+        "examples/school-management/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/school-management/requests/platform_request.py": {
+          "emittedPath": "requests/platform_request.py",
+          "sha256": "1c8da25de2ce694c164d9957e6daed745b9beea891c34cd9b25b5bef19bb1a14"
+        },
+        "examples/school-management/requests/school_request.py": {
+          "emittedPath": "requests/school_request.py",
+          "sha256": "b2003b3b8019391105eb02f88c9fa45afdb3adf5ca99caa4a8b304d3df8cc75a"
+        },
+        "examples/school-management/requests/school_type_request.py": {
+          "emittedPath": "requests/school_type_request.py",
+          "sha256": "bbe4b6573527082832ec754e7a687eacfe4044a084bcccf989cc6e5f9f74bf37"
+        },
+        "examples/school-management/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "88a2e20155437dde0817a5f3752d58b33a49bcf9382ca591b1d29126e1960e18"
+        },
+        "examples/school-management/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "785b10a761a7e3d13b88878bc8702546b19f9bc637d28e76fa780fc79f97ca3d"
+        },
+        "examples/school-management/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "8e28ee16cddc21191816ed05999142fccb870bf42795f5a1f21268ebd4469e71"
+        },
+        "examples/school-management/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "0640450d6624cd4b89ed7a7c4651403cc09e8704659a5f519bba9610b46fe808"
+        }
+      },
+      "model": "examples/school-management/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "4b4815af60d015c7c2d6aafd972b5491bdd27b25e29a798971bfb22dfa8ced54",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/school-management/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "b5cd06ae44464fc29ed24de82654b47c80f546110496756aa15923cee1c511b4",
+        "producerReceiptSha256": "45f11a97e733fc12f564bc23c37d8e55211eadbaabf57a36507a4200bf3429d1",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/school-management/pyproject.toml": {
+          "emittedSHA256": "2dd9f861117185d87b7c5e40afeaf515f94450c0af0d8e7342f36822e7faa47a",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "8f836836029df3b1eb15ae0a249c514e3df42e513d182b5b02af38d1c0505c1e"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "4e58b922ea15007dc5fc95ff022f6d3dd69bb5ada005606b6bf616d7c5443412",
+      "destination": "examples/task_board/generated",
+      "generatedFiles": {
+        "examples/task_board/generated/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "00fe82d63487a5e76982bc6fcd25f49418de3fb7275fd5db5d76f9cf850adf5e"
+        },
+        "examples/task_board/generated/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "222de37ce288f59d8509aa11400086f6a56d58206d6d6f15a03359460dca0d3c"
+        },
+        "examples/task_board/generated/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "5313faef4185026bb1fda10240d0f00cd31e1f60cfe76db73c652b987a56d101"
+        },
+        "examples/task_board/generated/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/task_board/generated/models/platform.py": {
+          "emittedPath": "models/platform.py",
+          "sha256": "ecf9c4e9b9664b5472b5c48a32a76f9315f3ec6dcd08253287557e29765e5224"
+        },
+        "examples/task_board/generated/models/task.py": {
+          "emittedPath": "models/task.py",
+          "sha256": "51adc8c511caa7602b2e46d2ab146bd562b6571052461485b451678c12c4cfe0"
+        },
+        "examples/task_board/generated/models/task_execution_log.py": {
+          "emittedPath": "models/task_execution_log.py",
+          "sha256": "5255f7ca7b3b24e6647e671f0fa65cc0398891d10ac850f26d8c279a0c38e0fb"
+        },
+        "examples/task_board/generated/models/task_status.py": {
+          "emittedPath": "models/task_status.py",
+          "sha256": "ec2d04c2d696d31bd96b46b24eff7d98e73114191561007490fb1efbb455de66"
+        },
+        "examples/task_board/generated/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/task_board/generated/requests/platform_request.py": {
+          "emittedPath": "requests/platform_request.py",
+          "sha256": "636c5440ca71ac02017a58dbe2e163f979b77ddd58a227acefc42046b4e6d109"
+        },
+        "examples/task_board/generated/requests/task_execution_log_request.py": {
+          "emittedPath": "requests/task_execution_log_request.py",
+          "sha256": "06466a58de9fc9e5487d3398cd916ceda268a3c31ff13c7b1d7dee88c5de4c15"
+        },
+        "examples/task_board/generated/requests/task_request.py": {
+          "emittedPath": "requests/task_request.py",
+          "sha256": "05b9d9d50be5d8a87fe37c3b429ead7fc09a495933d75a3e0ae2e97be7760d5c"
+        },
+        "examples/task_board/generated/requests/task_status_request.py": {
+          "emittedPath": "requests/task_status_request.py",
+          "sha256": "ce808a01bb7298583fdc3d5fe9fbe9f74638d1849fdb06614755522110d31e95"
+        },
+        "examples/task_board/generated/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "df310cf1d0a68091fe25a0155d2395d1f6f541603213edea2121e43f0c36f1ce"
+        },
+        "examples/task_board/generated/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "79b420e04edf1c1e1b9f4d04ddfc0ec8a6e2a2458e6a337a8c046bacb64c3a8d"
+        },
+        "examples/task_board/generated/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "b49897830ad712d77109345903474626ce0ff55dce27a2d51f9fc5b9075e3ae4"
+        },
+        "examples/task_board/generated/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "dd639c5debcc26a6017a8a6e3072ea657cc7eddb1d7931684a324515ef4b4235"
+        }
+      },
+      "model": "examples/task_board/generated/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 3,
+        "generatedManifestSha256": "6c765f25675d43a5e12c3069de0b21f1aa0fdc6a9384149cc3758e744072f99b",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/task_board/generated/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "f2fdd5037dbdee7f71e008f3ca04db75d8dd0e3138743de7a4744c197b0b567e",
+        "producerReceiptSha256": "ab740317f52094e0b54b8dc0aa2fa5002dbc94a3668ed12aa45d7d76a1bb6dd6",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/task_board/generated/pyproject.toml": {
+          "emittedSHA256": "855809a3d29c09fcd435ce7484141882aeaaf80123842b23bb2ac5cb77eed330",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "0e6a244968912b4e907b71dc8706b855d30e36851f29ccad0c4341033b00aee4"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "6aca9937eaf6e149154c33bf295f708ee8ad765bccbed2b3cb1b5f5bb638f380",
+      "destination": "examples/trace-chain/lib",
+      "generatedFiles": {
+        "examples/trace-chain/lib/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "de93b694d195f4f61c48dbcc7fb503671550b05326ef6b98ebe9002af0a7619e"
+        },
+        "examples/trace-chain/lib/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "555a60a9561499fb3ce7a6a3e40e7004d0a79b8ea01f2d80686c999db4873352"
+        },
+        "examples/trace-chain/lib/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "85b94265c357afc0c3bf19d13ceeacc0eb47e2014e4d3d6bba30031025340cc7"
+        },
+        "examples/trace-chain/lib/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/trace-chain/lib/models/customer_order.py": {
+          "emittedPath": "models/customer_order.py",
+          "sha256": "812dab8cba5ff2623d33ed23ba4c34a695821a97efae1a539ab933c75ea9a592"
+        },
+        "examples/trace-chain/lib/models/order_item.py": {
+          "emittedPath": "models/order_item.py",
+          "sha256": "8b72089796c99ed2dd44be308e5fecfa55f2bd400f422e16837ebb82cf4d449e"
+        },
+        "examples/trace-chain/lib/models/payment.py": {
+          "emittedPath": "models/payment.py",
+          "sha256": "0a4392f0a50bcef16782466dbbe33bb242c9d92a6f11452f02f2e3555a1bb6e4"
+        },
+        "examples/trace-chain/lib/models/payment_attempt.py": {
+          "emittedPath": "models/payment_attempt.py",
+          "sha256": "e76e4b968e46f83884c365768b150723a029ca8ec16eb45fa6329e0aa47b9c3c"
+        },
+        "examples/trace-chain/lib/models/platform.py": {
+          "emittedPath": "models/platform.py",
+          "sha256": "b6571abcf6c0398e7b58c93f86e5d0ace1a1e96b721a64c13a8becaec58f5a36"
+        },
+        "examples/trace-chain/lib/models/shipment.py": {
+          "emittedPath": "models/shipment.py",
+          "sha256": "84f93a3852f5bb73483aae58369448c715e3bb4a26742e34bd2d3e0a81a53ccc"
+        },
+        "examples/trace-chain/lib/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/trace-chain/lib/requests/customer_order_request.py": {
+          "emittedPath": "requests/customer_order_request.py",
+          "sha256": "300d07bdf94fc8c75e81b7a0785af85b68bc5a4a426f58a5d303cf95f313feee"
+        },
+        "examples/trace-chain/lib/requests/order_item_request.py": {
+          "emittedPath": "requests/order_item_request.py",
+          "sha256": "04d2b288eebd889ed6d3840e2ade3d05d36fc0e900f890d5a10b3565d0ace603"
+        },
+        "examples/trace-chain/lib/requests/payment_attempt_request.py": {
+          "emittedPath": "requests/payment_attempt_request.py",
+          "sha256": "e4da89754df48742f158861622ddace4f1621c8948c8324dc115ab98ca2ab675"
+        },
+        "examples/trace-chain/lib/requests/payment_request.py": {
+          "emittedPath": "requests/payment_request.py",
+          "sha256": "fc008ff59426e4264df72c6a99cbf058a597e99978903494c9e91e32fb8295d7"
+        },
+        "examples/trace-chain/lib/requests/platform_request.py": {
+          "emittedPath": "requests/platform_request.py",
+          "sha256": "4b5b1c7262a6f8637969d6598a1ccfb8d2ff1083a63c5d68a3c28ce7e518d781"
+        },
+        "examples/trace-chain/lib/requests/shipment_request.py": {
+          "emittedPath": "requests/shipment_request.py",
+          "sha256": "b7d6872759533a37624b1d05d8a3ab00ac417e1e22fb6432d7d14e33cc82bee6"
+        },
+        "examples/trace-chain/lib/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "1000eea9e71256f37f9c30ba8d70897a7aac7ee44aba028a5f9481eb95f64e90"
+        },
+        "examples/trace-chain/lib/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "5ff4a2f49563da43619a3bde0da4d3b73105e87824aef4851ba050b0509272d3"
+        },
+        "examples/trace-chain/lib/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "4e3a105f6a25a68a4565f8bb5addf7bb560cc2d53f113c300689986959ad8ec0"
+        },
+        "examples/trace-chain/lib/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "15552938c3f96e5e968f56f1c5def9f74716837bd819fa7d6f48c134ec3b2ee0"
+        }
+      },
+      "model": "examples/trace-chain/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "484a2e1a94a0e023285e1c9bb1575aae1302a79d119680d5e0e557b546591c26",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/trace-chain/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "5c9aa72602ed5b877f53bac098d2d3396438ef5af69591364b3d76cbff52715a",
+        "producerReceiptSha256": "20ea0d9c25d1ff1347ab7707616f9cdde987b9ac7e4ab01531955fda1d153ab6",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/trace-chain/lib/pyproject.toml": {
+          "emittedSHA256": "ba112804e84c6be952a11f2a1a3669d5a9f48f053f14a20c02489642eaeca260",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "add8a3a19116c8e663321d0314ef54abb118b0e38e48a11061c45f4ff21181c8"
+        }
+      }
+    },
+    {
+      "archiveSHA256": "fbec7175a730e411e651e10c78843e4f1e79cbaed955f690ab281c13a4538535",
+      "destination": "examples/trace-chain/standard-order/lib",
+      "generatedFiles": {
+        "examples/trace-chain/standard-order/lib/E.py": {
+          "emittedPath": "E.py",
+          "sha256": "403a52874c1a50c0a4846277928b09a3f87afc2cd67161d9693fb8595b8b2c96"
+        },
+        "examples/trace-chain/standard-order/lib/Q.py": {
+          "emittedPath": "Q.py",
+          "sha256": "00fdcdfee8e464fcc9e5b5ceda6156d9bf309cb53962c6a5987f22456a941c52"
+        },
+        "examples/trace-chain/standard-order/lib/generated_search_models.py": {
+          "emittedPath": "generated_search_models.py",
+          "sha256": "5986eac9a03f5ab3f12f41101461031149535206e8bb1a924b3513198a71979f"
+        },
+        "examples/trace-chain/standard-order/lib/models/__init__.py": {
+          "emittedPath": "models/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/trace-chain/standard-order/lib/models/customer.py": {
+          "emittedPath": "models/customer.py",
+          "sha256": "df74278ad0ebbac662637ef074c67b25c91c43eb0727db7ec1d8af4011ff635e"
+        },
+        "examples/trace-chain/standard-order/lib/models/customer_order.py": {
+          "emittedPath": "models/customer_order.py",
+          "sha256": "81fa9698bd636b16fa3f9634e2f52f5e3d83be0948186f399154be8d23ec61de"
+        },
+        "examples/trace-chain/standard-order/lib/models/order_item.py": {
+          "emittedPath": "models/order_item.py",
+          "sha256": "f80403e89c689f2ebfe7098a2fecec2a10d28386baf9f40529814a7aa921a792"
+        },
+        "examples/trace-chain/standard-order/lib/models/order_status.py": {
+          "emittedPath": "models/order_status.py",
+          "sha256": "f2863ee2501233b210e8a064e06f5a2f6253356a0ff72c8bf8b3123332a71380"
+        },
+        "examples/trace-chain/standard-order/lib/models/platform.py": {
+          "emittedPath": "models/platform.py",
+          "sha256": "371dfbe792a4a393ec9a229f1f27b546daea3fd5dd8689f48a16645cc0109d2a"
+        },
+        "examples/trace-chain/standard-order/lib/requests/__init__.py": {
+          "emittedPath": "requests/__init__.py",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "examples/trace-chain/standard-order/lib/requests/customer_order_request.py": {
+          "emittedPath": "requests/customer_order_request.py",
+          "sha256": "415f8605f4375868672273047a85d674e0a3312ea36c60b6cfd90b7794545cb9"
+        },
+        "examples/trace-chain/standard-order/lib/requests/customer_request.py": {
+          "emittedPath": "requests/customer_request.py",
+          "sha256": "552c1fa1dff3105fe8a1bb59e482ad327397b7af33efd4de0c44ee076b509081"
+        },
+        "examples/trace-chain/standard-order/lib/requests/order_item_request.py": {
+          "emittedPath": "requests/order_item_request.py",
+          "sha256": "6a78eba746a2c2385b733e469ef8f69c8f3e8e60e5999c6795621b8bcec88a90"
+        },
+        "examples/trace-chain/standard-order/lib/requests/order_status_request.py": {
+          "emittedPath": "requests/order_status_request.py",
+          "sha256": "054ca9033d6f5bd6c9ebb075fa3781629f312ae763d39e4c499f684243ad43e1"
+        },
+        "examples/trace-chain/standard-order/lib/requests/platform_request.py": {
+          "emittedPath": "requests/platform_request.py",
+          "sha256": "a5e51fa4ebab43b2e020e48e38ecbb7b068e52ae9d3b353a240c52c1763fcc0b"
+        },
+        "examples/trace-chain/standard-order/lib/runtime_module.py": {
+          "emittedPath": "runtime_module.py",
+          "sha256": "24b1096ea318e3b5ddc78a2fe3c1c729cf4f879091743faed1c06c56a5ddc77d"
+        },
+        "examples/trace-chain/standard-order/lib/teaql-i18n.json": {
+          "emittedPath": "teaql-i18n.json",
+          "sha256": "ee5dc28e916a8907555d5d5a4d0e3cf2fa37aad047af37abed0800582af18d96"
+        },
+        "examples/trace-chain/standard-order/lib/teaql/checker-model.json": {
+          "emittedPath": "teaql/checker-model.json",
+          "sha256": "11e9102d94684fd30e13941514301d2cf6f20522c275cfa36eece9842ff1014e"
+        },
+        "examples/trace-chain/standard-order/lib/teaql/model-provenance.json": {
+          "emittedPath": "teaql/model-provenance.json",
+          "sha256": "72a2c1fc2a5d5c6a4469f6ca98b4499bd68ec497737b5d19f65f68bc8a7d25d9"
+        }
+      },
+      "model": "examples/trace-chain/standard-order/model.xml",
+      "origin": {
+        "evaluatedScope": "python-lib-core",
+        "evaluationErrors": 0,
+        "evaluationWarnings": 0,
+        "generatedManifestSha256": "b61a1e56028004acc802774813fdb0c590f501af975d5b8a01e58755c44f4af7",
+        "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-followup/python/trace-chain/standard-order/model/receipt.json",
+        "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+        "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+        "generatorRelease": "v4.2.0",
+        "modelSha256": "9e60ff448b17cbbc38035565643f44e6618841632cf4f08fdc089dc961c3a62c",
+        "producerReceiptSha256": "5a8747189a8fa616f58e55a436f8bf585f7984850233fe8fa6bf1c54fb89f8b8",
+        "producerSource": {
+          "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+          "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+          "release": "v4.2.0"
+        }
+      },
+      "preservedApplicationFiles": {
+        "examples/trace-chain/standard-order/lib/pyproject.toml": {
+          "emittedSHA256": "553edc22480d0aee5c114595c5307a2a880658d5966491da9fbcba06f15a6932",
+          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
+          "sha256": "ce426b1ae2e330f01739c19de8c1a9bd01d3fdb9e317be72f90fffed1345bc98"
+        }
+      }
+    }
+  ],
+  "runtimeBaseCommit": "615b6c18ea377d05cef3d8a823c072e2f7794548",
+  "schema": "teaql.runtime-current-generated-examples/v1",
+  "sourceCodeHandEdited": false
+}

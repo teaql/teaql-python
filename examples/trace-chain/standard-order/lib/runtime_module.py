@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
-from teaql.runtime import CheckResult, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.runtime import CheckResult, ContextFix, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.runtime import CheckerPresentationModel
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
 from teaql.core.value import DataType
 from Q import Q
@@ -37,7 +38,6 @@ def _teaql_entity_id(value):
 class _PlatformChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "name" not in record) or ("name" in record and _teaql_is_null(record["name"])):
             results.append(CheckResult("required", ObjectLocation().property("name")))
         if "name" in record and _teaql_raw(record["name"]) is not None and len(_teaql_raw(record["name"])) > 100:
@@ -48,7 +48,6 @@ class _PlatformChecker:
 class _OrderStatusChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "platform" not in record) or ("platform" in record and _teaql_is_null(record["platform"])):
             results.append(CheckResult("required", ObjectLocation().property("platform")))
 
@@ -76,7 +75,6 @@ class _OrderStatusChecker:
 class _CustomerChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "platform" not in record) or ("platform" in record and _teaql_is_null(record["platform"])):
             results.append(CheckResult("required", ObjectLocation().property("platform")))
 
@@ -90,7 +88,6 @@ class _CustomerChecker:
 class _CustomerOrderChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "customer" not in record) or ("customer" in record and _teaql_is_null(record["customer"])):
             results.append(CheckResult("required", ObjectLocation().property("customer")))
 
@@ -113,7 +110,6 @@ class _CustomerOrderChecker:
 class _OrderItemChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "customer_order" not in record) or ("customer_order" in record and _teaql_is_null(record["customer_order"])):
             results.append(CheckResult("required", ObjectLocation().property("customer_order")))
 
@@ -164,8 +160,7 @@ async def _ensure_generated_bootstrap_once(context):
     try:
         platform_1 = await (Q.platforms().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if platform_1 is None:
-            platform_1 = await Q.platforms().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            platform_1.update_id(1)
+            platform_1 = Platform._teaql_new_with_fixed_id(1)
             platform_1.update_name("Commerce Test Platform")
             try:
                 await platform_1.audit_as('create model root Platform(1)').save(context)
@@ -181,8 +176,7 @@ async def _ensure_generated_bootstrap_once(context):
         context.with_active_root(ContextEntityRef("Platform", 1))
         order_status_1001 = await (Q.order_statuses().with_id_is(1001).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if order_status_1001 is None:
-            order_status_1001 = await Q.order_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            order_status_1001.update_id(1001)
+            order_status_1001 = OrderStatus._teaql_new_with_fixed_id(1001)
             order_status_1001.update_platform(Platform.refer(1))
             order_status_1001.update_name("New")
             order_status_1001.update_code("NEW")
@@ -219,8 +213,7 @@ async def _ensure_generated_bootstrap_once(context):
             await order_status_1001.audit_as('reconcile model constant OrderStatus(1001)').save(context)
         order_status_1002 = await (Q.order_statuses().with_id_is(1002).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if order_status_1002 is None:
-            order_status_1002 = await Q.order_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            order_status_1002.update_id(1002)
+            order_status_1002 = OrderStatus._teaql_new_with_fixed_id(1002)
             order_status_1002.update_platform(Platform.refer(1))
             order_status_1002.update_name("Paid")
             order_status_1002.update_code("PAID")
@@ -257,8 +250,7 @@ async def _ensure_generated_bootstrap_once(context):
             await order_status_1002.audit_as('reconcile model constant OrderStatus(1002)').save(context)
         order_status_1003 = await (Q.order_statuses().with_id_is(1003).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if order_status_1003 is None:
-            order_status_1003 = await Q.order_statuses().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            order_status_1003.update_id(1003)
+            order_status_1003 = OrderStatus._teaql_new_with_fixed_id(1003)
             order_status_1003.update_platform(Platform.refer(1))
             order_status_1003.update_name("Cancelled")
             order_status_1003.update_code("CANCELLED")
@@ -310,6 +302,7 @@ async def _ensure_generated_bootstrap(context):
 
 
 # Passive generated manifest. Call ensure_schema() separately and explicitly.
+_CHECKER_PRESENTATION = CheckerPresentationModel.from_json("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:dd69b1927859f89b828bf1e7fb802e68157655ac0eca216e5aee11f0e8667aa8\",\"entities\":{\"Customer\":{\"labels\":{\"en\":\"Customer\"},\"fields\":[{\"name\":\"customer_order_list\",\"targetType\":\"CustomerOrder\",\"labels\":{\"en\":\"Customer Order\"},\"aliases\":[\"CustomerOrderList\",\"customerOrderList\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"platform\",\"targetType\":\"Platform\",\"labels\":{\"en\":\"Commerce Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"CustomerOrder\":{\"labels\":{\"en\":\"Customer Order\"},\"fields\":[{\"name\":\"customer\",\"targetType\":\"Customer\",\"labels\":{\"en\":\"Customer\"},\"aliases\":[\"Customer\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"order_date\",\"labels\":{\"en\":\"order date\"},\"aliases\":[\"OrderDate\",\"orderDate\"]},{\"name\":\"order_item_list\",\"targetType\":\"OrderItem\",\"labels\":{\"en\":\"Order Item\"},\"aliases\":[\"OrderItemList\",\"orderItemList\"]},{\"name\":\"order_number\",\"labels\":{\"en\":\"order number\"},\"aliases\":[\"OrderNumber\",\"orderNumber\"]},{\"name\":\"status\",\"targetType\":\"OrderStatus\",\"labels\":{\"en\":\"Order Status\"},\"aliases\":[\"Status\"]},{\"name\":\"total_amount\",\"labels\":{\"en\":\"total amount\"},\"aliases\":[\"TotalAmount\",\"totalAmount\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"OrderItem\":{\"labels\":{\"en\":\"Order Item\"},\"fields\":[{\"name\":\"customer_order\",\"targetType\":\"CustomerOrder\",\"labels\":{\"en\":\"Customer Order\"},\"aliases\":[\"CustomerOrder\",\"customerOrder\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"product_name\",\"labels\":{\"en\":\"product name\"},\"aliases\":[\"ProductName\",\"productName\"]},{\"name\":\"quantity\",\"labels\":{\"en\":\"quantity\"},\"aliases\":[\"Quantity\"]},{\"name\":\"unit_price\",\"labels\":{\"en\":\"unit price\"},\"aliases\":[\"UnitPrice\",\"unitPrice\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"OrderStatus\":{\"labels\":{\"en\":\"Order Status\"},\"fields\":[{\"name\":\"code\",\"labels\":{\"en\":\"code\"},\"aliases\":[\"Code\"]},{\"name\":\"color\",\"labels\":{\"en\":\"color\"},\"aliases\":[\"Color\"]},{\"name\":\"customer_order_list\",\"targetType\":\"CustomerOrder\",\"labels\":{\"en\":\"Customer Order\"},\"aliases\":[\"CustomerOrderList\",\"customerOrderList\"]},{\"name\":\"display_order\",\"labels\":{\"en\":\"display order\"},\"aliases\":[\"DisplayOrder\",\"displayOrder\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"platform\",\"targetType\":\"Platform\",\"labels\":{\"en\":\"Commerce Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"Platform\":{\"labels\":{\"en\":\"Commerce Platform\"},\"fields\":[{\"name\":\"customer_list\",\"targetType\":\"Customer\",\"labels\":{\"en\":\"Customer\"},\"aliases\":[\"CustomerList\",\"customerList\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"order_status_list\",\"targetType\":\"OrderStatus\",\"labels\":{\"en\":\"Order Status\"},\"aliases\":[\"OrderStatusList\",\"orderStatusList\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}")
 GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Platform)
     .schema_entity(_Platform_DESCRIPTOR)
     .checker("Platform", _PlatformChecker())
@@ -326,5 +319,6 @@ GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Platform)
     .schema_entity(_OrderItem_DESCRIPTOR)
     .checker("OrderItem", _OrderItemChecker())
     .wire_metadata("OrderItem", create_wire_entity_metadata("OrderItem", ["id", "customer_order", "product_name", "quantity", "unit_price", "version"], JsonFieldNamingProfile.parse("camelCase"), {"id": ["id"], "customer_order": ["customer_order"], "product_name": ["product_name"], "quantity": ["quantity"], "unit_price": ["unit_price"], "version": ["version"]}))
+    .checker_presentation(_CHECKER_PRESENTATION)
     .generated_bootstrap(_ensure_generated_bootstrap)
 )

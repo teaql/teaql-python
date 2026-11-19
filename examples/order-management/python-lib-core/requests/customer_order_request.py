@@ -672,7 +672,6 @@ class CustomerOrderRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_order_number(self):
         self.query.group_by("order_number")
@@ -680,7 +679,6 @@ class CustomerOrderRequest:
 
     def group_by_order_number_as(self, ret_name: str):
         self.query.group_by("order_number")
-        self.query.project_expr(ret_name, column("order_number"))
         return self
     def group_by_order_date(self):
         self.query.group_by("order_date")
@@ -688,7 +686,6 @@ class CustomerOrderRequest:
 
     def group_by_order_date_as(self, ret_name: str):
         self.query.group_by("order_date")
-        self.query.project_expr(ret_name, column("order_date"))
         return self
     def group_by_total_amount(self):
         self.query.group_by("total_amount")
@@ -696,7 +693,6 @@ class CustomerOrderRequest:
 
     def group_by_total_amount_as(self, ret_name: str):
         self.query.group_by("total_amount")
-        self.query.project_expr(ret_name, column("total_amount"))
         return self
     def group_by_status(self):
         self.query.group_by("status")
@@ -704,7 +700,6 @@ class CustomerOrderRequest:
 
     def group_by_status_as(self, ret_name: str):
         self.query.group_by("status")
-        self.query.project_expr(ret_name, column("status"))
         return self
     def group_by_customer(self):
         self.query.group_by("customer")
@@ -712,7 +707,6 @@ class CustomerOrderRequest:
 
     def group_by_customer_as(self, ret_name: str):
         self.query.group_by("customer")
-        self.query.project_expr(ret_name, column("customer"))
         return self
     def group_by_commerce_platform(self):
         self.query.group_by("commerce_platform")
@@ -720,7 +714,6 @@ class CustomerOrderRequest:
 
     def group_by_commerce_platform_as(self, ret_name: str):
         self.query.group_by("commerce_platform")
-        self.query.project_expr(ret_name, column("commerce_platform"))
         return self
     def group_by_create_time(self):
         self.query.group_by("create_time")
@@ -728,7 +721,6 @@ class CustomerOrderRequest:
 
     def group_by_create_time_as(self, ret_name: str):
         self.query.group_by("create_time")
-        self.query.project_expr(ret_name, column("create_time"))
         return self
     def group_by_update_time(self):
         self.query.group_by("update_time")
@@ -736,7 +728,6 @@ class CustomerOrderRequest:
 
     def group_by_update_time_as(self, ret_name: str):
         self.query.group_by("update_time")
-        self.query.project_expr(ret_name, column("update_time"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -744,7 +735,6 @@ class CustomerOrderRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
         return self
     def select_order_line_list(self):
         from requests.order_line_request import OrderLineRequest
@@ -930,11 +920,10 @@ class ExecutableCustomerOrderRequest:
         self._request.comment(c)
         return self
 
-    async def new_entity(self, context) -> CustomerOrder:
+    def new_entity(self, context) -> CustomerOrder:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        identity = await context.next_id("CustomerOrder")
-        entity = context.initialize_entity("CustomerOrder", CustomerOrder._teaql_from_reserved_id(identity))
+        entity = context.initialize_entity("CustomerOrder", CustomerOrder())
         if not isinstance(entity, CustomerOrder):
             raise TypeError("entity initializer returned an incompatible CustomerOrder")
         return entity
@@ -960,7 +949,7 @@ class ExecutableCustomerOrderRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: CustomerOrder._teaql_from_record(_entity_root=EntityRoot(), **row),
+            lambda row: CustomerOrder(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -977,6 +966,8 @@ class ExecutableCustomerOrderRequest:
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
         root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
+        if root.query.aggregates or root.query.group_by_items or root.query.object_group_bys:
+            raise ValueError("Entity streams require entity rows; use a record or aggregation query")
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: CustomerOrder._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: CustomerOrder(_entity_root=EntityRoot(), **row), chunk_size)

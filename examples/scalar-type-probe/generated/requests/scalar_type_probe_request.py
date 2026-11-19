@@ -2110,7 +2110,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_type_platform(self):
         self.query.group_by("type_platform")
@@ -2118,7 +2117,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_type_platform_as(self, ret_name: str):
         self.query.group_by("type_platform")
-        self.query.project_expr(ret_name, column("type_platform"))
         return self
     def group_by_required_string(self):
         self.query.group_by("required_string")
@@ -2126,7 +2124,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_required_string_as(self, ret_name: str):
         self.query.group_by("required_string")
-        self.query.project_expr(ret_name, column("required_string"))
         return self
     def group_by_optional_string(self):
         self.query.group_by("optional_string")
@@ -2134,7 +2131,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_optional_string_as(self, ret_name: str):
         self.query.group_by("optional_string")
-        self.query.project_expr(ret_name, column("optional_string"))
         return self
     def group_by_large_text(self):
         self.query.group_by("large_text")
@@ -2142,7 +2138,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_large_text_as(self, ret_name: str):
         self.query.group_by("large_text")
-        self.query.project_expr(ret_name, column("large_text"))
         return self
     def group_by_required_boolean(self):
         self.query.group_by("required_boolean")
@@ -2150,7 +2145,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_required_boolean_as(self, ret_name: str):
         self.query.group_by("required_boolean")
-        self.query.project_expr(ret_name, column("required_boolean"))
         return self
     def group_by_optional_boolean(self):
         self.query.group_by("optional_boolean")
@@ -2158,7 +2152,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_optional_boolean_as(self, ret_name: str):
         self.query.group_by("optional_boolean")
-        self.query.project_expr(ret_name, column("optional_boolean"))
         return self
     def group_by_required_integer(self):
         self.query.group_by("required_integer")
@@ -2166,7 +2159,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_required_integer_as(self, ret_name: str):
         self.query.group_by("required_integer")
-        self.query.project_expr(ret_name, column("required_integer"))
         return self
     def group_by_optional_integer(self):
         self.query.group_by("optional_integer")
@@ -2174,7 +2166,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_optional_integer_as(self, ret_name: str):
         self.query.group_by("optional_integer")
-        self.query.project_expr(ret_name, column("optional_integer"))
         return self
     def group_by_required_long(self):
         self.query.group_by("required_long")
@@ -2182,7 +2173,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_required_long_as(self, ret_name: str):
         self.query.group_by("required_long")
-        self.query.project_expr(ret_name, column("required_long"))
         return self
     def group_by_optional_long(self):
         self.query.group_by("optional_long")
@@ -2190,7 +2180,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_optional_long_as(self, ret_name: str):
         self.query.group_by("optional_long")
-        self.query.project_expr(ret_name, column("optional_long"))
         return self
     def group_by_required_decimal(self):
         self.query.group_by("required_decimal")
@@ -2198,7 +2187,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_required_decimal_as(self, ret_name: str):
         self.query.group_by("required_decimal")
-        self.query.project_expr(ret_name, column("required_decimal"))
         return self
     def group_by_optional_decimal(self):
         self.query.group_by("optional_decimal")
@@ -2206,7 +2194,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_optional_decimal_as(self, ret_name: str):
         self.query.group_by("optional_decimal")
-        self.query.project_expr(ret_name, column("optional_decimal"))
         return self
     def group_by_required_float(self):
         self.query.group_by("required_float")
@@ -2214,7 +2201,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_required_float_as(self, ret_name: str):
         self.query.group_by("required_float")
-        self.query.project_expr(ret_name, column("required_float"))
         return self
     def group_by_optional_float(self):
         self.query.group_by("optional_float")
@@ -2222,7 +2208,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_optional_float_as(self, ret_name: str):
         self.query.group_by("optional_float")
-        self.query.project_expr(ret_name, column("optional_float"))
         return self
     def group_by_required_double(self):
         self.query.group_by("required_double")
@@ -2230,7 +2215,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_required_double_as(self, ret_name: str):
         self.query.group_by("required_double")
-        self.query.project_expr(ret_name, column("required_double"))
         return self
     def group_by_optional_double(self):
         self.query.group_by("optional_double")
@@ -2238,7 +2222,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_optional_double_as(self, ret_name: str):
         self.query.group_by("optional_double")
-        self.query.project_expr(ret_name, column("optional_double"))
         return self
     def group_by_required_date(self):
         self.query.group_by("required_date")
@@ -2246,7 +2229,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_required_date_as(self, ret_name: str):
         self.query.group_by("required_date")
-        self.query.project_expr(ret_name, column("required_date"))
         return self
     def group_by_optional_date(self):
         self.query.group_by("optional_date")
@@ -2254,7 +2236,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_optional_date_as(self, ret_name: str):
         self.query.group_by("optional_date")
-        self.query.project_expr(ret_name, column("optional_date"))
         return self
     def group_by_required_time(self):
         self.query.group_by("required_time")
@@ -2262,7 +2243,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_required_time_as(self, ret_name: str):
         self.query.group_by("required_time")
-        self.query.project_expr(ret_name, column("required_time"))
         return self
     def group_by_optional_time(self):
         self.query.group_by("optional_time")
@@ -2270,7 +2250,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_optional_time_as(self, ret_name: str):
         self.query.group_by("optional_time")
-        self.query.project_expr(ret_name, column("optional_time"))
         return self
     def group_by_required_datetime(self):
         self.query.group_by("required_datetime")
@@ -2278,7 +2257,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_required_datetime_as(self, ret_name: str):
         self.query.group_by("required_datetime")
-        self.query.project_expr(ret_name, column("required_datetime"))
         return self
     def group_by_optional_datetime(self):
         self.query.group_by("optional_datetime")
@@ -2286,7 +2264,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_optional_datetime_as(self, ret_name: str):
         self.query.group_by("optional_datetime")
-        self.query.project_expr(ret_name, column("optional_datetime"))
         return self
     def group_by_create_time(self):
         self.query.group_by("create_time")
@@ -2294,7 +2271,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_create_time_as(self, ret_name: str):
         self.query.group_by("create_time")
-        self.query.project_expr(ret_name, column("create_time"))
         return self
     def group_by_update_time(self):
         self.query.group_by("update_time")
@@ -2302,7 +2278,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_update_time_as(self, ret_name: str):
         self.query.group_by("update_time")
-        self.query.project_expr(ret_name, column("update_time"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -2310,7 +2285,6 @@ class ScalarTypeProbeRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
         return self
     def facet_by_type_platform_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
@@ -2327,11 +2301,10 @@ class ExecutableScalarTypeProbeRequest:
         self._request.comment(c)
         return self
 
-    async def new_entity(self, context) -> ScalarTypeProbe:
+    def new_entity(self, context) -> ScalarTypeProbe:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        identity = await context.next_id("ScalarTypeProbe")
-        entity = context.initialize_entity("ScalarTypeProbe", ScalarTypeProbe._teaql_from_reserved_id(identity))
+        entity = context.initialize_entity("ScalarTypeProbe", ScalarTypeProbe())
         if not isinstance(entity, ScalarTypeProbe):
             raise TypeError("entity initializer returned an incompatible ScalarTypeProbe")
         return entity
@@ -2357,7 +2330,7 @@ class ExecutableScalarTypeProbeRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: ScalarTypeProbe._teaql_from_record(_entity_root=EntityRoot(), **row),
+            lambda row: ScalarTypeProbe(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -2374,6 +2347,8 @@ class ExecutableScalarTypeProbeRequest:
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
         root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
+        if root.query.aggregates or root.query.group_by_items or root.query.object_group_bys:
+            raise ValueError("Entity streams require entity rows; use a record or aggregation query")
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: ScalarTypeProbe._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: ScalarTypeProbe(_entity_root=EntityRoot(), **row), chunk_size)

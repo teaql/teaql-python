@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
-from teaql.runtime import CheckResult, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.runtime import CheckResult, ContextFix, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.runtime import CheckerPresentationModel
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
 from teaql.core.value import DataType
 from Q import Q
@@ -35,17 +36,13 @@ def _teaql_entity_id(value):
 class _PlatformChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
-        if operation == "insert" and ("create_time" not in record or _teaql_is_null(record["create_time"])):
-            record["create_time"] = Value.from_any(now)
-            context.record_fix_evidence("Platform", "create_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "create_time", "now", [], location_name="create_time")
 
-        if operation == "insert" and ("update_time" not in record or _teaql_is_null(record["update_time"])):
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("Platform", "update_time", "clock", "graphClock")
-        if operation == "insert" or operation == "update":
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("Platform", "update_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
+        if operation == "update":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
 
 
         if (operation == "insert" and "name" not in record) or ("name" in record and _teaql_is_null(record["name"])):
@@ -69,7 +66,6 @@ class _PlatformChecker:
 class _SchoolTypeChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "platform" not in record) or ("platform" in record and _teaql_is_null(record["platform"])):
             results.append(CheckResult("required", ObjectLocation().property("platform")))
 
@@ -92,17 +88,13 @@ class _SchoolTypeChecker:
 class _SchoolChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
-        if operation == "insert" and ("create_time" not in record or _teaql_is_null(record["create_time"])):
-            record["create_time"] = Value.from_any(now)
-            context.record_fix_evidence("School", "create_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "create_time", "now", [], location_name="create_time")
 
-        if operation == "insert" and ("update_time" not in record or _teaql_is_null(record["update_time"])):
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("School", "update_time", "clock", "graphClock")
-        if operation == "insert" or operation == "update":
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("School", "update_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
+        if operation == "update":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
 
 
         if (operation == "insert" and "platform" not in record) or ("platform" in record and _teaql_is_null(record["platform"])):
@@ -140,7 +132,7 @@ class _SchoolChecker:
 
 _Platform_DESCRIPTOR = (EntityDescriptor("Platform")
     .audit_mask_fields([])
-    .table_name("platform_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("base_url", DataType.Text).column_name("base_url").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True)).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("school_type_list", "SchoolType").local("id").foreign("platform").many()).relation(RelationDescriptor("school_list", "School").local("id").foreign("platform").many())
+    .table_name("platform_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("base_url", DataType.Text).column_name("base_url").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True).on_create_from_context("now")).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True).on_create_from_context("now").on_update_from_context("now")).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("school_type_list", "SchoolType").local("id").foreign("platform").many()).relation(RelationDescriptor("school_list", "School").local("id").foreign("platform").many())
 )
 
 _SchoolType_DESCRIPTOR = (EntityDescriptor("SchoolType")
@@ -150,7 +142,7 @@ _SchoolType_DESCRIPTOR = (EntityDescriptor("SchoolType")
 
 _School_DESCRIPTOR = (EntityDescriptor("School")
     .audit_mask_fields([])
-    .table_name("school_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("platform", DataType.I64).column_name("platform").log_policy("plain").required()).property(PropertyDescriptor("school_type", DataType.I64).column_name("school_type").log_policy("plain").required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("address", DataType.Text).column_name("address").log_policy("plain").required()).property(PropertyDescriptor("established_date", DataType.Date).column_name("established_date").log_policy("plain").required()).property(PropertyDescriptor("student_capacity", DataType.I64).column_name("student_capacity").log_policy("plain").integer32().required()).property(PropertyDescriptor("active", DataType.Bool).column_name("active").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True)).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("platform", "Platform").local("platform").foreign("id")).relation(RelationDescriptor("school_type", "SchoolType").local("school_type").foreign("id"))
+    .table_name("school_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("platform", DataType.I64).column_name("platform").log_policy("plain").required()).property(PropertyDescriptor("school_type", DataType.I64).column_name("school_type").log_policy("plain").required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("address", DataType.Text).column_name("address").log_policy("plain").required()).property(PropertyDescriptor("established_date", DataType.Date).column_name("established_date").log_policy("plain").required()).property(PropertyDescriptor("student_capacity", DataType.I64).column_name("student_capacity").log_policy("plain").integer32().required()).property(PropertyDescriptor("active", DataType.Bool).column_name("active").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True).on_create_from_context("now")).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True).on_create_from_context("now").on_update_from_context("now")).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("platform", "Platform").local("platform").foreign("id")).relation(RelationDescriptor("school_type", "SchoolType").local("school_type").foreign("id"))
 )
 
 async def _ensure_generated_bootstrap_once(context):
@@ -162,8 +154,7 @@ async def _ensure_generated_bootstrap_once(context):
     try:
         platform_1 = await (Q.platforms().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if platform_1 is None:
-            platform_1 = await Q.platforms().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            platform_1.update_id(1)
+            platform_1 = Platform._teaql_new_with_fixed_id(1)
             platform_1.update_name("Campus Learning Platform")
             platform_1.update_base_url("https://campus.example.com")
             try:
@@ -180,8 +171,7 @@ async def _ensure_generated_bootstrap_once(context):
         context.with_active_root(ContextEntityRef("Platform", 1))
         school_type_1001 = await (Q.school_types().with_id_is(1001).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if school_type_1001 is None:
-            school_type_1001 = await Q.school_types().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            school_type_1001.update_id(1001)
+            school_type_1001 = SchoolType._teaql_new_with_fixed_id(1001)
             school_type_1001.update_platform(Platform.refer(1))
             school_type_1001.update_name("Primary")
             school_type_1001.update_code("PRIMARY")
@@ -214,8 +204,7 @@ async def _ensure_generated_bootstrap_once(context):
             await school_type_1001.audit_as('reconcile model constant SchoolType(1001)').save(context)
         school_type_1002 = await (Q.school_types().with_id_is(1002).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if school_type_1002 is None:
-            school_type_1002 = await Q.school_types().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
-            school_type_1002.update_id(1002)
+            school_type_1002 = SchoolType._teaql_new_with_fixed_id(1002)
             school_type_1002.update_platform(Platform.refer(1))
             school_type_1002.update_name("Secondary")
             school_type_1002.update_code("SECONDARY")
@@ -263,6 +252,7 @@ async def _ensure_generated_bootstrap(context):
 
 
 # Passive generated manifest. Call ensure_schema() separately and explicitly.
+_CHECKER_PRESENTATION = CheckerPresentationModel.from_json("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:71ba9da7267282a87034f786438f6f60442609b86ca42c3ef288e51c43107ce1\",\"entities\":{\"Platform\":{\"labels\":{\"en\":\"Platform\"},\"fields\":[{\"name\":\"base_url\",\"labels\":{\"en\":\"base url\"},\"aliases\":[\"BaseUrl\",\"baseUrl\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"school_list\",\"targetType\":\"School\",\"labels\":{\"en\":\"School\"},\"aliases\":[\"SchoolList\",\"schoolList\"]},{\"name\":\"school_type_list\",\"targetType\":\"SchoolType\",\"labels\":{\"en\":\"School Type\"},\"aliases\":[\"SchoolTypeList\",\"schoolTypeList\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"School\":{\"labels\":{\"en\":\"School\"},\"fields\":[{\"name\":\"active\",\"labels\":{\"en\":\"active\"},\"aliases\":[\"Active\"]},{\"name\":\"address\",\"labels\":{\"en\":\"address\"},\"aliases\":[\"Address\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"established_date\",\"labels\":{\"en\":\"established date\"},\"aliases\":[\"EstablishedDate\",\"establishedDate\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"platform\",\"targetType\":\"Platform\",\"labels\":{\"en\":\"Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"school_type\",\"targetType\":\"SchoolType\",\"labels\":{\"en\":\"School Type\"},\"aliases\":[\"SchoolType\",\"schoolType\"]},{\"name\":\"student_capacity\",\"labels\":{\"en\":\"student capacity\"},\"aliases\":[\"StudentCapacity\",\"studentCapacity\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"SchoolType\":{\"labels\":{\"en\":\"School Type\"},\"fields\":[{\"name\":\"code\",\"labels\":{\"en\":\"code\"},\"aliases\":[\"Code\"]},{\"name\":\"display_order\",\"labels\":{\"en\":\"display order\"},\"aliases\":[\"DisplayOrder\",\"displayOrder\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"platform\",\"targetType\":\"Platform\",\"labels\":{\"en\":\"Platform\"},\"aliases\":[\"Platform\"]},{\"name\":\"school_list\",\"targetType\":\"School\",\"labels\":{\"en\":\"School\"},\"aliases\":[\"SchoolList\",\"schoolList\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}")
 GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Platform)
     .schema_entity(_Platform_DESCRIPTOR)
     .checker("Platform", _PlatformChecker())
@@ -273,5 +263,6 @@ GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(Platform)
     .schema_entity(_School_DESCRIPTOR)
     .checker("School", _SchoolChecker())
     .wire_metadata("School", create_wire_entity_metadata("School", ["id", "platform", "school_type", "name", "address", "established_date", "student_capacity", "active", "create_time", "update_time", "version"], JsonFieldNamingProfile.parse("camelCase"), {"id": ["id"], "platform": ["platform"], "school_type": ["school_type"], "name": ["name"], "address": ["address"], "established_date": ["established_date"], "student_capacity": ["student_capacity"], "active": ["active"], "create_time": ["create_time"], "update_time": ["update_time"], "version": ["version"]}))
+    .checker_presentation(_CHECKER_PRESENTATION)
     .generated_bootstrap(_ensure_generated_bootstrap)
 )

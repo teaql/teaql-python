@@ -1,32 +1,40 @@
 {
-  "schema": "teaql.generated-example-fixture/v1",
-  "language": "python",
-  "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
-  "generatedManifestSha256": "d194383e1ec5018de322c266f624b7265e450c0180c0de14fd4ac637decbc57d",
-  "previousFixtureManifestSha256": "bff2108391952a39f91b07f90421be30376d285846de29b32081d83f86bfbf41",
-  "producerSource": {
-    "commit": "309ff174c93efee3544f1d7e876821f44c06d59b",
-    "sourceContentsSha256": "7dfe339d629b591e517c17a2746b8e5167bc81f3323f147ba028f1b7cf394f12"
-  },
-  "producerReportSha256": "bdff8e4dc60ef3b537537599af23a1b783058a6749f0ebfdd97af7931469dc96",
   "evaluatedScope": "python-lib-core",
   "evaluationErrors": 0,
   "evaluationWarnings": 0,
   "files": {
     "E.py": "5e6a69648c561528bf6168391e9d3b3c8946e0918425909ed64c27e6499974dc",
-    "models/type_platform.py": "50b82b3f9945c55773a6d3addb1886873fcb81fa88c5354e037d5176c3c13b38",
-    "models/scalar_type_probe.py": "05ad162982357faa5a3dfaffb168c0e7de8b3febf10435b42e8691b0019b7e58",
-    "pyproject.toml": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
-    "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "generated_search_models.py": "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19",
-    "requests/type_platform_request.py": "9d6a7936229398b820b2bc205549eed88841c3fb39db17f6b9d0c07f71b64c86",
-    "requests/scalar_type_probe_request.py": "da370a89ee656d706e277c26168ba26fe5a220ae729d16f720e256ee66697aa4",
-    "runtime_module.py": "5e1a4b5476e8bd732b2e3e98a2f80e1668b9b4f8656bbfc5135598f049d894e7",
     "Q.py": "b461273d68d4223162fedb6405940842357e7f23efd17007942176bdad8e6d1b",
-    "teaql-i18n.json": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163"
+    "generated_search_models.py": "f6e227109da84e42dc8eea14a7ced1f7e166106486845d94772fb0c376b9fe19",
+    "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "models/scalar_type_probe.py": "718db4393913194788bd3d115da7fa1597d9cf2fc5fce15bd4d060b458b8a54d",
+    "models/type_platform.py": "bac15365f32ea9fc261e253dcc5fd2c28c568a562901bcf7c99173d7d0854abb",
+    "pyproject.toml": "bd37ecdcc9eda4d1a12c12cba8f6557027ce47fb84b0cf11a017b960e0a40a8b",
+    "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requests/scalar_type_probe_request.py": "33ecfc55e89e1889ecba2f8997cb31ff7a3519ee41f642b9b626fc1c44b4fb73",
+    "requests/type_platform_request.py": "7e0fb6b848398e6283ccfae47c54bc2a0ba31b6a3650c779ddc3e05045464f9b",
+    "runtime_module.py": "4ea87ddac1a0d6daf42c5b8740df560a3ad17c5d8f37fbfb4e6c1dcf8b4dec10",
+    "teaql-i18n.json": "a2b6c40ece22b6c1c4b0231036e6859c294494c3ed6db8d24d57f08448457163",
+    "teaql/checker-model.json": "ce4ae61861d89991e89b2762d48bb448ad04ad18853c9c5d5ea4e0c7ac093bab",
+    "teaql/model-provenance.json": "84e6e6a9d56404f3923357514c795575e617b670ac6ea413306a4203b80ff14e"
   },
-  "generatorCommit": "309ff174c93efee3544f1d7e876821f44c06d59b",
-  "generatorSourceContentsSha256": "7dfe339d629b591e517c17a2746b8e5167bc81f3323f147ba028f1b7cf394f12",
-  "producerReceiptSha256": "d45d60a4b013dbde01c8325641a6975f4a1c1627b836fe197dba1c9e82a7c557"
+  "generatedManifestSha256": "005e8ed34516efbd6b3c94dad3680edadef193bfb977f16d246bc273aac65211",
+  "generationReceipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-catalog/python/scalar-type-probe/model/receipt.json",
+  "generatorCommit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+  "generatorJarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+  "generatorRelease": "v4.2.0",
+  "language": "python",
+  "modelSha256": "8d3017392ffd00abbc06be2555ced27ac6360e2d05fabc4299e27a5ef8f1c762",
+  "previousFixtureManifestSha256": "0161934f6f1c5116f1b9aeb1681ef62ae13136d6abd3cfa4fbcc651cb3c125c2",
+  "previousOrigin": {
+    "commit": "615b6c18ea377d05cef3d8a823c072e2f7794548",
+    "path": "examples/scalar-type-probe/fixture-manifest.json"
+  },
+  "producerReceiptSha256": "b31847566d64cc3dd54c87388a53ee42a0c7571d8af74ece41002293e9cc203a",
+  "producerSource": {
+    "commit": "97830096360553381a3221ad5bdbe9837c68a9b4",
+    "jarSHA256": "a22cfb9d9442958404cfb0d8e085af2c223c618018bbeb5e42a78765c23c4dd6",
+    "release": "v4.2.0"
+  },
+  "schema": "teaql.generated-example-fixture/v1"
 }
