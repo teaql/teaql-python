@@ -43,11 +43,11 @@ async def main():
                            .purpose('prepare standard Order graph').execute_for_list(context))
         assert len(platforms) == 1 and E.platform(platforms[0]).id().eval() == 1
         secret = 'ORDER-PRIVATE-' + uuid4().hex
-        customer = Q.customers().comment('create standard customer').purpose('prepare Order graph').new_entity(context)
+        customer = await Q.customers().comment('create standard customer').purpose('prepare Order graph').new_entity(context)
         customer.update_name('North Star Retail').update_platform(platforms[0])
         await customer.audit_as('seed standard customer').save(context)
         for index in range(1, 5):
-            order = Q.customer_orders().comment('create standard order').purpose('prepare Order graph').new_entity(context)
+            order = await Q.customer_orders().comment('create standard order').purpose('prepare Order graph').new_entity(context)
             order.update_customer(customer).update_order_number(f'{secret}-{index:03}' if index < 4 else 'OTHER-004')
             order.update_order_date(date(2026, 10, index)).update_total_amount(Decimal(index * 100 if index < 4 else 900))
             if index == 1:
@@ -56,7 +56,7 @@ async def main():
                 order.update_status_to_paid()
             await order.audit_as('seed standard order').save(context)
             for item in range(1, 6):
-                line = Q.order_items().comment('create standard item').purpose('prepare bounded previews').new_entity(context)
+                line = await Q.order_items().comment('create standard item').purpose('prepare bounded previews').new_entity(context)
                 line.update_customer_order(order).update_product_name(f'Box {item}').update_quantity(item)
                 line.update_unit_price(Decimal(20))
                 await line.audit_as('seed standard item').save(context)

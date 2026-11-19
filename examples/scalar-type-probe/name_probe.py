@@ -156,7 +156,7 @@ async def main():
         await context.ensure_schema()
         parents = []
         for suffix in ("original", "replacement"):
-            parent = ((Q.type_platforms().comment("prepare canonical naming parent")
+            parent = ((await Q.type_platforms().comment("prepare canonical naming parent")
                       .purpose("verify relation identity").new_entity(context)))
             parent.update_name(marker + "-" + suffix)
             await parent.audit_as("create canonical naming parent").save(context)

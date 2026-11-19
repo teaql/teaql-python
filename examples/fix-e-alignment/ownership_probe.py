@@ -12,9 +12,9 @@ async def verify_ownership(context):
                       .execute_for_list(context))
 
     before = await all_rows("Inspect the bounded initial ownership fixture")
-    first = ((Q.purchase_orders().comment("Prepare independent owner A")
+    first = ((await Q.purchase_orders().comment("Prepare independent owner A")
              .purpose("Verify Context does not own mutation ledgers").new_entity(context)))
-    second = ((Q.purchase_orders().comment("Prepare independent owner B")
+    second = ((await Q.purchase_orders().comment("Prepare independent owner B")
               .purpose("Verify Context does not own mutation ledgers").new_entity(context)))
     first.update_contact_phone("5550300").update_internal_note(None)
     second.update_contact_phone("5550400").update_internal_note(None)

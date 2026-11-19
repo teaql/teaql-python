@@ -153,7 +153,7 @@ async def main():
         assert row.version == 5 and math.copysign(1.0, changed) == -1
         case("signed-zero-intent", id=row.id, version=row.version, sqliteSignedZeroReadbackNotClaimed=True)
 
-        parent = ((Q.type_platforms().comment("prepare a graph restoration owner")
+        parent = ((await Q.type_platforms().comment("prepare a graph restoration owner")
                   .purpose("test a clean parent with changed children").new_entity(context)))
         parent.update_name("restoration owner " + uuid4().hex)
         await parent.audit_as("create the independent graph owner").save(context)

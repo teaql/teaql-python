@@ -106,10 +106,10 @@ async def scenario(args, name):
     context.with_checker_registry(registry)
 
     allocations_before_creation = meter.effects()["ids"]
-    order = ((Q.purchase_orders().comment("Prepare the graph Fix order")
+    order = ((await Q.purchase_orders().comment("Prepare the graph Fix order")
              .purpose("Verify generated graph identity and once-per-save Fix")
              .new_entity(context)))
-    child = ((Q.order_items().comment("Prepare the graph Fix child")
+    child = ((await Q.order_items().comment("Prepare the graph Fix child")
              .purpose("Verify one child object reached through two list entries")
              .new_entity(context)))
     construction_reservations = meter.effects()["ids"] - allocations_before_creation

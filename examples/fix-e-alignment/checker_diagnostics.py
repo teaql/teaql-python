@@ -73,10 +73,10 @@ async def verify(database):
     observations, failures = [], []
 
     async def graph():
-        parent = ((Q.purchase_orders().comment("Prepare Checker diagnostic order")
+        parent = ((await Q.purchase_orders().comment("Prepare Checker diagnostic order")
                   .purpose("Verify ordinary generated save rejects invalid input").new_entity(context)))
         parent.update_contact_phone("5550100").update_internal_note(None)
-        child = ((Q.order_items().comment("Prepare Checker diagnostic child")
+        child = ((await Q.order_items().comment("Prepare Checker diagnostic child")
                  .purpose("Verify nested violations retain their declaring type").new_entity(context)))
         child.update_product_name("Synthetic checker item").update_unit_price(Decimal("10.00"))
         parent.order_item_list().append(child)

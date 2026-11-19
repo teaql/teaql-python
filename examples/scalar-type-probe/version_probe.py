@@ -128,7 +128,7 @@ async def main():
             assert deleted._teaql_entity_key() in deleted._entity_root.deleted_keys()
             record("maximum-delete-and-repeat-rejection", id=deleted.id, version=str(deleted.version), nullableNote=note is None)
 
-        parent = ((Q.type_platforms().comment("prepare a version graph owner")
+        parent = ((await Q.type_platforms().comment("prepare a version graph owner")
             .purpose("verify early graph-wide version admission").new_entity(context)))
         parent.update_name(marker + "-owner")
         await parent.audit_as("create the generated graph owner").save(context)
@@ -182,7 +182,7 @@ async def main():
         context.with_checker_registry(checker)
         record("post-Fix-graph-admission", parentId=owner.id, zeroProviderAndPolicy=True)
 
-        untouched = ((Q.type_platforms().comment("prepare an unchanged exhausted relation")
+        untouched = ((await Q.type_platforms().comment("prepare an unchanged exhausted relation")
             .purpose("do not confuse reference loading with mutation").new_entity(context)))
         untouched.update_name(marker + "-unchanged-reference")
         await untouched.audit_as("create the reference-only parent").save(context)

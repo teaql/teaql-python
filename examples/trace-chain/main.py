@@ -192,7 +192,7 @@ class AuditSink:
 
 
 async def new(request, context):
-    return request.comment('what: construct a trace example entity').purpose(
+    return await request.comment('what: construct a trace example entity').purpose(
         'why: verify generated graph behavior').new_entity(context)
 
 

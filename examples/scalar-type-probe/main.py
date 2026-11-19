@@ -19,7 +19,7 @@ def request(marker):
 
 
 async def new_probe(context, marker, amount):
-    row = ((Q.scalar_type_probes().comment("prepare exact scalar probe")
+    row = ((await Q.scalar_type_probes().comment("prepare exact scalar probe")
            .purpose("verify generated mutation").new_entity(context)))
     row.update_type_platform(TypePlatform.refer(1))
     row.update_required_string(marker)

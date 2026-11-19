@@ -47,7 +47,7 @@ async def verify_request_intent(context, client):
         except RequestIntentError as error:
             assert error.code == 'REQUEST_COMMENT_REQUIRED'
         assert calls == [], calls
-        entity = (Q.schools().comment('prepare unsaved school').purpose('verify save gate').new_entity(context))
+        entity = (await Q.schools().comment('prepare unsaved school').purpose('verify save gate').new_entity(context))
         assert calls == ['id allocator'], calls
         reserved_id = entity.id
         assert type(reserved_id) is int and reserved_id > 0
@@ -150,7 +150,7 @@ async def main() -> None:
     assert reconciled.name == "Primary"
     assert reconciled.version == first_primary_version + 1
 
-    school = (Q.schools().comment("Create the example school").purpose(
+    school = (await Q.schools().comment("Create the example school").purpose(
         "Verify generated Python mutations").new_entity(context))
     school.update_platform(Platform.refer(platform.id))
     school.update_school_type(SchoolType.refer(primary.id))
