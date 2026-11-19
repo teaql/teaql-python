@@ -48,15 +48,15 @@ async def main():
             def on_safe_event(self, ctx, event):
                 events.append(event)
         context.with_app_audit_event_sink(Sink())
-        def make(name):
-            return (Q.entries().comment("Prepare one natural-message example child")
-                .purpose("Verify generated audited mutations and located messages").new_entity(context).update_name(name).update_catalog(1))
+        async def make(name):
+            return (await Q.entries().comment("Prepare one natural-message example child")
+                .purpose("Verify generated audited mutations and located messages").new_entity(context)).update_name(name).update_catalog(1)
         async def load(identity):
             rows = await (Q.entries().with_id_is(identity).limit(1).comment("Reload complete example child")
                 .purpose("Verify stored values through typed E").execute_for_list(context))
             assert len(rows) == 1
             return rows[0]
-        first, second = make("first"), make("second")
+        first, second = await make("first"), await make("second")
         await first.audit_as("Create the first example child").save(context)
         await second.audit_as("Create the second example child").save(context)
         first, second = await load(first.id), await load(second.id)
