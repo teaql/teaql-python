@@ -67,7 +67,7 @@ async def main(database, round_number):
         return delta
 
     async def seed():
-        row = ((await Q.purchase_orders().comment("Prepare an unchanged-view fixture")
+        row = ((Q.purchase_orders().comment("Prepare an unchanged-view fixture")
                .purpose("Verify view preservation through generated audited mutations").new_entity(context)))
         row.update_contact_phone("5550800").update_internal_note(None)
         await row.audit_as("Create the unchanged-view fixture").save(context)

@@ -111,13 +111,13 @@ async def run(source, output, fixture):
         return context, client
 
     async def parent(context):
-        row = ((await Q.purchase_orders().comment("Prepare the Checker boundary order")
+        row = ((Q.purchase_orders().comment("Prepare the Checker boundary order")
             .purpose("Verify generated audited persistence boundaries").new_entity(context)))
         row.update_contact_phone("5550100").update_internal_note(None)
         return row
 
     async def child(context):
-        row = ((await Q.order_items().comment("Prepare the Checker boundary item")
+        row = ((Q.order_items().comment("Prepare the Checker boundary item")
             .purpose("Verify generated required references and numeric constraints").new_entity(context)))
         row.update_product_name("Boundary item").update_unit_price(Decimal("10.00"))
         return row

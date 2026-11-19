@@ -57,26 +57,26 @@ class ManagedCreation(unittest.IsolatedAsyncioTestCase):
         ctx, ids = context(701)
         seen = []
         ctx.register_entity_initializer("WorkItem", lambda _context, entity: seen.append(entity.id))
-        entity = await request().new_entity(ctx)
+        entity = request().new_entity(ctx)
         self.assertEqual(entity.id, 701)
         self.assertEqual(seen, [701])
         self.assertEqual(ids.calls, ["WorkItem"])
 
     async def test_selected_allocator_failure_zero_recovery_and_independent_ledgers(self):
         ctx, ids = context(701, 702, failure, 0, 705)
-        first, second = await request().new_entity(ctx), await request().new_entity(ctx)
+        first, second = request().new_entity(ctx), request().new_entity(ctx)
         self.assertEqual((first.id, second.id), (701, 702))
         self.assertIsNot(first._entity_root, second._entity_root)
         first.update_title("only first graph")
         self.assertNotIn("title", dict(second._entity_root.current_change_set().changes()).get(second._teaql_entity_key(), {}))
         self.assertTrue(first._entity_root.has_pending(first._teaql_entity_key()))
         with self.assertRaises(RuntimeError) as caught:
-            await request().new_entity(ctx)
+            request().new_entity(ctx)
         self.assertIs(caught.exception, failure)
         with self.assertRaises(ValueError):
-            await request().new_entity(ctx)
+            request().new_entity(ctx)
         self.assertEqual(len(ctx.managed_entities()), 2)
-        recovered = await request().new_entity(ctx)
+        recovered = request().new_entity(ctx)
         self.assertEqual(recovered.id, 705)
         self.assertEqual(ids.calls, ["WorkItem"] * 5)
         self.assertEqual(len(ctx.managed_entities()), 3)

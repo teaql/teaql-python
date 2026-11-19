@@ -159,7 +159,7 @@ async def main():
         return result, observed
 
     async def seed(label, values):
-        parent = ((await Q.type_platforms().comment("initialize aggregate bucket")
+        parent = ((Q.type_platforms().comment("initialize aggregate bucket")
                   .purpose("prepare deterministic empty aggregate input")
                   .new_entity(context)).update_name(label))
         await parent.audit_as("create aggregate bucket through generated mutation").save(context)

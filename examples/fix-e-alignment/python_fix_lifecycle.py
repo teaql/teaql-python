@@ -110,9 +110,9 @@ async def verify(args):
 
     async def graph(current, label):
         allocations_before = meter.effects()['ids']
-        order = ((await Q.purchase_orders().comment('Prepare ' + label)
+        order = ((Q.purchase_orders().comment('Prepare ' + label)
                  .purpose('Verify generated Fix boundaries').new_entity(current)))
-        child = ((await Q.order_items().comment('Prepare the Fix lifecycle child')
+        child = ((Q.order_items().comment('Prepare the Fix lifecycle child')
                  .purpose('Verify repeated-child identity through real save').new_entity(current)))
         assert meter.effects()['ids'] == allocations_before + 2
         assert type(order.id) is int and order.id > 0 and type(child.id) is int and child.id > 0
@@ -294,7 +294,7 @@ async def verify(args):
         for invalid in ('explicit-create', 'wrong-update-context', 'move-existing-owner'):
             current = primary if invalid != 'wrong-update-context' else context(ContextEntityRef('Tenant', 2))
             if invalid == 'explicit-create':
-                target = await Q.purchase_orders().comment('Prepare conflicting owner input').purpose('Verify early root mismatch rejection').new_entity(current)
+                target = Q.purchase_orders().comment('Prepare conflicting owner input').purpose('Verify early root mismatch rejection').new_entity(current)
                 # Deliberate negative carrier injection, not a public creation
                 # API or recommended application update. Mark the submitted
                 # owner as present so the mismatch cannot be silently ignored.

@@ -45,7 +45,7 @@ def platforms():
 
 
 async def new_item(context):
-    return (await items().new_entity(context)).update_platform(1)
+    return (items().new_entity(context)).update_platform(1)
 
 
 async def flow(context, allocator, provider, round_number):

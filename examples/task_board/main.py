@@ -26,7 +26,7 @@ async def main():
     try:
         await context.ensure_schema()
         await context.ensure_schema()
-        task = (await Q.tasks().comment("Prepare demo robot task")
+        task = (Q.tasks().comment("Prepare demo robot task")
             .purpose("Verify managed task creation").new_entity(context))
         task.update_name("Build Robot Arm").update_platform(1).update_status_to_planned()
         await task.audit_as("create demo robot task").save(context)
@@ -51,7 +51,7 @@ async def main():
                           .execute_for_stream(context, chunk_size=1)):
             streamed.append(row)
         assert len(streamed) == 1 and streamed[0].name == "Build Robot Arm V2"
-        entry = (await Q.task_execution_logs().comment("Prepare rename evidence")
+        entry = (Q.task_execution_logs().comment("Prepare rename evidence")
             .purpose("Verify governed task log creation").new_entity(context))
         entry.update_task(task.id).update_action("RENAME").update_detail("PRIVATE-TASK-DETAIL")
         await entry.audit_as("record PRIVATE-TASK-DETAIL rename evidence").save(context)

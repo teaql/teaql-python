@@ -58,7 +58,7 @@ async def main(database, round_number):
     async def seed():
         context.with_business_clock(FixedBusinessClock(first))
         allocations_before_creation = calls["allocations"]
-        row = ((await Q.purchase_orders().comment("Prepare an independent projection fixture")
+        row = ((Q.purchase_orders().comment("Prepare an independent projection fixture")
                .purpose("Verify query-view isolation and independent pending mutations")
                .new_entity(context)))
         reserved_id = row.id
