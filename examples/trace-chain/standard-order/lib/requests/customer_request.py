@@ -338,6 +338,7 @@ class CustomerRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
+        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_platform(self):
         self.query.group_by("platform")
@@ -345,6 +346,7 @@ class CustomerRequest:
 
     def group_by_platform_as(self, ret_name: str):
         self.query.group_by("platform")
+        self.query.project_expr(ret_name, column("platform"))
         return self
     def group_by_name(self):
         self.query.group_by("name")
@@ -352,6 +354,7 @@ class CustomerRequest:
 
     def group_by_name_as(self, ret_name: str):
         self.query.group_by("name")
+        self.query.project_expr(ret_name, column("name"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -359,6 +362,7 @@ class CustomerRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
+        self.query.project_expr(ret_name, column("version"))
         return self
     def select_customer_order_list(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -532,10 +536,11 @@ class ExecutableCustomerRequest:
         self._request.comment(c)
         return self
 
-    def new_entity(self, context) -> Customer:
+    async def new_entity(self, context) -> Customer:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        entity = context.initialize_entity("Customer", Customer())
+        identity = await context.next_id("Customer")
+        entity = context.initialize_entity("Customer", Customer._teaql_from_reserved_id(identity))
         if not isinstance(entity, Customer):
             raise TypeError("entity initializer returned an incompatible Customer")
         return entity
@@ -561,7 +566,7 @@ class ExecutableCustomerRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: Customer(_entity_root=EntityRoot(), **row),
+            lambda row: Customer._teaql_from_record(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -582,4 +587,4 @@ class ExecutableCustomerRequest:
             raise ValueError("Entity streams require entity rows; use a record or aggregation query")
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: Customer(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: Customer._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)

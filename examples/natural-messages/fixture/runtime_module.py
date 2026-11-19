@@ -89,7 +89,8 @@ async def _ensure_generated_bootstrap_once(context):
     try:
         catalog_1 = await (Q.catalogs().with_id_is(1).comment('what: locate generated bootstrap entity').purpose('why: idempotent runtime bootstrap').execute_for_one(context))
         if catalog_1 is None:
-            catalog_1 = Catalog._teaql_new_with_fixed_id(1)
+            catalog_1 = await Q.catalogs().comment('reserve generated bootstrap identity').purpose('create a managed bootstrap entity').new_entity(context)
+            catalog_1.update_id(1)
             catalog_1.update_name("Catalog")
             try:
                 await catalog_1.audit_as('create model root Catalog(1)').save(context)

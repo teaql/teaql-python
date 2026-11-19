@@ -450,6 +450,7 @@ class EntryRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
+        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_catalog(self):
         self.query.group_by("catalog")
@@ -457,6 +458,7 @@ class EntryRequest:
 
     def group_by_catalog_as(self, ret_name: str):
         self.query.group_by("catalog")
+        self.query.project_expr(ret_name, column("catalog"))
         return self
     def group_by_name(self):
         self.query.group_by("name")
@@ -464,6 +466,7 @@ class EntryRequest:
 
     def group_by_name_as(self, ret_name: str):
         self.query.group_by("name")
+        self.query.project_expr(ret_name, column("name"))
         return self
     def group_by_born_at(self):
         self.query.group_by("born_at")
@@ -471,6 +474,7 @@ class EntryRequest:
 
     def group_by_born_at_as(self, ret_name: str):
         self.query.group_by("born_at")
+        self.query.project_expr(ret_name, column("born_at"))
         return self
     def group_by_touched_at(self):
         self.query.group_by("touched_at")
@@ -478,6 +482,7 @@ class EntryRequest:
 
     def group_by_touched_at_as(self, ret_name: str):
         self.query.group_by("touched_at")
+        self.query.project_expr(ret_name, column("touched_at"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -485,6 +490,7 @@ class EntryRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
+        self.query.project_expr(ret_name, column("version"))
         return self
     def facet_by_catalog_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
@@ -501,10 +507,11 @@ class ExecutableEntryRequest:
         self._request.comment(c)
         return self
 
-    def new_entity(self, context) -> Entry:
+    async def new_entity(self, context) -> Entry:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        entity = context.initialize_entity("Entry", Entry())
+        identity = await context.next_id("Entry")
+        entity = context.initialize_entity("Entry", Entry._teaql_from_reserved_id(identity))
         if not isinstance(entity, Entry):
             raise TypeError("entity initializer returned an incompatible Entry")
         return entity
@@ -530,7 +537,7 @@ class ExecutableEntryRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: Entry(_entity_root=EntityRoot(), **row),
+            lambda row: Entry._teaql_from_record(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -551,4 +558,4 @@ class ExecutableEntryRequest:
             raise ValueError("Entity streams require entity rows; use a record or aggregation query")
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: Entry(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: Entry._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)

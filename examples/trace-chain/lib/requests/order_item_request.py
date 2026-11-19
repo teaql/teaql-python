@@ -338,6 +338,7 @@ class OrderItemRequest:
 
     def group_by_id_as(self, ret_name: str):
         self.query.group_by("id")
+        self.query.project_expr(ret_name, column("id"))
         return self
     def group_by_customer_order(self):
         self.query.group_by("customer_order")
@@ -345,6 +346,7 @@ class OrderItemRequest:
 
     def group_by_customer_order_as(self, ret_name: str):
         self.query.group_by("customer_order")
+        self.query.project_expr(ret_name, column("customer_order"))
         return self
     def group_by_name(self):
         self.query.group_by("name")
@@ -352,6 +354,7 @@ class OrderItemRequest:
 
     def group_by_name_as(self, ret_name: str):
         self.query.group_by("name")
+        self.query.project_expr(ret_name, column("name"))
         return self
     def group_by_version(self):
         self.query.group_by("version")
@@ -359,6 +362,7 @@ class OrderItemRequest:
 
     def group_by_version_as(self, ret_name: str):
         self.query.group_by("version")
+        self.query.project_expr(ret_name, column("version"))
         return self
     def facet_by_customer_order_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
@@ -375,10 +379,11 @@ class ExecutableOrderItemRequest:
         self._request.comment(c)
         return self
 
-    def new_entity(self, context) -> OrderItem:
+    async def new_entity(self, context) -> OrderItem:
         request = self._request
         QueryIntent(request._comment, request._purpose)
-        entity = context.initialize_entity("OrderItem", OrderItem())
+        identity = await context.next_id("OrderItem")
+        entity = context.initialize_entity("OrderItem", OrderItem._teaql_from_reserved_id(identity))
         if not isinstance(entity, OrderItem):
             raise TypeError("entity initializer returned an incompatible OrderItem")
         return entity
@@ -404,7 +409,7 @@ class ExecutableOrderItemRequest:
             request._page_count_alias if request._page_count_method == "count_as" else None)
             if request._page_count_alias is not None else None)
         return await execute_typed_list(context, root,
-            lambda row: OrderItem(_entity_root=EntityRoot(), **row),
+            lambda row: OrderItem._teaql_from_record(_entity_root=EntityRoot(), **row),
             count_operation=operation, count_alias=request._page_count_alias)
 
     async def execute_for_one(self, context):
@@ -425,4 +430,4 @@ class ExecutableOrderItemRequest:
             raise ValueError("Entity streams require entity rows; use a record or aggregation query")
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
-            lambda row: OrderItem(_entity_root=EntityRoot(), **row), chunk_size)
+            lambda row: OrderItem._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)
