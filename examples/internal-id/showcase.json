@@ -21,9 +21,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/warehouse-order-allocation-generation/receipt.json",
     "receiptSHA256": "7df96905babebd689595a8eea7d0178b6b5b3a2555158c3bacfdba3b194cd9cd"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-warehouse-internal-id-native/runtime/internal-id/receipt.json",
+    "businessReceiptSHA256": "66c4ecc95c042dde5cd92ea2922d6e3b81bd62184da34c15f99fe3b8eb038664",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-warehouse-internal-id-native/receipt.json",
+    "nativeReceiptSHA256": "e1933c023493dfb2b98302538101756df740a02e42773d4cbbd979820fae1dfc",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "473d4838f32a16e8fcdc6f9fd4534fd791ce93fa"
+  },
   "scene": "Context-assigned internal IDs for a warehouse purchase order and its items",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "python3",
     "app/main.py"
