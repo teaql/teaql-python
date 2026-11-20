@@ -24,12 +24,20 @@
     "receipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-v430-candidate/receipt.json",
     "receiptSHA256": "9bf2a08fa9c5bec0d9b1a2e1420044ffdd6bc71c6a1a09ce70d81d1cf0cdbd0a"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-trace-chain-native-scopes/runtime/trace-chain/receipt.json",
+    "businessReceiptSHA256": "ca104d5365c2a6bacdeac83bab912dde6422645018b36797035e695a340b6682",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-trace-chain-native-scopes/receipt.json",
+    "nativeReceiptSHA256": "03a9c24eafc32097fd1fef589db748ec48dae90293ee2663d1b5e08304511269",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "5e5e30a2f0fe8ee9fe75bca6d044f9c48d1368c3"
+  },
   "relatedShowcases": [
     "standard-order/showcase.json"
   ],
   "scene": "Save and replay order graphs with real query, commit and rollback",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "bash",
     "examples/trace-chain/verify.sh"
