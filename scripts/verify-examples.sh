@@ -33,10 +33,8 @@ if rg -l 'include\s*=.*teaql\*' "$repo/examples" --glob pyproject.toml >/dev/nul
 fi
 
 bash "$repo/examples/object-storage/verify.sh"
-bash "$repo/examples/scalar-type-probe/verify.sh"
-bash "$repo/examples/scalar-type-probe/verify-restoration.sh" "$evidence_directory/restoration.sqlite"
-bash "$repo/examples/scalar-type-probe/verify-version.sh" "$evidence_directory/version.sqlite"
-bash "$repo/examples/scalar-type-probe/verify-empty.sh" "$evidence_directory/empty-aggregates.sqlite"
+TEAQL_FREIGHT_QUOTE_EVIDENCE_DIR="$evidence_directory/freight-quotes" \
+  bash "$repo/examples/scalar-type-probe/verify-freight-quotes.sh"
 python "$repo/examples/fix-e-alignment/verify-local.py"
 TEAQL_CONTEXT_FIX_EVIDENCE_DIR="$evidence_directory/context-derived" python "$repo/examples/context-derived/verify-local.py"
 TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR="$evidence_directory/natural-messages" python "$repo/examples/natural-messages/verify-local.py"
