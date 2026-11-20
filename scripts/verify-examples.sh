@@ -56,7 +56,7 @@ PYTHONPATH="$repo/src" python "$repo/examples/business-id/python-app-console/cal
 TEAQL_BUSINESS_ID_KEY_V1_HEX=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
 TEAQL_PURCHASE_NUMBERING_ROUND=inventory TEAQL_DATABASE_CONNECTION_STRING="$evidence_directory/business-id.sqlite" \
 PYTHONPATH="$repo/src:$repo/examples/business-id/python-lib-core" python "$repo/examples/business-id/python-app-console/app/main.py"
-PYTHONPATH="$repo/src" python "$repo/examples/internal-id/main.py"
+TEAQL_INTERNAL_ID_EVIDENCE_DIR="$evidence_directory/internal-id" bash "$repo/examples/internal-id/verify.sh"
 PYTHONPATH="$repo/src" python "$repo/examples/typed-extension-spi/main.py"
 PYTHONPATH="$repo/src" python "$repo/examples/query-policy/main.py"
 PYTHONPATH="$repo/src" python "$repo/examples/opaque-entity-reference/main.py"
