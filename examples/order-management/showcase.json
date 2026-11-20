@@ -31,9 +31,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/order-generation/receipt.json",
     "receiptSHA256": "5041246b7c9f452219d943efa393ea380ce7f7e172da739a945bb49da2ba5db2"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-order-scopes/runtime/order-management/business-receipt.json",
+    "businessReceiptSHA256": "a3267e2abd3e3fad58d9385ec44817ef049593c5fcdddf324dea11d2bd369602",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-order-scopes/receipt.json",
+    "nativeReceiptSHA256": "93979df6cf0caac74735d3d1c0b45e603736e7b6605ed096c8b994366b927932",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "7559d1fa13ebc57d0853411214bb955bc8735c31"
+  },
   "scene": "Order terminal, field-safe audits and reusable query presets",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "bash",
     "verify.sh"
