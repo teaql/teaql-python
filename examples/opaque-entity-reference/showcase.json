@@ -1,0 +1,39 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/opaque-entity-reference",
+  "library": {
+    "generatedFilesManifestSHA256": "e95444cbd5b64cda244ba388652d593f0c6db858a793211fdd6076e224870d4f",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "065bad2b9154a08abbec48549e60cc907e6f2889e9a005b428d902a1cbd0999f"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/order-reference-and-line-restoration-evaluated-generation/receipt.json",
+    "receiptSHA256": "21eae4c57d59881287106fe7871d0958e6596ab455f9e7e095580b0b03a05dc8"
+  },
+  "scene": "Resolve a signed order-line reference before accepting a quantity change",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "implemented-pending-native-qualification",
+  "verification": [
+    "bash",
+    "examples/opaque-entity-reference/verify.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py"
+    ],
+    "generatedFilesManifestSHA256": "3fc4a5cc84247cbd8830ddfd60cc582cd64a4078ee9610719779fa13f6423213",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}
