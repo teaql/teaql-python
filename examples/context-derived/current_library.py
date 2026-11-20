@@ -14,7 +14,10 @@ def current_library_inputs():
     for p in root.rglob("*"):
         assert not p.is_symlink()
         if p.is_file():actual.append(str(p.relative_to(root)))
-    assert sorted(actual)==sorted([*m["files"],"current-generator-fixture.json"])
+    emitted=root/"generated-files.json"
+    assert sha(emitted)==m["generatedManifestSha256"]
+    assert json.loads(emitted.read_text())==m["files"]
+    assert sorted(actual)==sorted([*m["files"],"current-generator-fixture.json","generated-files.json"])
     for name,digest in m["files"].items():
         assert not Path(name).is_absolute() and ".." not in Path(name).parts
         assert sha(root/name)==digest,name
