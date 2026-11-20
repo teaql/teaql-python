@@ -1,17 +1,19 @@
 # Python runtime conformance example
 
+`model.xml` owns `python-lib-core` and `python-app-console`. The application and retained regression checks live in the native workspace. Run `bash examples/conformance/verify.sh` from the SDK root for source qualification, persisted business-result checks and owned scratch cleanup. Provenance and current qualification state are in `showcase.json`.
+
 This retained SQLite example is generated from `model.xml` and verifies the minimum runtime-owned contract: explicit `ensure_schema`, Create, Update, Delete, typed Q/SmartList, E loaded/null/not-loaded semantics, Checker rejection before persistence, and optimistic-version isolation for different entity types that share a numeric ID.
 
 ```bash
 python -m venv .venv
 . .venv/bin/activate
-pip install -e ../..
+pip install -e ../../..
 python -m app.main
 python -m app.managed_creation
 python -m app.managed_sqlite
 ```
 
-Run these commands from `examples/conformance`. The editable dependency above is
+Run these commands from `examples/conformance/python-app-console`. The editable dependency above is
 this repository's runtime, not a public package or a historical embedded copy.
 
 Create with `await Q.work_items().comment(...).purpose(...).new_entity(context)`.

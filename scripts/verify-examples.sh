@@ -42,10 +42,7 @@ TEAQL_CONTEXT_FIX_EVIDENCE_DIR="$evidence_directory/context-derived" python "$re
 TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR="$evidence_directory/natural-messages" python "$repo/examples/natural-messages/verify-local.py"
 TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$evidence_directory/expression-profiles" \
   python "$repo/examples/expression-profiles/verify-local.py"
-PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
-PYTHONPATH="$repo/src" python "$repo/examples/conformance/app/managed_creation.py"
-PYTHONPATH="$repo/src" python "$repo/examples/conformance/app/managed_sqlite.py"
-PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/conformance" -p 'test_sql_log_intent.py' -v
+TEAQL_CONFORMANCE_EVIDENCE_DIR="$evidence_directory/conformance" bash "$repo/examples/conformance/verify.sh"
 PYTHONPATH="$repo/examples/school-management/python-app-console:$repo/src" python -m app.main
 bash "$repo/scripts/verify-school-bootstrap-example.sh"
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/school-management/python-app-console" -p 'test_sql_log_intent.py' -v

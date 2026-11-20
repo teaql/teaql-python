@@ -10,12 +10,12 @@ import unittest
 
 class ConformanceSqlLogIntentTest(unittest.TestCase):
     def test_generated_queries_retain_intent_at_sql_sink(self):
-        repo = Path(__file__).resolve().parents[2]
+        repo = Path(__file__).resolve().parents[3]
         env = dict(os.environ)
         env.pop("TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS", None)
         env.pop("TEAQL_LOG_FORMAT", None)
         env["TEAQL_LOG_ENDPOINT"] = "stdout"
-        env["PYTHONPATH"] = os.pathsep.join((str(repo / "examples" / "conformance"), str(repo / "src")))
+        env["PYTHONPATH"] = os.pathsep.join((str(repo / "examples/conformance/python-lib-core"), str(repo / "examples/conformance/python-app-console"), str(repo / "src")))
         with tempfile.TemporaryDirectory(prefix="teaql-conformance-log-test-") as directory:
             env["TEAQL_CONFORMANCE_DB"] = str(Path(directory) / "conformance.sqlite")
             result = subprocess.run([sys.executable, "-m", "app.main"], cwd=repo,

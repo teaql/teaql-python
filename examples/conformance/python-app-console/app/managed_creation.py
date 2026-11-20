@@ -6,8 +6,8 @@ import sys
 import unittest
 
 EXAMPLE = pathlib.Path(__file__).resolve().parents[1]
-REPO = EXAMPLE.parents[1]
-sys.path[:0] = [str(EXAMPLE), str(REPO / "src")]
+REPO = EXAMPLE.parents[2]
+sys.path[:0] = [str(EXAMPLE.parent / "python-lib-core"), str(EXAMPLE), str(REPO / "src")]
 import teaql
 assert pathlib.Path(teaql.__file__).resolve() == REPO / "src/teaql/__init__.py"
 from Q import Q

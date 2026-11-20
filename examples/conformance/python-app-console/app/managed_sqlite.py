@@ -7,8 +7,8 @@ import sys
 import tempfile
 
 EXAMPLE = pathlib.Path(__file__).resolve().parents[1]
-REPO = EXAMPLE.parents[1]
-sys.path[:0] = [str(EXAMPLE), str(REPO / "src")]
+REPO = EXAMPLE.parents[2]
+sys.path[:0] = [str(EXAMPLE.parent / "python-lib-core"), str(EXAMPLE), str(REPO / "src")]
 database = pathlib.Path(os.environ["TEAQL_MANAGED_CREATION_DB"]) if "TEAQL_MANAGED_CREATION_DB" in os.environ else pathlib.Path(tempfile.mkdtemp(prefix="teaql-python-managed-evidence-")) / "managed.sqlite"
 print("Retained managed creation database: " + str(database))
 from Q import Q

@@ -4,7 +4,7 @@ from pathlib import Path
 import sys
 
 ROOT = Path(__file__).resolve().parents[1]
-sys.path.insert(0, str(ROOT))
+sys.path[:0] = [str(ROOT.parent / "python-lib-core"), str(ROOT)]
 
 from E import E, TeaQLNotLoadedError
 from Q import Q
@@ -32,7 +32,8 @@ async def main() -> None:
 
     database = Path(os.environ.get("TEAQL_CONFORMANCE_DB", ROOT / ".local" / "conformance.sqlite"))
     database.parent.mkdir(parents=True, exist_ok=True)
-    database.unlink(missing_ok=True)
+    if database.exists():
+        raise FileExistsError("Use a fresh conformance database; existing data is preserved")
     client = SQLiteTeaQLClient(str(database))
     context = (UserContext.new().install(GENERATED_RUNTIME_MODULE)
                .insert_resource("dataService", client))
