@@ -170,7 +170,8 @@ async def main(database, phase):
         assert ids.calls == [("VendorApplication", accepted_id), ("VendorApplication", accepted_id + 1)]
         assert len(audit.events) == 1
         written = audit.events[0]
-        assert (written.entity, int(written.entity_id)) == ("VendorApplication", accepted_id)
+        audit_id = written.entity_id.try_i64()
+        assert (written.entity, audit_id) == ("VendorApplication", accepted_id)
 
         policy.denied = True
         prior_operations = len(telemetry.events)
@@ -199,7 +200,7 @@ async def main(database, phase):
         print("VENDOR_REGISTRATION=" + json.dumps(dict(
             phase=phase, id=accepted_id, reference=reference, legalName=name,
             schemaCalls=schema.calls, checkerCalls=[checker.supplier.repaired, checker.supplier.denied],
-            allocatorCalls=ids.calls, auditIds=[int(written.entity_id)], policyCalls=len(policy.calls),
+            allocatorCalls=ids.calls, auditIds=[audit_id], policyCalls=len(policy.calls),
             deniedReadBeforeExecution=True, telemetryOutcomes=outcomes, readDuringTelemetryOutage=True,
         )))
     finally:
