@@ -21,9 +21,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/order-reference-and-line-restoration-evaluated-generation/receipt.json",
     "receiptSHA256": "21eae4c57d59881287106fe7871d0958e6596ab455f9e7e095580b0b03a05dc8"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-order-edit-reference-native/business-receipt.json",
+    "businessReceiptSHA256": "3f18090e3b7b71cfd1b0d06cdcfaae4bc3a2fcce4db02ee05e927ec270d15bde",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-order-edit-reference-native/receipt.json",
+    "nativeReceiptSHA256": "c19af2ba1dcfb30c5ef2138cf3d3547b237b8e1328feec067d2e15ffc544aecd",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "a37788b31de3eee4e8faf7dc9feabe15f3a7bf97"
+  },
   "scene": "Resolve a signed order-line reference before accepting a quantity change",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "bash",
     "examples/opaque-entity-reference/verify.sh"
