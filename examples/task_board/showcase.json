@@ -1,0 +1,39 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/task_board",
+  "library": {
+    "generatedFilesManifestSHA256": "cbcf85499fef6091131a519ed6ffcc02bf7ca31727a579c2c5408d0846b5be9a",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "f2fdd5037dbdee7f71e008f3ca04db75d8dd0e3138743de7a4744c197b0b567e"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/robot-task-board-generation/receipt.json",
+    "receiptSHA256": "7289a98fb719c2c8eece8ffa3d218725e125d766f659f78b4bc4cd2dbca3b635"
+  },
+  "scene": "Robot task creation, rename and execution history",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "implemented-pending-native-qualification",
+  "verification": [
+    "python-app-console/app/main.py"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py",
+      "app/test_task_board.py"
+    ],
+    "generatedFilesManifestSHA256": "f2a9f60a8e99e1e8a16709da60eed433499aa2366f07498a358c7187ab411ba5",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

@@ -5,7 +5,7 @@ from pathlib import Path
 import sys
 import tempfile
 
-sys.path.insert(0, str(Path(__file__).resolve().with_name("generated")))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python-lib-core"))
 
 from E import E
 from Q import Q
@@ -18,10 +18,15 @@ from teaql.runtime import UserContext
 
 async def main():
     database = os.environ.get("TEAQL_TASK_BOARD_DB")
-    if not database:
-        with tempfile.NamedTemporaryFile(prefix="teaql-task-board-", suffix=".db", delete=False) as file:
-            database = file.name
-    client = SQLiteTeaQLClient(database)
+    if database:
+        await run(database)
+    else:
+        with tempfile.TemporaryDirectory(prefix="teaql-task-board-") as owned:
+            await run(Path(owned) / "task-board.db")
+
+
+async def run(database):
+    client = SQLiteTeaQLClient(str(database))
     context = UserContext.new().install(GENERATED_RUNTIME_MODULE).insert_resource("dataService", client)
     try:
         await context.ensure_schema()

@@ -10,7 +10,7 @@ import unittest
 
 class TaskBoardLogContractTest(unittest.TestCase):
     def test_default_logs_have_intent_and_mask_business_values(self):
-        repo = Path(__file__).resolve().parents[2]
+        repo = Path(__file__).resolve().parents[4]
         env = dict(os.environ)
         env.pop("TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS", None)
         env.pop("TEAQL_LOG_FORMAT", None)

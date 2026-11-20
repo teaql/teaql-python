@@ -61,8 +61,8 @@ PYTHONPATH="$repo/src" python "$repo/examples/typed-extension-spi/main.py"
 PYTHONPATH="$repo/src" python "$repo/examples/query-policy/main.py"
 PYTHONPATH="$repo/src" python "$repo/examples/opaque-entity-reference/main.py"
 TEAQL_ORDER_EVIDENCE_DIR="$evidence_directory/order-management" bash "$repo/examples/order-management/verify.sh"
-TEAQL_TASK_BOARD_DB="$evidence_directory/task_board.db" PYTHONPATH="$repo/examples/task_board:$repo/src" python "$repo/examples/task_board/main.py"
-PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/task_board" -p 'test_task_board.py' -v
+TEAQL_TASK_BOARD_DB="$evidence_directory/task_board.db" PYTHONPATH="$repo/examples/task_board:$repo/src" python "$repo/examples/task_board/python-app-console/app/main.py"
+PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/task_board/python-app-console/app" -p 'test_task_board.py' -v
 bash "$repo/examples/trace-chain/verify.sh"
 bash "$repo/examples/facet-trace/verify.sh"
 bash "$repo/examples/trace-chain/verify-standard-telemetry.sh"
