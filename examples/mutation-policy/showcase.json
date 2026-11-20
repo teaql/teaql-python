@@ -21,9 +21,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/customer-approval-first-order-school-schema-generation/receipt.json",
     "receiptSHA256": "0dfc2d5e5752541338c6f29613e7fa50fc28465c9ad059f9aacffce3c3d60424"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-mutation-policy-generated-workspace/runtime/mutation-policy/receipt.json",
+    "businessReceiptSHA256": "bea6dac93ec57876225d466f872a38e041266d387a7d902264c9f6eab616bcb1",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-mutation-policy-generated-workspace/receipt.json",
+    "nativeReceiptSHA256": "cd1c99d6e43b016f7ab446cd80bdbc6df3af56a1befe33f0e0a3f04a351a79bb",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "ab2d0dd49dc4065a024a6b7867a9d0485405b89b"
+  },
   "scene": "Approve a customer profile and contact preference",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "python-app-console/app/main.py"
   ],
