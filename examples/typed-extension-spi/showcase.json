@@ -21,9 +21,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/context-spi-business-generation/receipt.json",
     "receiptSHA256": "fe544cc10c5f441b09544300418f24e22a5870a2ac57c0f323da21745cd8d9a9"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-vendor-registration-restart-expression/runtime/typed-extension-spi/receipt.json",
+    "businessReceiptSHA256": "b8185063528a24f060476d425e407602f3321a5f3fe9d6f8fb14554a14fe7881",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-vendor-registration-restart-expression/receipt.json",
+    "nativeReceiptSHA256": "ecacae81064a6aa24d620c65319ac526ada90fff3b1c4d25767601e3c121e21a",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "0570900fc4dda1d54e1915fe4b05bffddbcdf918"
+  },
   "scene": "vendor-registration",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "bash",
     "examples/typed-extension-spi/verify.sh"
