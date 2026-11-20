@@ -8,13 +8,14 @@ This retained SQLite example is generated from `model.xml` and verifies the mini
 python -m venv .venv
 . .venv/bin/activate
 pip install -e ../../..
+export PYTHONPATH="../python-lib-core${PYTHONPATH:+:$PYTHONPATH}"
 python -m app.main
 python -m app.managed_creation
 python -m app.managed_sqlite
 ```
 
-Run these commands from `examples/conformance/python-app-console`. The editable dependency above is
-this repository's runtime, not a public package or a historical embedded copy.
+Run these commands from `examples/conformance/python-app-console`. The editable dependency supplies
+the runtime from this checkout. The Python path supplies the generated domain library.
 
 Create with `await Q.work_items().comment(...).purpose(...).new_entity(context)`.
 The selected Context allocator reserves a positive ID before initializers run.

@@ -52,7 +52,23 @@
       "app/bootstrap_trace.py",
       "app/main.py",
       "test_sql_log_intent.py",
-      "tests/test_bootstrap.py"
+      "tests/test_bootstrap.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/platform.py",
+      "models/school.py",
+      "models/school_type.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/platform_request.py",
+      "requests/school_request.py",
+      "requests/school_type_request.py",
+      "runtime_module.py"
     ],
     "generatedFilesManifestSHA256": "9c1907fdd589499e324e41cd0bf73b36fefd787ffe05cd24e9657f2b6d187381",
     "root": "python-app-console",

@@ -5,7 +5,7 @@ from pathlib import Path
 import aiosqlite
 import pytest
 
-sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python-lib-core"))
 
 from Q import Q
 from runtime_module import GENERATED_RUNTIME_MODULE

@@ -1,6 +1,7 @@
 # natural-message-service Python console
 
-Run `python -m app.main`. Installing the generated Runtime Module is passive;
+From this workspace, run `PYTHONPATH=../python-lib-core python -m app.main` with the TeaQL runtime installed.
+Installing the generated Runtime Module is passive;
 schema reconciliation remains an explicit application action.
 The console main() explicitly awaits `context.ensure_schema()` after `create_context()`
 and before reporting readiness. Importing the console or calling `create_context()`

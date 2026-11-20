@@ -39,7 +39,21 @@
   "workspace": {
     "applicationOwnedFiles": [
       "app/main.py",
-      "showcase/verify.py"
+      "showcase/verify.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/catalog.py",
+      "models/entry.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/catalog_request.py",
+      "requests/entry_request.py",
+      "runtime_module.py"
     ],
     "generatedFilesManifestSHA256": "ab4973411ed5677e4d9a10000bee053733c6685d95218552f4667d2d62b468c5",
     "root": "python-app-console",

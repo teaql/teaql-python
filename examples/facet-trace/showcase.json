@@ -39,7 +39,23 @@
   "workspace": {
     "applicationOwnedFiles": [
       "app/main.py",
-      "facet.py"
+      "facet.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/platform.py",
+      "models/school.py",
+      "models/school_type.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/platform_request.py",
+      "requests/school_request.py",
+      "requests/school_type_request.py",
+      "runtime_module.py"
     ],
     "generatedFilesManifestSHA256": "4d3525010c4d11066bf11ff473b1dcd23255f8040589f008dc8bca82acd9c1d0",
     "root": "python-app-console",

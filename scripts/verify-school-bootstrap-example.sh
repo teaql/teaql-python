@@ -9,7 +9,7 @@ else
   evidence="$(mktemp -d -t teaql-python-bootstrap.XXXXXXXX)"
 fi
 export PYTHONDONTWRITEBYTECODE=1
-export PYTHONPATH="$example/python-app-console:$repo/src"
+export PYTHONPATH="$example/python-app-console:$example/python-lib-core:$repo/src"
 fingerprint() {
   { rg --files "$example/python-lib-core/models" "$example/python-lib-core/requests" -g '*.py'; printf '%s\n' "$example/python-lib-core/Q.py" "$example/python-lib-core/E.py" "$example/python-lib-core/runtime_module.py"; } |
     LC_ALL=C sort | xargs -d '\n' sha256sum

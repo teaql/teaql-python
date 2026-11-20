@@ -39,7 +39,23 @@
     "applicationOwnedFiles": [
       "app/main.py",
       "calibration/main.py",
-      "calibration/README.md"
+      "calibration/README.md",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/customer.py",
+      "models/customer_contact.py",
+      "models/platform.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/customer_contact_request.py",
+      "requests/customer_request.py",
+      "requests/platform_request.py",
+      "runtime_module.py"
     ],
     "generatedFilesManifestSHA256": "efcea8caf4a277dfbaf380e773984fa581db2a98c6098b706299bb7f2f4a6007",
     "root": "python-app-console",

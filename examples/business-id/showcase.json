@@ -38,7 +38,21 @@
   "workspace": {
     "applicationOwnedFiles": [
       "app/main.py",
-      "calibration/main.py"
+      "calibration/main.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/platform.py",
+      "models/purchase_order.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/platform_request.py",
+      "requests/purchase_order_request.py",
+      "runtime_module.py"
     ],
     "generatedFilesManifestSHA256": "dd88ae5b0fce0cf243eb1c16b0d393e4d487a2a87485d337e845c89b319352c7",
     "root": "python-app-console",

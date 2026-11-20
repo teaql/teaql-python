@@ -38,7 +38,25 @@
   "workspace": {
     "applicationOwnedFiles": [
       "app/main.py",
-      "app/test_task_board.py"
+      "app/test_task_board.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/platform.py",
+      "models/task.py",
+      "models/task_execution_log.py",
+      "models/task_status.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/platform_request.py",
+      "requests/task_execution_log_request.py",
+      "requests/task_request.py",
+      "requests/task_status_request.py",
+      "runtime_module.py"
     ],
     "generatedFilesManifestSHA256": "f2a9f60a8e99e1e8a16709da60eed433499aa2366f07498a358c7187ab411ba5",
     "root": "python-app-console",

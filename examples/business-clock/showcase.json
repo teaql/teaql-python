@@ -39,7 +39,21 @@
     "applicationOwnedFiles": [
       "app/main.py",
       "calibration/main.py",
-      "calibration/operational_verification.py"
+      "calibration/operational_verification.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/delivery_order.py",
+      "models/platform.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/delivery_order_request.py",
+      "requests/platform_request.py",
+      "runtime_module.py"
     ],
     "generatedFilesManifestSHA256": "d31a236ab0d3c030341be02b5292b6af208e1088a9f31c572a881522db961954",
     "root": "python-app-console",

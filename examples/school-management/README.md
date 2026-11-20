@@ -19,6 +19,7 @@ mutation behavior.
 python -m venv .venv
 . .venv/bin/activate
 pip install -e ../../..
+export PYTHONPATH="../python-lib-core${PYTHONPATH:+:$PYTHONPATH}"
 python -m app.main
 ```
 
@@ -28,9 +29,9 @@ Expected result:
 PASS Python School Management: bootstrap, portable Query parity, and forward relations
 ```
 
-Run these application commands from `examples/school-management/python-app-console`. The editable dependency is this
-repository's runtime; do not substitute an older public package when verifying
-new generated code. New entities use the awaited, Context-bound Q factory.
+Run these commands from `examples/school-management/python-app-console`. The editable dependency supplies
+the runtime from this checkout. The Python path supplies the generated domain library.
+New entities use the awaited, Context-bound Q factory.
 
 ## Generated bootstrap Trace Chain gate
 

@@ -38,7 +38,21 @@
   ],
   "workspace": {
     "applicationOwnedFiles": [
-      "app/main.py"
+      "app/main.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/platform.py",
+      "models/vendor_application.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/platform_request.py",
+      "requests/vendor_application_request.py",
+      "runtime_module.py"
     ],
     "generatedFilesManifestSHA256": "05868eeabb5dec7b5287d9e72e767169a04bdc65de039af4b1f486ba78dca39e",
     "root": "python-app-console",

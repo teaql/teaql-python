@@ -40,9 +40,7 @@ TEAQL_CONTEXT_FIX_EVIDENCE_DIR="$evidence_directory/context-derived" python "$re
 TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR="$evidence_directory/natural-messages" python "$repo/examples/natural-messages/verify-local.py"
 TEAQL_DISPATCH_PROFILE_EVIDENCE_DIR="$evidence_directory/expression-profiles" bash "$repo/examples/expression-profiles/verify-dispatch.sh"
 TEAQL_CONFORMANCE_EVIDENCE_DIR="$evidence_directory/conformance" bash "$repo/examples/conformance/verify.sh"
-PYTHONPATH="$repo/examples/school-management/python-app-console:$repo/src" python -m app.main
-bash "$repo/scripts/verify-school-bootstrap-example.sh"
-PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/school-management/python-app-console" -p 'test_sql_log_intent.py' -v
+TEAQL_SCHOOL_EVIDENCE_DIR="$evidence_directory/school-management" bash "$repo/examples/school-management/verify.sh"
 PYTHONPATH="$repo/src" python "$repo/examples/mutation-policy/python-app-console/calibration/main.py"
 TEAQL_SHOWCASE_ROUND=inventory TEAQL_DATABASE_CONNECTION_STRING="$evidence_directory/customer-approval.sqlite" \
 PYTHONPATH="$repo/src:$repo/examples/mutation-policy/python-lib-core" python "$repo/examples/mutation-policy/python-app-console/app/main.py"

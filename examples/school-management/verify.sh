@@ -13,19 +13,22 @@ fi
 scratch="$(mktemp -d -t teaql-python-school-scratch.XXXXXXXX)"
 trap 'status=$?; trap - EXIT; rm -rf -- "$scratch"; exit "$status"' EXIT
 export PYTHONDONTWRITEBYTECODE=1
-export PYTHONPATH="$app:$repo/src"
+export PYTHONPATH="$app:$example/python-lib-core:$repo/src"
 export TEAQL_SCHOOL_MANAGEMENT_DB="$evidence/showcase.sqlite"
 fingerprint() {
   (cd "$example" && find python-lib-core python-app-console -type f \
     ! -path '*/__pycache__/*' ! -path '*/.local/*' -print0 | sort -z | xargs -0 sha256sum)
 }
 fingerprint > "$evidence/source-before.sha256"
-"$python" - "$repo" <<'PY' > "$evidence/runtime-origin.log"
+"$python" - "$repo" "$example/python-lib-core" <<'PY' > "$evidence/runtime-origin.log"
 from pathlib import Path
-import sys, teaql
+import sys, teaql, Q
 expected = Path(sys.argv[1]) / 'src/teaql/__init__.py'
 assert Path(teaql.__file__).resolve() == expected.resolve(), teaql.__file__
+domain = Path(sys.argv[2]) / 'Q.py'
+assert Path(Q.__file__).resolve() == domain.resolve(), Q.__file__
 print('Current source runtime: ' + str(expected))
+print('Generated domain Q: ' + str(domain))
 PY
 "$python" "$repo/scripts/verify_generated_runtime_boundary.py" "$example" > "$evidence/runtime-boundary.log"
 "$python" -m app.main > "$evidence/application.log" 2>&1

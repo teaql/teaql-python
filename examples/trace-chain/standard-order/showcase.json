@@ -42,7 +42,27 @@
   ],
   "workspace": {
     "applicationOwnedFiles": [
-      "app/main.py"
+      "app/main.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/customer.py",
+      "models/customer_order.py",
+      "models/order_item.py",
+      "models/order_status.py",
+      "models/platform.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/customer_order_request.py",
+      "requests/customer_request.py",
+      "requests/order_item_request.py",
+      "requests/order_status_request.py",
+      "requests/platform_request.py",
+      "runtime_module.py"
     ],
     "generatedFilesManifestSHA256": "553eeb10b125775c0d436cfbcb701f45a0cdaa9e63ce3a0eeaab3865260054b1",
     "root": "python-app-console",

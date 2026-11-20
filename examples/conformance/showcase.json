@@ -43,7 +43,21 @@
       "app/managed_creation.py",
       "app/main.py",
       "app/managed_sqlite.py",
-      "test_sql_log_intent.py"
+      "test_sql_log_intent.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/platform.py",
+      "models/work_item.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/platform_request.py",
+      "requests/work_item_request.py",
+      "runtime_module.py"
     ],
     "generatedFilesManifestSHA256": "5ee7831ac3c6d4bfb937ddbb59eb9fb0a0ecda401cc86e98952cc7a25d0a291b",
     "root": "python-app-console",

@@ -54,7 +54,23 @@
       "showcase/checker_boundaries.py",
       "showcase/python_graph_once_update.py",
       "showcase/paged_ownership.py",
-      "showcase/loading_probe.py"
+      "showcase/loading_probe.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/order_item.py",
+      "models/purchase_order.py",
+      "models/tenant.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/order_item_request.py",
+      "requests/purchase_order_request.py",
+      "requests/tenant_request.py",
+      "runtime_module.py"
     ],
     "generatedFilesManifestSHA256": "98094e8dbea88d8692c0fbe7c283c2b8ca8847d9247b03c2dd21447127304d96",
     "root": "python-app-console",
