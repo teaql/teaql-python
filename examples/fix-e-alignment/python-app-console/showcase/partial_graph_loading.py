@@ -13,7 +13,7 @@ import json
 from pathlib import Path
 import sys
 
-sys.path.insert(0, str(Path(__file__).resolve().parent / "generated"))
+sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "python-lib-core"))
 from E import E
 from Q import Q
 from runtime_module import GENERATED_RUNTIME_MODULE

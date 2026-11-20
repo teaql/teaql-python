@@ -1,5 +1,8 @@
 # Checker, E API and partial-graph saving
 
+`model.xml` owns `python-lib-core` and `python-app-console`. Purchase-order business probes now live under `python-app-console/showcase`; the existing verifier fingerprints the complete named library and retains every original case. `app/main.py` delegates to that same business entry with the sibling domain. Use a new `--database` path, then `--reuse-database` for a repeated direct launch. The full verifier already runs two rounds without resetting the stores. Current scope provenance and qualification state are in `showcase.json`.
+
+
 Run `python examples/fix-e-alignment/verify-local.py` against the repository's
 local runtime. Set `TEAQL_FIX_E_EVIDENCE_DIR` to an unused absolute directory to
 retain compact logs, receipts and synthetic databases at a known location.

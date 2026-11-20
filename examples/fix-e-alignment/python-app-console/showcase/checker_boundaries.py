@@ -21,8 +21,8 @@ async def run(source, output, fixture):
     assert manifest["evaluationErrors"] == 0
     assert hashlib.sha256((fixture / "model.xml").read_bytes()).hexdigest() == manifest["modelSha256"]
     for name, digest in manifest["files"].items():
-        assert hashlib.sha256((fixture / "generated" / name).read_bytes()).hexdigest() == digest
-    sys.path[:0] = [str(source / "src"), str(fixture / "generated")]
+        assert hashlib.sha256((fixture / "python-lib-core" / name).read_bytes()).hexdigest() == digest
+    sys.path[:0] = [str(source / "src"), str(fixture / "python-lib-core")]
     import aiosqlite
     import teaql.runtime.context as implementation
     from teaql.core.value import Value
@@ -37,7 +37,7 @@ async def run(source, output, fixture):
     from runtime_module import GENERATED_RUNTIME_MODULE
     assert Path(implementation.__file__).resolve() == source / "src/teaql/runtime/context.py"
     q_origin, e_origin = Path(sys.modules["Q"].__file__).resolve(), Path(sys.modules["E"].__file__).resolve()
-    assert q_origin == fixture / "generated/Q.py" and e_origin == fixture / "generated/E.py"
+    assert q_origin == fixture / "python-lib-core/Q.py" and e_origin == fixture / "python-lib-core/E.py"
     print("PYTHON_CHECKER_BOUNDARY_ORIGIN=" + json.dumps({"context": implementation.__file__,
         "contextSha256": hashlib.sha256(Path(implementation.__file__).read_bytes()).hexdigest(),
         "Q": str(q_origin), "E": str(e_origin), "aiosqlite": aiosqlite.__file__, "modelSha256": manifest["modelSha256"]}))

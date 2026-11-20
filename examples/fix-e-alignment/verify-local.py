@@ -16,13 +16,14 @@ import tempfile
 
 EXAMPLE = Path(__file__).resolve().parent
 REPO = EXAMPLE.parents[1]
+APP = EXAMPLE / "python-app-console/showcase"
 
 
 def fingerprint():
     manifest = json.loads((EXAMPLE / "fixture-manifest.json").read_text())
     assert manifest["language"] == "python" and manifest["evaluationErrors"] == 0
     assert hashlib.sha256((EXAMPLE / "model.xml").read_bytes()).hexdigest() == manifest["modelSha256"]
-    generated = EXAMPLE / "generated"
+    generated = EXAMPLE / "python-lib-core"
     actual = sorted(str(p.relative_to(generated)) for p in generated.rglob("*")
                     if p.is_file() and p.suffix != ".pyc")
     assert actual == sorted(manifest["files"]), "generated fixture inventory changed"
@@ -54,7 +55,7 @@ def main():
             cwd=REPO, env=environment, check=False, timeout=30)
         assert provenance.returncode == 0
         for index in (1, 2):
-            command = [sys.executable, str(EXAMPLE / "verify.py"), "--generated", str(EXAMPLE / "generated"),
+            command = [sys.executable, str(APP / "verify.py"), "--generated", str(EXAMPLE / "python-lib-core"),
                        "--database", str(evidence / "fixture.sqlite")]
             if index == 2:
                 command.append("--reuse-database")
@@ -73,7 +74,7 @@ def main():
                 values = [json.loads(line[len(marker):]) for line in lines if line.startswith(marker)]
                 assert len(values) == 1 and values[0]["passed"] is True, marker
             assert fingerprint() == manifest
-        checker_command = [sys.executable, str(EXAMPLE / "checker_diagnostics.py"),
+        checker_command = [sys.executable, str(APP / "checker_diagnostics.py"),
                            "--database", str(evidence / "checker.sqlite")]
         checker_log = evidence / "checker.log"
         with checker_log.open("w") as output:
@@ -90,14 +91,14 @@ def main():
         report["checkerMetadata"]["databaseSha256"] = hashlib.sha256((evidence / "checker.sqlite").read_bytes()).hexdigest()
         boundary_directory = evidence / "checker-boundaries"
         boundary_directory.mkdir()
-        boundary_command = [sys.executable, str(EXAMPLE / "checker_boundaries.py"),
+        boundary_command = [sys.executable, str(APP / "checker_boundaries.py"),
                             "--source", str(REPO), "--output", str(boundary_directory)]
         boundary_log = evidence / "checker-boundaries.log"
         with boundary_log.open("w") as output:
             boundary_result = subprocess.run(boundary_command, cwd=REPO, env=environment, stdout=output,
                                              stderr=subprocess.STDOUT, check=False, timeout=180)
         report["checkerBoundaries"] = {"command": boundary_command, "exitCode": boundary_result.returncode,
-                                      "applicationSha256": hashlib.sha256((EXAMPLE / "checker_boundaries.py").read_bytes()).hexdigest(),
+                                      "applicationSha256": hashlib.sha256((APP / "checker_boundaries.py").read_bytes()).hexdigest(),
                                       "logSha256": hashlib.sha256(boundary_log.read_bytes()).hexdigest()}
         assert boundary_result.returncode == 0, boundary_log.read_text()[-12000:]
         boundary_rows = [json.loads(line[len("PYTHON_CHECKER_BOUNDARY_RESULT="):])
@@ -111,7 +112,7 @@ def main():
         assert not (boundary_directory / "never-created.sqlite").exists()
         report["partialGraphLoading"] = []
         for index in (1, 2):
-            command = [sys.executable, str(EXAMPLE / "partial_graph_loading.py"),
+            command = [sys.executable, str(APP / "partial_graph_loading.py"),
                        "--database", str(evidence / "partial-graph.sqlite"), "--round", str(index)]
             log = evidence / f"partial-graph-round-{index}.log"
             with log.open("w") as output:
@@ -125,9 +126,9 @@ def main():
             assert len(frames) == 1 and frames[0]["passed"] and frames[0]["round"] == index
         report["partialGraphDatabaseSha256"] = hashlib.sha256((evidence / "partial-graph.sqlite").read_bytes()).hexdigest()
         report["partialRootLoading"] = []
-        report["partialRootApplicationSha256"] = hashlib.sha256((EXAMPLE / "partial_root_loading.py").read_bytes()).hexdigest()
+        report["partialRootApplicationSha256"] = hashlib.sha256((APP / "partial_root_loading.py").read_bytes()).hexdigest()
         for index in (1, 2):
-            command = [sys.executable, str(EXAMPLE / "partial_root_loading.py"),
+            command = [sys.executable, str(APP / "partial_root_loading.py"),
                        "--database", str(evidence / "partial-root.sqlite"), "--round", str(index)]
             log = evidence / f"partial-root-round-{index}.log"
             with log.open("w") as output:
@@ -141,9 +142,9 @@ def main():
             assert len(frames) == 1 and frames[0]["passed"] and frames[0]["round"] == index
         report["partialRootDatabaseSha256"] = hashlib.sha256((evidence / "partial-root.sqlite").read_bytes()).hexdigest()
         report["independentProjectionViews"] = []
-        report["projectionApplicationSha256"] = hashlib.sha256((EXAMPLE / "projection_views.py").read_bytes()).hexdigest()
+        report["projectionApplicationSha256"] = hashlib.sha256((APP / "projection_views.py").read_bytes()).hexdigest()
         for index in (1, 2):
-            command = [sys.executable, str(EXAMPLE / "projection_views.py"),
+            command = [sys.executable, str(APP / "projection_views.py"),
                        "--database", str(evidence / "projection-views.sqlite"), "--round", str(index)]
             log = evidence / f"projection-views-round-{index}.log"
             with log.open("w") as output:
@@ -157,12 +158,12 @@ def main():
             assert len(frames) == 1 and frames[0]["passed"] and frames[0]["round"] == index and frames[0]["cases"] == 3
         report["projectionDatabaseSha256"] = hashlib.sha256((evidence / "projection-views.sqlite").read_bytes()).hexdigest()
         report["unchangedViews"] = []
-        report["unchangedViewApplicationSha256"] = hashlib.sha256((EXAMPLE / "unchanged_views.py").read_bytes()).hexdigest()
+        report["unchangedViewApplicationSha256"] = hashlib.sha256((APP / "unchanged_views.py").read_bytes()).hexdigest()
         expected_cases = ["sparse-restored-values-null-properties-and-edge", "repeat-clean-sparse-save",
                           "other-row-pending-intent-and-values-retained", "row-owned-properties-and-loaded-null-retained",
                           "rejected-property-selection-retains-prior-view"]
         for index in (1, 2):
-            command = [sys.executable, str(EXAMPLE / "unchanged_views.py"),
+            command = [sys.executable, str(APP / "unchanged_views.py"),
                        "--database", str(evidence / "unchanged-views.sqlite"), "--round", str(index)]
             log = evidence / f"unchanged-views-round-{index}.log"
             with log.open("w") as output:
@@ -187,7 +188,7 @@ def main():
         }
 
         def graph_probe(name, script, arguments, group="graphPreparation"):
-            command = [sys.executable, str(EXAMPLE / script), "--generated", str(EXAMPLE / "generated"), *arguments]
+            command = [sys.executable, str(APP / script), "--generated", str(EXAMPLE / "python-lib-core"), *arguments]
             log = evidence / (name + ".log")
             with log.open("w") as output:
                 result = subprocess.run(command, cwd=REPO, env=environment, stdout=output,
@@ -240,7 +241,7 @@ def main():
                          "graph-update.sqlite", "graph-admission.sqlite")
         }
         report["fixLifecycle"] = []
-        report["fixLifecycleApplicationSha256"] = hashlib.sha256((EXAMPLE / "python_fix_lifecycle.py").read_bytes()).hexdigest()
+        report["fixLifecycleApplicationSha256"] = hashlib.sha256((APP / "python_fix_lifecycle.py").read_bytes()).hexdigest()
         expected_lifecycle = ["advancing-create-update", "safe-provenance", "independent-contexts",
                               "checker-failure-retry", "provider-failure-retry", "cancel-failure-retry", "root-admission"]
         for index in (1, 2):
@@ -255,12 +256,12 @@ def main():
             assert Path(summary["runtimeFile"]).resolve() == REPO / "src/teaql/runtime/context.py"
         report["fixLifecycleDatabaseSha256"] = hashlib.sha256((evidence / "fix-lifecycle.sqlite").read_bytes()).hexdigest()
         report["expressionBoundaries"] = []
-        report["expressionBoundaryApplicationSha256"] = hashlib.sha256((EXAMPLE / "expression_boundaries.py").read_bytes()).hexdigest()
+        report["expressionBoundaryApplicationSha256"] = hashlib.sha256((APP / "expression_boundaries.py").read_bytes()).hexdigest()
         expression_cases = ["late-leaf", "indexed-leaf", "first-indexed-leaf", "loaded-null", "loaded-empty", "out-of-range",
                             "missing-list-size", "terminals", "sibling-paths", "fk-only-not-loaded",
                             "repeated-relation", "no-side-effects"]
         for index in (1, 2):
-            command = [sys.executable, str(EXAMPLE / "expression_boundaries.py"),
+            command = [sys.executable, str(APP / "expression_boundaries.py"),
                        "--database", str(evidence / "expression-boundaries.sqlite"), "--round", str(index)]
             log = evidence / f"expression-boundaries-round-{index}.log"
             with log.open("w") as output:
@@ -279,9 +280,9 @@ def main():
             assert summaries[0]["cases"] == expression_cases and summaries[0]["terminalObservations"] == 2
         report["expressionBoundaryDatabaseSha256"] = hashlib.sha256((evidence / "expression-boundaries.sqlite").read_bytes()).hexdigest()
         report["concurrentQueries"] = []
-        report["concurrentQueryApplicationSha256"] = hashlib.sha256((EXAMPLE / "concurrent_query.py").read_bytes()).hexdigest()
+        report["concurrentQueryApplicationSha256"] = hashlib.sha256((APP / "concurrent_query.py").read_bytes()).hexdigest()
         for index in (1, 2):
-            command = [sys.executable, str(EXAMPLE / "concurrent_query.py"),
+            command = [sys.executable, str(APP / "concurrent_query.py"),
                        "--database", str(evidence / "concurrent-query.sqlite"), "--round", str(index)]
             log = evidence / f"concurrent-query-round-{index}.log"
             with log.open("w") as output:

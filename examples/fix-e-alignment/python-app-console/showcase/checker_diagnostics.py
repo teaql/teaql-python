@@ -17,9 +17,9 @@ import sys
 
 
 async def verify(database):
-    example = Path(__file__).resolve().parent
+    example = Path(__file__).resolve().parents[2]
     manifest = json.loads((example / "fixture-manifest.json").read_text())
-    generated = example / "generated"
+    generated = example / "python-lib-core"
     assert manifest["evaluationErrors"] == 0
     assert hashlib.sha256((example / "model.xml").read_bytes()).hexdigest() == manifest["modelSha256"]
     actual = {str(p.relative_to(generated)) for p in generated.rglob("*")
