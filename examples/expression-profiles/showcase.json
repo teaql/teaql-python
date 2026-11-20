@@ -1,0 +1,43 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/expression-profiles",
+  "library": {
+    "generatedFilesManifestSHA256": "62ca9d08f43952c055a8a8ba2277d136944c0423461d82dc94a0523cf4e1b040",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "80efe091edc3c7e43fa0b654cc1fecf65fda6664434b3a3ee8d8676027e70ede"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/dispatch-document-profiles-generation/receipt.json",
+    "receiptSHA256": "11b1084da4040d1a68378b9ee879d98dd18d61b7eace2700c2e3dc207276c1b3"
+  },
+  "relatedShowcases": [
+    "profiles/snake_case/showcase.json",
+    "profiles/PascalCase/showcase.json"
+  ],
+  "scene": "Read a dispatch order in camelCase",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "implemented-pending-native-qualification",
+  "verification": [
+    "bash",
+    "examples/expression-profiles/verify-dispatch.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py"
+    ],
+    "generatedFilesManifestSHA256": "7e0afcaf891cc1c271bca84b59bd65855f4f7e408b80eba64d2882989674e900",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

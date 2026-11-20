@@ -38,8 +38,7 @@ TEAQL_FREIGHT_QUOTE_EVIDENCE_DIR="$evidence_directory/freight-quotes" \
 python "$repo/examples/fix-e-alignment/verify-local.py"
 TEAQL_CONTEXT_FIX_EVIDENCE_DIR="$evidence_directory/context-derived" python "$repo/examples/context-derived/verify-local.py"
 TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR="$evidence_directory/natural-messages" python "$repo/examples/natural-messages/verify-local.py"
-TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$evidence_directory/expression-profiles" \
-  python "$repo/examples/expression-profiles/verify-local.py"
+TEAQL_DISPATCH_PROFILE_EVIDENCE_DIR="$evidence_directory/expression-profiles" bash "$repo/examples/expression-profiles/verify-dispatch.sh"
 TEAQL_CONFORMANCE_EVIDENCE_DIR="$evidence_directory/conformance" bash "$repo/examples/conformance/verify.sh"
 PYTHONPATH="$repo/examples/school-management/python-app-console:$repo/src" python -m app.main
 bash "$repo/scripts/verify-school-bootstrap-example.sh"
