@@ -52,6 +52,7 @@ async def main(database, download, round_number):
     key_text = f"private-order-attachments/{uuid4().hex}"
     key = ObjectKey(key_text)
     digest = hashlib.sha256(RECEIPT).hexdigest()
+    uploaded = False
     try:
         await context.ensure_schema()
         platform = await (Q.commerce_platforms().with_id_is(1).limit(1)
@@ -67,6 +68,7 @@ async def main(database, download, round_number):
         assert not storage.exists(key)
         options = PutOptions(len(RECEIPT), WriteMode.CREATE_ONLY, MEDIA_TYPE, {"receipt-sha256": digest})
         storage.put_bytes(key, RECEIPT, options)
+        uploaded = True
         attachment = await (Q.order_attachments().comment("prepare receipt attachment")
             .purpose("save the uploaded receipt reference on its order").new_entity(context))
         attachment.update_customer_order(order.id).update_file_name(FILENAME).update_content_type(MEDIA_TYPE)
@@ -96,6 +98,7 @@ async def main(database, download, round_number):
         download.write_bytes(returned)
 
         storage.delete(persisted_key)
+        uploaded = False
         expect(StorageErrorCode.NOT_FOUND, lambda: storage.get(persisted_key))
         assert not storage.exists(persisted_key)
         assert [row.id for row in await attachments()] == [attachment.id]
@@ -109,7 +112,8 @@ async def main(database, download, round_number):
             conflict=True, sizeRefused=True, missing=True, businessAudits=len(events)), sort_keys=True))
     finally:
         try:
-            storage.delete(key)
+            if uploaded:
+                storage.delete(key)
         finally:
             provider.close()
             await sqlite.close()
