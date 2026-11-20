@@ -1,0 +1,40 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/query-policy",
+  "library": {
+    "generatedFilesManifestSHA256": "58e0cd711711a6fc7200bd37a2c94c62dd4f5f090f8deccf6d3b3ff91b101a3f",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "179df6c2ee3cf9bf595aa505a172a4b9fdee811a90301b48adcf212368e5489d"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/tenant-order-visibility-generation/receipt.json",
+    "receiptSHA256": "73000efbeb668ac03b628d7dd4e30e0b1875ba6f0e883de942d20344de8cae21"
+  },
+  "scene": "Tenant authorization of a procurement order and its partner line items",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "implemented-pending-native-qualification",
+  "verification": [
+    "bash",
+    "examples/query-policy/verify.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py",
+      "calibration/main.py"
+    ],
+    "generatedFilesManifestSHA256": "a1714f6be264d6171491a78948bf1bbb41f190dcc6baa3816f1e2cf6145c23e2",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}
