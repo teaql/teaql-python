@@ -1,5 +1,6 @@
 """Run the immutable generated Context Fix example twice with local source."""
 import hashlib
+from current_library import current_library_inputs
 import json
 import os
 from pathlib import Path
@@ -70,14 +71,15 @@ def main():
                   publicPublication=False, buildOutputsCreated=False, databaseRetained=True)
     status = 1
     try:
+        report["currentLibrary"] = current_library_inputs()
         report["fixture"] = fingerprint()
         report["sourceSha256"] = source_hash()
         report["sourceCommit"] = subprocess.check_output(["git", "-C", str(REPO), "rev-parse", "HEAD"], text=True).strip()
-        report["applicationSha256"] = sha(EXAMPLE / "verify.py")
-        environment = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONPATH=os.pathsep.join((str(REPO / "src"), str(FIXTURE))),
+        report["applicationSha256"] = sha(EXAMPLE / "python-app-console/showcase/verify.py")
+        environment = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONPATH=os.pathsep.join((str(REPO / "src"), str(EXAMPLE / "python-lib-core"))),
                            TEAQL_CONTEXT_FIX_SOURCE=str(REPO), TEAQL_CONTEXT_FIX_DB=str(output / "fixture.sqlite"))
         for index in (1, 2):
-            command, log = [sys.executable, str(EXAMPLE / "verify.py")], output / f"round-{index}.log"
+            command, log = [sys.executable, str(EXAMPLE / "python-app-console/app/main.py")], output / f"round-{index}.log"
             code = run_owned(command, log, environment)
             report["rounds"].append(dict(round=index, command=command, exitCode=code, logSha256=sha(log)))
             assert code == 0, log.read_text()[-8000:]
@@ -89,6 +91,7 @@ def main():
             assert rows[0]["noOpProviderCalls"] == rows[0]["failedCheckProviderCalls"] == 0
             assert rows[0]["updateAudits"] == 1
             report["rounds"][-1]["observations"] = rows[0]
+            assert current_library_inputs() == report["currentLibrary"]
             assert fingerprint() == report["fixture"] and source_hash() == report["sourceSha256"]
         report.update(passed=True, sameDatabase=True, databaseSha256=sha(output / "fixture.sqlite"))
         status = 0

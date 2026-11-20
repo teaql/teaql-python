@@ -38,7 +38,7 @@ async def main():
     database = Path(os.environ["TEAQL_CONTEXT_FIX_DB"])
     source = Path(os.environ["TEAQL_CONTEXT_FIX_SOURCE"])
     assert Path(teaql.__file__).resolve() == source / "src/teaql/__init__.py"
-    assert Path(inspect.getfile(Q)).resolve() == Path(__file__).parent / "fixture/Q.py"
+    assert Path(inspect.getfile(Q)).resolve() == Path(__file__).resolve().parents[2] / "python-lib-core/Q.py"
     client = SQLiteTeaQLClient(str(database))
     context = (UserContext().install(GENERATED_RUNTIME_MODULE).insert_resource("dataService", client)
                .with_business_clock(FixedBusinessClock(A)))
