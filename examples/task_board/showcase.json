@@ -21,9 +21,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/robot-task-board-generation/receipt.json",
     "receiptSHA256": "7289a98fb719c2c8eece8ffa3d218725e125d766f659f78b4bc4cd2dbca3b635"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-robot-task-board-native/runtime/task-board/receipt.json",
+    "businessReceiptSHA256": "7b9def97ef447418f112f67e2f39b5fc3c5f0a99dfa5695789bb46d24c3dd511",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-robot-task-board-native/receipt.json",
+    "nativeReceiptSHA256": "2ef43137252a21a3a4f6944432f664d0a8acdc54e22a4e6184045b29e25d087b",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "0384f8a4debe0edee4619dcfefd9beff661ad2cd"
+  },
   "scene": "Robot task creation, rename and execution history",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "python-app-console/app/main.py"
   ],
