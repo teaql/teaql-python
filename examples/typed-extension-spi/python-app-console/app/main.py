@@ -190,7 +190,8 @@ async def main(database, phase):
         assert retained is not None and retained.id == accepted_id
         if phase == "restart":
             previous = await find(caller, "SUP-700")
-            assert previous is not None and (previous.id, previous.legal_name) == (700, "Cedar Valve Works")
+            assert previous is not None and previous.id == 700
+            assert E.vendor_application(previous).legal_name().eval() == "Cedar Valve Works"
 
         outcomes = [(item.name, item.outcome) for item in telemetry.events]
         assert [outcome for operation, outcome in outcomes if operation == "graph.save"] == ["success", "failure"]
