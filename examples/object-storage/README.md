@@ -3,6 +3,26 @@
 Tracking: [Python #52](https://github.com/teaql/teaql-python/issues/52),
 [shared contract #122](https://github.com/teaql/teaql-conformance/issues/122).
 
+
+## File an order receipt
+
+`model.xml` defines the commerce platform, order and attachment. The
+`python-app-console` uses the generated domain model and installs the S3 provider
+in trusted Context setup. It uploads a receipt, saves the order association
+with generated mutations, then uses generated Q and E to recover the
+reference and check the downloaded bytes, content type and SHA-256.
+
+Run `bash examples/object-storage/verify.sh` with the dedicated fixture settings
+below. The script preserves the provider and lifecycle checks and runs the
+order scenario twice against one SQLite file. A create-only conflict and a
+too-small read limit leave the receipt intact. After the example removes its
+own test object, a fresh get reports missing while the order association
+remains available. Downloaded fixture bytes, SQLite and compact logs stay in
+the evidence directory. Set `TEAQL_ORDER_ATTACHMENT_EVIDENCE_DIR` to select a
+fresh output path.
+
+## Provider setup
+
 Install this checkout with `python -m pip install -e '.[object-storage-s3]'`.
 The optional boto3 provider owns signing, credentials and the shared HTTP pool.
 SDK types stay outside the core contract. The application installs the provider
