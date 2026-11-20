@@ -24,9 +24,18 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/trace-chain-order-native-scope-pairs/receipt.json",
     "receiptSHA256": "56bf2a9a076d6997ffff35ab4c8b6cb7448ae40b8b439200953a9ea8a6ca5ef3"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-trace-chain-native-scopes/runtime/trace-chain/receipt.json",
+    "businessReceiptSHA256": "ca104d5365c2a6bacdeac83bab912dde6422645018b36797035e695a340b6682",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-trace-chain-native-scopes/receipt.json",
+    "nativeReceiptSHA256": "03a9c24eafc32097fd1fef589db748ec48dae90293ee2663d1b5e08304511269",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "5e5e30a2f0fe8ee9fe75bca6d044f9c48d1368c3",
+    "standardCase": "order"
+  },
   "scene": "Order page, preview, total and facets with standard telemetry",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "bash",
     "examples/trace-chain/verify-standard-order.sh"
