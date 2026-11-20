@@ -46,9 +46,9 @@ PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
 PYTHONPATH="$repo/src" python "$repo/examples/conformance/app/managed_creation.py"
 PYTHONPATH="$repo/src" python "$repo/examples/conformance/app/managed_sqlite.py"
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/conformance" -p 'test_sql_log_intent.py' -v
-PYTHONPATH="$repo/examples/school-management:$repo/src" python -m app.main
+PYTHONPATH="$repo/examples/school-management/python-app-console:$repo/src" python -m app.main
 bash "$repo/scripts/verify-school-bootstrap-example.sh"
-PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/school-management" -p 'test_sql_log_intent.py' -v
+PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/school-management/python-app-console" -p 'test_sql_log_intent.py' -v
 PYTHONPATH="$repo/src" python "$repo/examples/mutation-policy/main.py"
 PYTHONPATH="$repo/src" python "$repo/examples/business-clock/main.py"
 PYTHONPATH="$repo/src" python "$repo/examples/business-id/main.py"

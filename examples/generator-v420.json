@@ -814,65 +814,69 @@
     },
     {
       "archiveSHA256": "d9b95e07ceee9f651a7c55051af8f4e508dac46e2f9668311a180e22f5c475ac",
-      "destination": "examples/school-management",
+      "destination": "examples/school-management/python-lib-core",
       "generatedFiles": {
-        "examples/school-management/E.py": {
+        "examples/school-management/python-lib-core/E.py": {
           "emittedPath": "E.py",
           "sha256": "6b0228a1ba820c82f549a7089e0c118161beeced5176375e823a92ff10d91707"
         },
-        "examples/school-management/Q.py": {
+        "examples/school-management/python-lib-core/Q.py": {
           "emittedPath": "Q.py",
           "sha256": "32d715a390697c2918fb06e89a77041c9a915482882ea1f8137e722fe576cf14"
         },
-        "examples/school-management/generated_search_models.py": {
+        "examples/school-management/python-lib-core/generated_search_models.py": {
           "emittedPath": "generated_search_models.py",
           "sha256": "9a119d9fa9cb1442f3ecf332107306b71e483945619e0263eff6ecc24258d452"
         },
-        "examples/school-management/models/__init__.py": {
+        "examples/school-management/python-lib-core/models/__init__.py": {
           "emittedPath": "models/__init__.py",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
-        "examples/school-management/models/platform.py": {
+        "examples/school-management/python-lib-core/models/platform.py": {
           "emittedPath": "models/platform.py",
           "sha256": "bd493c7f152878c99ae0a4e71e340cc42b5e86e1c1a817928dbab958521d3d7d"
         },
-        "examples/school-management/models/school.py": {
+        "examples/school-management/python-lib-core/models/school.py": {
           "emittedPath": "models/school.py",
           "sha256": "976af49cc3bfaed1a3c20f0988637b89e5f34468bf1757d99fa084b111094f59"
         },
-        "examples/school-management/models/school_type.py": {
+        "examples/school-management/python-lib-core/models/school_type.py": {
           "emittedPath": "models/school_type.py",
           "sha256": "2baa19601e8f3e316ccc9b0097037d92fc0e390a18aa92978f099f1907d43fd2"
         },
-        "examples/school-management/requests/__init__.py": {
+        "examples/school-management/python-lib-core/pyproject.toml": {
+          "emittedPath": "pyproject.toml",
+          "sha256": "2dd9f861117185d87b7c5e40afeaf515f94450c0af0d8e7342f36822e7faa47a"
+        },
+        "examples/school-management/python-lib-core/requests/__init__.py": {
           "emittedPath": "requests/__init__.py",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
         },
-        "examples/school-management/requests/platform_request.py": {
+        "examples/school-management/python-lib-core/requests/platform_request.py": {
           "emittedPath": "requests/platform_request.py",
           "sha256": "4218d675c8f816dc35eb4859021743a314e248e848abc92d985b7312a42d0bdd"
         },
-        "examples/school-management/requests/school_request.py": {
+        "examples/school-management/python-lib-core/requests/school_request.py": {
           "emittedPath": "requests/school_request.py",
           "sha256": "746ad62baa06a99be5974752f045fe035f8156f110cee780d19b56dfd3c5df4f"
         },
-        "examples/school-management/requests/school_type_request.py": {
+        "examples/school-management/python-lib-core/requests/school_type_request.py": {
           "emittedPath": "requests/school_type_request.py",
           "sha256": "8138fb6b3975b9877d66c1205b33bcc6a69015689b8fa7805bc45e2e29562e25"
         },
-        "examples/school-management/runtime_module.py": {
+        "examples/school-management/python-lib-core/runtime_module.py": {
           "emittedPath": "runtime_module.py",
           "sha256": "e4bc5caed99fddf62704ccae53739d7354c8d43229f909984856ed150f9e3d58"
         },
-        "examples/school-management/teaql-i18n.json": {
+        "examples/school-management/python-lib-core/teaql-i18n.json": {
           "emittedPath": "teaql-i18n.json",
           "sha256": "785b10a761a7e3d13b88878bc8702546b19f9bc637d28e76fa780fc79f97ca3d"
         },
-        "examples/school-management/teaql/checker-model.json": {
+        "examples/school-management/python-lib-core/teaql/checker-model.json": {
           "emittedPath": "teaql/checker-model.json",
           "sha256": "8e28ee16cddc21191816ed05999142fccb870bf42795f5a1f21268ebd4469e71"
         },
-        "examples/school-management/teaql/model-provenance.json": {
+        "examples/school-management/python-lib-core/teaql/model-provenance.json": {
           "emittedPath": "teaql/model-provenance.json",
           "sha256": "241cf0fa574c4a2d3db4ae7a57ac89b3329d13e342c22196f79c025ed6c3f9e8"
         }
@@ -893,13 +897,6 @@
           "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
           "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
           "release": "unreleased-source-021b1ed8"
-        }
-      },
-      "preservedApplicationFiles": {
-        "examples/school-management/pyproject.toml": {
-          "emittedSHA256": "2dd9f861117185d87b7c5e40afeaf515f94450c0af0d8e7342f36822e7faa47a",
-          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
-          "sha256": "8f836836029df3b1eb15ae0a249c514e3df42e513d182b5b02af38d1c0505c1e"
         }
       }
     },

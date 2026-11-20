@@ -107,7 +107,8 @@ async def verify_dynamic_search(context):
 async def main() -> None:
     database = Path(os.environ.get("TEAQL_SCHOOL_MANAGEMENT_DB", ROOT / ".local" / "school.sqlite"))
     database.parent.mkdir(parents=True, exist_ok=True)
-    database.unlink(missing_ok=True)
+    if database.exists():
+        raise ValueError("Use a fresh School demonstration database; existing data is preserved")
     client = SQLiteTeaQLClient(str(database))
     context = (UserContext.new().install(GENERATED_RUNTIME_MODULE)
                .insert_resource("dataService", client))

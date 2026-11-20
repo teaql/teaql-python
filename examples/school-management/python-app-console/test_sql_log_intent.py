@@ -10,12 +10,12 @@ import unittest
 
 class SchoolSqlLogIntentTest(unittest.TestCase):
     def test_generated_queries_retain_intent_at_sql_sink(self):
-        repo = Path(__file__).resolve().parents[2]
+        repo = Path(__file__).resolve().parents[3]
         env = dict(os.environ)
         env.pop("TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS", None)
         env.pop("TEAQL_LOG_FORMAT", None)
         env["TEAQL_LOG_ENDPOINT"] = "stdout"
-        env["PYTHONPATH"] = os.pathsep.join((str(repo / "examples" / "school-management"), str(repo / "src")))
+        env["PYTHONPATH"] = os.pathsep.join((str(repo / "examples" / "school-management" / "python-app-console"), str(repo / "src")))
         with tempfile.TemporaryDirectory(prefix="teaql-school-log-test-") as directory:
             env["TEAQL_SCHOOL_MANAGEMENT_DB"] = str(Path(directory) / "school.sqlite")
             result = subprocess.run([sys.executable, "-m", "app.main"], cwd=repo,
