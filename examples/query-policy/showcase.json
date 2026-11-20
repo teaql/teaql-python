@@ -21,9 +21,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/tenant-order-visibility-generation/receipt.json",
     "receiptSHA256": "73000efbeb668ac03b628d7dd4e30e0b1875ba6f0e883de942d20344de8cae21"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-tenant-order-policy-native/runtime/query-policy/receipt.json",
+    "businessReceiptSHA256": "da8edf1bf219a2b7a5898d83259f603b27306afc5a2cc042d095ebb030aca7f8",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-tenant-order-policy-native/receipt.json",
+    "nativeReceiptSHA256": "99f995e2c7701e0bbeb90381849b75bea4fee131afdcda6adedfa18ee2442f63",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "c4c0275a8c052686a3392eca3a5fd7978acbb87a"
+  },
   "scene": "Tenant authorization of a procurement order and its partner line items",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "bash",
     "examples/query-policy/verify.sh"
