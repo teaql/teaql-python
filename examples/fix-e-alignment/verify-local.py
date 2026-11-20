@@ -183,7 +183,7 @@ def main():
         report["unchangedViewDatabaseSha256"] = hashlib.sha256((evidence / "unchanged-views.sqlite").read_bytes()).hexdigest()
         report["graphPreparation"] = []
         report["graphApplications"] = {
-            name: hashlib.sha256((EXAMPLE / name).read_bytes()).hexdigest()
+            name: hashlib.sha256((APP / name).read_bytes()).hexdigest()
             for name in ("python_graph_fix_probe.py", "python_graph_once_update.py", "required_graph.py")
         }
 
