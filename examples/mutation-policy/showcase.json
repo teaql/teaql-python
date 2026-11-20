@@ -1,0 +1,40 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/mutation-policy",
+  "library": {
+    "generatedFilesManifestSHA256": "7d3e93e426920c963baba2d8b4a9ee566b5f9fc8180d760825671ca0cb8fab09",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "55d87208e2f03d597c194ec4c976a446807f2a004547fec55b5916608a135628"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/customer-approval-first-order-school-schema-generation/receipt.json",
+    "receiptSHA256": "0dfc2d5e5752541338c6f29613e7fa50fc28465c9ad059f9aacffce3c3d60424"
+  },
+  "scene": "Approve a customer profile and contact preference",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "implemented-pending-native-qualification",
+  "verification": [
+    "python-app-console/app/main.py"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py",
+      "calibration/main.py",
+      "calibration/README.md"
+    ],
+    "generatedFilesManifestSHA256": "efcea8caf4a277dfbaf380e773984fa581db2a98c6098b706299bb7f2f4a6007",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

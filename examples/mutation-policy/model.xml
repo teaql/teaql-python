@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root name="customer-onboarding-service" org="teaql" data_service="sqlite">
+  <platform name="Customer Services"/>
+  <customer platform="platform()" email="Customer Email|[1,100]"/>
+  <customer_contact customer="customer()" channel="Contact Channel|[1,40]"/>
+</root>
