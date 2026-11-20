@@ -1,4 +1,17 @@
-# Typed Context extension SPI example
+# Supplier application review
+
+The supplier review desk approves a generated vendor application. A trusted
+Context installs an independent schema provider, policy, Checker/Fix, audit
+sink, telemetry adapter and ID allocator. The Checker normalizes the accepted
+legal name and refuses a blank one. The policy denies a generated lookup, and
+an optional telemetry outage leaves the authorized lookup available. The next
+process reads both accepted records from the same SQLite file.
+
+`model.xml` owns the supplier model. The generated `python-app-console`
+uses Q and E from `python-lib-core`. Run both launches and the original
+six-extension calibration with `bash examples/typed-extension-spi/verify.sh`.
+
+## Original extension calibration
 
 This focused SQLite example installs six independent Context capabilities:
 request policy, Checker/Fix registry, schema-only provider, safe application

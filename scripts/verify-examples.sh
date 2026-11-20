@@ -55,7 +55,7 @@ TEAQL_BUSINESS_ID_KEY_V1_HEX=000102030405060708090a0b0c0d0e0f1011121314151617181
 TEAQL_PURCHASE_NUMBERING_ROUND=inventory TEAQL_DATABASE_CONNECTION_STRING="$evidence_directory/business-id.sqlite" \
 PYTHONPATH="$repo/src:$repo/examples/business-id/python-lib-core" python "$repo/examples/business-id/python-app-console/app/main.py"
 TEAQL_INTERNAL_ID_EVIDENCE_DIR="$evidence_directory/internal-id" bash "$repo/examples/internal-id/verify.sh"
-PYTHONPATH="$repo/src" python "$repo/examples/typed-extension-spi/main.py"
+TEAQL_CONTEXT_SPI_EVIDENCE_DIR="$evidence_directory/vendor-registration" bash "$repo/examples/typed-extension-spi/verify.sh"
 TEAQL_TENANT_ORDER_POLICY_EVIDENCE_DIR="$evidence_directory/query-policy" bash "$repo/examples/query-policy/verify.sh"
 PYTHONPATH="$repo/src" python "$repo/examples/opaque-entity-reference/main.py"
 TEAQL_ORDER_EVIDENCE_DIR="$evidence_directory/order-management" bash "$repo/examples/order-management/verify.sh"

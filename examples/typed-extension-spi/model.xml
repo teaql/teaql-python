@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root name="vendor-registration" org="example" data_service="sqlite">
+  <platform name="Supplier Review Desk"/>
+  <vendor_application platform="platform()" reference="string()" legal_name="string()"/>
+</root>

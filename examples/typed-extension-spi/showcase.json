@@ -1,0 +1,39 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/typed-extension-spi",
+  "library": {
+    "generatedFilesManifestSHA256": "6a8bcb9c56725d704d27dfd6f85788619efaf22a6e4c8e4c458883c9cbc0cbee",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "9a4183ff59104026fab0b1e44a38d231f13dd9f6f1d4c40c9057de66c574508b"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/context-spi-business-generation/receipt.json",
+    "receiptSHA256": "fe544cc10c5f441b09544300418f24e22a5870a2ac57c0f323da21745cd8d9a9"
+  },
+  "scene": "vendor-registration",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "implemented-pending-native-qualification",
+  "verification": [
+    "bash",
+    "examples/typed-extension-spi/verify.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py"
+    ],
+    "generatedFilesManifestSHA256": "05868eeabb5dec7b5287d9e72e767169a04bdc65de039af4b1f486ba78dca39e",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}
