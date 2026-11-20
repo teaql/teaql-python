@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(business-clock business-id conformance context-derived expression-profiles facet-trace fix-e-alignment internal-id mutation-policy natural-messages object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management task_board trace-chain typed-extension-spi)
+expected=(business-clock business-id business-operation conformance context-derived expression-profiles facet-trace fix-e-alignment internal-id mutation-policy natural-messages object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management task_board trace-chain typed-extension-spi)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -42,6 +42,8 @@ TEAQL_CONTEXT_FIX_EVIDENCE_DIR="$evidence_directory/context-derived" python "$re
 TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR="$evidence_directory/natural-messages" python "$repo/examples/natural-messages/verify-local.py"
 TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$evidence_directory/expression-profiles" \
   python "$repo/examples/expression-profiles/verify-local.py"
+PYTHONPATH="$repo/src" python "$repo/examples/business-operation/warehouse.py"
+PYTHONPATH="$repo/src" python -m pytest -q "$repo/tests/runtime/test_business_operation.py"
 PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
 PYTHONPATH="$repo/src" python "$repo/examples/conformance/app/managed_creation.py"
 PYTHONPATH="$repo/src" python "$repo/examples/conformance/app/managed_sqlite.py"

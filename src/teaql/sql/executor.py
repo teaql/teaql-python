@@ -379,7 +379,7 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         return DataServiceCapabilities(
             query=True,
             mutation=True,
-            transaction=False, # Could be determined from transport
+            transaction=isinstance(self.transport, SqlTransactionTransport),
             schema=True,
             id_generation=True,
             batch_mutation=True,
@@ -1468,6 +1468,25 @@ class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
         tx = await self.transport.begin_sql()
         return SqlDataServiceTransaction(self.dialect, tx, self.schema_provider)
 
+    def _require_business_operations(self):
+        from teaql.runtime.business_operation import BusinessOperationError
+        path = getattr(self.transport, 'db_path', '')
+        if (not getattr(self.transport, 'serializes_business_operations', False)
+                or not path or path == ':memory:' or 'mode=memory' in path or path.startswith('file::memory:')):
+            raise BusinessOperationError('OPERATION_UNSUPPORTED',
+                                         'business operations require a qualified file-SQLite provider')
+
+    async def ensure_business_operation_schema(self):
+        """Explicit startup step, never implicit DDL in a business operation."""
+        from .business_operation import SCHEMAS
+        self._require_business_operations()
+        for statement in SCHEMAS:
+            await self.transport.execute_sql(CompiledQuery(statement, []))
+
+    async def begin_business_operation(self, context):
+        self._require_business_operations()
+        return await self.begin(context)
+
 class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
     def __init__(self, dialect: SqlDialect, transport: SqlTransactionTransportTx, schema_provider: SchemaProvider):
         self.dialect = dialect
@@ -1514,6 +1533,14 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
     async def next_id(self, entity: str) -> int:
         executor = SqlDataServiceExecutor(self.dialect, self.transport, self.schema_provider)
         return await executor.next_id(entity)
+
+    async def lookup_business_result(self, scope, operation, key):
+        from .business_operation import lookup
+        return await lookup(self.transport, scope, operation, key)
+
+    async def store_business_result(self, scope, operation, key, fingerprint, result, actor):
+        from .business_operation import store
+        await store(self.transport, scope, operation, key, fingerprint, result, actor)
 
     async def ensure_id_floor(self, entity: str, floor: int) -> None:
         executor = SqlDataServiceExecutor(self.dialect, self.transport, self.schema_provider)
