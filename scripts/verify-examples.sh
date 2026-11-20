@@ -56,10 +56,7 @@ PYTHONPATH="$repo/src" python "$repo/examples/internal-id/main.py"
 PYTHONPATH="$repo/src" python "$repo/examples/typed-extension-spi/main.py"
 PYTHONPATH="$repo/src" python "$repo/examples/query-policy/main.py"
 PYTHONPATH="$repo/src" python "$repo/examples/opaque-entity-reference/main.py"
-TEAQL_ORDER_MANAGEMENT_DB="$evidence_directory/order.db" \
-  PYTHONPATH="$repo/examples/order-management/python-lib-core:$repo/src" \
-  python "$repo/examples/order-management/python-app-console/app.py"
-PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/order-management" -p 'test_sql_log_intent.py' -v
+TEAQL_ORDER_EVIDENCE_DIR="$evidence_directory/order-management" bash "$repo/examples/order-management/verify.sh"
 TEAQL_TASK_BOARD_DB="$evidence_directory/task_board.db" PYTHONPATH="$repo/examples/task_board:$repo/src" python "$repo/examples/task_board/main.py"
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/task_board" -p 'test_task_board.py' -v
 bash "$repo/examples/trace-chain/verify.sh"

@@ -654,6 +654,10 @@
           "emittedPath": "models/product.py",
           "sha256": "4f3f5f471d556770a89735a9b60ff96ee94d88aca7511549e1ed972708e71e2c"
         },
+        "examples/order-management/python-lib-core/pyproject.toml": {
+          "emittedPath": "pyproject.toml",
+          "sha256": "43159f3ce7158a8ca6226b09fdaa22e88713a2ba0ed4a979ecb72054fc585233"
+        },
         "examples/order-management/python-lib-core/requests/__init__.py": {
           "emittedPath": "requests/__init__.py",
           "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
@@ -719,13 +723,6 @@
           "commit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
           "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
           "release": "unreleased-source-021b1ed8"
-        }
-      },
-      "preservedApplicationFiles": {
-        "examples/order-management/python-lib-core/pyproject.toml": {
-          "emittedSHA256": "43159f3ce7158a8ca6226b09fdaa22e88713a2ba0ed4a979ecb72054fc585233",
-          "reason": "Application manifest, local dependency wiring or application-specific instructions preserved",
-          "sha256": "ec723b242ced7c4fbf425b6129cb554bc4e511cc26d38af4a8cae37707a2fd90"
         }
       }
     },
