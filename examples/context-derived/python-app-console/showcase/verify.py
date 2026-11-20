@@ -93,9 +93,9 @@ async def main():
 
         context.insert_resource("context_fix_resolver", resolver)
 
-        def make(name):
-            return (Q.entries().comment("Prepare one Context fixture entity")
-                    .purpose("Verify automatic values cannot create mutations").new_entity(context)
+        async def make(name):
+            return ((await Q.entries().comment("Prepare one Context fixture entity")
+                    .purpose("Verify automatic values cannot create mutations").new_entity(context))
                     .update_name(name).update_catalog(1))
 
         async def load(identity):
@@ -104,14 +104,14 @@ async def main():
             assert len(rows) == 1
             return rows[0]
 
-        broken = make("failed token")
+        broken = await make("failed token")
         fail_token = True
         calls.clear()
         error = await rejected(broken.audit_as("Reject failed Context provider").save(context), "/guardedToken")
         assert "PRIVATE_CONTEXT_PROVIDER_CANARY" not in str(error)
         assert not calls and not events and broken.bornAt is None and broken.name == "failed token"
         fail_token = False
-        first, second = make("first"), make("second")
+        first, second = await make("first"), await make("second")
         resolver_calls.clear()
         await first.audit_as("Create first row under Context A").save(context)
         assert resolver_calls[("insert", "guarded_token")] == 1
