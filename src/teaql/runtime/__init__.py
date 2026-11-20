@@ -11,6 +11,7 @@ from .module import RuntimeModule, DefaultEntityDataServiceBehavior
 from .logging import RuntimeLogger, RuntimeLoggingError
 from .context_fix import ContextFix, ContextFixInput
 from .graph_session import GraphMutationSession, GraphCommittedError
+from .business_operation import BusinessOperation, BusinessOperationError, BusinessOperationCommitUnknown
 from .store import DataStore
 from .audit import RawAuditEvent, SafeAuditEvent, MutationAuditKind
 from .business_clock import BusinessClock, FixedBusinessClock, SystemBusinessClock
@@ -78,6 +79,7 @@ __all__ += [
     "CheckerMessageRequest", "standard_checker_message_renderer",
     "EntityJSONError", "EntityJSONField", "EntityJSONSchema",
     "ExpressionPath", "TeaQLNotLoadedError",
+    "BusinessOperation", "BusinessOperationError", "BusinessOperationCommitUnknown",
     "Checker", "CheckerRegistry", "DiagnosticTelemetryAdapter", "RequestPolicy",
     "RequestPolicyInput", "RuntimeTelemetryAdapter", "RuntimeTelemetryInput",
     "SafeAuditEventSink", "SchemaCapability",

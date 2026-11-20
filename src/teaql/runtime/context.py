@@ -129,6 +129,7 @@ class UserContext:
             f"teaql_graph_save_guard_{id(self)}", default=None
         )
         self._graph_session = None
+        self._business_operation = None
         self._audit_journal = None
         self._fix_evidence_current: List[FixEvidence] = []
         self._fix_evidence_last: List[FixEvidence] = []
@@ -234,6 +235,8 @@ class UserContext:
 
     async def execute_graph_save(self, work, *, comment=None, prepare=None):
         """Run ``work(session)``; never implicitly join another root save."""
+        if self._business_operation is not None and self._graph_session is None:
+            return await self._business_operation.save_graph(work, comment=comment, prepare=prepare)
         from teaql.core.request_intent import MutationIntent
         from .graph_session import GraphMutationSession
         intent = MutationIntent(comment)
@@ -422,6 +425,8 @@ class UserContext:
         return self
 
     def insert_resource(self, resource_type: str, resource: Any):
+        if self._business_operation is not None and resource_type in ('dataService', 'schema_provider', 'active_root'):
+            raise RuntimeError('business operation cannot change its database participant')
         inferred_schema = None
         if resource_type == "request_policy":
             resource = validate_request_policy(resource)
@@ -443,10 +448,12 @@ class UserContext:
         return self
 
     def get_resource(self, resource_type: str) -> Optional[Any]:
+        if self._business_operation is not None and resource_type == 'dataService':
+            self._business_operation.require_active()
         return self._resources.get(resource_type)
         
     def require_resource(self, resource_type: str) -> Any:
-        res = self._resources.get(resource_type)
+        res = self.get_resource(resource_type)
         if res is None:
             raise Exception(f"Resource {resource_type} not found")
         return res
@@ -646,6 +653,8 @@ class UserContext:
         )
 
     def with_schema_provider(self, provider: SchemaCapability) -> 'UserContext':
+        if self._business_operation is not None:
+            raise RuntimeError('business operation cannot change its database participant')
         self._resources["schema_provider"] = validate_schema_capability(provider)
         self._explicit_schema_provider = True
         return self
@@ -654,6 +663,8 @@ class UserContext:
         self.with_schema_provider(provider)
 
     async def ensure_schema(self):
+        if self._business_operation is not None:
+            raise RuntimeError('schema changes are not business transaction participants')
         provider = self.get_resource("schema_provider")
         if provider:
             from ._schema_capability import SCHEMA_CAPABILITY
@@ -1160,6 +1171,10 @@ class UserContext:
         return scope
 
     def _require_mutation_invocation(self):
+        if self._business_operation is not None:
+            self._business_operation.require_active()
+            if self._graph_session is None:
+                raise RuntimeError('business mutations require an explicit graph save')
         if self._audit_journal is not None:
             self._audit_journal.require_active()
         if self._graph_session is not None:
