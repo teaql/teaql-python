@@ -56,7 +56,7 @@ PYTHONPATH="$repo/src:$repo/examples/business-id/python-lib-core" python "$repo/
 TEAQL_INTERNAL_ID_EVIDENCE_DIR="$evidence_directory/internal-id" bash "$repo/examples/internal-id/verify.sh"
 TEAQL_CONTEXT_SPI_EVIDENCE_DIR="$evidence_directory/vendor-registration" bash "$repo/examples/typed-extension-spi/verify.sh"
 TEAQL_TENANT_ORDER_POLICY_EVIDENCE_DIR="$evidence_directory/query-policy" bash "$repo/examples/query-policy/verify.sh"
-TEAQL_REFERENCE_EVIDENCE_DIR="$evidence_dir/opaque-entity-reference" bash "$repo/examples/opaque-entity-reference/verify.sh"
+TEAQL_REFERENCE_EVIDENCE_DIR="$evidence_directory/opaque-entity-reference" bash "$repo/examples/opaque-entity-reference/verify.sh"
 TEAQL_ORDER_EVIDENCE_DIR="$evidence_directory/order-management" bash "$repo/examples/order-management/verify.sh"
 TEAQL_TASK_BOARD_DB="$evidence_directory/task_board.db" PYTHONPATH="$repo/examples/task_board:$repo/src" python "$repo/examples/task_board/python-app-console/app/main.py"
 PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/task_board/python-app-console/app" -p 'test_task_board.py' -v
