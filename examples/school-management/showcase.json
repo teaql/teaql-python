@@ -31,9 +31,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/school-generation/receipt.json",
     "receiptSHA256": "86cdc634a758fdf746de3323e8cd5c4fd32a050e50c0b7b04c5e64b397a1165f"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-school-scopes/runtime/school-management/business-receipt.json",
+    "businessReceiptSHA256": "4348be55dcff1680d1f6d0ae516a6efdc81619ae1c62f133d547cb7a323cda32",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-school-scopes/receipt.json",
+    "nativeReceiptSHA256": "db378c81f393542e49071d716468924a259f2657ffe5f431835bd39dd4222d1d",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "7aa10807d1149b82a9d8312dbab38dc876ada0b3"
+  },
   "scene": "School startup, reconciled constants and audited School queries",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "bash",
     "verify.sh"
