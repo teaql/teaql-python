@@ -21,9 +21,17 @@
     "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/purchase-order-fix-generation/receipt.json",
     "receiptSHA256": "920c683d71de38e609d2be2c3d8b7f2fb6c014e3b123edd5c4ea694fc6e91a48"
   },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-purchase-order-workspace-hashes/runtime/fix-e/receipt.json",
+    "businessReceiptSHA256": "7b0518f56d113d3361bbd02afece2ae679353d55a958b2f3aa654df8887919a6",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-purchase-order-workspace-hashes/receipt.json",
+    "nativeReceiptSHA256": "a0b8b1591573a9a7aab0c801547fdc8b1dea3ff369d71a126201c3396e812ad4",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "e1cd5dc74c5cd4964069e79dcfffa7438a62ea76"
+  },
   "scene": "Purchase order clock/root Fix, loaded expressions and controlled partial-graph changes",
   "schema": "teaql.model-workspace-showcase/v1",
-  "status": "implemented-pending-native-qualification",
+  "status": "focused-verified",
   "verification": [
     "python",
     "verify-local.py"
