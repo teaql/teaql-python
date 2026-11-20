@@ -1,0 +1,8 @@
+{
+  "errors": [],
+  "normalizedFromMarkdown": true,
+  "schema": "teaql.markdown-model-evaluation-reference/v1",
+  "source": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/catalog-natural-generation/python/catalog-natural-messages/library/evaluation.md",
+  "sourceSHA256": "242913d3c0371c6397d0320801f24af4f0972347f2bb7faba81df586c167b383",
+  "warningsCount": 2
+}

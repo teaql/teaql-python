@@ -17,12 +17,12 @@ from Q import Q
 from runtime_module import GENERATED_RUNTIME_MODULE
 
 SECRET = "密钥🔑" + "x" * 98  # 101 Unicode scalars, 102 UTF-16 code units.
-REPO = Path(__file__).resolve().parents[2]
+REPO = Path(__file__).resolve().parents[4]
 
 
 async def main():
     database = Path(os.environ["TEAQL_NATURAL_MESSAGES_DB"])
-    fixture = REPO / "examples/natural-messages/fixture"
+    fixture = REPO / "examples/natural-messages/python-lib-core"
     assert Path(teaql.__file__).resolve() == REPO / "src/teaql/__init__.py"
     assert Path(inspect.getfile(Q)).resolve() == fixture / "Q.py"
     client = SQLiteTeaQLClient(str(database))

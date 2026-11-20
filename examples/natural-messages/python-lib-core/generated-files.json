@@ -5,7 +5,7 @@
   "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "models/catalog.py": "d8f91b8dbfb28881542107582112e4d7f14204534426ac84f69016d8401fb078",
   "models/entry.py": "42b22f710c59eeff06413d7f47dbeaee1e52a521680b369b9443a2415b93cd5b",
-  "pyproject.toml": "9be227a0ab978a7492d10ad42aecac4ba2c5bdc3eae65181db255d729d21bac1",
+  "pyproject.toml": "8a1f34e986cdd6b2e0da0be6ea59cc93118750d23feadc7b537857faea25b662",
   "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
   "requests/catalog_request.py": "e5157c537aed6a354dc4b87d8922e31b9ad57fcacc36d230ba6c8b0b30b9f9ae",
   "requests/entry_request.py": "5806acb5c0a577d7640055b0de468b84b1cf3bec914b785bd85009faf612ff0d",
