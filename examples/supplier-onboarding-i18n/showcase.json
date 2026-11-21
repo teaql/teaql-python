@@ -1,0 +1,77 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/supplier-onboarding-i18n",
+  "library": {
+    "generatedFilesManifestSHA256": "73553d4434d859fa233c501b0f714768c9273191a1cc133506923dafe161f85a",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "961f3048ca9c8e9120d81fc0ce9a3ea35629c8d9607aab80319156c21391e2c5"
+  },
+  "producer": {
+    "assistSHA256": {
+      "python-assist-create-supplier.md": "c0f4a1ce977d7fa3d4a5fce8a409bef958de0d93288dc458a007631b0529343c",
+      "python-assist-i18n.md": "e248f5bc9afe4957a309ee305b94c24250be95f7729a9a5c3bcbeb1a104ccbbb",
+      "python-assist-query-supplier.md": "b73b5c82a0f4820187625a41c297120e8d348635804e3c4994518bbb4770cac8"
+    },
+    "evaluationSHA256": "c7a0b3fe8953aec1f5c4a1ebc0ce02f6f17a11bd0db1fceddd395d7848dc985c",
+    "generatorBaseCommit": "92d612e95cde33c323a1b026b5c567f8c8fa4562",
+    "scopes": [
+      "python-app-console",
+      "python-lib-core"
+    ]
+  },
+  "qualification": {
+    "baseCommit": "615b6c18ea377d05cef3d8a823c072e2f7794548",
+    "evidence": "teaql-conformance/evidence/2026-11-21-i18n-standard-examples/python.jsonl",
+    "stdoutSHA256": "87f2352e94b5b942c769bf0f88ae0038ae0d0476e5a3d01289fd8b56af061d8e"
+  },
+  "scene": "Warehouse supplier onboarding with two real checker rejections and locale isolation",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "semanticModel": {
+    "path": "semantics.json",
+    "sha256": "5ac183bbe622b4bf7bfc157d367714d36a88722c03d64fc1ba68d8ef01faaf18"
+  },
+  "status": "focused-verified",
+  "verification": [
+    [
+      "bash",
+      "run.sh",
+      "--all",
+      "--repeat",
+      "2"
+    ],
+    [
+      "bash",
+      "run.sh",
+      "--edge-cases"
+    ]
+  ],
+  "workspace": {
+    "applicationEntry": "app/main.py",
+    "applicationOwnedFiles": [
+      "python-app-console/app/main.py"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/supplier.py",
+      "models/warehouse.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/supplier_request.py",
+      "requests/warehouse_request.py",
+      "runtime_module.py",
+      "teaql-i18n.json",
+      "teaql/checker-model.json",
+      "teaql/model-provenance.json"
+    ],
+    "generatedFilesManifestSHA256": "73553d4434d859fa233c501b0f714768c9273191a1cc133506923dafe161f85a",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

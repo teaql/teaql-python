@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(business-clock business-id conformance context-derived expression-profiles facet-trace fix-e-alignment internal-id mutation-policy natural-messages object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management task_board trace-chain typed-extension-spi)
+expected=(business-clock business-id conformance context-derived expression-profiles facet-trace fix-e-alignment internal-id mutation-policy natural-messages object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management supplier-onboarding-i18n task_board trace-chain typed-extension-spi)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -40,6 +40,8 @@ bash "$repo/examples/scalar-type-probe/verify-empty.sh" "$evidence_directory/emp
 python "$repo/examples/fix-e-alignment/verify-local.py"
 TEAQL_CONTEXT_FIX_EVIDENCE_DIR="$evidence_directory/context-derived" python "$repo/examples/context-derived/verify-local.py"
 TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR="$evidence_directory/natural-messages" python "$repo/examples/natural-messages/verify-local.py"
+PYTHON=python bash "$repo/examples/supplier-onboarding-i18n/run.sh" --all --repeat 2 > "$evidence_directory/supplier-i18n-all.jsonl"
+PYTHON=python bash "$repo/examples/supplier-onboarding-i18n/run.sh" --edge-cases > "$evidence_directory/supplier-i18n-edges.jsonl"
 TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$evidence_directory/expression-profiles" \
   python "$repo/examples/expression-profiles/verify-local.py"
 PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
