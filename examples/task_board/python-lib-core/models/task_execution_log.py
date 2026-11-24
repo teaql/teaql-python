@@ -13,13 +13,30 @@ from copy import copy
 from models.task import Task
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    TASK_PROPERTY_MEMBER = "task"
+    TASK_PROPERTY_COLUMN = "task"
+    TASK_PROPERTY_MODEL = "task"
+    ACTION_PROPERTY_MEMBER = "action"
+    ACTION_PROPERTY_COLUMN = "action"
+    ACTION_PROPERTY_MODEL = "action"
+    DETAIL_PROPERTY_MEMBER = "detail"
+    DETAIL_PROPERTY_COLUMN = "detail"
+    DETAIL_PROPERTY_MODEL = "detail"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class TaskExecutionLog:
     _teaql_json_schema = EntityJSONSchema("TaskExecutionLog", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("task", "task", "reference", factory=lambda: Task),
-        EntityJSONField("action", "action", "text"),
-        EntityJSONField("detail", "detail", "text"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.TASK_PROPERTY_MODEL, _TeaqlFields.TASK_PROPERTY_MEMBER, "reference", factory=lambda: Task),
+        EntityJSONField(_TeaqlFields.ACTION_PROPERTY_MODEL, _TeaqlFields.ACTION_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.DETAIL_PROPERTY_MODEL, _TeaqlFields.DETAIL_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
     def to_json(self, *, profile=None):
@@ -74,30 +91,30 @@ class TaskExecutionLog:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "task" in kwargs and "task" not in kwargs:
-            kwargs["task"] = kwargs.pop("task")
-        if "action" in kwargs and "action" not in kwargs:
-            kwargs["action"] = kwargs.pop("action")
-        if "detail" in kwargs and "detail" not in kwargs:
-            kwargs["detail"] = kwargs.pop("detail")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.TASK_PROPERTY_COLUMN in kwargs and _TeaqlFields.TASK_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.TASK_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.TASK_PROPERTY_COLUMN)
+        if _TeaqlFields.ACTION_PROPERTY_COLUMN in kwargs and _TeaqlFields.ACTION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ACTION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ACTION_PROPERTY_COLUMN)
+        if _TeaqlFields.DETAIL_PROPERTY_COLUMN in kwargs and _TeaqlFields.DETAIL_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.DETAIL_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.DETAIL_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "task", "action", "detail", "version"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.TASK_PROPERTY_MEMBER, _TeaqlFields.ACTION_PROPERTY_MEMBER, _TeaqlFields.DETAIL_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.task = kwargs.get("task")
+        self.task = kwargs.get(_TeaqlFields.TASK_PROPERTY_MEMBER)
 
-        self.action = kwargs.get("action")
+        self.action = kwargs.get(_TeaqlFields.ACTION_PROPERTY_MEMBER)
 
-        self.detail = kwargs.get("detail")
+        self.detail = kwargs.get(_TeaqlFields.DETAIL_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.task, dict):
             self.task = Task._teaql_from_record(**self.task)
@@ -111,20 +128,20 @@ class TaskExecutionLog:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "task" in self._loaded_fields:
-            payload["task"] = Value.I64(getattr(self.task, "id", self.task))
+        if _TeaqlFields.TASK_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.TASK_PROPERTY_COLUMN] = Value.I64(getattr(self.task, "id", self.task))
 
-        if "action" in self._loaded_fields:
-            payload["action"] = Value.Text(self.action)
+        if _TeaqlFields.ACTION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ACTION_PROPERTY_COLUMN] = Value.Text(self.action)
 
-        if "detail" in self._loaded_fields:
-            payload["detail"] = Value.Text(self.detail)
+        if _TeaqlFields.DETAIL_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.DETAIL_PROPERTY_COLUMN] = Value.Text(self.detail)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -133,13 +150,13 @@ class TaskExecutionLog:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "action" in values:
-            value = values["action"]
+        if _TeaqlFields.ACTION_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.ACTION_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.action = raw
 
-        if "detail" in values:
-            value = values["detail"]
+        if _TeaqlFields.DETAIL_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.DETAIL_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.detail = raw
 
@@ -184,16 +201,16 @@ class TaskExecutionLog:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("TaskExecutionLog", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
-                if "task" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("task"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
-                if "action" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("action"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
-                if "detail" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("detail"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if _TeaqlFields.TASK_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.TASK_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if _TeaqlFields.ACTION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ACTION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if _TeaqlFields.DETAIL_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.DETAIL_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -246,24 +263,24 @@ class TaskExecutionLog:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "task" in self._loaded_fields:
+        if _TeaqlFields.TASK_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.task
             reference_id = getattr(reference, "id", reference)
-            payload["task"] = (Value.Object(reference)
+            payload[_TeaqlFields.TASK_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "action" in self._loaded_fields:
-            payload["action"] = Value.Text(self.action)
+        if _TeaqlFields.ACTION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ACTION_PROPERTY_COLUMN] = Value.Text(self.action)
 
-        if "detail" in self._loaded_fields:
-            payload["detail"] = Value.Text(self.detail)
+        if _TeaqlFields.DETAIL_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.DETAIL_PROPERTY_COLUMN] = Value.Text(self.detail)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -278,10 +295,10 @@ class TaskExecutionLog:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "task" in payload:
-            reference = payload["task"].val
+        if _TeaqlFields.TASK_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.TASK_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["task"] = Value.I64(reference.id)
+                payload[_TeaqlFields.TASK_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("TaskExecutionLog", payload)
         elif action == "Update":
@@ -307,16 +324,16 @@ class TaskExecutionLog:
         session.capture_loaded_values("TaskExecutionLog", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
-                if "task" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("task"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
-                if "action" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("action"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
-                if "detail" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("detail"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if _TeaqlFields.TASK_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.TASK_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if _TeaqlFields.ACTION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ACTION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if _TeaqlFields.DETAIL_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.DETAIL_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskExecutionLog")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -355,36 +372,36 @@ class TaskExecutionLog:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "task" in persisted:
-            self.task = persisted["task"]
-            self._loaded_fields.add("task")
-        elif "task" in persisted:
-            self.task = persisted["task"]
-            self._loaded_fields.add("task")
-        if "action" in persisted:
-            self.action = persisted["action"]
-            self._loaded_fields.add("action")
-        elif "action" in persisted:
-            self.action = persisted["action"]
-            self._loaded_fields.add("action")
-        if "detail" in persisted:
-            self.detail = persisted["detail"]
-            self._loaded_fields.add("detail")
-        elif "detail" in persisted:
-            self.detail = persisted["detail"]
-            self._loaded_fields.add("detail")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.TASK_PROPERTY_COLUMN in persisted:
+            self.task = persisted[_TeaqlFields.TASK_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.TASK_PROPERTY_MEMBER)
+        elif _TeaqlFields.TASK_PROPERTY_MEMBER in persisted:
+            self.task = persisted[_TeaqlFields.TASK_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.TASK_PROPERTY_MEMBER)
+        if _TeaqlFields.ACTION_PROPERTY_COLUMN in persisted:
+            self.action = persisted[_TeaqlFields.ACTION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ACTION_PROPERTY_MEMBER)
+        elif _TeaqlFields.ACTION_PROPERTY_MEMBER in persisted:
+            self.action = persisted[_TeaqlFields.ACTION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ACTION_PROPERTY_MEMBER)
+        if _TeaqlFields.DETAIL_PROPERTY_COLUMN in persisted:
+            self.detail = persisted[_TeaqlFields.DETAIL_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.DETAIL_PROPERTY_MEMBER)
+        elif _TeaqlFields.DETAIL_PROPERTY_MEMBER in persisted:
+            self.detail = persisted[_TeaqlFields.DETAIL_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.DETAIL_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -443,45 +460,45 @@ class TaskExecutionLog:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_action(self, value):
-        if "action" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.action, value):
+        if _TeaqlFields.ACTION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.action, value):
             return self
         self.action = value
-        self._loaded_fields.add("action")
-        self._entity_root.set(self._teaql_entity_key(), "action", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ACTION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ACTION_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_detail(self, value):
-        if "detail" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.detail, value):
+        if _TeaqlFields.DETAIL_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.detail, value):
             return self
         self.detail = value
-        self._loaded_fields.add("detail")
-        self._entity_root.set(self._teaql_entity_key(), "detail", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.DETAIL_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.DETAIL_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_task(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.task
         current_id = getattr(current, "id", current)
-        if "task" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.TASK_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.task = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("task")
-        self._entity_root.set(self._teaql_entity_key(), "task",
+        self._loaded_fields.add(_TeaqlFields.TASK_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.TASK_PROPERTY_COLUMN,
             Value.Object(self.task) if self.task is not None and hasattr(self.task, "id")
             else Value.from_any(self.task))
         return self

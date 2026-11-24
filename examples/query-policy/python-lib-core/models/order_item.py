@@ -14,13 +14,30 @@ from models.purchase_order import PurchaseOrder
 from models.tenant import Tenant
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    PURCHASE_ORDER_PROPERTY_MEMBER = "purchaseOrder"
+    PURCHASE_ORDER_PROPERTY_COLUMN = "purchase_order"
+    PURCHASE_ORDER_PROPERTY_MODEL = "purchase_order"
+    TENANT_PROPERTY_MEMBER = "tenant"
+    TENANT_PROPERTY_COLUMN = "tenant"
+    TENANT_PROPERTY_MODEL = "tenant"
+    SKU_PROPERTY_MEMBER = "sku"
+    SKU_PROPERTY_COLUMN = "sku"
+    SKU_PROPERTY_MODEL = "sku"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class OrderItem:
     _teaql_json_schema = EntityJSONSchema("OrderItem", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("purchase_order", "purchaseOrder", "reference", factory=lambda: PurchaseOrder),
-        EntityJSONField("tenant", "tenant", "reference", factory=lambda: Tenant),
-        EntityJSONField("sku", "sku", "text"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.PURCHASE_ORDER_PROPERTY_MODEL, _TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER, "reference", factory=lambda: PurchaseOrder),
+        EntityJSONField(_TeaqlFields.TENANT_PROPERTY_MODEL, _TeaqlFields.TENANT_PROPERTY_MEMBER, "reference", factory=lambda: Tenant),
+        EntityJSONField(_TeaqlFields.SKU_PROPERTY_MODEL, _TeaqlFields.SKU_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
     def to_json(self, *, profile=None):
@@ -78,30 +95,30 @@ class OrderItem:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "purchase_order" in kwargs and "purchaseOrder" not in kwargs:
-            kwargs["purchaseOrder"] = kwargs.pop("purchase_order")
-        if "tenant" in kwargs and "tenant" not in kwargs:
-            kwargs["tenant"] = kwargs.pop("tenant")
-        if "sku" in kwargs and "sku" not in kwargs:
-            kwargs["sku"] = kwargs.pop("sku")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.PURCHASE_ORDER_PROPERTY_COLUMN in kwargs and _TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.PURCHASE_ORDER_PROPERTY_COLUMN)
+        if _TeaqlFields.TENANT_PROPERTY_COLUMN in kwargs and _TeaqlFields.TENANT_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.TENANT_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.TENANT_PROPERTY_COLUMN)
+        if _TeaqlFields.SKU_PROPERTY_COLUMN in kwargs and _TeaqlFields.SKU_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.SKU_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.SKU_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "purchaseOrder", "tenant", "sku", "version"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER, _TeaqlFields.TENANT_PROPERTY_MEMBER, _TeaqlFields.SKU_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.purchaseOrder = kwargs.get("purchaseOrder")
+        self.purchaseOrder = kwargs.get(_TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER)
 
-        self.tenant = kwargs.get("tenant")
+        self.tenant = kwargs.get(_TeaqlFields.TENANT_PROPERTY_MEMBER)
 
-        self.sku = kwargs.get("sku")
+        self.sku = kwargs.get(_TeaqlFields.SKU_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.purchaseOrder, dict):
             self.purchaseOrder = PurchaseOrder._teaql_from_record(**self.purchaseOrder)
@@ -117,20 +134,20 @@ class OrderItem:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "purchaseOrder" in self._loaded_fields:
-            payload["purchase_order"] = Value.I64(getattr(self.purchaseOrder, "id", self.purchaseOrder))
+        if _TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PURCHASE_ORDER_PROPERTY_COLUMN] = Value.I64(getattr(self.purchaseOrder, "id", self.purchaseOrder))
 
-        if "tenant" in self._loaded_fields:
-            payload["tenant"] = Value.I64(getattr(self.tenant, "id", self.tenant))
+        if _TeaqlFields.TENANT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.TENANT_PROPERTY_COLUMN] = Value.I64(getattr(self.tenant, "id", self.tenant))
 
-        if "sku" in self._loaded_fields:
-            payload["sku"] = Value.Text(self.sku)
+        if _TeaqlFields.SKU_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.SKU_PROPERTY_COLUMN] = Value.Text(self.sku)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -139,8 +156,8 @@ class OrderItem:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "sku" in values:
-            value = values["sku"]
+        if _TeaqlFields.SKU_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.SKU_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.sku = raw
 
@@ -185,16 +202,16 @@ class OrderItem:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("OrderItem", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
-                if "purchaseOrder" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("purchase_order"), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
-                if "tenant" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("tenant"), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
-                if "sku" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("sku"), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
+                if _TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PURCHASE_ORDER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
+                if _TeaqlFields.TENANT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.TENANT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
+                if _TeaqlFields.SKU_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.SKU_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -247,28 +264,28 @@ class OrderItem:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "purchaseOrder" in self._loaded_fields:
+        if _TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.purchaseOrder
             reference_id = getattr(reference, "id", reference)
-            payload["purchase_order"] = (Value.Object(reference)
+            payload[_TeaqlFields.PURCHASE_ORDER_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "tenant" in self._loaded_fields:
+        if _TeaqlFields.TENANT_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.tenant
             reference_id = getattr(reference, "id", reference)
-            payload["tenant"] = (Value.Object(reference)
+            payload[_TeaqlFields.TENANT_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "sku" in self._loaded_fields:
-            payload["sku"] = Value.Text(self.sku)
+        if _TeaqlFields.SKU_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.SKU_PROPERTY_COLUMN] = Value.Text(self.sku)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -283,14 +300,14 @@ class OrderItem:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "purchase_order" in payload:
-            reference = payload["purchase_order"].val
+        if _TeaqlFields.PURCHASE_ORDER_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.PURCHASE_ORDER_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["purchase_order"] = Value.I64(reference.id)
-        if "tenant" in payload:
-            reference = payload["tenant"].val
+                payload[_TeaqlFields.PURCHASE_ORDER_PROPERTY_COLUMN] = Value.I64(reference.id)
+        if _TeaqlFields.TENANT_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.TENANT_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["tenant"] = Value.I64(reference.id)
+                payload[_TeaqlFields.TENANT_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("OrderItem", payload)
         elif action == "Update":
@@ -316,16 +333,16 @@ class OrderItem:
         session.capture_loaded_values("OrderItem", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
-                if "purchaseOrder" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("purchase_order"), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
-                if "tenant" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("tenant"), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
-                if "sku" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("sku"), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
+                if _TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PURCHASE_ORDER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
+                if _TeaqlFields.TENANT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.TENANT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
+                if _TeaqlFields.SKU_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.SKU_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderItem")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -364,36 +381,36 @@ class OrderItem:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "purchase_order" in persisted:
-            self.purchaseOrder = persisted["purchase_order"]
-            self._loaded_fields.add("purchaseOrder")
-        elif "purchaseOrder" in persisted:
-            self.purchaseOrder = persisted["purchaseOrder"]
-            self._loaded_fields.add("purchaseOrder")
-        if "tenant" in persisted:
-            self.tenant = persisted["tenant"]
-            self._loaded_fields.add("tenant")
-        elif "tenant" in persisted:
-            self.tenant = persisted["tenant"]
-            self._loaded_fields.add("tenant")
-        if "sku" in persisted:
-            self.sku = persisted["sku"]
-            self._loaded_fields.add("sku")
-        elif "sku" in persisted:
-            self.sku = persisted["sku"]
-            self._loaded_fields.add("sku")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.PURCHASE_ORDER_PROPERTY_COLUMN in persisted:
+            self.purchaseOrder = persisted[_TeaqlFields.PURCHASE_ORDER_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER)
+        elif _TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER in persisted:
+            self.purchaseOrder = persisted[_TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER)
+        if _TeaqlFields.TENANT_PROPERTY_COLUMN in persisted:
+            self.tenant = persisted[_TeaqlFields.TENANT_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.TENANT_PROPERTY_MEMBER)
+        elif _TeaqlFields.TENANT_PROPERTY_MEMBER in persisted:
+            self.tenant = persisted[_TeaqlFields.TENANT_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.TENANT_PROPERTY_MEMBER)
+        if _TeaqlFields.SKU_PROPERTY_COLUMN in persisted:
+            self.sku = persisted[_TeaqlFields.SKU_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.SKU_PROPERTY_MEMBER)
+        elif _TeaqlFields.SKU_PROPERTY_MEMBER in persisted:
+            self.sku = persisted[_TeaqlFields.SKU_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.SKU_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -452,37 +469,37 @@ class OrderItem:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_sku(self, value):
-        if "sku" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.sku, value):
+        if _TeaqlFields.SKU_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.sku, value):
             return self
         self.sku = value
-        self._loaded_fields.add("sku")
-        self._entity_root.set(self._teaql_entity_key(), "sku", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.SKU_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.SKU_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_purchase_order(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.purchaseOrder
         current_id = getattr(current, "id", current)
-        if "purchaseOrder" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.purchaseOrder = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("purchaseOrder")
-        self._entity_root.set(self._teaql_entity_key(), "purchase_order",
+        self._loaded_fields.add(_TeaqlFields.PURCHASE_ORDER_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.PURCHASE_ORDER_PROPERTY_COLUMN,
             Value.Object(self.purchaseOrder) if self.purchaseOrder is not None and hasattr(self.purchaseOrder, "id")
             else Value.from_any(self.purchaseOrder))
         return self
@@ -492,11 +509,11 @@ class OrderItem:
         assigned_id = getattr(value, "id", value) if value else None
         current = self.tenant
         current_id = getattr(current, "id", current)
-        if "tenant" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.TENANT_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.tenant = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("tenant")
-        self._entity_root.set(self._teaql_entity_key(), "tenant",
+        self._loaded_fields.add(_TeaqlFields.TENANT_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.TENANT_PROPERTY_COLUMN,
             Value.Object(self.tenant) if self.tenant is not None and hasattr(self.tenant, "id")
             else Value.from_any(self.tenant))
         return self

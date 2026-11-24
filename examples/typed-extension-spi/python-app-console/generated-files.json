@@ -1,21 +1,10 @@
 {
   "AGENTS.md": "e8c70439e747d32c46890c18c571478ff0333eafe3175aa20c67c632ad735e94",
-  "E.py": "fd673652a81b14580dfe8dce38acd2a8339ae8214d30f5b086b3bb1cb09d1a40",
-  "Q.py": "93b5ab9b2ef87f2f923f3db4f65791cde0c3d7d2e03dd86dee11e9461cfeb7cc",
-  "README.md": "60d3536b2a7784885aedb770c55d2b170f889f59e81431f0f5ad67be3d90e8e2",
+  "README.md": "336f3abf4081a76739f819e76b6740eff194b87117fe7c31e90d32cb8389bb00",
   "STANDARD_TELEMETRY.md": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
   "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "app/main.py": "7061329c2d7d6e4c653f99eeee630b45823c38bd6b56faac39e66ddd6658e8c3",
-  "generated_search_models.py": "c1f42be36160709f3b802ec15046af13659f870eece44756f8b41f7dd04b3bdb",
-  "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "models/platform.py": "7a22270e9af750b831ba4adcda186861e4e3f3a2328341a25396e82ac9088557",
-  "models/vendor_application.py": "5febd9cd3611136225cd86c278dab7024fdbeff2a834cd75ff45a20ef7c7b63b",
-  "pyproject.toml": "3871f63a9b0548c73ebf23a20d5f548023f9cb7133bb253c8a4a665ce43687b3",
-  "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "requests/platform_request.py": "1c6acd54ac6e2c89ee0b6bdb81057bc6c238d75d1b89c4f275238d180c6e88f0",
-  "requests/vendor_application_request.py": "3bed887cd3dca8ba5f665e84d546f0d4f8f0e54e6348696a6bc945c7c8f4aeff",
-  "runtime_module.py": "e27cab1d0a6c0bc173e3f8de0541a693fdc209ea1ddf19349d0edceea57b8249",
+  "app/main.py": "e0e373428f5eba994bae2e30aa8c221f2295f1d473dcd961a9202fa7ea024371",
   "teaql-i18n.json": "480dc1c1175a5fb541a7fa1956fa723a268b92f52ef90d1adf60da1ee96a1fbd",
   "teaql/checker-model.json": "8ee03ec4ccc8742f7a22281727a0646a25db07404bd2b953c5ae5edadff691e5",
-  "teaql/model-provenance.json": "e9ea5b78fc2ad0acee616d0325d330866176e7bdd4a27f7a1024c40abf67c76c"
+  "teaql/model-provenance.json": "91e2b70b4108ed1c5ddff6f4da5ace8876571133231190c1cbd8158b638e3648"
 }

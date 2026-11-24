@@ -13,7 +13,7 @@ from teaql.core.expr import (
     not_contain, not_end_with, not_in_list, not_in_subquery, value,
     sound_like,
 )
-from models.customer_order import CustomerOrder
+from models.customer_order import _TeaqlFields, CustomerOrder
 from typing import Protocol
 
 class QuerySelection(Protocol):
@@ -92,517 +92,517 @@ class CustomerOrderRequest:
         return self
 
     def select_self_fields(self):
-        self.query.project("id", "order_number", "order_date", "total_amount", "status", "customer", "commerce_platform", "create_time", "update_time", "version")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN, _TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, _TeaqlFields.ORDER_DATE_PROPERTY_COLUMN, _TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, _TeaqlFields.STATUS_PROPERTY_COLUMN, _TeaqlFields.CUSTOMER_PROPERTY_COLUMN, _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN, _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, _TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, _TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_id(self):
-        self.query.project("id")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def select_order_number(self):
-        self.query.project("order_number")
+        self.query.project(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN)
         return self
 
     def select_order_date(self):
-        self.query.project("order_date")
+        self.query.project(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN)
         return self
 
     def select_total_amount(self):
-        self.query.project("total_amount")
+        self.query.project(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN)
         return self
 
 
 
 
     def select_create_time(self):
-        self.query.project("create_time")
+        self.query.project(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
         return self
 
     def select_update_time(self):
-        self.query.project("update_time")
+        self.query.project(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
         return self
 
     def select_version(self):
-        self.query.project("version")
+        self.query.project(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_status_with(self, child_request):
-        self.query.project("status")
-        self.query.relation_query("status", child_request.query,
-            QueryOperation("relation-select", "select_status_with", relation="status"))
+        self.query.project(_TeaqlFields.STATUS_PROPERTY_COLUMN)
+        self.query.relation_query(_TeaqlFields.STATUS_PROPERTY_COLUMN, child_request.query,
+            QueryOperation("relation-select", "select_status_with", relation=_TeaqlFields.STATUS_PROPERTY_COLUMN))
         return self
     def select_customer_with(self, child_request):
-        self.query.project("customer")
-        self.query.relation_query("customer", child_request.query,
-            QueryOperation("relation-select", "select_customer_with", relation="customer"))
+        self.query.project(_TeaqlFields.CUSTOMER_PROPERTY_COLUMN)
+        self.query.relation_query(_TeaqlFields.CUSTOMER_PROPERTY_COLUMN, child_request.query,
+            QueryOperation("relation-select", "select_customer_with", relation=_TeaqlFields.CUSTOMER_PROPERTY_COLUMN))
         return self
     def select_commerce_platform_with(self, child_request):
-        self.query.project("commerce_platform")
-        self.query.relation_query("commerce_platform", child_request.query,
-            QueryOperation("relation-select", "select_commerce_platform_with", relation="commerce_platform"))
+        self.query.project(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)
+        self.query.relation_query(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN, child_request.query,
+            QueryOperation("relation-select", "select_commerce_platform_with", relation=_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN))
         return self
     def with_status_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(in_subquery(column("status"), "OrderStatus", child_request.query))
+        self.query.and_filter(in_subquery(column(_TeaqlFields.STATUS_PROPERTY_COLUMN), "OrderStatus", child_request.query))
         return self
 
     def without_status_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("status"), "OrderStatus", child_request.query))
+        self.query.and_filter(not_in_subquery(column(_TeaqlFields.STATUS_PROPERTY_COLUMN), "OrderStatus", child_request.query))
         return self
 
     def have_status(self):
-        self.query.and_filter(is_not_null(column("status")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.STATUS_PROPERTY_COLUMN)))
         return self
 
     def have_no_status(self):
-        self.query.and_filter(is_null(column("status")))
+        self.query.and_filter(is_null(column(_TeaqlFields.STATUS_PROPERTY_COLUMN)))
         return self
     def with_customer_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(in_subquery(column("customer"), "Customer", child_request.query))
+        self.query.and_filter(in_subquery(column(_TeaqlFields.CUSTOMER_PROPERTY_COLUMN), "Customer", child_request.query))
         return self
 
     def without_customer_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("customer"), "Customer", child_request.query))
+        self.query.and_filter(not_in_subquery(column(_TeaqlFields.CUSTOMER_PROPERTY_COLUMN), "Customer", child_request.query))
         return self
 
     def have_customer(self):
-        self.query.and_filter(is_not_null(column("customer")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.CUSTOMER_PROPERTY_COLUMN)))
         return self
 
     def have_no_customer(self):
-        self.query.and_filter(is_null(column("customer")))
+        self.query.and_filter(is_null(column(_TeaqlFields.CUSTOMER_PROPERTY_COLUMN)))
         return self
     def with_commerce_platform_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(in_subquery(column("commerce_platform"), "CommercePlatform", child_request.query))
+        self.query.and_filter(in_subquery(column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN), "CommercePlatform", child_request.query))
         return self
 
     def without_commerce_platform_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("commerce_platform"), "CommercePlatform", child_request.query))
+        self.query.and_filter(not_in_subquery(column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN), "CommercePlatform", child_request.query))
         return self
 
     def have_commerce_platform(self):
-        self.query.and_filter(is_not_null(column("commerce_platform")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)))
         return self
 
     def have_no_commerce_platform(self):
-        self.query.and_filter(is_null(column("commerce_platform")))
+        self.query.and_filter(is_null(column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)))
         return self
 
     def with_id_is(self, val):
-        self.query.and_filter(eq("id", val))
+        self.query.and_filter(eq(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_is_not(self, val):
-        self.query.and_filter(ne("id", val))
+        self.query.and_filter(ne(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_in(self, *vals):
-        self.query.and_filter(in_list("id", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_not_in(self, *vals):
-        self.query.and_filter(not_in_list("id", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_greater_than(self, val):
-        self.query.and_filter(gt("id", val))
+        self.query.and_filter(gt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("id", val))
+        self.query.and_filter(gte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than(self, val):
-        self.query.and_filter(lt("id", val))
+        self.query.and_filter(lt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("id", val))
+        self.query.and_filter(lte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_between(self, lower, upper):
-        self.query.and_filter(between(column("id"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ID_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_id_is_known(self):
-        self.query.and_filter(is_not_null(column("id")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_id_is_unknown(self):
-        self.query.and_filter(is_null(column("id")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_order_number_containing(self, val: str):
-        self.query.and_filter(contain("order_number", val))
+        self.query.and_filter(contain(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_not_containing(self, val: str):
-        self.query.and_filter(not_contain("order_number", val))
+        self.query.and_filter(not_contain(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_starting_with(self, val: str):
-        self.query.and_filter(begin_with("order_number", val))
+        self.query.and_filter(begin_with(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("order_number", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_ending_with(self, val: str):
-        self.query.and_filter(end_with("order_number", val))
+        self.query.and_filter(end_with(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("order_number", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("order_number", val))
+        self.query.and_filter(sound_like(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_is(self, val: str):
-        self.query.and_filter(eq("order_number", val))
+        self.query.and_filter(eq(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
     def with_order_number_is_not(self, val):
-        self.query.and_filter(ne("order_number", val))
+        self.query.and_filter(ne(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_in(self, *vals):
-        self.query.and_filter(in_list("order_number", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_order_number_not_in(self, *vals):
-        self.query.and_filter(not_in_list("order_number", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_order_number_greater_than(self, val):
-        self.query.and_filter(gt("order_number", val))
+        self.query.and_filter(gt(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("order_number", val))
+        self.query.and_filter(gte(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_less_than(self, val):
-        self.query.and_filter(lt("order_number", val))
+        self.query.and_filter(lt(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("order_number", val))
+        self.query.and_filter(lte(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_between(self, lower, upper):
-        self.query.and_filter(between(column("order_number"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_order_number_is_known(self):
-        self.query.and_filter(is_not_null(column("order_number")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN)))
         return self
 
     def with_order_number_is_unknown(self):
-        self.query.and_filter(is_null(column("order_number")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN)))
         return self
 
     def with_order_date_is(self, val):
-        self.query.and_filter(eq("order_date", val))
+        self.query.and_filter(eq(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_order_date_is_not(self, val):
-        self.query.and_filter(ne("order_date", val))
+        self.query.and_filter(ne(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_order_date_in(self, *vals):
-        self.query.and_filter(in_list("order_date", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_order_date_not_in(self, *vals):
-        self.query.and_filter(not_in_list("order_date", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_order_date_greater_than(self, val):
-        self.query.and_filter(gt("order_date", val))
+        self.query.and_filter(gt(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_order_date_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("order_date", val))
+        self.query.and_filter(gte(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_order_date_less_than(self, val):
-        self.query.and_filter(lt("order_date", val))
+        self.query.and_filter(lt(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_order_date_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("order_date", val))
+        self.query.and_filter(lte(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_order_date_between(self, lower, upper):
-        self.query.and_filter(between(column("order_date"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_order_date_is_known(self):
-        self.query.and_filter(is_not_null(column("order_date")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN)))
         return self
 
     def with_order_date_is_unknown(self):
-        self.query.and_filter(is_null(column("order_date")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN)))
         return self
 
     def with_total_amount_is(self, val):
-        self.query.and_filter(eq("total_amount", val))
+        self.query.and_filter(eq(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_total_amount_is_not(self, val):
-        self.query.and_filter(ne("total_amount", val))
+        self.query.and_filter(ne(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_total_amount_in(self, *vals):
-        self.query.and_filter(in_list("total_amount", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_total_amount_not_in(self, *vals):
-        self.query.and_filter(not_in_list("total_amount", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_total_amount_greater_than(self, val):
-        self.query.and_filter(gt("total_amount", val))
+        self.query.and_filter(gt(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_total_amount_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("total_amount", val))
+        self.query.and_filter(gte(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_total_amount_less_than(self, val):
-        self.query.and_filter(lt("total_amount", val))
+        self.query.and_filter(lt(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_total_amount_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("total_amount", val))
+        self.query.and_filter(lte(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_total_amount_between(self, lower, upper):
-        self.query.and_filter(between(column("total_amount"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_total_amount_is_known(self):
-        self.query.and_filter(is_not_null(column("total_amount")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN)))
         return self
 
     def with_total_amount_is_unknown(self):
-        self.query.and_filter(is_null(column("total_amount")))
+        self.query.and_filter(is_null(column(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN)))
         return self
 
     def filter_by_status(self, val):
-        self.query.and_filter(eq("status", val))
+        self.query.and_filter(eq(_TeaqlFields.STATUS_PROPERTY_COLUMN, val))
         return self
     def with_status_is_pending(self):
-        self.query.and_filter(eq("status", 1001))
+        self.query.and_filter(eq(_TeaqlFields.STATUS_PROPERTY_COLUMN, 1001))
         return self
     def with_status_is_confirmed(self):
-        self.query.and_filter(eq("status", 1002))
+        self.query.and_filter(eq(_TeaqlFields.STATUS_PROPERTY_COLUMN, 1002))
         return self
 
     def filter_by_customer(self, val):
-        self.query.and_filter(eq("customer", val))
+        self.query.and_filter(eq(_TeaqlFields.CUSTOMER_PROPERTY_COLUMN, val))
         return self
 
     def filter_by_commerce_platform(self, val):
-        self.query.and_filter(eq("commerce_platform", val))
+        self.query.and_filter(eq(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_is(self, val):
-        self.query.and_filter(eq("create_time", val))
+        self.query.and_filter(eq(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_is_not(self, val):
-        self.query.and_filter(ne("create_time", val))
+        self.query.and_filter(ne(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_in(self, *vals):
-        self.query.and_filter(in_list("create_time", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_create_time_not_in(self, *vals):
-        self.query.and_filter(not_in_list("create_time", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_create_time_greater_than(self, val):
-        self.query.and_filter(gt("create_time", val))
+        self.query.and_filter(gt(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("create_time", val))
+        self.query.and_filter(gte(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_less_than(self, val):
-        self.query.and_filter(lt("create_time", val))
+        self.query.and_filter(lt(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("create_time", val))
+        self.query.and_filter(lte(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_between(self, lower, upper):
-        self.query.and_filter(between(column("create_time"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_create_time_is_known(self):
-        self.query.and_filter(is_not_null(column("create_time")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_create_time_is_unknown(self):
-        self.query.and_filter(is_null(column("create_time")))
+        self.query.and_filter(is_null(column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_update_time_is(self, val):
-        self.query.and_filter(eq("update_time", val))
+        self.query.and_filter(eq(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_is_not(self, val):
-        self.query.and_filter(ne("update_time", val))
+        self.query.and_filter(ne(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_in(self, *vals):
-        self.query.and_filter(in_list("update_time", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_update_time_not_in(self, *vals):
-        self.query.and_filter(not_in_list("update_time", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_update_time_greater_than(self, val):
-        self.query.and_filter(gt("update_time", val))
+        self.query.and_filter(gt(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("update_time", val))
+        self.query.and_filter(gte(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_less_than(self, val):
-        self.query.and_filter(lt("update_time", val))
+        self.query.and_filter(lt(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("update_time", val))
+        self.query.and_filter(lte(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_between(self, lower, upper):
-        self.query.and_filter(between(column("update_time"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_update_time_is_known(self):
-        self.query.and_filter(is_not_null(column("update_time")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_update_time_is_unknown(self):
-        self.query.and_filter(is_null(column("update_time")))
+        self.query.and_filter(is_null(column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_version_is(self, val):
-        self.query.and_filter(eq("version", val))
+        self.query.and_filter(eq(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_is_not(self, val):
-        self.query.and_filter(ne("version", val))
+        self.query.and_filter(ne(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_in(self, *vals):
-        self.query.and_filter(in_list("version", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_not_in(self, *vals):
-        self.query.and_filter(not_in_list("version", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_greater_than(self, val):
-        self.query.and_filter(gt("version", val))
+        self.query.and_filter(gt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("version", val))
+        self.query.and_filter(gte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than(self, val):
-        self.query.and_filter(lt("version", val))
+        self.query.and_filter(lt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("version", val))
+        self.query.and_filter(lte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_between(self, lower, upper):
-        self.query.and_filter(between(column("version"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.VERSION_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_version_is_known(self):
-        self.query.and_filter(is_not_null(column("version")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def with_version_is_unknown(self):
-        self.query.and_filter(is_null(column("version")))
+        self.query.and_filter(is_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def order_by_id_ascending(self):
-        self.query.order_by("id", "asc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_id_descending(self):
-        self.query.order_by("id", "desc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_order_number_ascending(self):
-        self.query.order_by("order_number", "asc")
+        self.query.order_by(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_order_number_descending(self):
-        self.query.order_by("order_number", "desc")
+        self.query.order_by(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_order_date_ascending(self):
-        self.query.order_by("order_date", "asc")
+        self.query.order_by(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_order_date_descending(self):
-        self.query.order_by("order_date", "desc")
+        self.query.order_by(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_total_amount_ascending(self):
-        self.query.order_by("total_amount", "asc")
+        self.query.order_by(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_total_amount_descending(self):
-        self.query.order_by("total_amount", "desc")
+        self.query.order_by(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, "desc")
         return self
 
 
 
 
     def order_by_create_time_ascending(self):
-        self.query.order_by("create_time", "asc")
+        self.query.order_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_create_time_descending(self):
-        self.query.order_by("create_time", "desc")
+        self.query.order_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_update_time_ascending(self):
-        self.query.order_by("update_time", "asc")
+        self.query.order_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_update_time_descending(self):
-        self.query.order_by("update_time", "desc")
+        self.query.order_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_version_ascending(self):
-        self.query.order_by("version", "asc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_version_descending(self):
-        self.query.order_by("version", "desc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "desc")
         return self
 
 
@@ -622,129 +622,129 @@ class CustomerOrderRequest:
         return self.min_total_amount_as("minOfTotalAmount")
 
     def min_total_amount_as(self, ret_name: str):
-        self.query.min("total_amount", ret_name)
+        self.query.min(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def max_total_amount(self):
         return self.max_total_amount_as("maxOfTotalAmount")
 
     def max_total_amount_as(self, ret_name: str):
-        self.query.max("total_amount", ret_name)
+        self.query.max(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def sum_total_amount(self):
         return self.sum_total_amount_as("sumOfTotalAmount")
 
     def sum_total_amount_as(self, ret_name: str):
-        self.query.sum("total_amount", ret_name)
+        self.query.sum(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def avg_total_amount(self):
         return self.avg_total_amount_as("avgOfTotalAmount")
 
     def avg_total_amount_as(self, ret_name: str):
-        self.query.avg("total_amount", ret_name)
+        self.query.avg(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def standardDeviation_total_amount(self):
         return self.standardDeviation_total_amount_as("standardDeviationOfTotalAmount")
 
     def standardDeviation_total_amount_as(self, ret_name: str):
-        self.query.standardDeviation("total_amount", ret_name)
+        self.query.standardDeviation(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def squareRootOfPopulationStandardDeviation_total_amount(self):
         return self.squareRootOfPopulationStandardDeviation_total_amount_as("squareRootOfPopulationStandardDeviationOfTotalAmount")
 
     def squareRootOfPopulationStandardDeviation_total_amount_as(self, ret_name: str):
-        self.query.squareRootOfPopulationStandardDeviation("total_amount", ret_name)
+        self.query.squareRootOfPopulationStandardDeviation(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def sampleVariance_total_amount(self):
         return self.sampleVariance_total_amount_as("sampleVarianceOfTotalAmount")
 
     def sampleVariance_total_amount_as(self, ret_name: str):
-        self.query.sampleVariance("total_amount", ret_name)
+        self.query.sampleVariance(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def samplePopulationVariance_total_amount(self):
         return self.samplePopulationVariance_total_amount_as("samplePopulationVarianceOfTotalAmount")
 
     def samplePopulationVariance_total_amount_as(self, ret_name: str):
-        self.query.samplePopulationVariance("total_amount", ret_name)
+        self.query.samplePopulationVariance(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def group_by_id(self):
-        self.query.group_by("id")
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ID_PROPERTY_COLUMN))
         return self
     def group_by_order_number(self):
-        self.query.group_by("order_number")
+        self.query.group_by(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN)
         return self
 
     def group_by_order_number_as(self, ret_name: str):
-        self.query.group_by("order_number")
-        self.query.project_expr(ret_name, column("order_number"))
+        self.query.group_by(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN))
         return self
     def group_by_order_date(self):
-        self.query.group_by("order_date")
+        self.query.group_by(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN)
         return self
 
     def group_by_order_date_as(self, ret_name: str):
-        self.query.group_by("order_date")
-        self.query.project_expr(ret_name, column("order_date"))
+        self.query.group_by(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN))
         return self
     def group_by_total_amount(self):
-        self.query.group_by("total_amount")
+        self.query.group_by(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN)
         return self
 
     def group_by_total_amount_as(self, ret_name: str):
-        self.query.group_by("total_amount")
-        self.query.project_expr(ret_name, column("total_amount"))
+        self.query.group_by(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.TOTAL_AMOUNT_PROPERTY_COLUMN))
         return self
     def group_by_status(self):
-        self.query.group_by("status")
+        self.query.group_by(_TeaqlFields.STATUS_PROPERTY_COLUMN)
         return self
 
     def group_by_status_as(self, ret_name: str):
-        self.query.group_by("status")
-        self.query.project_expr(ret_name, column("status"))
+        self.query.group_by(_TeaqlFields.STATUS_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.STATUS_PROPERTY_COLUMN))
         return self
     def group_by_customer(self):
-        self.query.group_by("customer")
+        self.query.group_by(_TeaqlFields.CUSTOMER_PROPERTY_COLUMN)
         return self
 
     def group_by_customer_as(self, ret_name: str):
-        self.query.group_by("customer")
-        self.query.project_expr(ret_name, column("customer"))
+        self.query.group_by(_TeaqlFields.CUSTOMER_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.CUSTOMER_PROPERTY_COLUMN))
         return self
     def group_by_commerce_platform(self):
-        self.query.group_by("commerce_platform")
+        self.query.group_by(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)
         return self
 
     def group_by_commerce_platform_as(self, ret_name: str):
-        self.query.group_by("commerce_platform")
-        self.query.project_expr(ret_name, column("commerce_platform"))
+        self.query.group_by(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN))
         return self
     def group_by_create_time(self):
-        self.query.group_by("create_time")
+        self.query.group_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
         return self
 
     def group_by_create_time_as(self, ret_name: str):
-        self.query.group_by("create_time")
-        self.query.project_expr(ret_name, column("create_time"))
+        self.query.group_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN))
         return self
     def group_by_update_time(self):
-        self.query.group_by("update_time")
+        self.query.group_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
         return self
 
     def group_by_update_time_as(self, ret_name: str):
-        self.query.group_by("update_time")
-        self.query.project_expr(ret_name, column("update_time"))
+        self.query.group_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN))
         return self
     def group_by_version(self):
-        self.query.group_by("version")
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.VERSION_PROPERTY_COLUMN))
         return self
     def select_order_line_list(self):
         from requests.order_line_request import OrderLineRequest
@@ -905,20 +905,20 @@ class CustomerOrderRequest:
         return self
     def facet_by_status_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "status", request.query, include_all_facets,
-            QueryOperation("facet", "facet_by_status_as", name, "status"))
+        self.query.facet_by(name, _TeaqlFields.STATUS_PROPERTY_COLUMN, request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_status_as", name, _TeaqlFields.STATUS_PROPERTY_COLUMN))
         return self
 
     def facet_by_customer_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "customer", request.query, include_all_facets,
-            QueryOperation("facet", "facet_by_customer_as", name, "customer"))
+        self.query.facet_by(name, _TeaqlFields.CUSTOMER_PROPERTY_COLUMN, request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_customer_as", name, _TeaqlFields.CUSTOMER_PROPERTY_COLUMN))
         return self
 
     def facet_by_commerce_platform_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "commerce_platform", request.query, include_all_facets,
-            QueryOperation("facet", "facet_by_commerce_platform_as", name, "commerce_platform"))
+        self.query.facet_by(name, _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN, request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_commerce_platform_as", name, _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN))
         return self
 
 

@@ -12,13 +12,30 @@ from importlib import import_module
 from copy import copy
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    NAME_PROPERTY_MEMBER = "name"
+    NAME_PROPERTY_COLUMN = "name"
+    NAME_PROPERTY_MODEL = "name"
+    FOUNDED_PROPERTY_MEMBER = "founded"
+    FOUNDED_PROPERTY_COLUMN = "founded"
+    FOUNDED_PROPERTY_MODEL = "founded"
+    USER_EMAIL_PROPERTY_MEMBER = "userEmail"
+    USER_EMAIL_PROPERTY_COLUMN = "user_email"
+    USER_EMAIL_PROPERTY_MODEL = "user_email"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class Platform:
     _teaql_json_schema = EntityJSONSchema("Platform", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("name", "name", "text"),
-        EntityJSONField("founded", "founded", "datetime"),
-        EntityJSONField("user_email", "userEmail", "text"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.NAME_PROPERTY_MODEL, _TeaqlFields.NAME_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.FOUNDED_PROPERTY_MODEL, _TeaqlFields.FOUNDED_PROPERTY_MEMBER, "datetime"),
+        EntityJSONField(_TeaqlFields.USER_EMAIL_PROPERTY_MODEL, _TeaqlFields.USER_EMAIL_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
         EntityJSONField("task_status_list", "_task_status_list", "many", factory=lambda: getattr(import_module("models.task_status"), "TaskStatus"), loaded_name="task_status_list"),
         EntityJSONField("task_list", "_task_list", "many", factory=lambda: getattr(import_module("models.task"), "Task"), loaded_name="task_list")
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
@@ -80,30 +97,30 @@ class Platform:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "name" in kwargs and "name" not in kwargs:
-            kwargs["name"] = kwargs.pop("name")
-        if "founded" in kwargs and "founded" not in kwargs:
-            kwargs["founded"] = kwargs.pop("founded")
-        if "user_email" in kwargs and "userEmail" not in kwargs:
-            kwargs["userEmail"] = kwargs.pop("user_email")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.NAME_PROPERTY_COLUMN in kwargs and _TeaqlFields.NAME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.NAME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.NAME_PROPERTY_COLUMN)
+        if _TeaqlFields.FOUNDED_PROPERTY_COLUMN in kwargs and _TeaqlFields.FOUNDED_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.FOUNDED_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.FOUNDED_PROPERTY_COLUMN)
+        if _TeaqlFields.USER_EMAIL_PROPERTY_COLUMN in kwargs and _TeaqlFields.USER_EMAIL_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.USER_EMAIL_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.USER_EMAIL_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "name", "founded", "userEmail", "version", "task_status_list", "task_list"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.NAME_PROPERTY_MEMBER, _TeaqlFields.FOUNDED_PROPERTY_MEMBER, _TeaqlFields.USER_EMAIL_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER, "task_status_list", "task_list"])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.name = kwargs.get("name")
+        self.name = kwargs.get(_TeaqlFields.NAME_PROPERTY_MEMBER)
 
-        self.founded = kwargs.get("founded")
+        self.founded = kwargs.get(_TeaqlFields.FOUNDED_PROPERTY_MEMBER)
 
-        self.userEmail = kwargs.get("userEmail")
+        self.userEmail = kwargs.get(_TeaqlFields.USER_EMAIL_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if "task_status_list" in kwargs or creation_state is EntityCreationState.RESERVED:
             supplied = kwargs.get("task_status_list")
@@ -137,20 +154,20 @@ class Platform:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "name" in self._loaded_fields:
-            payload["name"] = Value.Text(self.name)
+        if _TeaqlFields.NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.NAME_PROPERTY_COLUMN] = Value.Text(self.name)
 
-        if "founded" in self._loaded_fields:
-            payload["founded"] = Value.DateTime(self.founded)
+        if _TeaqlFields.FOUNDED_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.FOUNDED_PROPERTY_COLUMN] = Value.DateTime(self.founded)
 
-        if "userEmail" in self._loaded_fields:
-            payload["user_email"] = Value.Text(self.userEmail)
+        if _TeaqlFields.USER_EMAIL_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.USER_EMAIL_PROPERTY_COLUMN] = Value.Text(self.userEmail)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -159,18 +176,18 @@ class Platform:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "name" in values:
-            value = values["name"]
+        if _TeaqlFields.NAME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.NAME_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.name = raw
 
-        if "founded" in values:
-            value = values["founded"]
+        if _TeaqlFields.FOUNDED_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.FOUNDED_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.founded = raw
 
-        if "user_email" in values:
-            value = values["user_email"]
+        if _TeaqlFields.USER_EMAIL_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.USER_EMAIL_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.userEmail = raw
 
@@ -219,16 +236,16 @@ class Platform:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("Platform", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="Platform")])
-                if "name" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity", entity_type="Platform")])
-                if "founded" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("founded"), message="Mutation requires a fully loaded entity", entity_type="Platform")])
-                if "userEmail" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("user_email"), message="Mutation requires a fully loaded entity", entity_type="Platform")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="Platform")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Platform")])
+                if _TeaqlFields.NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Platform")])
+                if _TeaqlFields.FOUNDED_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.FOUNDED_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Platform")])
+                if _TeaqlFields.USER_EMAIL_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.USER_EMAIL_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Platform")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Platform")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -337,20 +354,20 @@ class Platform:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "name" in self._loaded_fields:
-            payload["name"] = Value.Text(self.name)
+        if _TeaqlFields.NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.NAME_PROPERTY_COLUMN] = Value.Text(self.name)
 
-        if "founded" in self._loaded_fields:
-            payload["founded"] = Value.DateTime(self.founded)
+        if _TeaqlFields.FOUNDED_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.FOUNDED_PROPERTY_COLUMN] = Value.DateTime(self.founded)
 
-        if "userEmail" in self._loaded_fields:
-            payload["user_email"] = Value.Text(self.userEmail)
+        if _TeaqlFields.USER_EMAIL_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.USER_EMAIL_PROPERTY_COLUMN] = Value.Text(self.userEmail)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -390,16 +407,16 @@ class Platform:
         session.capture_loaded_values("Platform", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="Platform")])
-                if "name" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity", entity_type="Platform")])
-                if "founded" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("founded"), message="Mutation requires a fully loaded entity", entity_type="Platform")])
-                if "userEmail" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("user_email"), message="Mutation requires a fully loaded entity", entity_type="Platform")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="Platform")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Platform")])
+                if _TeaqlFields.NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Platform")])
+                if _TeaqlFields.FOUNDED_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.FOUNDED_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Platform")])
+                if _TeaqlFields.USER_EMAIL_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.USER_EMAIL_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Platform")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Platform")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -466,36 +483,36 @@ class Platform:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "name" in persisted:
-            self.name = persisted["name"]
-            self._loaded_fields.add("name")
-        elif "name" in persisted:
-            self.name = persisted["name"]
-            self._loaded_fields.add("name")
-        if "founded" in persisted:
-            self.founded = persisted["founded"]
-            self._loaded_fields.add("founded")
-        elif "founded" in persisted:
-            self.founded = persisted["founded"]
-            self._loaded_fields.add("founded")
-        if "user_email" in persisted:
-            self.userEmail = persisted["user_email"]
-            self._loaded_fields.add("userEmail")
-        elif "userEmail" in persisted:
-            self.userEmail = persisted["userEmail"]
-            self._loaded_fields.add("userEmail")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.NAME_PROPERTY_COLUMN in persisted:
+            self.name = persisted[_TeaqlFields.NAME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.NAME_PROPERTY_MEMBER)
+        elif _TeaqlFields.NAME_PROPERTY_MEMBER in persisted:
+            self.name = persisted[_TeaqlFields.NAME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.NAME_PROPERTY_MEMBER)
+        if _TeaqlFields.FOUNDED_PROPERTY_COLUMN in persisted:
+            self.founded = persisted[_TeaqlFields.FOUNDED_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.FOUNDED_PROPERTY_MEMBER)
+        elif _TeaqlFields.FOUNDED_PROPERTY_MEMBER in persisted:
+            self.founded = persisted[_TeaqlFields.FOUNDED_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.FOUNDED_PROPERTY_MEMBER)
+        if _TeaqlFields.USER_EMAIL_PROPERTY_COLUMN in persisted:
+            self.userEmail = persisted[_TeaqlFields.USER_EMAIL_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.USER_EMAIL_PROPERTY_MEMBER)
+        elif _TeaqlFields.USER_EMAIL_PROPERTY_MEMBER in persisted:
+            self.userEmail = persisted[_TeaqlFields.USER_EMAIL_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.USER_EMAIL_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -556,43 +573,43 @@ class Platform:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_name(self, value):
-        if "name" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.name, value):
+        if _TeaqlFields.NAME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.name, value):
             return self
         self.name = value
-        self._loaded_fields.add("name")
-        self._entity_root.set(self._teaql_entity_key(), "name", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.NAME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.NAME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_founded(self, value):
-        if "founded" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.founded, value):
+        if _TeaqlFields.FOUNDED_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.founded, value):
             return self
         self.founded = value
-        self._loaded_fields.add("founded")
-        self._entity_root.set(self._teaql_entity_key(), "founded", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.FOUNDED_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.FOUNDED_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_user_email(self, value):
-        if "userEmail" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.userEmail, value):
+        if _TeaqlFields.USER_EMAIL_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.userEmail, value):
             return self
         self.userEmail = value
-        self._loaded_fields.add("userEmail")
-        self._entity_root.set(self._teaql_entity_key(), "user_email", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.USER_EMAIL_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.USER_EMAIL_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def task_status_list(self) -> "SmartList[TaskStatus]":
         return self._task_status_list

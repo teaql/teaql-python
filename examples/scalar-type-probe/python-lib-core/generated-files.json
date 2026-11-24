@@ -3,14 +3,14 @@
   "Q.py": "f09daf2b628afe3a9d330188b73c282791bd91943566b51381c8333a08340e6e",
   "generated_search_models.py": "b9775db9c7dd08e1749715cafb983ea6e897d63ee128fcf0ad416d62736f7b24",
   "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "models/freight_quote.py": "0e4d8453dd9bb55cd43c30941e24dd2c3e204abf2f32f9cedb17370a5f4f6c82",
-  "models/platform.py": "231c0502e5d3bc75141927dbbf744c747c48f6c32b1d86167526443cbd6ad840",
+  "models/freight_quote.py": "fa90375ff0e7fa55109fc2f19b1f4424d006cde2880ae426cc2f256902023699",
+  "models/platform.py": "885e0e1090315700d5ba96b802c11eeb552df3a94b2f7787685bed0eff4f4619",
   "pyproject.toml": "a2afc1bd809855df4cc4a2d23ebb27b2730983ddd1aacbfad1bf2c45c8db930e",
   "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "requests/freight_quote_request.py": "c7947d3a2e7d3b1859b52e00a2d8fc819785bcb886e1ee8728ed8b368b5ab24f",
-  "requests/platform_request.py": "571fb7b191800a8c04fd3e77d66f1e0a9db3b0074d55870ae70d3f1389a67111",
+  "requests/freight_quote_request.py": "6c4b1582d7af09c04218907952038fffea601893847be47ec5d07288b6fdd652",
+  "requests/platform_request.py": "05518c28d624fb6c75ccdfc6c77695c4847b7028b886b6c8b7bb6ad1d8327b5a",
   "runtime_module.py": "283213c214949b8d45a26f5fe212ded5687da9d1550c5f546e2da415eab2b463",
   "teaql-i18n.json": "29159b1a0cfdb1a194e974f31e13246943003f423421c59c7e80d6188dc9b019",
   "teaql/checker-model.json": "4323f6d056e13548e9afb018e5d8a4a32ee4953977ce032827d70bb1b1c2752c",
-  "teaql/model-provenance.json": "91fd636007188e76eeb64ed20f7323e70bce6994d4e9ea7377b458d7df0ac8b0"
+  "teaql/model-provenance.json": "44c415ae752e446d758ce7d951e02b985c76a72386f6c03f2f738a39f44cc237"
 }

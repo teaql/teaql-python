@@ -13,7 +13,7 @@ from teaql.core.expr import (
     not_contain, not_end_with, not_in_list, not_in_subquery, value,
     sound_like,
 )
-from models.customer_order import CustomerOrder
+from models.customer_order import _TeaqlFields, CustomerOrder
 from typing import Protocol
 
 class QuerySelection(Protocol):
@@ -92,231 +92,231 @@ class CustomerOrderRequest:
         return self
 
     def select_self_fields(self):
-        self.query.project("id", "order_number", "commerce_platform", "version")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN, _TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN, _TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_id(self):
-        self.query.project("id")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def select_order_number(self):
-        self.query.project("order_number")
+        self.query.project(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN)
         return self
 
 
     def select_version(self):
-        self.query.project("version")
+        self.query.project(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_commerce_platform_with(self, child_request):
-        self.query.project("commerce_platform")
-        self.query.relation_query("commerce_platform", child_request.query,
-            QueryOperation("relation-select", "select_commerce_platform_with", relation="commerce_platform"))
+        self.query.project(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)
+        self.query.relation_query(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN, child_request.query,
+            QueryOperation("relation-select", "select_commerce_platform_with", relation=_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN))
         return self
     def with_commerce_platform_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(in_subquery(column("commerce_platform"), "CommercePlatform", child_request.query))
+        self.query.and_filter(in_subquery(column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN), "CommercePlatform", child_request.query))
         return self
 
     def without_commerce_platform_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("commerce_platform"), "CommercePlatform", child_request.query))
+        self.query.and_filter(not_in_subquery(column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN), "CommercePlatform", child_request.query))
         return self
 
     def have_commerce_platform(self):
-        self.query.and_filter(is_not_null(column("commerce_platform")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)))
         return self
 
     def have_no_commerce_platform(self):
-        self.query.and_filter(is_null(column("commerce_platform")))
+        self.query.and_filter(is_null(column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)))
         return self
 
     def with_id_is(self, val):
-        self.query.and_filter(eq("id", val))
+        self.query.and_filter(eq(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_is_not(self, val):
-        self.query.and_filter(ne("id", val))
+        self.query.and_filter(ne(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_in(self, *vals):
-        self.query.and_filter(in_list("id", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_not_in(self, *vals):
-        self.query.and_filter(not_in_list("id", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_greater_than(self, val):
-        self.query.and_filter(gt("id", val))
+        self.query.and_filter(gt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("id", val))
+        self.query.and_filter(gte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than(self, val):
-        self.query.and_filter(lt("id", val))
+        self.query.and_filter(lt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("id", val))
+        self.query.and_filter(lte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_between(self, lower, upper):
-        self.query.and_filter(between(column("id"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ID_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_id_is_known(self):
-        self.query.and_filter(is_not_null(column("id")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_id_is_unknown(self):
-        self.query.and_filter(is_null(column("id")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_order_number_containing(self, val: str):
-        self.query.and_filter(contain("order_number", val))
+        self.query.and_filter(contain(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_not_containing(self, val: str):
-        self.query.and_filter(not_contain("order_number", val))
+        self.query.and_filter(not_contain(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_starting_with(self, val: str):
-        self.query.and_filter(begin_with("order_number", val))
+        self.query.and_filter(begin_with(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("order_number", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_ending_with(self, val: str):
-        self.query.and_filter(end_with("order_number", val))
+        self.query.and_filter(end_with(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("order_number", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("order_number", val))
+        self.query.and_filter(sound_like(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_is(self, val: str):
-        self.query.and_filter(eq("order_number", val))
+        self.query.and_filter(eq(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
     def with_order_number_is_not(self, val):
-        self.query.and_filter(ne("order_number", val))
+        self.query.and_filter(ne(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_in(self, *vals):
-        self.query.and_filter(in_list("order_number", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_order_number_not_in(self, *vals):
-        self.query.and_filter(not_in_list("order_number", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_order_number_greater_than(self, val):
-        self.query.and_filter(gt("order_number", val))
+        self.query.and_filter(gt(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("order_number", val))
+        self.query.and_filter(gte(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_less_than(self, val):
-        self.query.and_filter(lt("order_number", val))
+        self.query.and_filter(lt(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("order_number", val))
+        self.query.and_filter(lte(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_order_number_between(self, lower, upper):
-        self.query.and_filter(between(column("order_number"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_order_number_is_known(self):
-        self.query.and_filter(is_not_null(column("order_number")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN)))
         return self
 
     def with_order_number_is_unknown(self):
-        self.query.and_filter(is_null(column("order_number")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN)))
         return self
 
     def filter_by_commerce_platform(self, val):
-        self.query.and_filter(eq("commerce_platform", val))
+        self.query.and_filter(eq(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN, val))
         return self
 
     def with_version_is(self, val):
-        self.query.and_filter(eq("version", val))
+        self.query.and_filter(eq(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_is_not(self, val):
-        self.query.and_filter(ne("version", val))
+        self.query.and_filter(ne(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_in(self, *vals):
-        self.query.and_filter(in_list("version", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_not_in(self, *vals):
-        self.query.and_filter(not_in_list("version", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_greater_than(self, val):
-        self.query.and_filter(gt("version", val))
+        self.query.and_filter(gt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("version", val))
+        self.query.and_filter(gte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than(self, val):
-        self.query.and_filter(lt("version", val))
+        self.query.and_filter(lt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("version", val))
+        self.query.and_filter(lte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_between(self, lower, upper):
-        self.query.and_filter(between(column("version"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.VERSION_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_version_is_known(self):
-        self.query.and_filter(is_not_null(column("version")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def with_version_is_unknown(self):
-        self.query.and_filter(is_null(column("version")))
+        self.query.and_filter(is_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def order_by_id_ascending(self):
-        self.query.order_by("id", "asc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_id_descending(self):
-        self.query.order_by("id", "desc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_order_number_ascending(self):
-        self.query.order_by("order_number", "asc")
+        self.query.order_by(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_order_number_descending(self):
-        self.query.order_by("order_number", "desc")
+        self.query.order_by(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN, "desc")
         return self
 
 
     def order_by_version_ascending(self):
-        self.query.order_by("version", "asc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_version_descending(self):
-        self.query.order_by("version", "desc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "desc")
         return self
 
 
@@ -333,36 +333,36 @@ class CustomerOrderRequest:
         return self
 
     def group_by_id(self):
-        self.query.group_by("id")
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ID_PROPERTY_COLUMN))
         return self
     def group_by_order_number(self):
-        self.query.group_by("order_number")
+        self.query.group_by(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN)
         return self
 
     def group_by_order_number_as(self, ret_name: str):
-        self.query.group_by("order_number")
-        self.query.project_expr(ret_name, column("order_number"))
+        self.query.group_by(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ORDER_NUMBER_PROPERTY_COLUMN))
         return self
     def group_by_commerce_platform(self):
-        self.query.group_by("commerce_platform")
+        self.query.group_by(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)
         return self
 
     def group_by_commerce_platform_as(self, ret_name: str):
-        self.query.group_by("commerce_platform")
-        self.query.project_expr(ret_name, column("commerce_platform"))
+        self.query.group_by(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN))
         return self
     def group_by_version(self):
-        self.query.group_by("version")
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.VERSION_PROPERTY_COLUMN))
         return self
     def select_order_attachment_list(self):
         from requests.order_attachment_request import OrderAttachmentRequest
@@ -523,8 +523,8 @@ class CustomerOrderRequest:
         return self
     def facet_by_commerce_platform_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "commerce_platform", request.query, include_all_facets,
-            QueryOperation("facet", "facet_by_commerce_platform_as", name, "commerce_platform"))
+        self.query.facet_by(name, _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN, request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_commerce_platform_as", name, _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN))
         return self
 
 

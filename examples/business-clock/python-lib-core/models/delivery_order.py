@@ -13,13 +13,30 @@ from copy import copy
 from models.platform import Platform
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    PLATFORM_PROPERTY_MEMBER = "platform"
+    PLATFORM_PROPERTY_COLUMN = "platform"
+    PLATFORM_PROPERTY_MODEL = "platform"
+    REFERENCE_PROPERTY_MEMBER = "reference"
+    REFERENCE_PROPERTY_COLUMN = "reference"
+    REFERENCE_PROPERTY_MODEL = "reference"
+    ORDER_DATE_PROPERTY_MEMBER = "orderDate"
+    ORDER_DATE_PROPERTY_COLUMN = "order_date"
+    ORDER_DATE_PROPERTY_MODEL = "order_date"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class DeliveryOrder:
     _teaql_json_schema = EntityJSONSchema("DeliveryOrder", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("platform", "platform", "reference", factory=lambda: Platform),
-        EntityJSONField("reference", "reference", "text"),
-        EntityJSONField("order_date", "orderDate", "date"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.PLATFORM_PROPERTY_MODEL, _TeaqlFields.PLATFORM_PROPERTY_MEMBER, "reference", factory=lambda: Platform),
+        EntityJSONField(_TeaqlFields.REFERENCE_PROPERTY_MODEL, _TeaqlFields.REFERENCE_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.ORDER_DATE_PROPERTY_MODEL, _TeaqlFields.ORDER_DATE_PROPERTY_MEMBER, "date"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
     def to_json(self, *, profile=None):
@@ -74,30 +91,30 @@ class DeliveryOrder:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "platform" in kwargs and "platform" not in kwargs:
-            kwargs["platform"] = kwargs.pop("platform")
-        if "reference" in kwargs and "reference" not in kwargs:
-            kwargs["reference"] = kwargs.pop("reference")
-        if "order_date" in kwargs and "orderDate" not in kwargs:
-            kwargs["orderDate"] = kwargs.pop("order_date")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in kwargs and _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.PLATFORM_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)
+        if _TeaqlFields.REFERENCE_PROPERTY_COLUMN in kwargs and _TeaqlFields.REFERENCE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.REFERENCE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)
+        if _TeaqlFields.ORDER_DATE_PROPERTY_COLUMN in kwargs and _TeaqlFields.ORDER_DATE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ORDER_DATE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "platform", "reference", "orderDate", "version"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.PLATFORM_PROPERTY_MEMBER, _TeaqlFields.REFERENCE_PROPERTY_MEMBER, _TeaqlFields.ORDER_DATE_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.platform = kwargs.get("platform")
+        self.platform = kwargs.get(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
 
-        self.reference = kwargs.get("reference")
+        self.reference = kwargs.get(_TeaqlFields.REFERENCE_PROPERTY_MEMBER)
 
-        self.orderDate = kwargs.get("orderDate")
+        self.orderDate = kwargs.get(_TeaqlFields.ORDER_DATE_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.platform, dict):
             self.platform = Platform._teaql_from_record(**self.platform)
@@ -111,20 +128,20 @@ class DeliveryOrder:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "platform" in self._loaded_fields:
-            payload["platform"] = Value.I64(getattr(self.platform, "id", self.platform))
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = Value.I64(getattr(self.platform, "id", self.platform))
 
-        if "reference" in self._loaded_fields:
-            payload["reference"] = Value.Text(self.reference)
+        if _TeaqlFields.REFERENCE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.REFERENCE_PROPERTY_COLUMN] = Value.Text(self.reference)
 
-        if "orderDate" in self._loaded_fields:
-            payload["order_date"] = Value.Date(self.orderDate)
+        if _TeaqlFields.ORDER_DATE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN] = Value.Date(self.orderDate)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -133,13 +150,13 @@ class DeliveryOrder:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "reference" in values:
-            value = values["reference"]
+        if _TeaqlFields.REFERENCE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.REFERENCE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.reference = raw
 
-        if "order_date" in values:
-            value = values["order_date"]
+        if _TeaqlFields.ORDER_DATE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.ORDER_DATE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.orderDate = raw
 
@@ -184,16 +201,16 @@ class DeliveryOrder:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("DeliveryOrder", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
-                if "platform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("platform"), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
-                if "reference" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("reference"), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
-                if "orderDate" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("order_date"), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
+                if _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PLATFORM_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
+                if _TeaqlFields.REFERENCE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.REFERENCE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
+                if _TeaqlFields.ORDER_DATE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ORDER_DATE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -246,24 +263,24 @@ class DeliveryOrder:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "platform" in self._loaded_fields:
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.platform
             reference_id = getattr(reference, "id", reference)
-            payload["platform"] = (Value.Object(reference)
+            payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "reference" in self._loaded_fields:
-            payload["reference"] = Value.Text(self.reference)
+        if _TeaqlFields.REFERENCE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.REFERENCE_PROPERTY_COLUMN] = Value.Text(self.reference)
 
-        if "orderDate" in self._loaded_fields:
-            payload["order_date"] = Value.Date(self.orderDate)
+        if _TeaqlFields.ORDER_DATE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN] = Value.Date(self.orderDate)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -278,10 +295,10 @@ class DeliveryOrder:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "platform" in payload:
-            reference = payload["platform"].val
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["platform"] = Value.I64(reference.id)
+                payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("DeliveryOrder", payload)
         elif action == "Update":
@@ -307,16 +324,16 @@ class DeliveryOrder:
         session.capture_loaded_values("DeliveryOrder", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
-                if "platform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("platform"), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
-                if "reference" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("reference"), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
-                if "orderDate" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("order_date"), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
+                if _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PLATFORM_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
+                if _TeaqlFields.REFERENCE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.REFERENCE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
+                if _TeaqlFields.ORDER_DATE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ORDER_DATE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DeliveryOrder")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -355,36 +372,36 @@ class DeliveryOrder:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "platform" in persisted:
-            self.platform = persisted["platform"]
-            self._loaded_fields.add("platform")
-        elif "platform" in persisted:
-            self.platform = persisted["platform"]
-            self._loaded_fields.add("platform")
-        if "reference" in persisted:
-            self.reference = persisted["reference"]
-            self._loaded_fields.add("reference")
-        elif "reference" in persisted:
-            self.reference = persisted["reference"]
-            self._loaded_fields.add("reference")
-        if "order_date" in persisted:
-            self.orderDate = persisted["order_date"]
-            self._loaded_fields.add("orderDate")
-        elif "orderDate" in persisted:
-            self.orderDate = persisted["orderDate"]
-            self._loaded_fields.add("orderDate")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in persisted:
+            self.platform = persisted[_TeaqlFields.PLATFORM_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        elif _TeaqlFields.PLATFORM_PROPERTY_MEMBER in persisted:
+            self.platform = persisted[_TeaqlFields.PLATFORM_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        if _TeaqlFields.REFERENCE_PROPERTY_COLUMN in persisted:
+            self.reference = persisted[_TeaqlFields.REFERENCE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.REFERENCE_PROPERTY_MEMBER)
+        elif _TeaqlFields.REFERENCE_PROPERTY_MEMBER in persisted:
+            self.reference = persisted[_TeaqlFields.REFERENCE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.REFERENCE_PROPERTY_MEMBER)
+        if _TeaqlFields.ORDER_DATE_PROPERTY_COLUMN in persisted:
+            self.orderDate = persisted[_TeaqlFields.ORDER_DATE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ORDER_DATE_PROPERTY_MEMBER)
+        elif _TeaqlFields.ORDER_DATE_PROPERTY_MEMBER in persisted:
+            self.orderDate = persisted[_TeaqlFields.ORDER_DATE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ORDER_DATE_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -443,45 +460,45 @@ class DeliveryOrder:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_reference(self, value):
-        if "reference" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.reference, value):
+        if _TeaqlFields.REFERENCE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.reference, value):
             return self
         self.reference = value
-        self._loaded_fields.add("reference")
-        self._entity_root.set(self._teaql_entity_key(), "reference", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.REFERENCE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.REFERENCE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_order_date(self, value):
-        if "orderDate" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.orderDate, value):
+        if _TeaqlFields.ORDER_DATE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.orderDate, value):
             return self
         self.orderDate = value
-        self._loaded_fields.add("orderDate")
-        self._entity_root.set(self._teaql_entity_key(), "order_date", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ORDER_DATE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ORDER_DATE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_platform(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.platform
         current_id = getattr(current, "id", current)
-        if "platform" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.platform = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("platform")
-        self._entity_root.set(self._teaql_entity_key(), "platform",
+        self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.PLATFORM_PROPERTY_COLUMN,
             Value.Object(self.platform) if self.platform is not None and hasattr(self.platform, "id")
             else Value.from_any(self.platform))
         return self

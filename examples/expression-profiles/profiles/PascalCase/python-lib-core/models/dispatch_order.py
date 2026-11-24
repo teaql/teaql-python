@@ -13,13 +13,30 @@ from copy import copy
 from models.distribution_center import DistributionCenter
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    DISTRIBUTION_CENTER_PROPERTY_MEMBER = "distributionCenter"
+    DISTRIBUTION_CENTER_PROPERTY_COLUMN = "distribution_center"
+    DISTRIBUTION_CENTER_PROPERTY_MODEL = "distribution_center"
+    ORDER_REFERENCE_PROPERTY_MEMBER = "orderReference"
+    ORDER_REFERENCE_PROPERTY_COLUMN = "order_reference"
+    ORDER_REFERENCE_PROPERTY_MODEL = "order_reference"
+    HANDLING_NOTE_PROPERTY_MEMBER = "handlingNote"
+    HANDLING_NOTE_PROPERTY_COLUMN = "handling_note"
+    HANDLING_NOTE_PROPERTY_MODEL = "handling_note"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class DispatchOrder:
     _teaql_json_schema = EntityJSONSchema("DispatchOrder", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("distribution_center", "distributionCenter", "reference", factory=lambda: DistributionCenter),
-        EntityJSONField("order_reference", "orderReference", "text"),
-        EntityJSONField("handling_note", "handlingNote", "text"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MODEL, _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER, "reference", factory=lambda: DistributionCenter),
+        EntityJSONField(_TeaqlFields.ORDER_REFERENCE_PROPERTY_MODEL, _TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.HANDLING_NOTE_PROPERTY_MODEL, _TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
     ), profile=JsonFieldNamingProfile.parse("PascalCase"))
 
     def to_json(self, *, profile=None):
@@ -74,30 +91,30 @@ class DispatchOrder:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "distribution_center" in kwargs and "distributionCenter" not in kwargs:
-            kwargs["distributionCenter"] = kwargs.pop("distribution_center")
-        if "order_reference" in kwargs and "orderReference" not in kwargs:
-            kwargs["orderReference"] = kwargs.pop("order_reference")
-        if "handling_note" in kwargs and "handlingNote" not in kwargs:
-            kwargs["handlingNote"] = kwargs.pop("handling_note")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_COLUMN in kwargs and _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_COLUMN)
+        if _TeaqlFields.ORDER_REFERENCE_PROPERTY_COLUMN in kwargs and _TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ORDER_REFERENCE_PROPERTY_COLUMN)
+        if _TeaqlFields.HANDLING_NOTE_PROPERTY_COLUMN in kwargs and _TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.HANDLING_NOTE_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "distributionCenter", "orderReference", "handlingNote", "version"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER, _TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER, _TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.distributionCenter = kwargs.get("distributionCenter")
+        self.distributionCenter = kwargs.get(_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER)
 
-        self.orderReference = kwargs.get("orderReference")
+        self.orderReference = kwargs.get(_TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER)
 
-        self.handlingNote = kwargs.get("handlingNote")
+        self.handlingNote = kwargs.get(_TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.distributionCenter, dict):
             self.distributionCenter = DistributionCenter._teaql_from_record(**self.distributionCenter)
@@ -111,20 +128,20 @@ class DispatchOrder:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "distributionCenter" in self._loaded_fields:
-            payload["distribution_center"] = Value.I64(getattr(self.distributionCenter, "id", self.distributionCenter))
+        if _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_COLUMN] = Value.I64(getattr(self.distributionCenter, "id", self.distributionCenter))
 
-        if "orderReference" in self._loaded_fields:
-            payload["order_reference"] = Value.Text(self.orderReference)
+        if _TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ORDER_REFERENCE_PROPERTY_COLUMN] = Value.Text(self.orderReference)
 
-        if "handlingNote" in self._loaded_fields:
-            payload["handling_note"] = Value.Text(self.handlingNote)
+        if _TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.HANDLING_NOTE_PROPERTY_COLUMN] = Value.Text(self.handlingNote)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -133,13 +150,13 @@ class DispatchOrder:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "order_reference" in values:
-            value = values["order_reference"]
+        if _TeaqlFields.ORDER_REFERENCE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.ORDER_REFERENCE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.orderReference = raw
 
-        if "handling_note" in values:
-            value = values["handling_note"]
+        if _TeaqlFields.HANDLING_NOTE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.HANDLING_NOTE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.handlingNote = raw
 
@@ -184,16 +201,16 @@ class DispatchOrder:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("DispatchOrder", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
-                if "distributionCenter" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("distribution_center"), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
-                if "orderReference" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("order_reference"), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
-                if "handlingNote" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("handling_note"), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
+                if _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
+                if _TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ORDER_REFERENCE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
+                if _TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.HANDLING_NOTE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -246,24 +263,24 @@ class DispatchOrder:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "distributionCenter" in self._loaded_fields:
+        if _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.distributionCenter
             reference_id = getattr(reference, "id", reference)
-            payload["distribution_center"] = (Value.Object(reference)
+            payload[_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "orderReference" in self._loaded_fields:
-            payload["order_reference"] = Value.Text(self.orderReference)
+        if _TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ORDER_REFERENCE_PROPERTY_COLUMN] = Value.Text(self.orderReference)
 
-        if "handlingNote" in self._loaded_fields:
-            payload["handling_note"] = Value.Text(self.handlingNote)
+        if _TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.HANDLING_NOTE_PROPERTY_COLUMN] = Value.Text(self.handlingNote)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -278,10 +295,10 @@ class DispatchOrder:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "distribution_center" in payload:
-            reference = payload["distribution_center"].val
+        if _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["distribution_center"] = Value.I64(reference.id)
+                payload[_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("DispatchOrder", payload)
         elif action == "Update":
@@ -307,16 +324,16 @@ class DispatchOrder:
         session.capture_loaded_values("DispatchOrder", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
-                if "distributionCenter" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("distribution_center"), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
-                if "orderReference" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("order_reference"), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
-                if "handlingNote" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("handling_note"), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
+                if _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
+                if _TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ORDER_REFERENCE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
+                if _TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.HANDLING_NOTE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DispatchOrder")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -355,36 +372,36 @@ class DispatchOrder:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "distribution_center" in persisted:
-            self.distributionCenter = persisted["distribution_center"]
-            self._loaded_fields.add("distributionCenter")
-        elif "distributionCenter" in persisted:
-            self.distributionCenter = persisted["distributionCenter"]
-            self._loaded_fields.add("distributionCenter")
-        if "order_reference" in persisted:
-            self.orderReference = persisted["order_reference"]
-            self._loaded_fields.add("orderReference")
-        elif "orderReference" in persisted:
-            self.orderReference = persisted["orderReference"]
-            self._loaded_fields.add("orderReference")
-        if "handling_note" in persisted:
-            self.handlingNote = persisted["handling_note"]
-            self._loaded_fields.add("handlingNote")
-        elif "handlingNote" in persisted:
-            self.handlingNote = persisted["handlingNote"]
-            self._loaded_fields.add("handlingNote")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_COLUMN in persisted:
+            self.distributionCenter = persisted[_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER)
+        elif _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER in persisted:
+            self.distributionCenter = persisted[_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER)
+        if _TeaqlFields.ORDER_REFERENCE_PROPERTY_COLUMN in persisted:
+            self.orderReference = persisted[_TeaqlFields.ORDER_REFERENCE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER)
+        elif _TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER in persisted:
+            self.orderReference = persisted[_TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER)
+        if _TeaqlFields.HANDLING_NOTE_PROPERTY_COLUMN in persisted:
+            self.handlingNote = persisted[_TeaqlFields.HANDLING_NOTE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER)
+        elif _TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER in persisted:
+            self.handlingNote = persisted[_TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -443,45 +460,45 @@ class DispatchOrder:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_order_reference(self, value):
-        if "orderReference" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.orderReference, value):
+        if _TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.orderReference, value):
             return self
         self.orderReference = value
-        self._loaded_fields.add("orderReference")
-        self._entity_root.set(self._teaql_entity_key(), "order_reference", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ORDER_REFERENCE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ORDER_REFERENCE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_handling_note(self, value):
-        if "handlingNote" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.handlingNote, value):
+        if _TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.handlingNote, value):
             return self
         self.handlingNote = value
-        self._loaded_fields.add("handlingNote")
-        self._entity_root.set(self._teaql_entity_key(), "handling_note", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.HANDLING_NOTE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.HANDLING_NOTE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_distribution_center(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.distributionCenter
         current_id = getattr(current, "id", current)
-        if "distributionCenter" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.distributionCenter = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("distributionCenter")
-        self._entity_root.set(self._teaql_entity_key(), "distribution_center",
+        self._loaded_fields.add(_TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.DISTRIBUTION_CENTER_PROPERTY_COLUMN,
             Value.Object(self.distributionCenter) if self.distributionCenter is not None and hasattr(self.distributionCenter, "id")
             else Value.from_any(self.distributionCenter))
         return self

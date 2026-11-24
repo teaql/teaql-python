@@ -13,7 +13,7 @@ from teaql.core.expr import (
     not_contain, not_end_with, not_in_list, not_in_subquery, value,
     sound_like,
 )
-from models.school import School
+from models.school import _TeaqlFields, School
 from typing import Protocol
 
 class QuerySelection(Protocol):
@@ -92,631 +92,631 @@ class SchoolRequest:
         return self
 
     def select_self_fields(self):
-        self.query.project("id", "platform", "school_type", "name", "address", "established_date", "student_capacity", "active", "create_time", "update_time", "version")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN, _TeaqlFields.PLATFORM_PROPERTY_COLUMN, _TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN, _TeaqlFields.NAME_PROPERTY_COLUMN, _TeaqlFields.ADDRESS_PROPERTY_COLUMN, _TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN, _TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, _TeaqlFields.ACTIVE_PROPERTY_COLUMN, _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, _TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, _TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_id(self):
-        self.query.project("id")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
 
 
     def select_name(self):
-        self.query.project("name")
+        self.query.project(_TeaqlFields.NAME_PROPERTY_COLUMN)
         return self
 
     def select_address(self):
-        self.query.project("address")
+        self.query.project(_TeaqlFields.ADDRESS_PROPERTY_COLUMN)
         return self
 
     def select_established_date(self):
-        self.query.project("established_date")
+        self.query.project(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN)
         return self
 
     def select_student_capacity(self):
-        self.query.project("student_capacity")
+        self.query.project(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN)
         return self
 
     def select_active(self):
-        self.query.project("active")
+        self.query.project(_TeaqlFields.ACTIVE_PROPERTY_COLUMN)
         return self
 
     def select_create_time(self):
-        self.query.project("create_time")
+        self.query.project(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
         return self
 
     def select_update_time(self):
-        self.query.project("update_time")
+        self.query.project(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
         return self
 
     def select_version(self):
-        self.query.project("version")
+        self.query.project(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_platform_with(self, child_request):
-        self.query.project("platform")
-        self.query.relation_query("platform", child_request.query,
-            QueryOperation("relation-select", "select_platform_with", relation="platform"))
+        self.query.project(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)
+        self.query.relation_query(_TeaqlFields.PLATFORM_PROPERTY_COLUMN, child_request.query,
+            QueryOperation("relation-select", "select_platform_with", relation=_TeaqlFields.PLATFORM_PROPERTY_COLUMN))
         return self
     def select_school_type_with(self, child_request):
-        self.query.project("school_type")
-        self.query.relation_query("school_type", child_request.query,
-            QueryOperation("relation-select", "select_school_type_with", relation="school_type"))
+        self.query.project(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN)
+        self.query.relation_query(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN, child_request.query,
+            QueryOperation("relation-select", "select_school_type_with", relation=_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN))
         return self
     def with_platform_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(in_subquery(column("platform"), "Platform", child_request.query))
+        self.query.and_filter(in_subquery(column(_TeaqlFields.PLATFORM_PROPERTY_COLUMN), "Platform", child_request.query))
         return self
 
     def without_platform_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("platform"), "Platform", child_request.query))
+        self.query.and_filter(not_in_subquery(column(_TeaqlFields.PLATFORM_PROPERTY_COLUMN), "Platform", child_request.query))
         return self
 
     def have_platform(self):
-        self.query.and_filter(is_not_null(column("platform")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)))
         return self
 
     def have_no_platform(self):
-        self.query.and_filter(is_null(column("platform")))
+        self.query.and_filter(is_null(column(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)))
         return self
     def with_school_type_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(in_subquery(column("school_type"), "SchoolType", child_request.query))
+        self.query.and_filter(in_subquery(column(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN), "SchoolType", child_request.query))
         return self
 
     def without_school_type_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("school_type"), "SchoolType", child_request.query))
+        self.query.and_filter(not_in_subquery(column(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN), "SchoolType", child_request.query))
         return self
 
     def have_school_type(self):
-        self.query.and_filter(is_not_null(column("school_type")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN)))
         return self
 
     def have_no_school_type(self):
-        self.query.and_filter(is_null(column("school_type")))
+        self.query.and_filter(is_null(column(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN)))
         return self
 
     def with_id_is(self, val):
-        self.query.and_filter(eq("id", val))
+        self.query.and_filter(eq(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_is_not(self, val):
-        self.query.and_filter(ne("id", val))
+        self.query.and_filter(ne(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_in(self, *vals):
-        self.query.and_filter(in_list("id", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_not_in(self, *vals):
-        self.query.and_filter(not_in_list("id", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_greater_than(self, val):
-        self.query.and_filter(gt("id", val))
+        self.query.and_filter(gt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("id", val))
+        self.query.and_filter(gte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than(self, val):
-        self.query.and_filter(lt("id", val))
+        self.query.and_filter(lt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("id", val))
+        self.query.and_filter(lte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_between(self, lower, upper):
-        self.query.and_filter(between(column("id"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ID_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_id_is_known(self):
-        self.query.and_filter(is_not_null(column("id")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_id_is_unknown(self):
-        self.query.and_filter(is_null(column("id")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def filter_by_platform(self, val):
-        self.query.and_filter(eq("platform", val))
+        self.query.and_filter(eq(_TeaqlFields.PLATFORM_PROPERTY_COLUMN, val))
         return self
 
     def filter_by_school_type(self, val):
-        self.query.and_filter(eq("school_type", val))
+        self.query.and_filter(eq(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN, val))
         return self
     def with_school_type_is_primary(self):
-        self.query.and_filter(eq("school_type", 1001))
+        self.query.and_filter(eq(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN, 1001))
         return self
     def with_school_type_is_secondary(self):
-        self.query.and_filter(eq("school_type", 1002))
+        self.query.and_filter(eq(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN, 1002))
         return self
 
     def with_name_containing(self, val: str):
-        self.query.and_filter(contain("name", val))
+        self.query.and_filter(contain(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_not_containing(self, val: str):
-        self.query.and_filter(not_contain("name", val))
+        self.query.and_filter(not_contain(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_starting_with(self, val: str):
-        self.query.and_filter(begin_with("name", val))
+        self.query.and_filter(begin_with(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("name", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_ending_with(self, val: str):
-        self.query.and_filter(end_with("name", val))
+        self.query.and_filter(end_with(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("name", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("name", val))
+        self.query.and_filter(sound_like(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_is(self, val: str):
-        self.query.and_filter(eq("name", val))
+        self.query.and_filter(eq(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
     def with_name_is_not(self, val):
-        self.query.and_filter(ne("name", val))
+        self.query.and_filter(ne(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_in(self, *vals):
-        self.query.and_filter(in_list("name", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.NAME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_name_not_in(self, *vals):
-        self.query.and_filter(not_in_list("name", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.NAME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_name_greater_than(self, val):
-        self.query.and_filter(gt("name", val))
+        self.query.and_filter(gt(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("name", val))
+        self.query.and_filter(gte(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_less_than(self, val):
-        self.query.and_filter(lt("name", val))
+        self.query.and_filter(lt(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("name", val))
+        self.query.and_filter(lte(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_between(self, lower, upper):
-        self.query.and_filter(between(column("name"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.NAME_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_name_is_known(self):
-        self.query.and_filter(is_not_null(column("name")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.NAME_PROPERTY_COLUMN)))
         return self
 
     def with_name_is_unknown(self):
-        self.query.and_filter(is_null(column("name")))
+        self.query.and_filter(is_null(column(_TeaqlFields.NAME_PROPERTY_COLUMN)))
         return self
 
     def with_address_containing(self, val: str):
-        self.query.and_filter(contain("address", val))
+        self.query.and_filter(contain(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
 
     def with_address_not_containing(self, val: str):
-        self.query.and_filter(not_contain("address", val))
+        self.query.and_filter(not_contain(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
 
     def with_address_starting_with(self, val: str):
-        self.query.and_filter(begin_with("address", val))
+        self.query.and_filter(begin_with(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
 
     def with_address_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("address", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
 
     def with_address_ending_with(self, val: str):
-        self.query.and_filter(end_with("address", val))
+        self.query.and_filter(end_with(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
 
     def with_address_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("address", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
 
     def with_address_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("address", val))
+        self.query.and_filter(sound_like(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
 
     def with_address_is(self, val: str):
-        self.query.and_filter(eq("address", val))
+        self.query.and_filter(eq(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
     def with_address_is_not(self, val):
-        self.query.and_filter(ne("address", val))
+        self.query.and_filter(ne(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
 
     def with_address_in(self, *vals):
-        self.query.and_filter(in_list("address", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_address_not_in(self, *vals):
-        self.query.and_filter(not_in_list("address", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_address_greater_than(self, val):
-        self.query.and_filter(gt("address", val))
+        self.query.and_filter(gt(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
 
     def with_address_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("address", val))
+        self.query.and_filter(gte(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
 
     def with_address_less_than(self, val):
-        self.query.and_filter(lt("address", val))
+        self.query.and_filter(lt(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
 
     def with_address_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("address", val))
+        self.query.and_filter(lte(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, val))
         return self
 
     def with_address_between(self, lower, upper):
-        self.query.and_filter(between(column("address"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ADDRESS_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_address_is_known(self):
-        self.query.and_filter(is_not_null(column("address")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ADDRESS_PROPERTY_COLUMN)))
         return self
 
     def with_address_is_unknown(self):
-        self.query.and_filter(is_null(column("address")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ADDRESS_PROPERTY_COLUMN)))
         return self
 
     def with_established_date_is(self, val):
-        self.query.and_filter(eq("established_date", val))
+        self.query.and_filter(eq(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_established_date_is_not(self, val):
-        self.query.and_filter(ne("established_date", val))
+        self.query.and_filter(ne(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_established_date_in(self, *vals):
-        self.query.and_filter(in_list("established_date", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_established_date_not_in(self, *vals):
-        self.query.and_filter(not_in_list("established_date", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_established_date_greater_than(self, val):
-        self.query.and_filter(gt("established_date", val))
+        self.query.and_filter(gt(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_established_date_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("established_date", val))
+        self.query.and_filter(gte(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_established_date_less_than(self, val):
-        self.query.and_filter(lt("established_date", val))
+        self.query.and_filter(lt(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_established_date_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("established_date", val))
+        self.query.and_filter(lte(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_established_date_between(self, lower, upper):
-        self.query.and_filter(between(column("established_date"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_established_date_is_known(self):
-        self.query.and_filter(is_not_null(column("established_date")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN)))
         return self
 
     def with_established_date_is_unknown(self):
-        self.query.and_filter(is_null(column("established_date")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN)))
         return self
 
     def with_student_capacity_is(self, val):
-        self.query.and_filter(eq("student_capacity", val))
+        self.query.and_filter(eq(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, val))
         return self
 
     def with_student_capacity_is_not(self, val):
-        self.query.and_filter(ne("student_capacity", val))
+        self.query.and_filter(ne(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, val))
         return self
 
     def with_student_capacity_in(self, *vals):
-        self.query.and_filter(in_list("student_capacity", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_student_capacity_not_in(self, *vals):
-        self.query.and_filter(not_in_list("student_capacity", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_student_capacity_greater_than(self, val):
-        self.query.and_filter(gt("student_capacity", val))
+        self.query.and_filter(gt(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, val))
         return self
 
     def with_student_capacity_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("student_capacity", val))
+        self.query.and_filter(gte(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, val))
         return self
 
     def with_student_capacity_less_than(self, val):
-        self.query.and_filter(lt("student_capacity", val))
+        self.query.and_filter(lt(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, val))
         return self
 
     def with_student_capacity_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("student_capacity", val))
+        self.query.and_filter(lte(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, val))
         return self
 
     def with_student_capacity_between(self, lower, upper):
-        self.query.and_filter(between(column("student_capacity"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_student_capacity_is_known(self):
-        self.query.and_filter(is_not_null(column("student_capacity")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN)))
         return self
 
     def with_student_capacity_is_unknown(self):
-        self.query.and_filter(is_null(column("student_capacity")))
+        self.query.and_filter(is_null(column(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN)))
         return self
 
     def which_are_active(self):
-        self.query.and_filter(eq("active", True))
+        self.query.and_filter(eq(_TeaqlFields.ACTIVE_PROPERTY_COLUMN, True))
         return self
 
     def which_are_not_active(self):
-        self.query.and_filter(eq("active", False))
+        self.query.and_filter(eq(_TeaqlFields.ACTIVE_PROPERTY_COLUMN, False))
         return self
     def with_active_is_not(self, val):
-        self.query.and_filter(ne("active", val))
+        self.query.and_filter(ne(_TeaqlFields.ACTIVE_PROPERTY_COLUMN, val))
         return self
 
     def with_active_in(self, *vals):
-        self.query.and_filter(in_list("active", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ACTIVE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_active_not_in(self, *vals):
-        self.query.and_filter(not_in_list("active", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ACTIVE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_active_greater_than(self, val):
-        self.query.and_filter(gt("active", val))
+        self.query.and_filter(gt(_TeaqlFields.ACTIVE_PROPERTY_COLUMN, val))
         return self
 
     def with_active_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("active", val))
+        self.query.and_filter(gte(_TeaqlFields.ACTIVE_PROPERTY_COLUMN, val))
         return self
 
     def with_active_less_than(self, val):
-        self.query.and_filter(lt("active", val))
+        self.query.and_filter(lt(_TeaqlFields.ACTIVE_PROPERTY_COLUMN, val))
         return self
 
     def with_active_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("active", val))
+        self.query.and_filter(lte(_TeaqlFields.ACTIVE_PROPERTY_COLUMN, val))
         return self
 
     def with_active_between(self, lower, upper):
-        self.query.and_filter(between(column("active"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ACTIVE_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_active_is_known(self):
-        self.query.and_filter(is_not_null(column("active")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ACTIVE_PROPERTY_COLUMN)))
         return self
 
     def with_active_is_unknown(self):
-        self.query.and_filter(is_null(column("active")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ACTIVE_PROPERTY_COLUMN)))
         return self
 
     def with_create_time_is(self, val):
-        self.query.and_filter(eq("create_time", val))
+        self.query.and_filter(eq(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_is_not(self, val):
-        self.query.and_filter(ne("create_time", val))
+        self.query.and_filter(ne(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_in(self, *vals):
-        self.query.and_filter(in_list("create_time", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_create_time_not_in(self, *vals):
-        self.query.and_filter(not_in_list("create_time", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_create_time_greater_than(self, val):
-        self.query.and_filter(gt("create_time", val))
+        self.query.and_filter(gt(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("create_time", val))
+        self.query.and_filter(gte(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_less_than(self, val):
-        self.query.and_filter(lt("create_time", val))
+        self.query.and_filter(lt(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("create_time", val))
+        self.query.and_filter(lte(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_between(self, lower, upper):
-        self.query.and_filter(between(column("create_time"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_create_time_is_known(self):
-        self.query.and_filter(is_not_null(column("create_time")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_create_time_is_unknown(self):
-        self.query.and_filter(is_null(column("create_time")))
+        self.query.and_filter(is_null(column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_update_time_is(self, val):
-        self.query.and_filter(eq("update_time", val))
+        self.query.and_filter(eq(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_is_not(self, val):
-        self.query.and_filter(ne("update_time", val))
+        self.query.and_filter(ne(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_in(self, *vals):
-        self.query.and_filter(in_list("update_time", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_update_time_not_in(self, *vals):
-        self.query.and_filter(not_in_list("update_time", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_update_time_greater_than(self, val):
-        self.query.and_filter(gt("update_time", val))
+        self.query.and_filter(gt(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("update_time", val))
+        self.query.and_filter(gte(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_less_than(self, val):
-        self.query.and_filter(lt("update_time", val))
+        self.query.and_filter(lt(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("update_time", val))
+        self.query.and_filter(lte(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_between(self, lower, upper):
-        self.query.and_filter(between(column("update_time"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_update_time_is_known(self):
-        self.query.and_filter(is_not_null(column("update_time")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_update_time_is_unknown(self):
-        self.query.and_filter(is_null(column("update_time")))
+        self.query.and_filter(is_null(column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_version_is(self, val):
-        self.query.and_filter(eq("version", val))
+        self.query.and_filter(eq(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_is_not(self, val):
-        self.query.and_filter(ne("version", val))
+        self.query.and_filter(ne(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_in(self, *vals):
-        self.query.and_filter(in_list("version", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_not_in(self, *vals):
-        self.query.and_filter(not_in_list("version", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_greater_than(self, val):
-        self.query.and_filter(gt("version", val))
+        self.query.and_filter(gt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("version", val))
+        self.query.and_filter(gte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than(self, val):
-        self.query.and_filter(lt("version", val))
+        self.query.and_filter(lt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("version", val))
+        self.query.and_filter(lte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_between(self, lower, upper):
-        self.query.and_filter(between(column("version"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.VERSION_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_version_is_known(self):
-        self.query.and_filter(is_not_null(column("version")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def with_version_is_unknown(self):
-        self.query.and_filter(is_null(column("version")))
+        self.query.and_filter(is_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def order_by_id_ascending(self):
-        self.query.order_by("id", "asc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_id_descending(self):
-        self.query.order_by("id", "desc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "desc")
         return self
 
 
 
     def order_by_name_ascending(self):
-        self.query.order_by("name", "asc")
+        self.query.order_by(_TeaqlFields.NAME_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_name_descending(self):
-        self.query.order_by("name", "desc")
+        self.query.order_by(_TeaqlFields.NAME_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_address_ascending(self):
-        self.query.order_by("address", "asc")
+        self.query.order_by(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_address_descending(self):
-        self.query.order_by("address", "desc")
+        self.query.order_by(_TeaqlFields.ADDRESS_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_established_date_ascending(self):
-        self.query.order_by("established_date", "asc")
+        self.query.order_by(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_established_date_descending(self):
-        self.query.order_by("established_date", "desc")
+        self.query.order_by(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_student_capacity_ascending(self):
-        self.query.order_by("student_capacity", "asc")
+        self.query.order_by(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_student_capacity_descending(self):
-        self.query.order_by("student_capacity", "desc")
+        self.query.order_by(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_active_ascending(self):
-        self.query.order_by("active", "asc")
+        self.query.order_by(_TeaqlFields.ACTIVE_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_active_descending(self):
-        self.query.order_by("active", "desc")
+        self.query.order_by(_TeaqlFields.ACTIVE_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_create_time_ascending(self):
-        self.query.order_by("create_time", "asc")
+        self.query.order_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_create_time_descending(self):
-        self.query.order_by("create_time", "desc")
+        self.query.order_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_update_time_ascending(self):
-        self.query.order_by("update_time", "asc")
+        self.query.order_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_update_time_descending(self):
-        self.query.order_by("update_time", "desc")
+        self.query.order_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_version_ascending(self):
-        self.query.order_by("version", "asc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_version_descending(self):
-        self.query.order_by("version", "desc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "desc")
         return self
 
 
@@ -736,148 +736,148 @@ class SchoolRequest:
         return self.min_student_capacity_as("minOfStudentCapacity")
 
     def min_student_capacity_as(self, ret_name: str):
-        self.query.min("student_capacity", ret_name)
+        self.query.min(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, ret_name)
         return self
     def max_student_capacity(self):
         return self.max_student_capacity_as("maxOfStudentCapacity")
 
     def max_student_capacity_as(self, ret_name: str):
-        self.query.max("student_capacity", ret_name)
+        self.query.max(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, ret_name)
         return self
     def sum_student_capacity(self):
         return self.sum_student_capacity_as("sumOfStudentCapacity")
 
     def sum_student_capacity_as(self, ret_name: str):
-        self.query.sum("student_capacity", ret_name)
+        self.query.sum(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, ret_name)
         return self
     def avg_student_capacity(self):
         return self.avg_student_capacity_as("avgOfStudentCapacity")
 
     def avg_student_capacity_as(self, ret_name: str):
-        self.query.avg("student_capacity", ret_name)
+        self.query.avg(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, ret_name)
         return self
     def standardDeviation_student_capacity(self):
         return self.standardDeviation_student_capacity_as("standardDeviationOfStudentCapacity")
 
     def standardDeviation_student_capacity_as(self, ret_name: str):
-        self.query.standardDeviation("student_capacity", ret_name)
+        self.query.standardDeviation(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, ret_name)
         return self
     def squareRootOfPopulationStandardDeviation_student_capacity(self):
         return self.squareRootOfPopulationStandardDeviation_student_capacity_as("squareRootOfPopulationStandardDeviationOfStudentCapacity")
 
     def squareRootOfPopulationStandardDeviation_student_capacity_as(self, ret_name: str):
-        self.query.squareRootOfPopulationStandardDeviation("student_capacity", ret_name)
+        self.query.squareRootOfPopulationStandardDeviation(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, ret_name)
         return self
     def sampleVariance_student_capacity(self):
         return self.sampleVariance_student_capacity_as("sampleVarianceOfStudentCapacity")
 
     def sampleVariance_student_capacity_as(self, ret_name: str):
-        self.query.sampleVariance("student_capacity", ret_name)
+        self.query.sampleVariance(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, ret_name)
         return self
     def samplePopulationVariance_student_capacity(self):
         return self.samplePopulationVariance_student_capacity_as("samplePopulationVarianceOfStudentCapacity")
 
     def samplePopulationVariance_student_capacity_as(self, ret_name: str):
-        self.query.samplePopulationVariance("student_capacity", ret_name)
+        self.query.samplePopulationVariance(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, ret_name)
         return self
     def group_by_id(self):
-        self.query.group_by("id")
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ID_PROPERTY_COLUMN))
         return self
     def group_by_platform(self):
-        self.query.group_by("platform")
+        self.query.group_by(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)
         return self
 
     def group_by_platform_as(self, ret_name: str):
-        self.query.group_by("platform")
-        self.query.project_expr(ret_name, column("platform"))
+        self.query.group_by(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.PLATFORM_PROPERTY_COLUMN))
         return self
     def group_by_school_type(self):
-        self.query.group_by("school_type")
+        self.query.group_by(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN)
         return self
 
     def group_by_school_type_as(self, ret_name: str):
-        self.query.group_by("school_type")
-        self.query.project_expr(ret_name, column("school_type"))
+        self.query.group_by(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN))
         return self
     def group_by_name(self):
-        self.query.group_by("name")
+        self.query.group_by(_TeaqlFields.NAME_PROPERTY_COLUMN)
         return self
 
     def group_by_name_as(self, ret_name: str):
-        self.query.group_by("name")
-        self.query.project_expr(ret_name, column("name"))
+        self.query.group_by(_TeaqlFields.NAME_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.NAME_PROPERTY_COLUMN))
         return self
     def group_by_address(self):
-        self.query.group_by("address")
+        self.query.group_by(_TeaqlFields.ADDRESS_PROPERTY_COLUMN)
         return self
 
     def group_by_address_as(self, ret_name: str):
-        self.query.group_by("address")
-        self.query.project_expr(ret_name, column("address"))
+        self.query.group_by(_TeaqlFields.ADDRESS_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ADDRESS_PROPERTY_COLUMN))
         return self
     def group_by_established_date(self):
-        self.query.group_by("established_date")
+        self.query.group_by(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN)
         return self
 
     def group_by_established_date_as(self, ret_name: str):
-        self.query.group_by("established_date")
-        self.query.project_expr(ret_name, column("established_date"))
+        self.query.group_by(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN))
         return self
     def group_by_student_capacity(self):
-        self.query.group_by("student_capacity")
+        self.query.group_by(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN)
         return self
 
     def group_by_student_capacity_as(self, ret_name: str):
-        self.query.group_by("student_capacity")
-        self.query.project_expr(ret_name, column("student_capacity"))
+        self.query.group_by(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN))
         return self
     def group_by_active(self):
-        self.query.group_by("active")
+        self.query.group_by(_TeaqlFields.ACTIVE_PROPERTY_COLUMN)
         return self
 
     def group_by_active_as(self, ret_name: str):
-        self.query.group_by("active")
-        self.query.project_expr(ret_name, column("active"))
+        self.query.group_by(_TeaqlFields.ACTIVE_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ACTIVE_PROPERTY_COLUMN))
         return self
     def group_by_create_time(self):
-        self.query.group_by("create_time")
+        self.query.group_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
         return self
 
     def group_by_create_time_as(self, ret_name: str):
-        self.query.group_by("create_time")
-        self.query.project_expr(ret_name, column("create_time"))
+        self.query.group_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN))
         return self
     def group_by_update_time(self):
-        self.query.group_by("update_time")
+        self.query.group_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
         return self
 
     def group_by_update_time_as(self, ret_name: str):
-        self.query.group_by("update_time")
-        self.query.project_expr(ret_name, column("update_time"))
+        self.query.group_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN))
         return self
     def group_by_version(self):
-        self.query.group_by("version")
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.VERSION_PROPERTY_COLUMN))
         return self
     def facet_by_platform_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "platform", request.query, include_all_facets,
-            QueryOperation("facet", "facet_by_platform_as", name, "platform"))
+        self.query.facet_by(name, _TeaqlFields.PLATFORM_PROPERTY_COLUMN, request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_platform_as", name, _TeaqlFields.PLATFORM_PROPERTY_COLUMN))
         return self
 
     def facet_by_school_type_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "school_type", request.query, include_all_facets,
-            QueryOperation("facet", "facet_by_school_type_as", name, "school_type"))
+        self.query.facet_by(name, _TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN, request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_school_type_as", name, _TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN))
         return self
 
 

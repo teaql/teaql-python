@@ -13,7 +13,7 @@ from teaql.core.expr import (
     not_contain, not_end_with, not_in_list, not_in_subquery, value,
     sound_like,
 )
-from models.freight_quote import FreightQuote
+from models.freight_quote import _TeaqlFields, FreightQuote
 from typing import Protocol
 
 class QuerySelection(Protocol):
@@ -92,650 +92,650 @@ class FreightQuoteRequest:
         return self
 
     def select_self_fields(self):
-        self.query.project("id", "platform", "reference", "amount", "shipment_number", "package_count", "delivery_date", "pickup_time", "quoted_at", "instructions", "version")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN, _TeaqlFields.PLATFORM_PROPERTY_COLUMN, _TeaqlFields.REFERENCE_PROPERTY_COLUMN, _TeaqlFields.AMOUNT_PROPERTY_COLUMN, _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, _TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, _TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN, _TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN, _TeaqlFields.QUOTED_AT_PROPERTY_COLUMN, _TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, _TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_id(self):
-        self.query.project("id")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
 
     def select_reference(self):
-        self.query.project("reference")
+        self.query.project(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)
         return self
 
     def select_amount(self):
-        self.query.project("amount")
+        self.query.project(_TeaqlFields.AMOUNT_PROPERTY_COLUMN)
         return self
 
     def select_shipment_number(self):
-        self.query.project("shipment_number")
+        self.query.project(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN)
         return self
 
     def select_package_count(self):
-        self.query.project("package_count")
+        self.query.project(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN)
         return self
 
     def select_delivery_date(self):
-        self.query.project("delivery_date")
+        self.query.project(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN)
         return self
 
     def select_pickup_time(self):
-        self.query.project("pickup_time")
+        self.query.project(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN)
         return self
 
     def select_quoted_at(self):
-        self.query.project("quoted_at")
+        self.query.project(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN)
         return self
 
     def select_instructions(self):
-        self.query.project("instructions")
+        self.query.project(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN)
         return self
 
     def select_version(self):
-        self.query.project("version")
+        self.query.project(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_platform_with(self, child_request):
-        self.query.project("platform")
-        self.query.relation_query("platform", child_request.query,
-            QueryOperation("relation-select", "select_platform_with", relation="platform"))
+        self.query.project(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)
+        self.query.relation_query(_TeaqlFields.PLATFORM_PROPERTY_COLUMN, child_request.query,
+            QueryOperation("relation-select", "select_platform_with", relation=_TeaqlFields.PLATFORM_PROPERTY_COLUMN))
         return self
     def with_platform_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(in_subquery(column("platform"), "Platform", child_request.query))
+        self.query.and_filter(in_subquery(column(_TeaqlFields.PLATFORM_PROPERTY_COLUMN), "Platform", child_request.query))
         return self
 
     def without_platform_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("platform"), "Platform", child_request.query))
+        self.query.and_filter(not_in_subquery(column(_TeaqlFields.PLATFORM_PROPERTY_COLUMN), "Platform", child_request.query))
         return self
 
     def have_platform(self):
-        self.query.and_filter(is_not_null(column("platform")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)))
         return self
 
     def have_no_platform(self):
-        self.query.and_filter(is_null(column("platform")))
+        self.query.and_filter(is_null(column(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)))
         return self
 
     def with_id_is(self, val):
-        self.query.and_filter(eq("id", val))
+        self.query.and_filter(eq(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_is_not(self, val):
-        self.query.and_filter(ne("id", val))
+        self.query.and_filter(ne(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_in(self, *vals):
-        self.query.and_filter(in_list("id", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_not_in(self, *vals):
-        self.query.and_filter(not_in_list("id", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_greater_than(self, val):
-        self.query.and_filter(gt("id", val))
+        self.query.and_filter(gt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("id", val))
+        self.query.and_filter(gte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than(self, val):
-        self.query.and_filter(lt("id", val))
+        self.query.and_filter(lt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("id", val))
+        self.query.and_filter(lte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_between(self, lower, upper):
-        self.query.and_filter(between(column("id"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ID_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_id_is_known(self):
-        self.query.and_filter(is_not_null(column("id")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_id_is_unknown(self):
-        self.query.and_filter(is_null(column("id")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def filter_by_platform(self, val):
-        self.query.and_filter(eq("platform", val))
+        self.query.and_filter(eq(_TeaqlFields.PLATFORM_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_containing(self, val: str):
-        self.query.and_filter(contain("reference", val))
+        self.query.and_filter(contain(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_not_containing(self, val: str):
-        self.query.and_filter(not_contain("reference", val))
+        self.query.and_filter(not_contain(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_starting_with(self, val: str):
-        self.query.and_filter(begin_with("reference", val))
+        self.query.and_filter(begin_with(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("reference", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_ending_with(self, val: str):
-        self.query.and_filter(end_with("reference", val))
+        self.query.and_filter(end_with(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("reference", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("reference", val))
+        self.query.and_filter(sound_like(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_is(self, val: str):
-        self.query.and_filter(eq("reference", val))
+        self.query.and_filter(eq(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
     def with_reference_is_not(self, val):
-        self.query.and_filter(ne("reference", val))
+        self.query.and_filter(ne(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_in(self, *vals):
-        self.query.and_filter(in_list("reference", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_reference_not_in(self, *vals):
-        self.query.and_filter(not_in_list("reference", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_reference_greater_than(self, val):
-        self.query.and_filter(gt("reference", val))
+        self.query.and_filter(gt(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("reference", val))
+        self.query.and_filter(gte(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_less_than(self, val):
-        self.query.and_filter(lt("reference", val))
+        self.query.and_filter(lt(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("reference", val))
+        self.query.and_filter(lte(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_between(self, lower, upper):
-        self.query.and_filter(between(column("reference"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.REFERENCE_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_reference_is_known(self):
-        self.query.and_filter(is_not_null(column("reference")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)))
         return self
 
     def with_reference_is_unknown(self):
-        self.query.and_filter(is_null(column("reference")))
+        self.query.and_filter(is_null(column(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)))
         return self
 
     def with_amount_is(self, val):
-        self.query.and_filter(eq("amount", val))
+        self.query.and_filter(eq(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_amount_is_not(self, val):
-        self.query.and_filter(ne("amount", val))
+        self.query.and_filter(ne(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_amount_in(self, *vals):
-        self.query.and_filter(in_list("amount", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_amount_not_in(self, *vals):
-        self.query.and_filter(not_in_list("amount", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_amount_greater_than(self, val):
-        self.query.and_filter(gt("amount", val))
+        self.query.and_filter(gt(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_amount_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("amount", val))
+        self.query.and_filter(gte(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_amount_less_than(self, val):
-        self.query.and_filter(lt("amount", val))
+        self.query.and_filter(lt(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_amount_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("amount", val))
+        self.query.and_filter(lte(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_amount_between(self, lower, upper):
-        self.query.and_filter(between(column("amount"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.AMOUNT_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_amount_is_known(self):
-        self.query.and_filter(is_not_null(column("amount")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.AMOUNT_PROPERTY_COLUMN)))
         return self
 
     def with_amount_is_unknown(self):
-        self.query.and_filter(is_null(column("amount")))
+        self.query.and_filter(is_null(column(_TeaqlFields.AMOUNT_PROPERTY_COLUMN)))
         return self
 
     def with_shipment_number_is(self, val):
-        self.query.and_filter(eq("shipment_number", val))
+        self.query.and_filter(eq(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_shipment_number_is_not(self, val):
-        self.query.and_filter(ne("shipment_number", val))
+        self.query.and_filter(ne(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_shipment_number_in(self, *vals):
-        self.query.and_filter(in_list("shipment_number", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_shipment_number_not_in(self, *vals):
-        self.query.and_filter(not_in_list("shipment_number", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_shipment_number_greater_than(self, val):
-        self.query.and_filter(gt("shipment_number", val))
+        self.query.and_filter(gt(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_shipment_number_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("shipment_number", val))
+        self.query.and_filter(gte(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_shipment_number_less_than(self, val):
-        self.query.and_filter(lt("shipment_number", val))
+        self.query.and_filter(lt(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_shipment_number_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("shipment_number", val))
+        self.query.and_filter(lte(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, val))
         return self
 
     def with_shipment_number_between(self, lower, upper):
-        self.query.and_filter(between(column("shipment_number"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_shipment_number_is_known(self):
-        self.query.and_filter(is_not_null(column("shipment_number")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN)))
         return self
 
     def with_shipment_number_is_unknown(self):
-        self.query.and_filter(is_null(column("shipment_number")))
+        self.query.and_filter(is_null(column(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN)))
         return self
 
     def with_package_count_is(self, val):
-        self.query.and_filter(eq("package_count", val))
+        self.query.and_filter(eq(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_package_count_is_not(self, val):
-        self.query.and_filter(ne("package_count", val))
+        self.query.and_filter(ne(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_package_count_in(self, *vals):
-        self.query.and_filter(in_list("package_count", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_package_count_not_in(self, *vals):
-        self.query.and_filter(not_in_list("package_count", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_package_count_greater_than(self, val):
-        self.query.and_filter(gt("package_count", val))
+        self.query.and_filter(gt(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_package_count_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("package_count", val))
+        self.query.and_filter(gte(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_package_count_less_than(self, val):
-        self.query.and_filter(lt("package_count", val))
+        self.query.and_filter(lt(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_package_count_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("package_count", val))
+        self.query.and_filter(lte(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, val))
         return self
 
     def with_package_count_between(self, lower, upper):
-        self.query.and_filter(between(column("package_count"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_package_count_is_known(self):
-        self.query.and_filter(is_not_null(column("package_count")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN)))
         return self
 
     def with_package_count_is_unknown(self):
-        self.query.and_filter(is_null(column("package_count")))
+        self.query.and_filter(is_null(column(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN)))
         return self
 
     def with_delivery_date_is(self, val):
-        self.query.and_filter(eq("delivery_date", val))
+        self.query.and_filter(eq(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_delivery_date_is_not(self, val):
-        self.query.and_filter(ne("delivery_date", val))
+        self.query.and_filter(ne(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_delivery_date_in(self, *vals):
-        self.query.and_filter(in_list("delivery_date", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_delivery_date_not_in(self, *vals):
-        self.query.and_filter(not_in_list("delivery_date", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_delivery_date_greater_than(self, val):
-        self.query.and_filter(gt("delivery_date", val))
+        self.query.and_filter(gt(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_delivery_date_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("delivery_date", val))
+        self.query.and_filter(gte(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_delivery_date_less_than(self, val):
-        self.query.and_filter(lt("delivery_date", val))
+        self.query.and_filter(lt(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_delivery_date_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("delivery_date", val))
+        self.query.and_filter(lte(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN, val))
         return self
 
     def with_delivery_date_between(self, lower, upper):
-        self.query.and_filter(between(column("delivery_date"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_delivery_date_is_known(self):
-        self.query.and_filter(is_not_null(column("delivery_date")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN)))
         return self
 
     def with_delivery_date_is_unknown(self):
-        self.query.and_filter(is_null(column("delivery_date")))
+        self.query.and_filter(is_null(column(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN)))
         return self
 
     def with_pickup_time_is(self, val):
-        self.query.and_filter(eq("pickup_time", val))
+        self.query.and_filter(eq(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_pickup_time_is_not(self, val):
-        self.query.and_filter(ne("pickup_time", val))
+        self.query.and_filter(ne(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_pickup_time_in(self, *vals):
-        self.query.and_filter(in_list("pickup_time", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_pickup_time_not_in(self, *vals):
-        self.query.and_filter(not_in_list("pickup_time", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_pickup_time_greater_than(self, val):
-        self.query.and_filter(gt("pickup_time", val))
+        self.query.and_filter(gt(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_pickup_time_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("pickup_time", val))
+        self.query.and_filter(gte(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_pickup_time_less_than(self, val):
-        self.query.and_filter(lt("pickup_time", val))
+        self.query.and_filter(lt(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_pickup_time_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("pickup_time", val))
+        self.query.and_filter(lte(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_pickup_time_between(self, lower, upper):
-        self.query.and_filter(between(column("pickup_time"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_pickup_time_is_known(self):
-        self.query.and_filter(is_not_null(column("pickup_time")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_pickup_time_is_unknown(self):
-        self.query.and_filter(is_null(column("pickup_time")))
+        self.query.and_filter(is_null(column(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_quoted_at_is(self, val):
-        self.query.and_filter(eq("quoted_at", val))
+        self.query.and_filter(eq(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN, val))
         return self
 
     def with_quoted_at_is_not(self, val):
-        self.query.and_filter(ne("quoted_at", val))
+        self.query.and_filter(ne(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN, val))
         return self
 
     def with_quoted_at_in(self, *vals):
-        self.query.and_filter(in_list("quoted_at", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_quoted_at_not_in(self, *vals):
-        self.query.and_filter(not_in_list("quoted_at", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_quoted_at_greater_than(self, val):
-        self.query.and_filter(gt("quoted_at", val))
+        self.query.and_filter(gt(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN, val))
         return self
 
     def with_quoted_at_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("quoted_at", val))
+        self.query.and_filter(gte(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN, val))
         return self
 
     def with_quoted_at_less_than(self, val):
-        self.query.and_filter(lt("quoted_at", val))
+        self.query.and_filter(lt(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN, val))
         return self
 
     def with_quoted_at_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("quoted_at", val))
+        self.query.and_filter(lte(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN, val))
         return self
 
     def with_quoted_at_between(self, lower, upper):
-        self.query.and_filter(between(column("quoted_at"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_quoted_at_is_known(self):
-        self.query.and_filter(is_not_null(column("quoted_at")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN)))
         return self
 
     def with_quoted_at_is_unknown(self):
-        self.query.and_filter(is_null(column("quoted_at")))
+        self.query.and_filter(is_null(column(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN)))
         return self
 
     def with_instructions_containing(self, val: str):
-        self.query.and_filter(contain("instructions", val))
+        self.query.and_filter(contain(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
 
     def with_instructions_not_containing(self, val: str):
-        self.query.and_filter(not_contain("instructions", val))
+        self.query.and_filter(not_contain(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
 
     def with_instructions_starting_with(self, val: str):
-        self.query.and_filter(begin_with("instructions", val))
+        self.query.and_filter(begin_with(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
 
     def with_instructions_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("instructions", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
 
     def with_instructions_ending_with(self, val: str):
-        self.query.and_filter(end_with("instructions", val))
+        self.query.and_filter(end_with(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
 
     def with_instructions_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("instructions", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
 
     def with_instructions_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("instructions", val))
+        self.query.and_filter(sound_like(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
 
     def with_instructions_is(self, val: str):
-        self.query.and_filter(eq("instructions", val))
+        self.query.and_filter(eq(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
     def with_instructions_is_not(self, val):
-        self.query.and_filter(ne("instructions", val))
+        self.query.and_filter(ne(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
 
     def with_instructions_in(self, *vals):
-        self.query.and_filter(in_list("instructions", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_instructions_not_in(self, *vals):
-        self.query.and_filter(not_in_list("instructions", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_instructions_greater_than(self, val):
-        self.query.and_filter(gt("instructions", val))
+        self.query.and_filter(gt(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
 
     def with_instructions_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("instructions", val))
+        self.query.and_filter(gte(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
 
     def with_instructions_less_than(self, val):
-        self.query.and_filter(lt("instructions", val))
+        self.query.and_filter(lt(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
 
     def with_instructions_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("instructions", val))
+        self.query.and_filter(lte(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, val))
         return self
 
     def with_instructions_between(self, lower, upper):
-        self.query.and_filter(between(column("instructions"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_instructions_is_known(self):
-        self.query.and_filter(is_not_null(column("instructions")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN)))
         return self
 
     def with_instructions_is_unknown(self):
-        self.query.and_filter(is_null(column("instructions")))
+        self.query.and_filter(is_null(column(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN)))
         return self
 
     def with_version_is(self, val):
-        self.query.and_filter(eq("version", val))
+        self.query.and_filter(eq(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_is_not(self, val):
-        self.query.and_filter(ne("version", val))
+        self.query.and_filter(ne(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_in(self, *vals):
-        self.query.and_filter(in_list("version", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_not_in(self, *vals):
-        self.query.and_filter(not_in_list("version", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_greater_than(self, val):
-        self.query.and_filter(gt("version", val))
+        self.query.and_filter(gt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("version", val))
+        self.query.and_filter(gte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than(self, val):
-        self.query.and_filter(lt("version", val))
+        self.query.and_filter(lt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("version", val))
+        self.query.and_filter(lte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_between(self, lower, upper):
-        self.query.and_filter(between(column("version"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.VERSION_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_version_is_known(self):
-        self.query.and_filter(is_not_null(column("version")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def with_version_is_unknown(self):
-        self.query.and_filter(is_null(column("version")))
+        self.query.and_filter(is_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def order_by_id_ascending(self):
-        self.query.order_by("id", "asc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_id_descending(self):
-        self.query.order_by("id", "desc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "desc")
         return self
 
 
     def order_by_reference_ascending(self):
-        self.query.order_by("reference", "asc")
+        self.query.order_by(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_reference_descending(self):
-        self.query.order_by("reference", "desc")
+        self.query.order_by(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_amount_ascending(self):
-        self.query.order_by("amount", "asc")
+        self.query.order_by(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_amount_descending(self):
-        self.query.order_by("amount", "desc")
+        self.query.order_by(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_shipment_number_ascending(self):
-        self.query.order_by("shipment_number", "asc")
+        self.query.order_by(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_shipment_number_descending(self):
-        self.query.order_by("shipment_number", "desc")
+        self.query.order_by(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_package_count_ascending(self):
-        self.query.order_by("package_count", "asc")
+        self.query.order_by(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_package_count_descending(self):
-        self.query.order_by("package_count", "desc")
+        self.query.order_by(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_delivery_date_ascending(self):
-        self.query.order_by("delivery_date", "asc")
+        self.query.order_by(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_delivery_date_descending(self):
-        self.query.order_by("delivery_date", "desc")
+        self.query.order_by(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_pickup_time_ascending(self):
-        self.query.order_by("pickup_time", "asc")
+        self.query.order_by(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_pickup_time_descending(self):
-        self.query.order_by("pickup_time", "desc")
+        self.query.order_by(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_quoted_at_ascending(self):
-        self.query.order_by("quoted_at", "asc")
+        self.query.order_by(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_quoted_at_descending(self):
-        self.query.order_by("quoted_at", "desc")
+        self.query.order_by(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_instructions_ascending(self):
-        self.query.order_by("instructions", "asc")
+        self.query.order_by(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_instructions_descending(self):
-        self.query.order_by("instructions", "desc")
+        self.query.order_by(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_version_ascending(self):
-        self.query.order_by("version", "asc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_version_descending(self):
-        self.query.order_by("version", "desc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "desc")
         return self
 
 
@@ -755,238 +755,238 @@ class FreightQuoteRequest:
         return self.min_amount_as("minOfAmount")
 
     def min_amount_as(self, ret_name: str):
-        self.query.min("amount", ret_name)
+        self.query.min(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def max_amount(self):
         return self.max_amount_as("maxOfAmount")
 
     def max_amount_as(self, ret_name: str):
-        self.query.max("amount", ret_name)
+        self.query.max(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def sum_amount(self):
         return self.sum_amount_as("sumOfAmount")
 
     def sum_amount_as(self, ret_name: str):
-        self.query.sum("amount", ret_name)
+        self.query.sum(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def avg_amount(self):
         return self.avg_amount_as("avgOfAmount")
 
     def avg_amount_as(self, ret_name: str):
-        self.query.avg("amount", ret_name)
+        self.query.avg(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def standardDeviation_amount(self):
         return self.standardDeviation_amount_as("standardDeviationOfAmount")
 
     def standardDeviation_amount_as(self, ret_name: str):
-        self.query.standardDeviation("amount", ret_name)
+        self.query.standardDeviation(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def squareRootOfPopulationStandardDeviation_amount(self):
         return self.squareRootOfPopulationStandardDeviation_amount_as("squareRootOfPopulationStandardDeviationOfAmount")
 
     def squareRootOfPopulationStandardDeviation_amount_as(self, ret_name: str):
-        self.query.squareRootOfPopulationStandardDeviation("amount", ret_name)
+        self.query.squareRootOfPopulationStandardDeviation(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def sampleVariance_amount(self):
         return self.sampleVariance_amount_as("sampleVarianceOfAmount")
 
     def sampleVariance_amount_as(self, ret_name: str):
-        self.query.sampleVariance("amount", ret_name)
+        self.query.sampleVariance(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def samplePopulationVariance_amount(self):
         return self.samplePopulationVariance_amount_as("samplePopulationVarianceOfAmount")
 
     def samplePopulationVariance_amount_as(self, ret_name: str):
-        self.query.samplePopulationVariance("amount", ret_name)
+        self.query.samplePopulationVariance(_TeaqlFields.AMOUNT_PROPERTY_COLUMN, ret_name)
         return self
     def min_shipment_number(self):
         return self.min_shipment_number_as("minOfShipmentNumber")
 
     def min_shipment_number_as(self, ret_name: str):
-        self.query.min("shipment_number", ret_name)
+        self.query.min(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, ret_name)
         return self
     def max_shipment_number(self):
         return self.max_shipment_number_as("maxOfShipmentNumber")
 
     def max_shipment_number_as(self, ret_name: str):
-        self.query.max("shipment_number", ret_name)
+        self.query.max(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, ret_name)
         return self
     def sum_shipment_number(self):
         return self.sum_shipment_number_as("sumOfShipmentNumber")
 
     def sum_shipment_number_as(self, ret_name: str):
-        self.query.sum("shipment_number", ret_name)
+        self.query.sum(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, ret_name)
         return self
     def avg_shipment_number(self):
         return self.avg_shipment_number_as("avgOfShipmentNumber")
 
     def avg_shipment_number_as(self, ret_name: str):
-        self.query.avg("shipment_number", ret_name)
+        self.query.avg(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, ret_name)
         return self
     def standardDeviation_shipment_number(self):
         return self.standardDeviation_shipment_number_as("standardDeviationOfShipmentNumber")
 
     def standardDeviation_shipment_number_as(self, ret_name: str):
-        self.query.standardDeviation("shipment_number", ret_name)
+        self.query.standardDeviation(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, ret_name)
         return self
     def squareRootOfPopulationStandardDeviation_shipment_number(self):
         return self.squareRootOfPopulationStandardDeviation_shipment_number_as("squareRootOfPopulationStandardDeviationOfShipmentNumber")
 
     def squareRootOfPopulationStandardDeviation_shipment_number_as(self, ret_name: str):
-        self.query.squareRootOfPopulationStandardDeviation("shipment_number", ret_name)
+        self.query.squareRootOfPopulationStandardDeviation(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, ret_name)
         return self
     def sampleVariance_shipment_number(self):
         return self.sampleVariance_shipment_number_as("sampleVarianceOfShipmentNumber")
 
     def sampleVariance_shipment_number_as(self, ret_name: str):
-        self.query.sampleVariance("shipment_number", ret_name)
+        self.query.sampleVariance(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, ret_name)
         return self
     def samplePopulationVariance_shipment_number(self):
         return self.samplePopulationVariance_shipment_number_as("samplePopulationVarianceOfShipmentNumber")
 
     def samplePopulationVariance_shipment_number_as(self, ret_name: str):
-        self.query.samplePopulationVariance("shipment_number", ret_name)
+        self.query.samplePopulationVariance(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, ret_name)
         return self
     def min_package_count(self):
         return self.min_package_count_as("minOfPackageCount")
 
     def min_package_count_as(self, ret_name: str):
-        self.query.min("package_count", ret_name)
+        self.query.min(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, ret_name)
         return self
     def max_package_count(self):
         return self.max_package_count_as("maxOfPackageCount")
 
     def max_package_count_as(self, ret_name: str):
-        self.query.max("package_count", ret_name)
+        self.query.max(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, ret_name)
         return self
     def sum_package_count(self):
         return self.sum_package_count_as("sumOfPackageCount")
 
     def sum_package_count_as(self, ret_name: str):
-        self.query.sum("package_count", ret_name)
+        self.query.sum(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, ret_name)
         return self
     def avg_package_count(self):
         return self.avg_package_count_as("avgOfPackageCount")
 
     def avg_package_count_as(self, ret_name: str):
-        self.query.avg("package_count", ret_name)
+        self.query.avg(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, ret_name)
         return self
     def standardDeviation_package_count(self):
         return self.standardDeviation_package_count_as("standardDeviationOfPackageCount")
 
     def standardDeviation_package_count_as(self, ret_name: str):
-        self.query.standardDeviation("package_count", ret_name)
+        self.query.standardDeviation(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, ret_name)
         return self
     def squareRootOfPopulationStandardDeviation_package_count(self):
         return self.squareRootOfPopulationStandardDeviation_package_count_as("squareRootOfPopulationStandardDeviationOfPackageCount")
 
     def squareRootOfPopulationStandardDeviation_package_count_as(self, ret_name: str):
-        self.query.squareRootOfPopulationStandardDeviation("package_count", ret_name)
+        self.query.squareRootOfPopulationStandardDeviation(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, ret_name)
         return self
     def sampleVariance_package_count(self):
         return self.sampleVariance_package_count_as("sampleVarianceOfPackageCount")
 
     def sampleVariance_package_count_as(self, ret_name: str):
-        self.query.sampleVariance("package_count", ret_name)
+        self.query.sampleVariance(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, ret_name)
         return self
     def samplePopulationVariance_package_count(self):
         return self.samplePopulationVariance_package_count_as("samplePopulationVarianceOfPackageCount")
 
     def samplePopulationVariance_package_count_as(self, ret_name: str):
-        self.query.samplePopulationVariance("package_count", ret_name)
+        self.query.samplePopulationVariance(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, ret_name)
         return self
     def group_by_id(self):
-        self.query.group_by("id")
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ID_PROPERTY_COLUMN))
         return self
     def group_by_platform(self):
-        self.query.group_by("platform")
+        self.query.group_by(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)
         return self
 
     def group_by_platform_as(self, ret_name: str):
-        self.query.group_by("platform")
-        self.query.project_expr(ret_name, column("platform"))
+        self.query.group_by(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.PLATFORM_PROPERTY_COLUMN))
         return self
     def group_by_reference(self):
-        self.query.group_by("reference")
+        self.query.group_by(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)
         return self
 
     def group_by_reference_as(self, ret_name: str):
-        self.query.group_by("reference")
-        self.query.project_expr(ret_name, column("reference"))
+        self.query.group_by(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.REFERENCE_PROPERTY_COLUMN))
         return self
     def group_by_amount(self):
-        self.query.group_by("amount")
+        self.query.group_by(_TeaqlFields.AMOUNT_PROPERTY_COLUMN)
         return self
 
     def group_by_amount_as(self, ret_name: str):
-        self.query.group_by("amount")
-        self.query.project_expr(ret_name, column("amount"))
+        self.query.group_by(_TeaqlFields.AMOUNT_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.AMOUNT_PROPERTY_COLUMN))
         return self
     def group_by_shipment_number(self):
-        self.query.group_by("shipment_number")
+        self.query.group_by(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN)
         return self
 
     def group_by_shipment_number_as(self, ret_name: str):
-        self.query.group_by("shipment_number")
-        self.query.project_expr(ret_name, column("shipment_number"))
+        self.query.group_by(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN))
         return self
     def group_by_package_count(self):
-        self.query.group_by("package_count")
+        self.query.group_by(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN)
         return self
 
     def group_by_package_count_as(self, ret_name: str):
-        self.query.group_by("package_count")
-        self.query.project_expr(ret_name, column("package_count"))
+        self.query.group_by(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN))
         return self
     def group_by_delivery_date(self):
-        self.query.group_by("delivery_date")
+        self.query.group_by(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN)
         return self
 
     def group_by_delivery_date_as(self, ret_name: str):
-        self.query.group_by("delivery_date")
-        self.query.project_expr(ret_name, column("delivery_date"))
+        self.query.group_by(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN))
         return self
     def group_by_pickup_time(self):
-        self.query.group_by("pickup_time")
+        self.query.group_by(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN)
         return self
 
     def group_by_pickup_time_as(self, ret_name: str):
-        self.query.group_by("pickup_time")
-        self.query.project_expr(ret_name, column("pickup_time"))
+        self.query.group_by(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN))
         return self
     def group_by_quoted_at(self):
-        self.query.group_by("quoted_at")
+        self.query.group_by(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN)
         return self
 
     def group_by_quoted_at_as(self, ret_name: str):
-        self.query.group_by("quoted_at")
-        self.query.project_expr(ret_name, column("quoted_at"))
+        self.query.group_by(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN))
         return self
     def group_by_instructions(self):
-        self.query.group_by("instructions")
+        self.query.group_by(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN)
         return self
 
     def group_by_instructions_as(self, ret_name: str):
-        self.query.group_by("instructions")
-        self.query.project_expr(ret_name, column("instructions"))
+        self.query.group_by(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN))
         return self
     def group_by_version(self):
-        self.query.group_by("version")
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.VERSION_PROPERTY_COLUMN))
         return self
     def facet_by_platform_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "platform", request.query, include_all_facets,
-            QueryOperation("facet", "facet_by_platform_as", name, "platform"))
+        self.query.facet_by(name, _TeaqlFields.PLATFORM_PROPERTY_COLUMN, request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_platform_as", name, _TeaqlFields.PLATFORM_PROPERTY_COLUMN))
         return self
 
 

@@ -13,14 +13,34 @@ from copy import copy
 from models.catalog import Catalog
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    CATALOG_PROPERTY_MEMBER = "catalog"
+    CATALOG_PROPERTY_COLUMN = "catalog"
+    CATALOG_PROPERTY_MODEL = "catalog"
+    NAME_PROPERTY_MEMBER = "name"
+    NAME_PROPERTY_COLUMN = "name"
+    NAME_PROPERTY_MODEL = "name"
+    BORN_AT_PROPERTY_MEMBER = "bornAt"
+    BORN_AT_PROPERTY_COLUMN = "born_at"
+    BORN_AT_PROPERTY_MODEL = "born_at"
+    TOUCHED_AT_PROPERTY_MEMBER = "touchedAt"
+    TOUCHED_AT_PROPERTY_COLUMN = "touched_at"
+    TOUCHED_AT_PROPERTY_MODEL = "touched_at"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class Entry:
     _teaql_json_schema = EntityJSONSchema("Entry", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("catalog", "catalog", "reference", factory=lambda: Catalog),
-        EntityJSONField("name", "name", "text"),
-        EntityJSONField("born_at", "bornAt", "datetime"),
-        EntityJSONField("touched_at", "touchedAt", "datetime"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.CATALOG_PROPERTY_MODEL, _TeaqlFields.CATALOG_PROPERTY_MEMBER, "reference", factory=lambda: Catalog),
+        EntityJSONField(_TeaqlFields.NAME_PROPERTY_MODEL, _TeaqlFields.NAME_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.BORN_AT_PROPERTY_MODEL, _TeaqlFields.BORN_AT_PROPERTY_MEMBER, "datetime"),
+        EntityJSONField(_TeaqlFields.TOUCHED_AT_PROPERTY_MODEL, _TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER, "datetime"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
     def to_json(self, *, profile=None):
@@ -75,34 +95,34 @@ class Entry:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "catalog" in kwargs and "catalog" not in kwargs:
-            kwargs["catalog"] = kwargs.pop("catalog")
-        if "name" in kwargs and "name" not in kwargs:
-            kwargs["name"] = kwargs.pop("name")
-        if "born_at" in kwargs and "bornAt" not in kwargs:
-            kwargs["bornAt"] = kwargs.pop("born_at")
-        if "touched_at" in kwargs and "touchedAt" not in kwargs:
-            kwargs["touchedAt"] = kwargs.pop("touched_at")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.CATALOG_PROPERTY_COLUMN in kwargs and _TeaqlFields.CATALOG_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CATALOG_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CATALOG_PROPERTY_COLUMN)
+        if _TeaqlFields.NAME_PROPERTY_COLUMN in kwargs and _TeaqlFields.NAME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.NAME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.NAME_PROPERTY_COLUMN)
+        if _TeaqlFields.BORN_AT_PROPERTY_COLUMN in kwargs and _TeaqlFields.BORN_AT_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.BORN_AT_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.BORN_AT_PROPERTY_COLUMN)
+        if _TeaqlFields.TOUCHED_AT_PROPERTY_COLUMN in kwargs and _TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.TOUCHED_AT_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "catalog", "name", "bornAt", "touchedAt", "version"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.CATALOG_PROPERTY_MEMBER, _TeaqlFields.NAME_PROPERTY_MEMBER, _TeaqlFields.BORN_AT_PROPERTY_MEMBER, _TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.catalog = kwargs.get("catalog")
+        self.catalog = kwargs.get(_TeaqlFields.CATALOG_PROPERTY_MEMBER)
 
-        self.name = kwargs.get("name")
+        self.name = kwargs.get(_TeaqlFields.NAME_PROPERTY_MEMBER)
 
-        self.bornAt = kwargs.get("bornAt")
+        self.bornAt = kwargs.get(_TeaqlFields.BORN_AT_PROPERTY_MEMBER)
 
-        self.touchedAt = kwargs.get("touchedAt")
+        self.touchedAt = kwargs.get(_TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.catalog, dict):
             self.catalog = Catalog._teaql_from_record(**self.catalog)
@@ -116,23 +136,23 @@ class Entry:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "catalog" in self._loaded_fields:
-            payload["catalog"] = Value.I64(getattr(self.catalog, "id", self.catalog))
+        if _TeaqlFields.CATALOG_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CATALOG_PROPERTY_COLUMN] = Value.I64(getattr(self.catalog, "id", self.catalog))
 
-        if "name" in self._loaded_fields:
-            payload["name"] = Value.Text(self.name)
+        if _TeaqlFields.NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.NAME_PROPERTY_COLUMN] = Value.Text(self.name)
 
-        if "bornAt" in self._loaded_fields:
-            payload["born_at"] = Value.DateTime(self.bornAt)
+        if _TeaqlFields.BORN_AT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.BORN_AT_PROPERTY_COLUMN] = Value.DateTime(self.bornAt)
 
-        if "touchedAt" in self._loaded_fields:
-            payload["touched_at"] = Value.DateTime(self.touchedAt)
+        if _TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.TOUCHED_AT_PROPERTY_COLUMN] = Value.DateTime(self.touchedAt)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -141,18 +161,18 @@ class Entry:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "name" in values:
-            value = values["name"]
+        if _TeaqlFields.NAME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.NAME_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.name = raw
 
-        if "born_at" in values:
-            value = values["born_at"]
+        if _TeaqlFields.BORN_AT_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.BORN_AT_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.bornAt = raw
 
-        if "touched_at" in values:
-            value = values["touched_at"]
+        if _TeaqlFields.TOUCHED_AT_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.TOUCHED_AT_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.touchedAt = raw
 
@@ -197,18 +217,18 @@ class Entry:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("Entry", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="Entry")])
-                if "catalog" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("catalog"), message="Mutation requires a fully loaded entity", entity_type="Entry")])
-                if "name" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity", entity_type="Entry")])
-                if "bornAt" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("born_at"), message="Mutation requires a fully loaded entity", entity_type="Entry")])
-                if "touchedAt" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("touched_at"), message="Mutation requires a fully loaded entity", entity_type="Entry")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="Entry")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Entry")])
+                if _TeaqlFields.CATALOG_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CATALOG_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Entry")])
+                if _TeaqlFields.NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Entry")])
+                if _TeaqlFields.BORN_AT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.BORN_AT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Entry")])
+                if _TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.TOUCHED_AT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Entry")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Entry")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -261,27 +281,27 @@ class Entry:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "catalog" in self._loaded_fields:
+        if _TeaqlFields.CATALOG_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.catalog
             reference_id = getattr(reference, "id", reference)
-            payload["catalog"] = (Value.Object(reference)
+            payload[_TeaqlFields.CATALOG_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "name" in self._loaded_fields:
-            payload["name"] = Value.Text(self.name)
+        if _TeaqlFields.NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.NAME_PROPERTY_COLUMN] = Value.Text(self.name)
 
-        if "bornAt" in self._loaded_fields:
-            payload["born_at"] = Value.DateTime(self.bornAt)
+        if _TeaqlFields.BORN_AT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.BORN_AT_PROPERTY_COLUMN] = Value.DateTime(self.bornAt)
 
-        if "touchedAt" in self._loaded_fields:
-            payload["touched_at"] = Value.DateTime(self.touchedAt)
+        if _TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.TOUCHED_AT_PROPERTY_COLUMN] = Value.DateTime(self.touchedAt)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -296,10 +316,10 @@ class Entry:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "catalog" in payload:
-            reference = payload["catalog"].val
+        if _TeaqlFields.CATALOG_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.CATALOG_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["catalog"] = Value.I64(reference.id)
+                payload[_TeaqlFields.CATALOG_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("Entry", payload)
         elif action == "Update":
@@ -325,18 +345,18 @@ class Entry:
         session.capture_loaded_values("Entry", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="Entry")])
-                if "catalog" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("catalog"), message="Mutation requires a fully loaded entity", entity_type="Entry")])
-                if "name" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity", entity_type="Entry")])
-                if "bornAt" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("born_at"), message="Mutation requires a fully loaded entity", entity_type="Entry")])
-                if "touchedAt" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("touched_at"), message="Mutation requires a fully loaded entity", entity_type="Entry")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="Entry")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Entry")])
+                if _TeaqlFields.CATALOG_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CATALOG_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Entry")])
+                if _TeaqlFields.NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Entry")])
+                if _TeaqlFields.BORN_AT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.BORN_AT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Entry")])
+                if _TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.TOUCHED_AT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Entry")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Entry")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -375,42 +395,42 @@ class Entry:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "catalog" in persisted:
-            self.catalog = persisted["catalog"]
-            self._loaded_fields.add("catalog")
-        elif "catalog" in persisted:
-            self.catalog = persisted["catalog"]
-            self._loaded_fields.add("catalog")
-        if "name" in persisted:
-            self.name = persisted["name"]
-            self._loaded_fields.add("name")
-        elif "name" in persisted:
-            self.name = persisted["name"]
-            self._loaded_fields.add("name")
-        if "born_at" in persisted:
-            self.bornAt = persisted["born_at"]
-            self._loaded_fields.add("bornAt")
-        elif "bornAt" in persisted:
-            self.bornAt = persisted["bornAt"]
-            self._loaded_fields.add("bornAt")
-        if "touched_at" in persisted:
-            self.touchedAt = persisted["touched_at"]
-            self._loaded_fields.add("touchedAt")
-        elif "touchedAt" in persisted:
-            self.touchedAt = persisted["touchedAt"]
-            self._loaded_fields.add("touchedAt")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.CATALOG_PROPERTY_COLUMN in persisted:
+            self.catalog = persisted[_TeaqlFields.CATALOG_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CATALOG_PROPERTY_MEMBER)
+        elif _TeaqlFields.CATALOG_PROPERTY_MEMBER in persisted:
+            self.catalog = persisted[_TeaqlFields.CATALOG_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CATALOG_PROPERTY_MEMBER)
+        if _TeaqlFields.NAME_PROPERTY_COLUMN in persisted:
+            self.name = persisted[_TeaqlFields.NAME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.NAME_PROPERTY_MEMBER)
+        elif _TeaqlFields.NAME_PROPERTY_MEMBER in persisted:
+            self.name = persisted[_TeaqlFields.NAME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.NAME_PROPERTY_MEMBER)
+        if _TeaqlFields.BORN_AT_PROPERTY_COLUMN in persisted:
+            self.bornAt = persisted[_TeaqlFields.BORN_AT_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.BORN_AT_PROPERTY_MEMBER)
+        elif _TeaqlFields.BORN_AT_PROPERTY_MEMBER in persisted:
+            self.bornAt = persisted[_TeaqlFields.BORN_AT_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.BORN_AT_PROPERTY_MEMBER)
+        if _TeaqlFields.TOUCHED_AT_PROPERTY_COLUMN in persisted:
+            self.touchedAt = persisted[_TeaqlFields.TOUCHED_AT_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER)
+        elif _TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER in persisted:
+            self.touchedAt = persisted[_TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -469,53 +489,53 @@ class Entry:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_name(self, value):
-        if "name" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.name, value):
+        if _TeaqlFields.NAME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.name, value):
             return self
         self.name = value
-        self._loaded_fields.add("name")
-        self._entity_root.set(self._teaql_entity_key(), "name", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.NAME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.NAME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_born_at(self, value):
-        if "bornAt" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.bornAt, value):
+        if _TeaqlFields.BORN_AT_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.bornAt, value):
             return self
         self.bornAt = value
-        self._loaded_fields.add("bornAt")
-        self._entity_root.set(self._teaql_entity_key(), "born_at", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.BORN_AT_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.BORN_AT_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_touched_at(self, value):
-        if "touchedAt" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.touchedAt, value):
+        if _TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.touchedAt, value):
             return self
         self.touchedAt = value
-        self._loaded_fields.add("touchedAt")
-        self._entity_root.set(self._teaql_entity_key(), "touched_at", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.TOUCHED_AT_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.TOUCHED_AT_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_catalog(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.catalog
         current_id = getattr(current, "id", current)
-        if "catalog" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.CATALOG_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.catalog = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("catalog")
-        self._entity_root.set(self._teaql_entity_key(), "catalog",
+        self._loaded_fields.add(_TeaqlFields.CATALOG_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CATALOG_PROPERTY_COLUMN,
             Value.Object(self.catalog) if self.catalog is not None and hasattr(self.catalog, "id")
             else Value.from_any(self.catalog))
         return self

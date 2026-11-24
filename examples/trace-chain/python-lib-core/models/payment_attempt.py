@@ -13,12 +13,26 @@ from copy import copy
 from models.payment import Payment
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    PAYMENT_PROPERTY_MEMBER = "payment"
+    PAYMENT_PROPERTY_COLUMN = "payment"
+    PAYMENT_PROPERTY_MODEL = "payment"
+    REFERENCE_CODE_PROPERTY_MEMBER = "referenceCode"
+    REFERENCE_CODE_PROPERTY_COLUMN = "reference_code"
+    REFERENCE_CODE_PROPERTY_MODEL = "reference_code"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class PaymentAttempt:
     _teaql_json_schema = EntityJSONSchema("PaymentAttempt", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("payment", "payment", "reference", factory=lambda: Payment),
-        EntityJSONField("reference_code", "referenceCode", "text"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.PAYMENT_PROPERTY_MODEL, _TeaqlFields.PAYMENT_PROPERTY_MEMBER, "reference", factory=lambda: Payment),
+        EntityJSONField(_TeaqlFields.REFERENCE_CODE_PROPERTY_MODEL, _TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
     def to_json(self, *, profile=None):
@@ -73,26 +87,26 @@ class PaymentAttempt:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "payment" in kwargs and "payment" not in kwargs:
-            kwargs["payment"] = kwargs.pop("payment")
-        if "reference_code" in kwargs and "referenceCode" not in kwargs:
-            kwargs["referenceCode"] = kwargs.pop("reference_code")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.PAYMENT_PROPERTY_COLUMN in kwargs and _TeaqlFields.PAYMENT_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.PAYMENT_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.PAYMENT_PROPERTY_COLUMN)
+        if _TeaqlFields.REFERENCE_CODE_PROPERTY_COLUMN in kwargs and _TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.REFERENCE_CODE_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "payment", "referenceCode", "version"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.PAYMENT_PROPERTY_MEMBER, _TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.payment = kwargs.get("payment")
+        self.payment = kwargs.get(_TeaqlFields.PAYMENT_PROPERTY_MEMBER)
 
-        self.referenceCode = kwargs.get("referenceCode")
+        self.referenceCode = kwargs.get(_TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.payment, dict):
             self.payment = Payment._teaql_from_record(**self.payment)
@@ -106,17 +120,17 @@ class PaymentAttempt:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "payment" in self._loaded_fields:
-            payload["payment"] = Value.I64(getattr(self.payment, "id", self.payment))
+        if _TeaqlFields.PAYMENT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PAYMENT_PROPERTY_COLUMN] = Value.I64(getattr(self.payment, "id", self.payment))
 
-        if "referenceCode" in self._loaded_fields:
-            payload["reference_code"] = Value.Text(self.referenceCode)
+        if _TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.REFERENCE_CODE_PROPERTY_COLUMN] = Value.Text(self.referenceCode)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -125,8 +139,8 @@ class PaymentAttempt:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "reference_code" in values:
-            value = values["reference_code"]
+        if _TeaqlFields.REFERENCE_CODE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.REFERENCE_CODE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.referenceCode = raw
 
@@ -171,14 +185,14 @@ class PaymentAttempt:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("PaymentAttempt", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
-                if "payment" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("payment"), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
-                if "referenceCode" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("reference_code"), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
+                if _TeaqlFields.PAYMENT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PAYMENT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
+                if _TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.REFERENCE_CODE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -231,21 +245,21 @@ class PaymentAttempt:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "payment" in self._loaded_fields:
+        if _TeaqlFields.PAYMENT_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.payment
             reference_id = getattr(reference, "id", reference)
-            payload["payment"] = (Value.Object(reference)
+            payload[_TeaqlFields.PAYMENT_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "referenceCode" in self._loaded_fields:
-            payload["reference_code"] = Value.Text(self.referenceCode)
+        if _TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.REFERENCE_CODE_PROPERTY_COLUMN] = Value.Text(self.referenceCode)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -260,10 +274,10 @@ class PaymentAttempt:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "payment" in payload:
-            reference = payload["payment"].val
+        if _TeaqlFields.PAYMENT_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.PAYMENT_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["payment"] = Value.I64(reference.id)
+                payload[_TeaqlFields.PAYMENT_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("PaymentAttempt", payload)
         elif action == "Update":
@@ -289,14 +303,14 @@ class PaymentAttempt:
         session.capture_loaded_values("PaymentAttempt", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
-                if "payment" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("payment"), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
-                if "referenceCode" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("reference_code"), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
+                if _TeaqlFields.PAYMENT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PAYMENT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
+                if _TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.REFERENCE_CODE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PaymentAttempt")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -335,30 +349,30 @@ class PaymentAttempt:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "payment" in persisted:
-            self.payment = persisted["payment"]
-            self._loaded_fields.add("payment")
-        elif "payment" in persisted:
-            self.payment = persisted["payment"]
-            self._loaded_fields.add("payment")
-        if "reference_code" in persisted:
-            self.referenceCode = persisted["reference_code"]
-            self._loaded_fields.add("referenceCode")
-        elif "referenceCode" in persisted:
-            self.referenceCode = persisted["referenceCode"]
-            self._loaded_fields.add("referenceCode")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.PAYMENT_PROPERTY_COLUMN in persisted:
+            self.payment = persisted[_TeaqlFields.PAYMENT_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.PAYMENT_PROPERTY_MEMBER)
+        elif _TeaqlFields.PAYMENT_PROPERTY_MEMBER in persisted:
+            self.payment = persisted[_TeaqlFields.PAYMENT_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.PAYMENT_PROPERTY_MEMBER)
+        if _TeaqlFields.REFERENCE_CODE_PROPERTY_COLUMN in persisted:
+            self.referenceCode = persisted[_TeaqlFields.REFERENCE_CODE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER)
+        elif _TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER in persisted:
+            self.referenceCode = persisted[_TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -417,37 +431,37 @@ class PaymentAttempt:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_reference_code(self, value):
-        if "referenceCode" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.referenceCode, value):
+        if _TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.referenceCode, value):
             return self
         self.referenceCode = value
-        self._loaded_fields.add("referenceCode")
-        self._entity_root.set(self._teaql_entity_key(), "reference_code", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.REFERENCE_CODE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.REFERENCE_CODE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_payment(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.payment
         current_id = getattr(current, "id", current)
-        if "payment" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.PAYMENT_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.payment = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("payment")
-        self._entity_root.set(self._teaql_entity_key(), "payment",
+        self._loaded_fields.add(_TeaqlFields.PAYMENT_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.PAYMENT_PROPERTY_COLUMN,
             Value.Object(self.payment) if self.payment is not None and hasattr(self.payment, "id")
             else Value.from_any(self.payment))
         return self

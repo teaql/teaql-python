@@ -13,12 +13,26 @@ from copy import copy
 from models.tenant import Tenant
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    TENANT_PROPERTY_MEMBER = "tenant"
+    TENANT_PROPERTY_COLUMN = "tenant"
+    TENANT_PROPERTY_MODEL = "tenant"
+    REFERENCE_PROPERTY_MEMBER = "reference"
+    REFERENCE_PROPERTY_COLUMN = "reference"
+    REFERENCE_PROPERTY_MODEL = "reference"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class PurchaseOrder:
     _teaql_json_schema = EntityJSONSchema("PurchaseOrder", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("tenant", "tenant", "reference", factory=lambda: Tenant),
-        EntityJSONField("reference", "reference", "text"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.TENANT_PROPERTY_MODEL, _TeaqlFields.TENANT_PROPERTY_MEMBER, "reference", factory=lambda: Tenant),
+        EntityJSONField(_TeaqlFields.REFERENCE_PROPERTY_MODEL, _TeaqlFields.REFERENCE_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
         EntityJSONField("order_item_list", "_order_item_list", "many", factory=lambda: getattr(import_module("models.order_item"), "OrderItem"), loaded_name="order_item_list")
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
@@ -78,26 +92,26 @@ class PurchaseOrder:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "tenant" in kwargs and "tenant" not in kwargs:
-            kwargs["tenant"] = kwargs.pop("tenant")
-        if "reference" in kwargs and "reference" not in kwargs:
-            kwargs["reference"] = kwargs.pop("reference")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.TENANT_PROPERTY_COLUMN in kwargs and _TeaqlFields.TENANT_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.TENANT_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.TENANT_PROPERTY_COLUMN)
+        if _TeaqlFields.REFERENCE_PROPERTY_COLUMN in kwargs and _TeaqlFields.REFERENCE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.REFERENCE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "tenant", "reference", "version", "order_item_list"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.TENANT_PROPERTY_MEMBER, _TeaqlFields.REFERENCE_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER, "order_item_list"])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.tenant = kwargs.get("tenant")
+        self.tenant = kwargs.get(_TeaqlFields.TENANT_PROPERTY_MEMBER)
 
-        self.reference = kwargs.get("reference")
+        self.reference = kwargs.get(_TeaqlFields.REFERENCE_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.tenant, dict):
             self.tenant = Tenant._teaql_from_record(**self.tenant)
@@ -122,17 +136,17 @@ class PurchaseOrder:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "tenant" in self._loaded_fields:
-            payload["tenant"] = Value.I64(getattr(self.tenant, "id", self.tenant))
+        if _TeaqlFields.TENANT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.TENANT_PROPERTY_COLUMN] = Value.I64(getattr(self.tenant, "id", self.tenant))
 
-        if "reference" in self._loaded_fields:
-            payload["reference"] = Value.Text(self.reference)
+        if _TeaqlFields.REFERENCE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.REFERENCE_PROPERTY_COLUMN] = Value.Text(self.reference)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -141,8 +155,8 @@ class PurchaseOrder:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "reference" in values:
-            value = values["reference"]
+        if _TeaqlFields.REFERENCE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.REFERENCE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.reference = raw
 
@@ -189,14 +203,14 @@ class PurchaseOrder:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("PurchaseOrder", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "tenant" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("tenant"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "reference" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("reference"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.TENANT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.TENANT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.REFERENCE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.REFERENCE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -277,21 +291,21 @@ class PurchaseOrder:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "tenant" in self._loaded_fields:
+        if _TeaqlFields.TENANT_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.tenant
             reference_id = getattr(reference, "id", reference)
-            payload["tenant"] = (Value.Object(reference)
+            payload[_TeaqlFields.TENANT_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "reference" in self._loaded_fields:
-            payload["reference"] = Value.Text(self.reference)
+        if _TeaqlFields.REFERENCE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.REFERENCE_PROPERTY_COLUMN] = Value.Text(self.reference)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -306,10 +320,10 @@ class PurchaseOrder:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "tenant" in payload:
-            reference = payload["tenant"].val
+        if _TeaqlFields.TENANT_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.TENANT_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["tenant"] = Value.I64(reference.id)
+                payload[_TeaqlFields.TENANT_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("PurchaseOrder", payload)
         elif action == "Update":
@@ -335,14 +349,14 @@ class PurchaseOrder:
         session.capture_loaded_values("PurchaseOrder", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "tenant" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("tenant"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "reference" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("reference"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.TENANT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.TENANT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.REFERENCE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.REFERENCE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -395,30 +409,30 @@ class PurchaseOrder:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "tenant" in persisted:
-            self.tenant = persisted["tenant"]
-            self._loaded_fields.add("tenant")
-        elif "tenant" in persisted:
-            self.tenant = persisted["tenant"]
-            self._loaded_fields.add("tenant")
-        if "reference" in persisted:
-            self.reference = persisted["reference"]
-            self._loaded_fields.add("reference")
-        elif "reference" in persisted:
-            self.reference = persisted["reference"]
-            self._loaded_fields.add("reference")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.TENANT_PROPERTY_COLUMN in persisted:
+            self.tenant = persisted[_TeaqlFields.TENANT_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.TENANT_PROPERTY_MEMBER)
+        elif _TeaqlFields.TENANT_PROPERTY_MEMBER in persisted:
+            self.tenant = persisted[_TeaqlFields.TENANT_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.TENANT_PROPERTY_MEMBER)
+        if _TeaqlFields.REFERENCE_PROPERTY_COLUMN in persisted:
+            self.reference = persisted[_TeaqlFields.REFERENCE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.REFERENCE_PROPERTY_MEMBER)
+        elif _TeaqlFields.REFERENCE_PROPERTY_MEMBER in persisted:
+            self.reference = persisted[_TeaqlFields.REFERENCE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.REFERENCE_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -478,37 +492,37 @@ class PurchaseOrder:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_reference(self, value):
-        if "reference" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.reference, value):
+        if _TeaqlFields.REFERENCE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.reference, value):
             return self
         self.reference = value
-        self._loaded_fields.add("reference")
-        self._entity_root.set(self._teaql_entity_key(), "reference", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.REFERENCE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.REFERENCE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_tenant(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.tenant
         current_id = getattr(current, "id", current)
-        if "tenant" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.TENANT_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.tenant = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("tenant")
-        self._entity_root.set(self._teaql_entity_key(), "tenant",
+        self._loaded_fields.add(_TeaqlFields.TENANT_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.TENANT_PROPERTY_COLUMN,
             Value.Object(self.tenant) if self.tenant is not None and hasattr(self.tenant, "id")
             else Value.from_any(self.tenant))
         return self

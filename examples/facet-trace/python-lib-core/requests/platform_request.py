@@ -13,7 +13,7 @@ from teaql.core.expr import (
     not_contain, not_end_with, not_in_list, not_in_subquery, value,
     sound_like,
 )
-from models.platform import Platform
+from models.platform import _TeaqlFields, Platform
 from typing import Protocol
 
 class QuerySelection(Protocol):
@@ -92,398 +92,398 @@ class PlatformRequest:
         return self
 
     def select_self_fields(self):
-        self.query.project("id", "name", "base_url", "create_time", "update_time", "version")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN, _TeaqlFields.NAME_PROPERTY_COLUMN, _TeaqlFields.BASE_URL_PROPERTY_COLUMN, _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, _TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, _TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_id(self):
-        self.query.project("id")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def select_name(self):
-        self.query.project("name")
+        self.query.project(_TeaqlFields.NAME_PROPERTY_COLUMN)
         return self
 
     def select_base_url(self):
-        self.query.project("base_url")
+        self.query.project(_TeaqlFields.BASE_URL_PROPERTY_COLUMN)
         return self
 
     def select_create_time(self):
-        self.query.project("create_time")
+        self.query.project(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
         return self
 
     def select_update_time(self):
-        self.query.project("update_time")
+        self.query.project(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
         return self
 
     def select_version(self):
-        self.query.project("version")
+        self.query.project(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
 
     def with_id_is(self, val):
-        self.query.and_filter(eq("id", val))
+        self.query.and_filter(eq(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_is_not(self, val):
-        self.query.and_filter(ne("id", val))
+        self.query.and_filter(ne(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_in(self, *vals):
-        self.query.and_filter(in_list("id", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_not_in(self, *vals):
-        self.query.and_filter(not_in_list("id", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_greater_than(self, val):
-        self.query.and_filter(gt("id", val))
+        self.query.and_filter(gt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("id", val))
+        self.query.and_filter(gte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than(self, val):
-        self.query.and_filter(lt("id", val))
+        self.query.and_filter(lt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("id", val))
+        self.query.and_filter(lte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_between(self, lower, upper):
-        self.query.and_filter(between(column("id"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ID_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_id_is_known(self):
-        self.query.and_filter(is_not_null(column("id")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_id_is_unknown(self):
-        self.query.and_filter(is_null(column("id")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_name_containing(self, val: str):
-        self.query.and_filter(contain("name", val))
+        self.query.and_filter(contain(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_not_containing(self, val: str):
-        self.query.and_filter(not_contain("name", val))
+        self.query.and_filter(not_contain(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_starting_with(self, val: str):
-        self.query.and_filter(begin_with("name", val))
+        self.query.and_filter(begin_with(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("name", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_ending_with(self, val: str):
-        self.query.and_filter(end_with("name", val))
+        self.query.and_filter(end_with(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("name", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("name", val))
+        self.query.and_filter(sound_like(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_is(self, val: str):
-        self.query.and_filter(eq("name", val))
+        self.query.and_filter(eq(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
     def with_name_is_not(self, val):
-        self.query.and_filter(ne("name", val))
+        self.query.and_filter(ne(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_in(self, *vals):
-        self.query.and_filter(in_list("name", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.NAME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_name_not_in(self, *vals):
-        self.query.and_filter(not_in_list("name", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.NAME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_name_greater_than(self, val):
-        self.query.and_filter(gt("name", val))
+        self.query.and_filter(gt(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("name", val))
+        self.query.and_filter(gte(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_less_than(self, val):
-        self.query.and_filter(lt("name", val))
+        self.query.and_filter(lt(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("name", val))
+        self.query.and_filter(lte(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_between(self, lower, upper):
-        self.query.and_filter(between(column("name"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.NAME_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_name_is_known(self):
-        self.query.and_filter(is_not_null(column("name")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.NAME_PROPERTY_COLUMN)))
         return self
 
     def with_name_is_unknown(self):
-        self.query.and_filter(is_null(column("name")))
+        self.query.and_filter(is_null(column(_TeaqlFields.NAME_PROPERTY_COLUMN)))
         return self
 
     def with_base_url_containing(self, val: str):
-        self.query.and_filter(contain("base_url", val))
+        self.query.and_filter(contain(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
 
     def with_base_url_not_containing(self, val: str):
-        self.query.and_filter(not_contain("base_url", val))
+        self.query.and_filter(not_contain(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
 
     def with_base_url_starting_with(self, val: str):
-        self.query.and_filter(begin_with("base_url", val))
+        self.query.and_filter(begin_with(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
 
     def with_base_url_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("base_url", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
 
     def with_base_url_ending_with(self, val: str):
-        self.query.and_filter(end_with("base_url", val))
+        self.query.and_filter(end_with(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
 
     def with_base_url_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("base_url", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
 
     def with_base_url_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("base_url", val))
+        self.query.and_filter(sound_like(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
 
     def with_base_url_is(self, val: str):
-        self.query.and_filter(eq("base_url", val))
+        self.query.and_filter(eq(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
     def with_base_url_is_not(self, val):
-        self.query.and_filter(ne("base_url", val))
+        self.query.and_filter(ne(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
 
     def with_base_url_in(self, *vals):
-        self.query.and_filter(in_list("base_url", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_base_url_not_in(self, *vals):
-        self.query.and_filter(not_in_list("base_url", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_base_url_greater_than(self, val):
-        self.query.and_filter(gt("base_url", val))
+        self.query.and_filter(gt(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
 
     def with_base_url_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("base_url", val))
+        self.query.and_filter(gte(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
 
     def with_base_url_less_than(self, val):
-        self.query.and_filter(lt("base_url", val))
+        self.query.and_filter(lt(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
 
     def with_base_url_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("base_url", val))
+        self.query.and_filter(lte(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, val))
         return self
 
     def with_base_url_between(self, lower, upper):
-        self.query.and_filter(between(column("base_url"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.BASE_URL_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_base_url_is_known(self):
-        self.query.and_filter(is_not_null(column("base_url")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.BASE_URL_PROPERTY_COLUMN)))
         return self
 
     def with_base_url_is_unknown(self):
-        self.query.and_filter(is_null(column("base_url")))
+        self.query.and_filter(is_null(column(_TeaqlFields.BASE_URL_PROPERTY_COLUMN)))
         return self
 
     def with_create_time_is(self, val):
-        self.query.and_filter(eq("create_time", val))
+        self.query.and_filter(eq(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_is_not(self, val):
-        self.query.and_filter(ne("create_time", val))
+        self.query.and_filter(ne(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_in(self, *vals):
-        self.query.and_filter(in_list("create_time", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_create_time_not_in(self, *vals):
-        self.query.and_filter(not_in_list("create_time", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_create_time_greater_than(self, val):
-        self.query.and_filter(gt("create_time", val))
+        self.query.and_filter(gt(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("create_time", val))
+        self.query.and_filter(gte(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_less_than(self, val):
-        self.query.and_filter(lt("create_time", val))
+        self.query.and_filter(lt(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("create_time", val))
+        self.query.and_filter(lte(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_between(self, lower, upper):
-        self.query.and_filter(between(column("create_time"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_create_time_is_known(self):
-        self.query.and_filter(is_not_null(column("create_time")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_create_time_is_unknown(self):
-        self.query.and_filter(is_null(column("create_time")))
+        self.query.and_filter(is_null(column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_update_time_is(self, val):
-        self.query.and_filter(eq("update_time", val))
+        self.query.and_filter(eq(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_is_not(self, val):
-        self.query.and_filter(ne("update_time", val))
+        self.query.and_filter(ne(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_in(self, *vals):
-        self.query.and_filter(in_list("update_time", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_update_time_not_in(self, *vals):
-        self.query.and_filter(not_in_list("update_time", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_update_time_greater_than(self, val):
-        self.query.and_filter(gt("update_time", val))
+        self.query.and_filter(gt(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("update_time", val))
+        self.query.and_filter(gte(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_less_than(self, val):
-        self.query.and_filter(lt("update_time", val))
+        self.query.and_filter(lt(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("update_time", val))
+        self.query.and_filter(lte(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_between(self, lower, upper):
-        self.query.and_filter(between(column("update_time"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_update_time_is_known(self):
-        self.query.and_filter(is_not_null(column("update_time")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_update_time_is_unknown(self):
-        self.query.and_filter(is_null(column("update_time")))
+        self.query.and_filter(is_null(column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_version_is(self, val):
-        self.query.and_filter(eq("version", val))
+        self.query.and_filter(eq(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_is_not(self, val):
-        self.query.and_filter(ne("version", val))
+        self.query.and_filter(ne(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_in(self, *vals):
-        self.query.and_filter(in_list("version", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_not_in(self, *vals):
-        self.query.and_filter(not_in_list("version", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_greater_than(self, val):
-        self.query.and_filter(gt("version", val))
+        self.query.and_filter(gt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("version", val))
+        self.query.and_filter(gte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than(self, val):
-        self.query.and_filter(lt("version", val))
+        self.query.and_filter(lt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("version", val))
+        self.query.and_filter(lte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_between(self, lower, upper):
-        self.query.and_filter(between(column("version"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.VERSION_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_version_is_known(self):
-        self.query.and_filter(is_not_null(column("version")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def with_version_is_unknown(self):
-        self.query.and_filter(is_null(column("version")))
+        self.query.and_filter(is_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def order_by_id_ascending(self):
-        self.query.order_by("id", "asc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_id_descending(self):
-        self.query.order_by("id", "desc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_name_ascending(self):
-        self.query.order_by("name", "asc")
+        self.query.order_by(_TeaqlFields.NAME_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_name_descending(self):
-        self.query.order_by("name", "desc")
+        self.query.order_by(_TeaqlFields.NAME_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_base_url_ascending(self):
-        self.query.order_by("base_url", "asc")
+        self.query.order_by(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_base_url_descending(self):
-        self.query.order_by("base_url", "desc")
+        self.query.order_by(_TeaqlFields.BASE_URL_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_create_time_ascending(self):
-        self.query.order_by("create_time", "asc")
+        self.query.order_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_create_time_descending(self):
-        self.query.order_by("create_time", "desc")
+        self.query.order_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_update_time_ascending(self):
-        self.query.order_by("update_time", "asc")
+        self.query.order_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_update_time_descending(self):
-        self.query.order_by("update_time", "desc")
+        self.query.order_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_version_ascending(self):
-        self.query.order_by("version", "asc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_version_descending(self):
-        self.query.order_by("version", "desc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "desc")
         return self
 
 
@@ -500,52 +500,52 @@ class PlatformRequest:
         return self
 
     def group_by_id(self):
-        self.query.group_by("id")
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ID_PROPERTY_COLUMN))
         return self
     def group_by_name(self):
-        self.query.group_by("name")
+        self.query.group_by(_TeaqlFields.NAME_PROPERTY_COLUMN)
         return self
 
     def group_by_name_as(self, ret_name: str):
-        self.query.group_by("name")
-        self.query.project_expr(ret_name, column("name"))
+        self.query.group_by(_TeaqlFields.NAME_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.NAME_PROPERTY_COLUMN))
         return self
     def group_by_base_url(self):
-        self.query.group_by("base_url")
+        self.query.group_by(_TeaqlFields.BASE_URL_PROPERTY_COLUMN)
         return self
 
     def group_by_base_url_as(self, ret_name: str):
-        self.query.group_by("base_url")
-        self.query.project_expr(ret_name, column("base_url"))
+        self.query.group_by(_TeaqlFields.BASE_URL_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.BASE_URL_PROPERTY_COLUMN))
         return self
     def group_by_create_time(self):
-        self.query.group_by("create_time")
+        self.query.group_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
         return self
 
     def group_by_create_time_as(self, ret_name: str):
-        self.query.group_by("create_time")
-        self.query.project_expr(ret_name, column("create_time"))
+        self.query.group_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN))
         return self
     def group_by_update_time(self):
-        self.query.group_by("update_time")
+        self.query.group_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
         return self
 
     def group_by_update_time_as(self, ret_name: str):
-        self.query.group_by("update_time")
-        self.query.project_expr(ret_name, column("update_time"))
+        self.query.group_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN))
         return self
     def group_by_version(self):
-        self.query.group_by("version")
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.VERSION_PROPERTY_COLUMN))
         return self
     def select_school_type_list(self):
         from requests.school_type_request import SchoolTypeRequest

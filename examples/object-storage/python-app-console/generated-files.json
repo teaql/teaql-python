@@ -1,23 +1,10 @@
 {
   "AGENTS.md": "b01ab6aeff4242b8d5f1ec669cdc5de856e3103a94d743c5c0439794fd409ea1",
-  "E.py": "32a3e67487cf5457440410cff11b300dcf0e9d11341bf486821282e600e69ae9",
-  "Q.py": "b0440095b70fa17c6cde14545fff43c934866d7dda859873dffaca2a0566160a",
-  "README.md": "8b20ab2f9cf4ea4d762e0033b07deac13b71bef5d25f13bdd710dfe416a52faf",
+  "README.md": "828ac17bb612b58fb1449bf50110d6a7e044d5da846d5409e9a8d9628c4f3e9f",
   "STANDARD_TELEMETRY.md": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
   "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "app/main.py": "ad03fcee063780feb5cdb977372f8846d467e2e74ab935aad98c3c553ab390b3",
-  "generated_search_models.py": "ca8c3d9be9619d1f6668376a1902d6f94a6613bd8fef86e6bdcc388a5fe16587",
-  "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "models/commerce_platform.py": "b88c9816b5d05bab49cc09bc7479e0a0a6932b09f4c40f1951f8d25cc308f7f1",
-  "models/customer_order.py": "fa5bb5f5ca30b514ebe8788e5270eb1e21376364226b516c2a15569bdf968bb3",
-  "models/order_attachment.py": "f0369d718d1af67c1ab5a12c9d41683fefa892087ebe4b0463e8610b22f06a90",
-  "pyproject.toml": "b8e302aa30914b7961ef917bbd5c5eae5463506292c53f1dd509baf5eb45af5e",
-  "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "requests/commerce_platform_request.py": "3dabf7ad49e191eeb19277e4a301f4d565c98715ef0d2cc98ed7d8daee982134",
-  "requests/customer_order_request.py": "fce5ae126881b3dc081c54cfc2d1504bec98c7399f184a634d6e45476bb1b2bc",
-  "requests/order_attachment_request.py": "5e597f50cb4c925e5e4af252320538f32b1dc65aee058a2f055a4cf8ce0ed090",
-  "runtime_module.py": "b75161cec9e87f2902a0729695371099354e76ab34f83d7936359ff55fd2b83d",
+  "app/main.py": "ee7661c16bb9f462288a50c56b3f43509ac85c449c7221e6f4144306f312b87a",
   "teaql-i18n.json": "eeb37cccbb0d33b8881143eae771aa0eff562809ab979e8f3f683f2bb1adea43",
   "teaql/checker-model.json": "df32a45460acd902f21cd94af108f91fb0063d9f568418eb7195f36ff5edf278",
-  "teaql/model-provenance.json": "4300c761723e3456ca6680efa7115151f2a16984473cb026ca51a7a3e832198e"
+  "teaql/model-provenance.json": "cdfaa06a5ae0f03e808477124e7d4d362fba3395d7bade8185d8be323f9f85b1"
 }

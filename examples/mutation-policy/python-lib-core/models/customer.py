@@ -13,12 +13,26 @@ from copy import copy
 from models.platform import Platform
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    PLATFORM_PROPERTY_MEMBER = "platform"
+    PLATFORM_PROPERTY_COLUMN = "platform"
+    PLATFORM_PROPERTY_MODEL = "platform"
+    EMAIL_PROPERTY_MEMBER = "email"
+    EMAIL_PROPERTY_COLUMN = "email"
+    EMAIL_PROPERTY_MODEL = "email"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class Customer:
     _teaql_json_schema = EntityJSONSchema("Customer", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("platform", "platform", "reference", factory=lambda: Platform),
-        EntityJSONField("email", "email", "text"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.PLATFORM_PROPERTY_MODEL, _TeaqlFields.PLATFORM_PROPERTY_MEMBER, "reference", factory=lambda: Platform),
+        EntityJSONField(_TeaqlFields.EMAIL_PROPERTY_MODEL, _TeaqlFields.EMAIL_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
         EntityJSONField("customer_contact_list", "_customer_contact_list", "many", factory=lambda: getattr(import_module("models.customer_contact"), "CustomerContact"), loaded_name="customer_contact_list")
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
@@ -78,26 +92,26 @@ class Customer:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "platform" in kwargs and "platform" not in kwargs:
-            kwargs["platform"] = kwargs.pop("platform")
-        if "email" in kwargs and "email" not in kwargs:
-            kwargs["email"] = kwargs.pop("email")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in kwargs and _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.PLATFORM_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)
+        if _TeaqlFields.EMAIL_PROPERTY_COLUMN in kwargs and _TeaqlFields.EMAIL_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.EMAIL_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.EMAIL_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "platform", "email", "version", "customer_contact_list"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.PLATFORM_PROPERTY_MEMBER, _TeaqlFields.EMAIL_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER, "customer_contact_list"])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.platform = kwargs.get("platform")
+        self.platform = kwargs.get(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
 
-        self.email = kwargs.get("email")
+        self.email = kwargs.get(_TeaqlFields.EMAIL_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.platform, dict):
             self.platform = Platform._teaql_from_record(**self.platform)
@@ -122,17 +136,17 @@ class Customer:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "platform" in self._loaded_fields:
-            payload["platform"] = Value.I64(getattr(self.platform, "id", self.platform))
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = Value.I64(getattr(self.platform, "id", self.platform))
 
-        if "email" in self._loaded_fields:
-            payload["email"] = Value.Text(self.email)
+        if _TeaqlFields.EMAIL_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.EMAIL_PROPERTY_COLUMN] = Value.Text(self.email)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -141,8 +155,8 @@ class Customer:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "email" in values:
-            value = values["email"]
+        if _TeaqlFields.EMAIL_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.EMAIL_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.email = raw
 
@@ -189,14 +203,14 @@ class Customer:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("Customer", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="Customer")])
-                if "platform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("platform"), message="Mutation requires a fully loaded entity", entity_type="Customer")])
-                if "email" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("email"), message="Mutation requires a fully loaded entity", entity_type="Customer")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="Customer")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Customer")])
+                if _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PLATFORM_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Customer")])
+                if _TeaqlFields.EMAIL_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.EMAIL_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Customer")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Customer")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -277,21 +291,21 @@ class Customer:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "platform" in self._loaded_fields:
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.platform
             reference_id = getattr(reference, "id", reference)
-            payload["platform"] = (Value.Object(reference)
+            payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "email" in self._loaded_fields:
-            payload["email"] = Value.Text(self.email)
+        if _TeaqlFields.EMAIL_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.EMAIL_PROPERTY_COLUMN] = Value.Text(self.email)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -306,10 +320,10 @@ class Customer:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "platform" in payload:
-            reference = payload["platform"].val
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["platform"] = Value.I64(reference.id)
+                payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("Customer", payload)
         elif action == "Update":
@@ -335,14 +349,14 @@ class Customer:
         session.capture_loaded_values("Customer", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="Customer")])
-                if "platform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("platform"), message="Mutation requires a fully loaded entity", entity_type="Customer")])
-                if "email" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("email"), message="Mutation requires a fully loaded entity", entity_type="Customer")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="Customer")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Customer")])
+                if _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PLATFORM_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Customer")])
+                if _TeaqlFields.EMAIL_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.EMAIL_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Customer")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="Customer")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -395,30 +409,30 @@ class Customer:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "platform" in persisted:
-            self.platform = persisted["platform"]
-            self._loaded_fields.add("platform")
-        elif "platform" in persisted:
-            self.platform = persisted["platform"]
-            self._loaded_fields.add("platform")
-        if "email" in persisted:
-            self.email = persisted["email"]
-            self._loaded_fields.add("email")
-        elif "email" in persisted:
-            self.email = persisted["email"]
-            self._loaded_fields.add("email")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in persisted:
+            self.platform = persisted[_TeaqlFields.PLATFORM_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        elif _TeaqlFields.PLATFORM_PROPERTY_MEMBER in persisted:
+            self.platform = persisted[_TeaqlFields.PLATFORM_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        if _TeaqlFields.EMAIL_PROPERTY_COLUMN in persisted:
+            self.email = persisted[_TeaqlFields.EMAIL_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.EMAIL_PROPERTY_MEMBER)
+        elif _TeaqlFields.EMAIL_PROPERTY_MEMBER in persisted:
+            self.email = persisted[_TeaqlFields.EMAIL_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.EMAIL_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -478,37 +492,37 @@ class Customer:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_email(self, value):
-        if "email" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.email, value):
+        if _TeaqlFields.EMAIL_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.email, value):
             return self
         self.email = value
-        self._loaded_fields.add("email")
-        self._entity_root.set(self._teaql_entity_key(), "email", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.EMAIL_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.EMAIL_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_platform(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.platform
         current_id = getattr(current, "id", current)
-        if "platform" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.platform = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("platform")
-        self._entity_root.set(self._teaql_entity_key(), "platform",
+        self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.PLATFORM_PROPERTY_COLUMN,
             Value.Object(self.platform) if self.platform is not None and hasattr(self.platform, "id")
             else Value.from_any(self.platform))
         return self

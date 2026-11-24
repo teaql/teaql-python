@@ -13,12 +13,26 @@ from copy import copy
 from models.customer import Customer
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    CUSTOMER_PROPERTY_MEMBER = "customer"
+    CUSTOMER_PROPERTY_COLUMN = "customer"
+    CUSTOMER_PROPERTY_MODEL = "customer"
+    CHANNEL_PROPERTY_MEMBER = "channel"
+    CHANNEL_PROPERTY_COLUMN = "channel"
+    CHANNEL_PROPERTY_MODEL = "channel"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class CustomerContact:
     _teaql_json_schema = EntityJSONSchema("CustomerContact", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("customer", "customer", "reference", factory=lambda: Customer),
-        EntityJSONField("channel", "channel", "text"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.CUSTOMER_PROPERTY_MODEL, _TeaqlFields.CUSTOMER_PROPERTY_MEMBER, "reference", factory=lambda: Customer),
+        EntityJSONField(_TeaqlFields.CHANNEL_PROPERTY_MODEL, _TeaqlFields.CHANNEL_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
     def to_json(self, *, profile=None):
@@ -73,26 +87,26 @@ class CustomerContact:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "customer" in kwargs and "customer" not in kwargs:
-            kwargs["customer"] = kwargs.pop("customer")
-        if "channel" in kwargs and "channel" not in kwargs:
-            kwargs["channel"] = kwargs.pop("channel")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.CUSTOMER_PROPERTY_COLUMN in kwargs and _TeaqlFields.CUSTOMER_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CUSTOMER_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CUSTOMER_PROPERTY_COLUMN)
+        if _TeaqlFields.CHANNEL_PROPERTY_COLUMN in kwargs and _TeaqlFields.CHANNEL_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CHANNEL_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CHANNEL_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "customer", "channel", "version"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.CUSTOMER_PROPERTY_MEMBER, _TeaqlFields.CHANNEL_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.customer = kwargs.get("customer")
+        self.customer = kwargs.get(_TeaqlFields.CUSTOMER_PROPERTY_MEMBER)
 
-        self.channel = kwargs.get("channel")
+        self.channel = kwargs.get(_TeaqlFields.CHANNEL_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.customer, dict):
             self.customer = Customer._teaql_from_record(**self.customer)
@@ -106,17 +120,17 @@ class CustomerContact:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "customer" in self._loaded_fields:
-            payload["customer"] = Value.I64(getattr(self.customer, "id", self.customer))
+        if _TeaqlFields.CUSTOMER_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CUSTOMER_PROPERTY_COLUMN] = Value.I64(getattr(self.customer, "id", self.customer))
 
-        if "channel" in self._loaded_fields:
-            payload["channel"] = Value.Text(self.channel)
+        if _TeaqlFields.CHANNEL_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CHANNEL_PROPERTY_COLUMN] = Value.Text(self.channel)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -125,8 +139,8 @@ class CustomerContact:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "channel" in values:
-            value = values["channel"]
+        if _TeaqlFields.CHANNEL_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.CHANNEL_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.channel = raw
 
@@ -171,14 +185,14 @@ class CustomerContact:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("CustomerContact", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
-                if "customer" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("customer"), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
-                if "channel" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("channel"), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
+                if _TeaqlFields.CUSTOMER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CUSTOMER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
+                if _TeaqlFields.CHANNEL_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CHANNEL_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -231,21 +245,21 @@ class CustomerContact:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "customer" in self._loaded_fields:
+        if _TeaqlFields.CUSTOMER_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.customer
             reference_id = getattr(reference, "id", reference)
-            payload["customer"] = (Value.Object(reference)
+            payload[_TeaqlFields.CUSTOMER_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "channel" in self._loaded_fields:
-            payload["channel"] = Value.Text(self.channel)
+        if _TeaqlFields.CHANNEL_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CHANNEL_PROPERTY_COLUMN] = Value.Text(self.channel)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -260,10 +274,10 @@ class CustomerContact:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "customer" in payload:
-            reference = payload["customer"].val
+        if _TeaqlFields.CUSTOMER_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.CUSTOMER_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["customer"] = Value.I64(reference.id)
+                payload[_TeaqlFields.CUSTOMER_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("CustomerContact", payload)
         elif action == "Update":
@@ -289,14 +303,14 @@ class CustomerContact:
         session.capture_loaded_values("CustomerContact", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
-                if "customer" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("customer"), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
-                if "channel" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("channel"), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
+                if _TeaqlFields.CUSTOMER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CUSTOMER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
+                if _TeaqlFields.CHANNEL_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CHANNEL_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="CustomerContact")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -335,30 +349,30 @@ class CustomerContact:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "customer" in persisted:
-            self.customer = persisted["customer"]
-            self._loaded_fields.add("customer")
-        elif "customer" in persisted:
-            self.customer = persisted["customer"]
-            self._loaded_fields.add("customer")
-        if "channel" in persisted:
-            self.channel = persisted["channel"]
-            self._loaded_fields.add("channel")
-        elif "channel" in persisted:
-            self.channel = persisted["channel"]
-            self._loaded_fields.add("channel")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.CUSTOMER_PROPERTY_COLUMN in persisted:
+            self.customer = persisted[_TeaqlFields.CUSTOMER_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CUSTOMER_PROPERTY_MEMBER)
+        elif _TeaqlFields.CUSTOMER_PROPERTY_MEMBER in persisted:
+            self.customer = persisted[_TeaqlFields.CUSTOMER_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CUSTOMER_PROPERTY_MEMBER)
+        if _TeaqlFields.CHANNEL_PROPERTY_COLUMN in persisted:
+            self.channel = persisted[_TeaqlFields.CHANNEL_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CHANNEL_PROPERTY_MEMBER)
+        elif _TeaqlFields.CHANNEL_PROPERTY_MEMBER in persisted:
+            self.channel = persisted[_TeaqlFields.CHANNEL_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CHANNEL_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -417,37 +431,37 @@ class CustomerContact:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_channel(self, value):
-        if "channel" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.channel, value):
+        if _TeaqlFields.CHANNEL_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.channel, value):
             return self
         self.channel = value
-        self._loaded_fields.add("channel")
-        self._entity_root.set(self._teaql_entity_key(), "channel", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.CHANNEL_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CHANNEL_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_customer(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.customer
         current_id = getattr(current, "id", current)
-        if "customer" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.CUSTOMER_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.customer = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("customer")
-        self._entity_root.set(self._teaql_entity_key(), "customer",
+        self._loaded_fields.add(_TeaqlFields.CUSTOMER_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CUSTOMER_PROPERTY_COLUMN,
             Value.Object(self.customer) if self.customer is not None and hasattr(self.customer, "id")
             else Value.from_any(self.customer))
         return self

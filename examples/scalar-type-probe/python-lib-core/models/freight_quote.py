@@ -13,19 +13,54 @@ from copy import copy
 from models.platform import Platform
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    PLATFORM_PROPERTY_MEMBER = "platform"
+    PLATFORM_PROPERTY_COLUMN = "platform"
+    PLATFORM_PROPERTY_MODEL = "platform"
+    REFERENCE_PROPERTY_MEMBER = "reference"
+    REFERENCE_PROPERTY_COLUMN = "reference"
+    REFERENCE_PROPERTY_MODEL = "reference"
+    AMOUNT_PROPERTY_MEMBER = "amount"
+    AMOUNT_PROPERTY_COLUMN = "amount"
+    AMOUNT_PROPERTY_MODEL = "amount"
+    SHIPMENT_NUMBER_PROPERTY_MEMBER = "shipmentNumber"
+    SHIPMENT_NUMBER_PROPERTY_COLUMN = "shipment_number"
+    SHIPMENT_NUMBER_PROPERTY_MODEL = "shipment_number"
+    PACKAGE_COUNT_PROPERTY_MEMBER = "packageCount"
+    PACKAGE_COUNT_PROPERTY_COLUMN = "package_count"
+    PACKAGE_COUNT_PROPERTY_MODEL = "package_count"
+    DELIVERY_DATE_PROPERTY_MEMBER = "deliveryDate"
+    DELIVERY_DATE_PROPERTY_COLUMN = "delivery_date"
+    DELIVERY_DATE_PROPERTY_MODEL = "delivery_date"
+    PICKUP_TIME_PROPERTY_MEMBER = "pickupTime"
+    PICKUP_TIME_PROPERTY_COLUMN = "pickup_time"
+    PICKUP_TIME_PROPERTY_MODEL = "pickup_time"
+    QUOTED_AT_PROPERTY_MEMBER = "quotedAt"
+    QUOTED_AT_PROPERTY_COLUMN = "quoted_at"
+    QUOTED_AT_PROPERTY_MODEL = "quoted_at"
+    INSTRUCTIONS_PROPERTY_MEMBER = "instructions"
+    INSTRUCTIONS_PROPERTY_COLUMN = "instructions"
+    INSTRUCTIONS_PROPERTY_MODEL = "instructions"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class FreightQuote:
     _teaql_json_schema = EntityJSONSchema("FreightQuote", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("platform", "platform", "reference", factory=lambda: Platform),
-        EntityJSONField("reference", "reference", "text"),
-        EntityJSONField("amount", "amount", "decimal"),
-        EntityJSONField("shipment_number", "shipmentNumber", "long"),
-        EntityJSONField("package_count", "packageCount", "integer"),
-        EntityJSONField("delivery_date", "deliveryDate", "date"),
-        EntityJSONField("pickup_time", "pickupTime", "time"),
-        EntityJSONField("quoted_at", "quotedAt", "datetime"),
-        EntityJSONField("instructions", "instructions", "text"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.PLATFORM_PROPERTY_MODEL, _TeaqlFields.PLATFORM_PROPERTY_MEMBER, "reference", factory=lambda: Platform),
+        EntityJSONField(_TeaqlFields.REFERENCE_PROPERTY_MODEL, _TeaqlFields.REFERENCE_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.AMOUNT_PROPERTY_MODEL, _TeaqlFields.AMOUNT_PROPERTY_MEMBER, "decimal"),
+        EntityJSONField(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MODEL, _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER, "long"),
+        EntityJSONField(_TeaqlFields.PACKAGE_COUNT_PROPERTY_MODEL, _TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER, "integer"),
+        EntityJSONField(_TeaqlFields.DELIVERY_DATE_PROPERTY_MODEL, _TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER, "date"),
+        EntityJSONField(_TeaqlFields.PICKUP_TIME_PROPERTY_MODEL, _TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER, "time"),
+        EntityJSONField(_TeaqlFields.QUOTED_AT_PROPERTY_MODEL, _TeaqlFields.QUOTED_AT_PROPERTY_MEMBER, "datetime"),
+        EntityJSONField(_TeaqlFields.INSTRUCTIONS_PROPERTY_MODEL, _TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
     def to_json(self, *, profile=None):
@@ -80,54 +115,54 @@ class FreightQuote:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "platform" in kwargs and "platform" not in kwargs:
-            kwargs["platform"] = kwargs.pop("platform")
-        if "reference" in kwargs and "reference" not in kwargs:
-            kwargs["reference"] = kwargs.pop("reference")
-        if "amount" in kwargs and "amount" not in kwargs:
-            kwargs["amount"] = kwargs.pop("amount")
-        if "shipment_number" in kwargs and "shipmentNumber" not in kwargs:
-            kwargs["shipmentNumber"] = kwargs.pop("shipment_number")
-        if "package_count" in kwargs and "packageCount" not in kwargs:
-            kwargs["packageCount"] = kwargs.pop("package_count")
-        if "delivery_date" in kwargs and "deliveryDate" not in kwargs:
-            kwargs["deliveryDate"] = kwargs.pop("delivery_date")
-        if "pickup_time" in kwargs and "pickupTime" not in kwargs:
-            kwargs["pickupTime"] = kwargs.pop("pickup_time")
-        if "quoted_at" in kwargs and "quotedAt" not in kwargs:
-            kwargs["quotedAt"] = kwargs.pop("quoted_at")
-        if "instructions" in kwargs and "instructions" not in kwargs:
-            kwargs["instructions"] = kwargs.pop("instructions")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in kwargs and _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.PLATFORM_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)
+        if _TeaqlFields.REFERENCE_PROPERTY_COLUMN in kwargs and _TeaqlFields.REFERENCE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.REFERENCE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)
+        if _TeaqlFields.AMOUNT_PROPERTY_COLUMN in kwargs and _TeaqlFields.AMOUNT_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.AMOUNT_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.AMOUNT_PROPERTY_COLUMN)
+        if _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN in kwargs and _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN)
+        if _TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN in kwargs and _TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN)
+        if _TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN in kwargs and _TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN)
+        if _TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN in kwargs and _TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN)
+        if _TeaqlFields.QUOTED_AT_PROPERTY_COLUMN in kwargs and _TeaqlFields.QUOTED_AT_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.QUOTED_AT_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN)
+        if _TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN in kwargs and _TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "platform", "reference", "amount", "shipmentNumber", "packageCount", "deliveryDate", "pickupTime", "quotedAt", "instructions", "version"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.PLATFORM_PROPERTY_MEMBER, _TeaqlFields.REFERENCE_PROPERTY_MEMBER, _TeaqlFields.AMOUNT_PROPERTY_MEMBER, _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER, _TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER, _TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER, _TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER, _TeaqlFields.QUOTED_AT_PROPERTY_MEMBER, _TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.platform = kwargs.get("platform")
+        self.platform = kwargs.get(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
 
-        self.reference = kwargs.get("reference")
+        self.reference = kwargs.get(_TeaqlFields.REFERENCE_PROPERTY_MEMBER)
 
-        self.amount = kwargs.get("amount")
+        self.amount = kwargs.get(_TeaqlFields.AMOUNT_PROPERTY_MEMBER)
 
-        self.shipmentNumber = kwargs.get("shipmentNumber")
+        self.shipmentNumber = kwargs.get(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER)
 
-        self.packageCount = kwargs.get("packageCount")
+        self.packageCount = kwargs.get(_TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER)
 
-        self.deliveryDate = kwargs.get("deliveryDate")
+        self.deliveryDate = kwargs.get(_TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER)
 
-        self.pickupTime = kwargs.get("pickupTime")
+        self.pickupTime = kwargs.get(_TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER)
 
-        self.quotedAt = kwargs.get("quotedAt")
+        self.quotedAt = kwargs.get(_TeaqlFields.QUOTED_AT_PROPERTY_MEMBER)
 
-        self.instructions = kwargs.get("instructions")
+        self.instructions = kwargs.get(_TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.platform, dict):
             self.platform = Platform._teaql_from_record(**self.platform)
@@ -141,38 +176,38 @@ class FreightQuote:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "platform" in self._loaded_fields:
-            payload["platform"] = Value.I64(getattr(self.platform, "id", self.platform))
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = Value.I64(getattr(self.platform, "id", self.platform))
 
-        if "reference" in self._loaded_fields:
-            payload["reference"] = Value.Text(self.reference)
+        if _TeaqlFields.REFERENCE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.REFERENCE_PROPERTY_COLUMN] = Value.Text(self.reference)
 
-        if "amount" in self._loaded_fields:
-            payload["amount"] = Value.Decimal(self.amount)
+        if _TeaqlFields.AMOUNT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.AMOUNT_PROPERTY_COLUMN] = Value.Decimal(self.amount)
 
-        if "shipmentNumber" in self._loaded_fields:
-            payload["shipment_number"] = Value.I64(self.shipmentNumber)
+        if _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN] = Value.I64(self.shipmentNumber)
 
-        if "packageCount" in self._loaded_fields:
-            payload["package_count"] = Value.I64(self.packageCount)
+        if _TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN] = Value.I64(self.packageCount)
 
-        if "deliveryDate" in self._loaded_fields:
-            payload["delivery_date"] = Value.Date(self.deliveryDate)
+        if _TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN] = Value.Date(self.deliveryDate)
 
-        if "pickupTime" in self._loaded_fields:
-            payload["pickup_time"] = Value.Time(self.pickupTime)
+        if _TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN] = Value.Time(self.pickupTime)
 
-        if "quotedAt" in self._loaded_fields:
-            payload["quoted_at"] = Value.DateTime(self.quotedAt)
+        if _TeaqlFields.QUOTED_AT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN] = Value.DateTime(self.quotedAt)
 
-        if "instructions" in self._loaded_fields:
-            payload["instructions"] = Value.Text(self.instructions)
+        if _TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN] = Value.Text(self.instructions)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -181,43 +216,43 @@ class FreightQuote:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "reference" in values:
-            value = values["reference"]
+        if _TeaqlFields.REFERENCE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.REFERENCE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.reference = raw
 
-        if "amount" in values:
-            value = values["amount"]
+        if _TeaqlFields.AMOUNT_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.AMOUNT_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.amount = raw
 
-        if "shipment_number" in values:
-            value = values["shipment_number"]
+        if _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.shipmentNumber = raw
 
-        if "package_count" in values:
-            value = values["package_count"]
+        if _TeaqlFields.PACKAGE_COUNT_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.PACKAGE_COUNT_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.packageCount = raw
 
-        if "delivery_date" in values:
-            value = values["delivery_date"]
+        if _TeaqlFields.DELIVERY_DATE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.DELIVERY_DATE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.deliveryDate = raw
 
-        if "pickup_time" in values:
-            value = values["pickup_time"]
+        if _TeaqlFields.PICKUP_TIME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.PICKUP_TIME_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.pickupTime = raw
 
-        if "quoted_at" in values:
-            value = values["quoted_at"]
+        if _TeaqlFields.QUOTED_AT_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.QUOTED_AT_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.quotedAt = raw
 
-        if "instructions" in values:
-            value = values["instructions"]
+        if _TeaqlFields.INSTRUCTIONS_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.INSTRUCTIONS_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.instructions = raw
 
@@ -262,28 +297,28 @@ class FreightQuote:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("FreightQuote", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "platform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("platform"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "reference" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("reference"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "amount" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("amount"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "shipmentNumber" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("shipment_number"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "packageCount" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("package_count"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "deliveryDate" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("delivery_date"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "pickupTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("pickup_time"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "quotedAt" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("quoted_at"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "instructions" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("instructions"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PLATFORM_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.REFERENCE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.REFERENCE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.AMOUNT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.AMOUNT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PACKAGE_COUNT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.DELIVERY_DATE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PICKUP_TIME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.QUOTED_AT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.QUOTED_AT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.INSTRUCTIONS_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -336,42 +371,42 @@ class FreightQuote:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "platform" in self._loaded_fields:
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.platform
             reference_id = getattr(reference, "id", reference)
-            payload["platform"] = (Value.Object(reference)
+            payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "reference" in self._loaded_fields:
-            payload["reference"] = Value.Text(self.reference)
+        if _TeaqlFields.REFERENCE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.REFERENCE_PROPERTY_COLUMN] = Value.Text(self.reference)
 
-        if "amount" in self._loaded_fields:
-            payload["amount"] = Value.Decimal(self.amount)
+        if _TeaqlFields.AMOUNT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.AMOUNT_PROPERTY_COLUMN] = Value.Decimal(self.amount)
 
-        if "shipmentNumber" in self._loaded_fields:
-            payload["shipment_number"] = Value.I64(self.shipmentNumber)
+        if _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN] = Value.I64(self.shipmentNumber)
 
-        if "packageCount" in self._loaded_fields:
-            payload["package_count"] = Value.I64(self.packageCount)
+        if _TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN] = Value.I64(self.packageCount)
 
-        if "deliveryDate" in self._loaded_fields:
-            payload["delivery_date"] = Value.Date(self.deliveryDate)
+        if _TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN] = Value.Date(self.deliveryDate)
 
-        if "pickupTime" in self._loaded_fields:
-            payload["pickup_time"] = Value.Time(self.pickupTime)
+        if _TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN] = Value.Time(self.pickupTime)
 
-        if "quotedAt" in self._loaded_fields:
-            payload["quoted_at"] = Value.DateTime(self.quotedAt)
+        if _TeaqlFields.QUOTED_AT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN] = Value.DateTime(self.quotedAt)
 
-        if "instructions" in self._loaded_fields:
-            payload["instructions"] = Value.Text(self.instructions)
+        if _TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN] = Value.Text(self.instructions)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -386,10 +421,10 @@ class FreightQuote:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "platform" in payload:
-            reference = payload["platform"].val
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["platform"] = Value.I64(reference.id)
+                payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("FreightQuote", payload)
         elif action == "Update":
@@ -415,28 +450,28 @@ class FreightQuote:
         session.capture_loaded_values("FreightQuote", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "platform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("platform"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "reference" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("reference"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "amount" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("amount"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "shipmentNumber" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("shipment_number"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "packageCount" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("package_count"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "deliveryDate" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("delivery_date"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "pickupTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("pickup_time"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "quotedAt" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("quoted_at"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "instructions" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("instructions"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PLATFORM_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.REFERENCE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.REFERENCE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.AMOUNT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.AMOUNT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PACKAGE_COUNT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.DELIVERY_DATE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PICKUP_TIME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.QUOTED_AT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.QUOTED_AT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.INSTRUCTIONS_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="FreightQuote")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -475,72 +510,72 @@ class FreightQuote:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "platform" in persisted:
-            self.platform = persisted["platform"]
-            self._loaded_fields.add("platform")
-        elif "platform" in persisted:
-            self.platform = persisted["platform"]
-            self._loaded_fields.add("platform")
-        if "reference" in persisted:
-            self.reference = persisted["reference"]
-            self._loaded_fields.add("reference")
-        elif "reference" in persisted:
-            self.reference = persisted["reference"]
-            self._loaded_fields.add("reference")
-        if "amount" in persisted:
-            self.amount = persisted["amount"]
-            self._loaded_fields.add("amount")
-        elif "amount" in persisted:
-            self.amount = persisted["amount"]
-            self._loaded_fields.add("amount")
-        if "shipment_number" in persisted:
-            self.shipmentNumber = persisted["shipment_number"]
-            self._loaded_fields.add("shipmentNumber")
-        elif "shipmentNumber" in persisted:
-            self.shipmentNumber = persisted["shipmentNumber"]
-            self._loaded_fields.add("shipmentNumber")
-        if "package_count" in persisted:
-            self.packageCount = persisted["package_count"]
-            self._loaded_fields.add("packageCount")
-        elif "packageCount" in persisted:
-            self.packageCount = persisted["packageCount"]
-            self._loaded_fields.add("packageCount")
-        if "delivery_date" in persisted:
-            self.deliveryDate = persisted["delivery_date"]
-            self._loaded_fields.add("deliveryDate")
-        elif "deliveryDate" in persisted:
-            self.deliveryDate = persisted["deliveryDate"]
-            self._loaded_fields.add("deliveryDate")
-        if "pickup_time" in persisted:
-            self.pickupTime = persisted["pickup_time"]
-            self._loaded_fields.add("pickupTime")
-        elif "pickupTime" in persisted:
-            self.pickupTime = persisted["pickupTime"]
-            self._loaded_fields.add("pickupTime")
-        if "quoted_at" in persisted:
-            self.quotedAt = persisted["quoted_at"]
-            self._loaded_fields.add("quotedAt")
-        elif "quotedAt" in persisted:
-            self.quotedAt = persisted["quotedAt"]
-            self._loaded_fields.add("quotedAt")
-        if "instructions" in persisted:
-            self.instructions = persisted["instructions"]
-            self._loaded_fields.add("instructions")
-        elif "instructions" in persisted:
-            self.instructions = persisted["instructions"]
-            self._loaded_fields.add("instructions")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in persisted:
+            self.platform = persisted[_TeaqlFields.PLATFORM_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        elif _TeaqlFields.PLATFORM_PROPERTY_MEMBER in persisted:
+            self.platform = persisted[_TeaqlFields.PLATFORM_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        if _TeaqlFields.REFERENCE_PROPERTY_COLUMN in persisted:
+            self.reference = persisted[_TeaqlFields.REFERENCE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.REFERENCE_PROPERTY_MEMBER)
+        elif _TeaqlFields.REFERENCE_PROPERTY_MEMBER in persisted:
+            self.reference = persisted[_TeaqlFields.REFERENCE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.REFERENCE_PROPERTY_MEMBER)
+        if _TeaqlFields.AMOUNT_PROPERTY_COLUMN in persisted:
+            self.amount = persisted[_TeaqlFields.AMOUNT_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.AMOUNT_PROPERTY_MEMBER)
+        elif _TeaqlFields.AMOUNT_PROPERTY_MEMBER in persisted:
+            self.amount = persisted[_TeaqlFields.AMOUNT_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.AMOUNT_PROPERTY_MEMBER)
+        if _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN in persisted:
+            self.shipmentNumber = persisted[_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER)
+        elif _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER in persisted:
+            self.shipmentNumber = persisted[_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER)
+        if _TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN in persisted:
+            self.packageCount = persisted[_TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER)
+        elif _TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER in persisted:
+            self.packageCount = persisted[_TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER)
+        if _TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN in persisted:
+            self.deliveryDate = persisted[_TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER)
+        elif _TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER in persisted:
+            self.deliveryDate = persisted[_TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER)
+        if _TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN in persisted:
+            self.pickupTime = persisted[_TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER)
+        elif _TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER in persisted:
+            self.pickupTime = persisted[_TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER)
+        if _TeaqlFields.QUOTED_AT_PROPERTY_COLUMN in persisted:
+            self.quotedAt = persisted[_TeaqlFields.QUOTED_AT_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.QUOTED_AT_PROPERTY_MEMBER)
+        elif _TeaqlFields.QUOTED_AT_PROPERTY_MEMBER in persisted:
+            self.quotedAt = persisted[_TeaqlFields.QUOTED_AT_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.QUOTED_AT_PROPERTY_MEMBER)
+        if _TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN in persisted:
+            self.instructions = persisted[_TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER)
+        elif _TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER in persisted:
+            self.instructions = persisted[_TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -599,93 +634,93 @@ class FreightQuote:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_reference(self, value):
-        if "reference" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.reference, value):
+        if _TeaqlFields.REFERENCE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.reference, value):
             return self
         self.reference = value
-        self._loaded_fields.add("reference")
-        self._entity_root.set(self._teaql_entity_key(), "reference", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.REFERENCE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.REFERENCE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_amount(self, value):
-        if "amount" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.amount, value):
+        if _TeaqlFields.AMOUNT_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.amount, value):
             return self
         self.amount = value
-        self._loaded_fields.add("amount")
-        self._entity_root.set(self._teaql_entity_key(), "amount", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.AMOUNT_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.AMOUNT_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_shipment_number(self, value):
-        if "shipmentNumber" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.shipmentNumber, value):
+        if _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.shipmentNumber, value):
             return self
         self.shipmentNumber = value
-        self._loaded_fields.add("shipmentNumber")
-        self._entity_root.set(self._teaql_entity_key(), "shipment_number", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.SHIPMENT_NUMBER_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.SHIPMENT_NUMBER_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_package_count(self, value):
-        if "packageCount" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.packageCount, value):
+        if _TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.packageCount, value):
             return self
         self.packageCount = value
-        self._loaded_fields.add("packageCount")
-        self._entity_root.set(self._teaql_entity_key(), "package_count", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.PACKAGE_COUNT_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.PACKAGE_COUNT_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_delivery_date(self, value):
-        if "deliveryDate" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.deliveryDate, value):
+        if _TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.deliveryDate, value):
             return self
         self.deliveryDate = value
-        self._loaded_fields.add("deliveryDate")
-        self._entity_root.set(self._teaql_entity_key(), "delivery_date", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.DELIVERY_DATE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.DELIVERY_DATE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_pickup_time(self, value):
-        if "pickupTime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.pickupTime, value):
+        if _TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.pickupTime, value):
             return self
         self.pickupTime = value
-        self._loaded_fields.add("pickupTime")
-        self._entity_root.set(self._teaql_entity_key(), "pickup_time", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.PICKUP_TIME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.PICKUP_TIME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_quoted_at(self, value):
-        if "quotedAt" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.quotedAt, value):
+        if _TeaqlFields.QUOTED_AT_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.quotedAt, value):
             return self
         self.quotedAt = value
-        self._loaded_fields.add("quotedAt")
-        self._entity_root.set(self._teaql_entity_key(), "quoted_at", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.QUOTED_AT_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.QUOTED_AT_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_instructions(self, value):
-        if "instructions" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.instructions, value):
+        if _TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.instructions, value):
             return self
         self.instructions = value
-        self._loaded_fields.add("instructions")
-        self._entity_root.set(self._teaql_entity_key(), "instructions", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.INSTRUCTIONS_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.INSTRUCTIONS_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_platform(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.platform
         current_id = getattr(current, "id", current)
-        if "platform" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.platform = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("platform")
-        self._entity_root.set(self._teaql_entity_key(), "platform",
+        self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.PLATFORM_PROPERTY_COLUMN,
             Value.Object(self.platform) if self.platform is not None and hasattr(self.platform, "id")
             else Value.from_any(self.platform))
         return self

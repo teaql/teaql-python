@@ -13,7 +13,7 @@ from teaql.core.expr import (
     not_contain, not_end_with, not_in_list, not_in_subquery, value,
     sound_like,
 )
-from models.purchase_order import PurchaseOrder
+from models.purchase_order import _TeaqlFields, PurchaseOrder
 from typing import Protocol
 
 class QuerySelection(Protocol):
@@ -92,426 +92,426 @@ class PurchaseOrderRequest:
         return self
 
     def select_self_fields(self):
-        self.query.project("id", "tenant", "contact_phone", "internal_note", "create_time", "update_time", "version")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN, _TeaqlFields.TENANT_PROPERTY_COLUMN, _TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, _TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, _TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, _TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_id(self):
-        self.query.project("id")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
 
     def select_contact_phone(self):
-        self.query.project("contact_phone")
+        self.query.project(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN)
         return self
 
     def select_internal_note(self):
-        self.query.project("internal_note")
+        self.query.project(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN)
         return self
 
     def select_create_time(self):
-        self.query.project("create_time")
+        self.query.project(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
         return self
 
     def select_update_time(self):
-        self.query.project("update_time")
+        self.query.project(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
         return self
 
     def select_version(self):
-        self.query.project("version")
+        self.query.project(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_tenant_with(self, child_request):
-        self.query.project("tenant")
-        self.query.relation_query("tenant", child_request.query,
-            QueryOperation("relation-select", "select_tenant_with", relation="tenant"))
+        self.query.project(_TeaqlFields.TENANT_PROPERTY_COLUMN)
+        self.query.relation_query(_TeaqlFields.TENANT_PROPERTY_COLUMN, child_request.query,
+            QueryOperation("relation-select", "select_tenant_with", relation=_TeaqlFields.TENANT_PROPERTY_COLUMN))
         return self
     def with_tenant_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(in_subquery(column("tenant"), "Tenant", child_request.query))
+        self.query.and_filter(in_subquery(column(_TeaqlFields.TENANT_PROPERTY_COLUMN), "Tenant", child_request.query))
         return self
 
     def without_tenant_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("tenant"), "Tenant", child_request.query))
+        self.query.and_filter(not_in_subquery(column(_TeaqlFields.TENANT_PROPERTY_COLUMN), "Tenant", child_request.query))
         return self
 
     def have_tenant(self):
-        self.query.and_filter(is_not_null(column("tenant")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.TENANT_PROPERTY_COLUMN)))
         return self
 
     def have_no_tenant(self):
-        self.query.and_filter(is_null(column("tenant")))
+        self.query.and_filter(is_null(column(_TeaqlFields.TENANT_PROPERTY_COLUMN)))
         return self
 
     def with_id_is(self, val):
-        self.query.and_filter(eq("id", val))
+        self.query.and_filter(eq(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_is_not(self, val):
-        self.query.and_filter(ne("id", val))
+        self.query.and_filter(ne(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_in(self, *vals):
-        self.query.and_filter(in_list("id", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_not_in(self, *vals):
-        self.query.and_filter(not_in_list("id", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_greater_than(self, val):
-        self.query.and_filter(gt("id", val))
+        self.query.and_filter(gt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("id", val))
+        self.query.and_filter(gte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than(self, val):
-        self.query.and_filter(lt("id", val))
+        self.query.and_filter(lt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("id", val))
+        self.query.and_filter(lte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_between(self, lower, upper):
-        self.query.and_filter(between(column("id"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ID_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_id_is_known(self):
-        self.query.and_filter(is_not_null(column("id")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_id_is_unknown(self):
-        self.query.and_filter(is_null(column("id")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def filter_by_tenant(self, val):
-        self.query.and_filter(eq("tenant", val))
+        self.query.and_filter(eq(_TeaqlFields.TENANT_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_containing(self, val: str):
-        self.query.and_filter(contain("contact_phone", val))
+        self.query.and_filter(contain(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_not_containing(self, val: str):
-        self.query.and_filter(not_contain("contact_phone", val))
+        self.query.and_filter(not_contain(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_starting_with(self, val: str):
-        self.query.and_filter(begin_with("contact_phone", val))
+        self.query.and_filter(begin_with(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("contact_phone", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_ending_with(self, val: str):
-        self.query.and_filter(end_with("contact_phone", val))
+        self.query.and_filter(end_with(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("contact_phone", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("contact_phone", val))
+        self.query.and_filter(sound_like(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_is(self, val: str):
-        self.query.and_filter(eq("contact_phone", val))
+        self.query.and_filter(eq(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
     def with_contact_phone_is_not(self, val):
-        self.query.and_filter(ne("contact_phone", val))
+        self.query.and_filter(ne(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_in(self, *vals):
-        self.query.and_filter(in_list("contact_phone", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_contact_phone_not_in(self, *vals):
-        self.query.and_filter(not_in_list("contact_phone", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_contact_phone_greater_than(self, val):
-        self.query.and_filter(gt("contact_phone", val))
+        self.query.and_filter(gt(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("contact_phone", val))
+        self.query.and_filter(gte(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_less_than(self, val):
-        self.query.and_filter(lt("contact_phone", val))
+        self.query.and_filter(lt(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("contact_phone", val))
+        self.query.and_filter(lte(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, val))
         return self
 
     def with_contact_phone_between(self, lower, upper):
-        self.query.and_filter(between(column("contact_phone"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_contact_phone_is_known(self):
-        self.query.and_filter(is_not_null(column("contact_phone")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN)))
         return self
 
     def with_contact_phone_is_unknown(self):
-        self.query.and_filter(is_null(column("contact_phone")))
+        self.query.and_filter(is_null(column(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN)))
         return self
 
     def with_internal_note_containing(self, val: str):
-        self.query.and_filter(contain("internal_note", val))
+        self.query.and_filter(contain(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
 
     def with_internal_note_not_containing(self, val: str):
-        self.query.and_filter(not_contain("internal_note", val))
+        self.query.and_filter(not_contain(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
 
     def with_internal_note_starting_with(self, val: str):
-        self.query.and_filter(begin_with("internal_note", val))
+        self.query.and_filter(begin_with(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
 
     def with_internal_note_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("internal_note", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
 
     def with_internal_note_ending_with(self, val: str):
-        self.query.and_filter(end_with("internal_note", val))
+        self.query.and_filter(end_with(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
 
     def with_internal_note_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("internal_note", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
 
     def with_internal_note_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("internal_note", val))
+        self.query.and_filter(sound_like(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
 
     def with_internal_note_is(self, val: str):
-        self.query.and_filter(eq("internal_note", val))
+        self.query.and_filter(eq(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
     def with_internal_note_is_not(self, val):
-        self.query.and_filter(ne("internal_note", val))
+        self.query.and_filter(ne(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
 
     def with_internal_note_in(self, *vals):
-        self.query.and_filter(in_list("internal_note", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_internal_note_not_in(self, *vals):
-        self.query.and_filter(not_in_list("internal_note", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_internal_note_greater_than(self, val):
-        self.query.and_filter(gt("internal_note", val))
+        self.query.and_filter(gt(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
 
     def with_internal_note_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("internal_note", val))
+        self.query.and_filter(gte(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
 
     def with_internal_note_less_than(self, val):
-        self.query.and_filter(lt("internal_note", val))
+        self.query.and_filter(lt(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
 
     def with_internal_note_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("internal_note", val))
+        self.query.and_filter(lte(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, val))
         return self
 
     def with_internal_note_between(self, lower, upper):
-        self.query.and_filter(between(column("internal_note"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_internal_note_is_known(self):
-        self.query.and_filter(is_not_null(column("internal_note")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN)))
         return self
 
     def with_internal_note_is_unknown(self):
-        self.query.and_filter(is_null(column("internal_note")))
+        self.query.and_filter(is_null(column(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN)))
         return self
 
     def with_create_time_is(self, val):
-        self.query.and_filter(eq("create_time", val))
+        self.query.and_filter(eq(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_is_not(self, val):
-        self.query.and_filter(ne("create_time", val))
+        self.query.and_filter(ne(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_in(self, *vals):
-        self.query.and_filter(in_list("create_time", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_create_time_not_in(self, *vals):
-        self.query.and_filter(not_in_list("create_time", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_create_time_greater_than(self, val):
-        self.query.and_filter(gt("create_time", val))
+        self.query.and_filter(gt(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("create_time", val))
+        self.query.and_filter(gte(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_less_than(self, val):
-        self.query.and_filter(lt("create_time", val))
+        self.query.and_filter(lt(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("create_time", val))
+        self.query.and_filter(lte(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_create_time_between(self, lower, upper):
-        self.query.and_filter(between(column("create_time"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_create_time_is_known(self):
-        self.query.and_filter(is_not_null(column("create_time")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_create_time_is_unknown(self):
-        self.query.and_filter(is_null(column("create_time")))
+        self.query.and_filter(is_null(column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_update_time_is(self, val):
-        self.query.and_filter(eq("update_time", val))
+        self.query.and_filter(eq(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_is_not(self, val):
-        self.query.and_filter(ne("update_time", val))
+        self.query.and_filter(ne(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_in(self, *vals):
-        self.query.and_filter(in_list("update_time", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_update_time_not_in(self, *vals):
-        self.query.and_filter(not_in_list("update_time", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_update_time_greater_than(self, val):
-        self.query.and_filter(gt("update_time", val))
+        self.query.and_filter(gt(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("update_time", val))
+        self.query.and_filter(gte(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_less_than(self, val):
-        self.query.and_filter(lt("update_time", val))
+        self.query.and_filter(lt(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("update_time", val))
+        self.query.and_filter(lte(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, val))
         return self
 
     def with_update_time_between(self, lower, upper):
-        self.query.and_filter(between(column("update_time"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_update_time_is_known(self):
-        self.query.and_filter(is_not_null(column("update_time")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_update_time_is_unknown(self):
-        self.query.and_filter(is_null(column("update_time")))
+        self.query.and_filter(is_null(column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)))
         return self
 
     def with_version_is(self, val):
-        self.query.and_filter(eq("version", val))
+        self.query.and_filter(eq(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_is_not(self, val):
-        self.query.and_filter(ne("version", val))
+        self.query.and_filter(ne(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_in(self, *vals):
-        self.query.and_filter(in_list("version", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_not_in(self, *vals):
-        self.query.and_filter(not_in_list("version", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_greater_than(self, val):
-        self.query.and_filter(gt("version", val))
+        self.query.and_filter(gt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("version", val))
+        self.query.and_filter(gte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than(self, val):
-        self.query.and_filter(lt("version", val))
+        self.query.and_filter(lt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("version", val))
+        self.query.and_filter(lte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_between(self, lower, upper):
-        self.query.and_filter(between(column("version"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.VERSION_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_version_is_known(self):
-        self.query.and_filter(is_not_null(column("version")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def with_version_is_unknown(self):
-        self.query.and_filter(is_null(column("version")))
+        self.query.and_filter(is_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def order_by_id_ascending(self):
-        self.query.order_by("id", "asc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_id_descending(self):
-        self.query.order_by("id", "desc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "desc")
         return self
 
 
     def order_by_contact_phone_ascending(self):
-        self.query.order_by("contact_phone", "asc")
+        self.query.order_by(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_contact_phone_descending(self):
-        self.query.order_by("contact_phone", "desc")
+        self.query.order_by(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_internal_note_ascending(self):
-        self.query.order_by("internal_note", "asc")
+        self.query.order_by(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_internal_note_descending(self):
-        self.query.order_by("internal_note", "desc")
+        self.query.order_by(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_create_time_ascending(self):
-        self.query.order_by("create_time", "asc")
+        self.query.order_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_create_time_descending(self):
-        self.query.order_by("create_time", "desc")
+        self.query.order_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_update_time_ascending(self):
-        self.query.order_by("update_time", "asc")
+        self.query.order_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_update_time_descending(self):
-        self.query.order_by("update_time", "desc")
+        self.query.order_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_version_ascending(self):
-        self.query.order_by("version", "asc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_version_descending(self):
-        self.query.order_by("version", "desc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "desc")
         return self
 
 
@@ -528,60 +528,60 @@ class PurchaseOrderRequest:
         return self
 
     def group_by_id(self):
-        self.query.group_by("id")
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ID_PROPERTY_COLUMN))
         return self
     def group_by_tenant(self):
-        self.query.group_by("tenant")
+        self.query.group_by(_TeaqlFields.TENANT_PROPERTY_COLUMN)
         return self
 
     def group_by_tenant_as(self, ret_name: str):
-        self.query.group_by("tenant")
-        self.query.project_expr(ret_name, column("tenant"))
+        self.query.group_by(_TeaqlFields.TENANT_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.TENANT_PROPERTY_COLUMN))
         return self
     def group_by_contact_phone(self):
-        self.query.group_by("contact_phone")
+        self.query.group_by(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN)
         return self
 
     def group_by_contact_phone_as(self, ret_name: str):
-        self.query.group_by("contact_phone")
-        self.query.project_expr(ret_name, column("contact_phone"))
+        self.query.group_by(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN))
         return self
     def group_by_internal_note(self):
-        self.query.group_by("internal_note")
+        self.query.group_by(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN)
         return self
 
     def group_by_internal_note_as(self, ret_name: str):
-        self.query.group_by("internal_note")
-        self.query.project_expr(ret_name, column("internal_note"))
+        self.query.group_by(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN))
         return self
     def group_by_create_time(self):
-        self.query.group_by("create_time")
+        self.query.group_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
         return self
 
     def group_by_create_time_as(self, ret_name: str):
-        self.query.group_by("create_time")
-        self.query.project_expr(ret_name, column("create_time"))
+        self.query.group_by(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN))
         return self
     def group_by_update_time(self):
-        self.query.group_by("update_time")
+        self.query.group_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
         return self
 
     def group_by_update_time_as(self, ret_name: str):
-        self.query.group_by("update_time")
-        self.query.project_expr(ret_name, column("update_time"))
+        self.query.group_by(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN))
         return self
     def group_by_version(self):
-        self.query.group_by("version")
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.VERSION_PROPERTY_COLUMN))
         return self
     def select_order_item_list(self):
         from requests.order_item_request import OrderItemRequest
@@ -742,8 +742,8 @@ class PurchaseOrderRequest:
         return self
     def facet_by_tenant_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "tenant", request.query, include_all_facets,
-            QueryOperation("facet", "facet_by_tenant_as", name, "tenant"))
+        self.query.facet_by(name, _TeaqlFields.TENANT_PROPERTY_COLUMN, request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_tenant_as", name, _TeaqlFields.TENANT_PROPERTY_COLUMN))
         return self
 
 

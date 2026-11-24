@@ -14,19 +14,54 @@ from models.platform import Platform
 from models.school_type import SchoolType
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    PLATFORM_PROPERTY_MEMBER = "platform"
+    PLATFORM_PROPERTY_COLUMN = "platform"
+    PLATFORM_PROPERTY_MODEL = "platform"
+    SCHOOL_TYPE_PROPERTY_MEMBER = "schoolType"
+    SCHOOL_TYPE_PROPERTY_COLUMN = "school_type"
+    SCHOOL_TYPE_PROPERTY_MODEL = "school_type"
+    NAME_PROPERTY_MEMBER = "name"
+    NAME_PROPERTY_COLUMN = "name"
+    NAME_PROPERTY_MODEL = "name"
+    ADDRESS_PROPERTY_MEMBER = "address"
+    ADDRESS_PROPERTY_COLUMN = "address"
+    ADDRESS_PROPERTY_MODEL = "address"
+    ESTABLISHED_DATE_PROPERTY_MEMBER = "establishedDate"
+    ESTABLISHED_DATE_PROPERTY_COLUMN = "established_date"
+    ESTABLISHED_DATE_PROPERTY_MODEL = "established_date"
+    STUDENT_CAPACITY_PROPERTY_MEMBER = "studentCapacity"
+    STUDENT_CAPACITY_PROPERTY_COLUMN = "student_capacity"
+    STUDENT_CAPACITY_PROPERTY_MODEL = "student_capacity"
+    ACTIVE_PROPERTY_MEMBER = "active"
+    ACTIVE_PROPERTY_COLUMN = "active"
+    ACTIVE_PROPERTY_MODEL = "active"
+    CREATE_TIME_PROPERTY_MEMBER = "createTime"
+    CREATE_TIME_PROPERTY_COLUMN = "create_time"
+    CREATE_TIME_PROPERTY_MODEL = "create_time"
+    UPDATE_TIME_PROPERTY_MEMBER = "updateTime"
+    UPDATE_TIME_PROPERTY_COLUMN = "update_time"
+    UPDATE_TIME_PROPERTY_MODEL = "update_time"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class School:
     _teaql_json_schema = EntityJSONSchema("School", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("platform", "platform", "reference", factory=lambda: Platform),
-        EntityJSONField("school_type", "schoolType", "reference", factory=lambda: SchoolType),
-        EntityJSONField("name", "name", "text"),
-        EntityJSONField("address", "address", "text"),
-        EntityJSONField("established_date", "establishedDate", "date"),
-        EntityJSONField("student_capacity", "studentCapacity", "integer"),
-        EntityJSONField("active", "active", "boolean"),
-        EntityJSONField("create_time", "createTime", "datetime"),
-        EntityJSONField("update_time", "updateTime", "datetime"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.PLATFORM_PROPERTY_MODEL, _TeaqlFields.PLATFORM_PROPERTY_MEMBER, "reference", factory=lambda: Platform),
+        EntityJSONField(_TeaqlFields.SCHOOL_TYPE_PROPERTY_MODEL, _TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER, "reference", factory=lambda: SchoolType),
+        EntityJSONField(_TeaqlFields.NAME_PROPERTY_MODEL, _TeaqlFields.NAME_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.ADDRESS_PROPERTY_MODEL, _TeaqlFields.ADDRESS_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_MODEL, _TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER, "date"),
+        EntityJSONField(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_MODEL, _TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER, "integer"),
+        EntityJSONField(_TeaqlFields.ACTIVE_PROPERTY_MODEL, _TeaqlFields.ACTIVE_PROPERTY_MEMBER, "boolean"),
+        EntityJSONField(_TeaqlFields.CREATE_TIME_PROPERTY_MODEL, _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER, "datetime"),
+        EntityJSONField(_TeaqlFields.UPDATE_TIME_PROPERTY_MODEL, _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER, "datetime"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
     def to_json(self, *, profile=None):
@@ -84,54 +119,54 @@ class School:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "platform" in kwargs and "platform" not in kwargs:
-            kwargs["platform"] = kwargs.pop("platform")
-        if "school_type" in kwargs and "schoolType" not in kwargs:
-            kwargs["schoolType"] = kwargs.pop("school_type")
-        if "name" in kwargs and "name" not in kwargs:
-            kwargs["name"] = kwargs.pop("name")
-        if "address" in kwargs and "address" not in kwargs:
-            kwargs["address"] = kwargs.pop("address")
-        if "established_date" in kwargs and "establishedDate" not in kwargs:
-            kwargs["establishedDate"] = kwargs.pop("established_date")
-        if "student_capacity" in kwargs and "studentCapacity" not in kwargs:
-            kwargs["studentCapacity"] = kwargs.pop("student_capacity")
-        if "active" in kwargs and "active" not in kwargs:
-            kwargs["active"] = kwargs.pop("active")
-        if "create_time" in kwargs and "createTime" not in kwargs:
-            kwargs["createTime"] = kwargs.pop("create_time")
-        if "update_time" in kwargs and "updateTime" not in kwargs:
-            kwargs["updateTime"] = kwargs.pop("update_time")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in kwargs and _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.PLATFORM_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)
+        if _TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN in kwargs and _TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN)
+        if _TeaqlFields.NAME_PROPERTY_COLUMN in kwargs and _TeaqlFields.NAME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.NAME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.NAME_PROPERTY_COLUMN)
+        if _TeaqlFields.ADDRESS_PROPERTY_COLUMN in kwargs and _TeaqlFields.ADDRESS_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ADDRESS_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ADDRESS_PROPERTY_COLUMN)
+        if _TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN in kwargs and _TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN)
+        if _TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN in kwargs and _TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN)
+        if _TeaqlFields.ACTIVE_PROPERTY_COLUMN in kwargs and _TeaqlFields.ACTIVE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ACTIVE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ACTIVE_PROPERTY_COLUMN)
+        if _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN in kwargs and _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
+        if _TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN in kwargs and _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "platform", "schoolType", "name", "address", "establishedDate", "studentCapacity", "active", "createTime", "updateTime", "version"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.PLATFORM_PROPERTY_MEMBER, _TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER, _TeaqlFields.NAME_PROPERTY_MEMBER, _TeaqlFields.ADDRESS_PROPERTY_MEMBER, _TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER, _TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER, _TeaqlFields.ACTIVE_PROPERTY_MEMBER, _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER, _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.platform = kwargs.get("platform")
+        self.platform = kwargs.get(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
 
-        self.schoolType = kwargs.get("schoolType")
+        self.schoolType = kwargs.get(_TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER)
 
-        self.name = kwargs.get("name")
+        self.name = kwargs.get(_TeaqlFields.NAME_PROPERTY_MEMBER)
 
-        self.address = kwargs.get("address")
+        self.address = kwargs.get(_TeaqlFields.ADDRESS_PROPERTY_MEMBER)
 
-        self.establishedDate = kwargs.get("establishedDate")
+        self.establishedDate = kwargs.get(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER)
 
-        self.studentCapacity = kwargs.get("studentCapacity")
+        self.studentCapacity = kwargs.get(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER)
 
-        self.active = kwargs.get("active")
+        self.active = kwargs.get(_TeaqlFields.ACTIVE_PROPERTY_MEMBER)
 
-        self.createTime = kwargs.get("createTime")
+        self.createTime = kwargs.get(_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER)
 
-        self.updateTime = kwargs.get("updateTime")
+        self.updateTime = kwargs.get(_TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.platform, dict):
             self.platform = Platform._teaql_from_record(**self.platform)
@@ -147,38 +182,38 @@ class School:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "platform" in self._loaded_fields:
-            payload["platform"] = Value.I64(getattr(self.platform, "id", self.platform))
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = Value.I64(getattr(self.platform, "id", self.platform))
 
-        if "schoolType" in self._loaded_fields:
-            payload["school_type"] = Value.I64(getattr(self.schoolType, "id", self.schoolType))
+        if _TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN] = Value.I64(getattr(self.schoolType, "id", self.schoolType))
 
-        if "name" in self._loaded_fields:
-            payload["name"] = Value.Text(self.name)
+        if _TeaqlFields.NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.NAME_PROPERTY_COLUMN] = Value.Text(self.name)
 
-        if "address" in self._loaded_fields:
-            payload["address"] = Value.Text(self.address)
+        if _TeaqlFields.ADDRESS_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ADDRESS_PROPERTY_COLUMN] = Value.Text(self.address)
 
-        if "establishedDate" in self._loaded_fields:
-            payload["established_date"] = Value.Date(self.establishedDate)
+        if _TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN] = Value.Date(self.establishedDate)
 
-        if "studentCapacity" in self._loaded_fields:
-            payload["student_capacity"] = Value.I64(self.studentCapacity)
+        if _TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN] = Value.I64(self.studentCapacity)
 
-        if "active" in self._loaded_fields:
-            payload["active"] = Value.Bool(self.active)
+        if _TeaqlFields.ACTIVE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ACTIVE_PROPERTY_COLUMN] = Value.Bool(self.active)
 
-        if "createTime" in self._loaded_fields:
-            payload["create_time"] = Value.DateTime(self.createTime)
+        if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN] = Value.DateTime(self.createTime)
 
-        if "updateTime" in self._loaded_fields:
-            payload["update_time"] = Value.DateTime(self.updateTime)
+        if _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN] = Value.DateTime(self.updateTime)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -187,38 +222,38 @@ class School:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "name" in values:
-            value = values["name"]
+        if _TeaqlFields.NAME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.NAME_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.name = raw
 
-        if "address" in values:
-            value = values["address"]
+        if _TeaqlFields.ADDRESS_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.ADDRESS_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.address = raw
 
-        if "established_date" in values:
-            value = values["established_date"]
+        if _TeaqlFields.ESTABLISHED_DATE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.ESTABLISHED_DATE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.establishedDate = raw
 
-        if "student_capacity" in values:
-            value = values["student_capacity"]
+        if _TeaqlFields.STUDENT_CAPACITY_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.STUDENT_CAPACITY_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.studentCapacity = raw
 
-        if "active" in values:
-            value = values["active"]
+        if _TeaqlFields.ACTIVE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.ACTIVE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.active = raw
 
-        if "create_time" in values:
-            value = values["create_time"]
+        if _TeaqlFields.CREATE_TIME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.CREATE_TIME_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.createTime = raw
 
-        if "update_time" in values:
-            value = values["update_time"]
+        if _TeaqlFields.UPDATE_TIME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.UPDATE_TIME_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.updateTime = raw
 
@@ -263,28 +298,28 @@ class School:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("School", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "platform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("platform"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "schoolType" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("school_type"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "name" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "address" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("address"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "establishedDate" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("established_date"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "studentCapacity" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("student_capacity"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "active" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("active"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "createTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "updateTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PLATFORM_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.SCHOOL_TYPE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.ADDRESS_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ADDRESS_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.ACTIVE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ACTIVE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CREATE_TIME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.UPDATE_TIME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -337,46 +372,46 @@ class School:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "platform" in self._loaded_fields:
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.platform
             reference_id = getattr(reference, "id", reference)
-            payload["platform"] = (Value.Object(reference)
+            payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "schoolType" in self._loaded_fields:
+        if _TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.schoolType
             reference_id = getattr(reference, "id", reference)
-            payload["school_type"] = (Value.Object(reference)
+            payload[_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "name" in self._loaded_fields:
-            payload["name"] = Value.Text(self.name)
+        if _TeaqlFields.NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.NAME_PROPERTY_COLUMN] = Value.Text(self.name)
 
-        if "address" in self._loaded_fields:
-            payload["address"] = Value.Text(self.address)
+        if _TeaqlFields.ADDRESS_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ADDRESS_PROPERTY_COLUMN] = Value.Text(self.address)
 
-        if "establishedDate" in self._loaded_fields:
-            payload["established_date"] = Value.Date(self.establishedDate)
+        if _TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN] = Value.Date(self.establishedDate)
 
-        if "studentCapacity" in self._loaded_fields:
-            payload["student_capacity"] = Value.I64(self.studentCapacity)
+        if _TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN] = Value.I64(self.studentCapacity)
 
-        if "active" in self._loaded_fields:
-            payload["active"] = Value.Bool(self.active)
+        if _TeaqlFields.ACTIVE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ACTIVE_PROPERTY_COLUMN] = Value.Bool(self.active)
 
-        if "createTime" in self._loaded_fields:
-            payload["create_time"] = Value.DateTime(self.createTime)
+        if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN] = Value.DateTime(self.createTime)
 
-        if "updateTime" in self._loaded_fields:
-            payload["update_time"] = Value.DateTime(self.updateTime)
+        if _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN] = Value.DateTime(self.updateTime)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -391,14 +426,14 @@ class School:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "platform" in payload:
-            reference = payload["platform"].val
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["platform"] = Value.I64(reference.id)
-        if "school_type" in payload:
-            reference = payload["school_type"].val
+                payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = Value.I64(reference.id)
+        if _TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["school_type"] = Value.I64(reference.id)
+                payload[_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("School", payload)
         elif action == "Update":
@@ -424,28 +459,28 @@ class School:
         session.capture_loaded_values("School", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "platform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("platform"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "schoolType" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("school_type"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "name" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "address" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("address"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "establishedDate" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("established_date"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "studentCapacity" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("student_capacity"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "active" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("active"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "createTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "updateTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity", entity_type="School")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PLATFORM_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.SCHOOL_TYPE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.ADDRESS_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ADDRESS_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.ACTIVE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ACTIVE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CREATE_TIME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.UPDATE_TIME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="School")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -484,72 +519,72 @@ class School:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "platform" in persisted:
-            self.platform = persisted["platform"]
-            self._loaded_fields.add("platform")
-        elif "platform" in persisted:
-            self.platform = persisted["platform"]
-            self._loaded_fields.add("platform")
-        if "school_type" in persisted:
-            self.schoolType = persisted["school_type"]
-            self._loaded_fields.add("schoolType")
-        elif "schoolType" in persisted:
-            self.schoolType = persisted["schoolType"]
-            self._loaded_fields.add("schoolType")
-        if "name" in persisted:
-            self.name = persisted["name"]
-            self._loaded_fields.add("name")
-        elif "name" in persisted:
-            self.name = persisted["name"]
-            self._loaded_fields.add("name")
-        if "address" in persisted:
-            self.address = persisted["address"]
-            self._loaded_fields.add("address")
-        elif "address" in persisted:
-            self.address = persisted["address"]
-            self._loaded_fields.add("address")
-        if "established_date" in persisted:
-            self.establishedDate = persisted["established_date"]
-            self._loaded_fields.add("establishedDate")
-        elif "establishedDate" in persisted:
-            self.establishedDate = persisted["establishedDate"]
-            self._loaded_fields.add("establishedDate")
-        if "student_capacity" in persisted:
-            self.studentCapacity = persisted["student_capacity"]
-            self._loaded_fields.add("studentCapacity")
-        elif "studentCapacity" in persisted:
-            self.studentCapacity = persisted["studentCapacity"]
-            self._loaded_fields.add("studentCapacity")
-        if "active" in persisted:
-            self.active = persisted["active"]
-            self._loaded_fields.add("active")
-        elif "active" in persisted:
-            self.active = persisted["active"]
-            self._loaded_fields.add("active")
-        if "create_time" in persisted:
-            self.createTime = persisted["create_time"]
-            self._loaded_fields.add("createTime")
-        elif "createTime" in persisted:
-            self.createTime = persisted["createTime"]
-            self._loaded_fields.add("createTime")
-        if "update_time" in persisted:
-            self.updateTime = persisted["update_time"]
-            self._loaded_fields.add("updateTime")
-        elif "updateTime" in persisted:
-            self.updateTime = persisted["updateTime"]
-            self._loaded_fields.add("updateTime")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in persisted:
+            self.platform = persisted[_TeaqlFields.PLATFORM_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        elif _TeaqlFields.PLATFORM_PROPERTY_MEMBER in persisted:
+            self.platform = persisted[_TeaqlFields.PLATFORM_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        if _TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN in persisted:
+            self.schoolType = persisted[_TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER)
+        elif _TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER in persisted:
+            self.schoolType = persisted[_TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER)
+        if _TeaqlFields.NAME_PROPERTY_COLUMN in persisted:
+            self.name = persisted[_TeaqlFields.NAME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.NAME_PROPERTY_MEMBER)
+        elif _TeaqlFields.NAME_PROPERTY_MEMBER in persisted:
+            self.name = persisted[_TeaqlFields.NAME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.NAME_PROPERTY_MEMBER)
+        if _TeaqlFields.ADDRESS_PROPERTY_COLUMN in persisted:
+            self.address = persisted[_TeaqlFields.ADDRESS_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ADDRESS_PROPERTY_MEMBER)
+        elif _TeaqlFields.ADDRESS_PROPERTY_MEMBER in persisted:
+            self.address = persisted[_TeaqlFields.ADDRESS_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ADDRESS_PROPERTY_MEMBER)
+        if _TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN in persisted:
+            self.establishedDate = persisted[_TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER)
+        elif _TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER in persisted:
+            self.establishedDate = persisted[_TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER)
+        if _TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN in persisted:
+            self.studentCapacity = persisted[_TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER)
+        elif _TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER in persisted:
+            self.studentCapacity = persisted[_TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER)
+        if _TeaqlFields.ACTIVE_PROPERTY_COLUMN in persisted:
+            self.active = persisted[_TeaqlFields.ACTIVE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ACTIVE_PROPERTY_MEMBER)
+        elif _TeaqlFields.ACTIVE_PROPERTY_MEMBER in persisted:
+            self.active = persisted[_TeaqlFields.ACTIVE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ACTIVE_PROPERTY_MEMBER)
+        if _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN in persisted:
+            self.createTime = persisted[_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER)
+        elif _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER in persisted:
+            self.createTime = persisted[_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER)
+        if _TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN in persisted:
+            self.updateTime = persisted[_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER)
+        elif _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER in persisted:
+            self.updateTime = persisted[_TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -608,85 +643,85 @@ class School:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_name(self, value):
-        if "name" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.name, value):
+        if _TeaqlFields.NAME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.name, value):
             return self
         self.name = value
-        self._loaded_fields.add("name")
-        self._entity_root.set(self._teaql_entity_key(), "name", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.NAME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.NAME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_address(self, value):
-        if "address" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.address, value):
+        if _TeaqlFields.ADDRESS_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.address, value):
             return self
         self.address = value
-        self._loaded_fields.add("address")
-        self._entity_root.set(self._teaql_entity_key(), "address", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ADDRESS_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ADDRESS_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_established_date(self, value):
-        if "establishedDate" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.establishedDate, value):
+        if _TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.establishedDate, value):
             return self
         self.establishedDate = value
-        self._loaded_fields.add("establishedDate")
-        self._entity_root.set(self._teaql_entity_key(), "established_date", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ESTABLISHED_DATE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ESTABLISHED_DATE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_student_capacity(self, value):
-        if "studentCapacity" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.studentCapacity, value):
+        if _TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.studentCapacity, value):
             return self
         self.studentCapacity = value
-        self._loaded_fields.add("studentCapacity")
-        self._entity_root.set(self._teaql_entity_key(), "student_capacity", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.STUDENT_CAPACITY_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.STUDENT_CAPACITY_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_active(self, value):
-        if "active" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.active, value):
+        if _TeaqlFields.ACTIVE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.active, value):
             return self
         self.active = value
-        self._loaded_fields.add("active")
-        self._entity_root.set(self._teaql_entity_key(), "active", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ACTIVE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ACTIVE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_create_time(self, value):
-        if "createTime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.createTime, value):
+        if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.createTime, value):
             return self
         self.createTime = value
-        self._loaded_fields.add("createTime")
-        self._entity_root.set(self._teaql_entity_key(), "create_time", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_update_time(self, value):
-        if "updateTime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.updateTime, value):
+        if _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.updateTime, value):
             return self
         self.updateTime = value
-        self._loaded_fields.add("updateTime")
-        self._entity_root.set(self._teaql_entity_key(), "update_time", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_platform(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.platform
         current_id = getattr(current, "id", current)
-        if "platform" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.platform = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("platform")
-        self._entity_root.set(self._teaql_entity_key(), "platform",
+        self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.PLATFORM_PROPERTY_COLUMN,
             Value.Object(self.platform) if self.platform is not None and hasattr(self.platform, "id")
             else Value.from_any(self.platform))
         return self
@@ -696,21 +731,21 @@ class School:
         assigned_id = getattr(value, "id", value) if value else None
         current = self.schoolType
         current_id = getattr(current, "id", current)
-        if "schoolType" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.schoolType = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("schoolType")
-        self._entity_root.set(self._teaql_entity_key(), "school_type",
+        self._loaded_fields.add(_TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN,
             Value.Object(self.schoolType) if self.schoolType is not None and hasattr(self.schoolType, "id")
             else Value.from_any(self.schoolType))
         return self
     def update_school_type_to_primary(self):
         self.schoolType = 1001
-        self._loaded_fields.add("schoolType")
-        self._entity_root.set(self._teaql_entity_key(), "school_type", Value.from_any(self.schoolType))
+        self._loaded_fields.add(_TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN, Value.from_any(self.schoolType))
         return self
     def update_school_type_to_secondary(self):
         self.schoolType = 1002
-        self._loaded_fields.add("schoolType")
-        self._entity_root.set(self._teaql_entity_key(), "school_type", Value.from_any(self.schoolType))
+        self._loaded_fields.add(_TeaqlFields.SCHOOL_TYPE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.SCHOOL_TYPE_PROPERTY_COLUMN, Value.from_any(self.schoolType))
         return self

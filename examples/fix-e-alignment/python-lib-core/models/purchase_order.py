@@ -13,15 +13,38 @@ from copy import copy
 from models.tenant import Tenant
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    TENANT_PROPERTY_MEMBER = "tenant"
+    TENANT_PROPERTY_COLUMN = "tenant"
+    TENANT_PROPERTY_MODEL = "tenant"
+    CONTACT_PHONE_PROPERTY_MEMBER = "contactPhone"
+    CONTACT_PHONE_PROPERTY_COLUMN = "contact_phone"
+    CONTACT_PHONE_PROPERTY_MODEL = "contact_phone"
+    INTERNAL_NOTE_PROPERTY_MEMBER = "internalNote"
+    INTERNAL_NOTE_PROPERTY_COLUMN = "internal_note"
+    INTERNAL_NOTE_PROPERTY_MODEL = "internal_note"
+    CREATE_TIME_PROPERTY_MEMBER = "createTime"
+    CREATE_TIME_PROPERTY_COLUMN = "create_time"
+    CREATE_TIME_PROPERTY_MODEL = "create_time"
+    UPDATE_TIME_PROPERTY_MEMBER = "updateTime"
+    UPDATE_TIME_PROPERTY_COLUMN = "update_time"
+    UPDATE_TIME_PROPERTY_MODEL = "update_time"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class PurchaseOrder:
     _teaql_json_schema = EntityJSONSchema("PurchaseOrder", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("tenant", "tenant", "reference", factory=lambda: Tenant),
-        EntityJSONField("contact_phone", "contactPhone", "text"),
-        EntityJSONField("internal_note", "internalNote", "text"),
-        EntityJSONField("create_time", "createTime", "datetime"),
-        EntityJSONField("update_time", "updateTime", "datetime"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.TENANT_PROPERTY_MODEL, _TeaqlFields.TENANT_PROPERTY_MEMBER, "reference", factory=lambda: Tenant),
+        EntityJSONField(_TeaqlFields.CONTACT_PHONE_PROPERTY_MODEL, _TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.INTERNAL_NOTE_PROPERTY_MODEL, _TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.CREATE_TIME_PROPERTY_MODEL, _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER, "datetime"),
+        EntityJSONField(_TeaqlFields.UPDATE_TIME_PROPERTY_MODEL, _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER, "datetime"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
         EntityJSONField("order_item_list", "_order_item_list", "many", factory=lambda: getattr(import_module("models.order_item"), "OrderItem"), loaded_name="order_item_list")
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
@@ -81,38 +104,38 @@ class PurchaseOrder:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "tenant" in kwargs and "tenant" not in kwargs:
-            kwargs["tenant"] = kwargs.pop("tenant")
-        if "contact_phone" in kwargs and "contactPhone" not in kwargs:
-            kwargs["contactPhone"] = kwargs.pop("contact_phone")
-        if "internal_note" in kwargs and "internalNote" not in kwargs:
-            kwargs["internalNote"] = kwargs.pop("internal_note")
-        if "create_time" in kwargs and "createTime" not in kwargs:
-            kwargs["createTime"] = kwargs.pop("create_time")
-        if "update_time" in kwargs and "updateTime" not in kwargs:
-            kwargs["updateTime"] = kwargs.pop("update_time")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.TENANT_PROPERTY_COLUMN in kwargs and _TeaqlFields.TENANT_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.TENANT_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.TENANT_PROPERTY_COLUMN)
+        if _TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN in kwargs and _TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN)
+        if _TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN in kwargs and _TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN)
+        if _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN in kwargs and _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
+        if _TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN in kwargs and _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "tenant", "contactPhone", "internalNote", "createTime", "updateTime", "version", "order_item_list"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.TENANT_PROPERTY_MEMBER, _TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER, _TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER, _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER, _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER, "order_item_list"])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.tenant = kwargs.get("tenant")
+        self.tenant = kwargs.get(_TeaqlFields.TENANT_PROPERTY_MEMBER)
 
-        self.contactPhone = kwargs.get("contactPhone")
+        self.contactPhone = kwargs.get(_TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER)
 
-        self.internalNote = kwargs.get("internalNote")
+        self.internalNote = kwargs.get(_TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER)
 
-        self.createTime = kwargs.get("createTime")
+        self.createTime = kwargs.get(_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER)
 
-        self.updateTime = kwargs.get("updateTime")
+        self.updateTime = kwargs.get(_TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.tenant, dict):
             self.tenant = Tenant._teaql_from_record(**self.tenant)
@@ -137,26 +160,26 @@ class PurchaseOrder:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "tenant" in self._loaded_fields:
-            payload["tenant"] = Value.I64(getattr(self.tenant, "id", self.tenant))
+        if _TeaqlFields.TENANT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.TENANT_PROPERTY_COLUMN] = Value.I64(getattr(self.tenant, "id", self.tenant))
 
-        if "contactPhone" in self._loaded_fields:
-            payload["contact_phone"] = Value.Text(self.contactPhone)
+        if _TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN] = Value.Text(self.contactPhone)
 
-        if "internalNote" in self._loaded_fields:
-            payload["internal_note"] = Value.Text(self.internalNote)
+        if _TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN] = Value.Text(self.internalNote)
 
-        if "createTime" in self._loaded_fields:
-            payload["create_time"] = Value.DateTime(self.createTime)
+        if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN] = Value.DateTime(self.createTime)
 
-        if "updateTime" in self._loaded_fields:
-            payload["update_time"] = Value.DateTime(self.updateTime)
+        if _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN] = Value.DateTime(self.updateTime)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -165,23 +188,23 @@ class PurchaseOrder:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "contact_phone" in values:
-            value = values["contact_phone"]
+        if _TeaqlFields.CONTACT_PHONE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.CONTACT_PHONE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.contactPhone = raw
 
-        if "internal_note" in values:
-            value = values["internal_note"]
+        if _TeaqlFields.INTERNAL_NOTE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.INTERNAL_NOTE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.internalNote = raw
 
-        if "create_time" in values:
-            value = values["create_time"]
+        if _TeaqlFields.CREATE_TIME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.CREATE_TIME_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.createTime = raw
 
-        if "update_time" in values:
-            value = values["update_time"]
+        if _TeaqlFields.UPDATE_TIME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.UPDATE_TIME_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.updateTime = raw
 
@@ -228,20 +251,20 @@ class PurchaseOrder:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("PurchaseOrder", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "tenant" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("tenant"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "contactPhone" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("contact_phone"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "internalNote" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("internal_note"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "createTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "updateTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.TENANT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.TENANT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CONTACT_PHONE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.INTERNAL_NOTE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CREATE_TIME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.UPDATE_TIME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
             self._teaql_validate_context_root(context, ledger)
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
@@ -330,30 +353,30 @@ class PurchaseOrder:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "tenant" in self._loaded_fields:
+        if _TeaqlFields.TENANT_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.tenant
             reference_id = getattr(reference, "id", reference)
-            payload["tenant"] = (Value.Object(reference)
+            payload[_TeaqlFields.TENANT_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "contactPhone" in self._loaded_fields:
-            payload["contact_phone"] = Value.Text(self.contactPhone)
+        if _TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN] = Value.Text(self.contactPhone)
 
-        if "internalNote" in self._loaded_fields:
-            payload["internal_note"] = Value.Text(self.internalNote)
+        if _TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN] = Value.Text(self.internalNote)
 
-        if "createTime" in self._loaded_fields:
-            payload["create_time"] = Value.DateTime(self.createTime)
+        if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN] = Value.DateTime(self.createTime)
 
-        if "updateTime" in self._loaded_fields:
-            payload["update_time"] = Value.DateTime(self.updateTime)
+        if _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN] = Value.DateTime(self.updateTime)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -368,10 +391,10 @@ class PurchaseOrder:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "tenant" in payload:
-            reference = payload["tenant"].val
+        if _TeaqlFields.TENANT_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.TENANT_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["tenant"] = Value.I64(reference.id)
+                payload[_TeaqlFields.TENANT_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("PurchaseOrder", payload)
         elif action == "Update":
@@ -397,20 +420,20 @@ class PurchaseOrder:
         session.capture_loaded_values("PurchaseOrder", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "tenant" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("tenant"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "contactPhone" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("contact_phone"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "internalNote" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("internal_note"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "createTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "updateTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("update_time"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.TENANT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.TENANT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CONTACT_PHONE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.INTERNAL_NOTE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CREATE_TIME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.UPDATE_TIME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="PurchaseOrder")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             self._teaql_validate_context_root(context, getattr(cmd, "values", {}))
@@ -464,48 +487,48 @@ class PurchaseOrder:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "tenant" in persisted:
-            self.tenant = persisted["tenant"]
-            self._loaded_fields.add("tenant")
-        elif "tenant" in persisted:
-            self.tenant = persisted["tenant"]
-            self._loaded_fields.add("tenant")
-        if "contact_phone" in persisted:
-            self.contactPhone = persisted["contact_phone"]
-            self._loaded_fields.add("contactPhone")
-        elif "contactPhone" in persisted:
-            self.contactPhone = persisted["contactPhone"]
-            self._loaded_fields.add("contactPhone")
-        if "internal_note" in persisted:
-            self.internalNote = persisted["internal_note"]
-            self._loaded_fields.add("internalNote")
-        elif "internalNote" in persisted:
-            self.internalNote = persisted["internalNote"]
-            self._loaded_fields.add("internalNote")
-        if "create_time" in persisted:
-            self.createTime = persisted["create_time"]
-            self._loaded_fields.add("createTime")
-        elif "createTime" in persisted:
-            self.createTime = persisted["createTime"]
-            self._loaded_fields.add("createTime")
-        if "update_time" in persisted:
-            self.updateTime = persisted["update_time"]
-            self._loaded_fields.add("updateTime")
-        elif "updateTime" in persisted:
-            self.updateTime = persisted["updateTime"]
-            self._loaded_fields.add("updateTime")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.TENANT_PROPERTY_COLUMN in persisted:
+            self.tenant = persisted[_TeaqlFields.TENANT_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.TENANT_PROPERTY_MEMBER)
+        elif _TeaqlFields.TENANT_PROPERTY_MEMBER in persisted:
+            self.tenant = persisted[_TeaqlFields.TENANT_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.TENANT_PROPERTY_MEMBER)
+        if _TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN in persisted:
+            self.contactPhone = persisted[_TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER)
+        elif _TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER in persisted:
+            self.contactPhone = persisted[_TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER)
+        if _TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN in persisted:
+            self.internalNote = persisted[_TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER)
+        elif _TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER in persisted:
+            self.internalNote = persisted[_TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER)
+        if _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN in persisted:
+            self.createTime = persisted[_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER)
+        elif _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER in persisted:
+            self.createTime = persisted[_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER)
+        if _TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN in persisted:
+            self.updateTime = persisted[_TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER)
+        elif _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER in persisted:
+            self.updateTime = persisted[_TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -565,61 +588,61 @@ class PurchaseOrder:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_contact_phone(self, value):
-        if "contactPhone" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.contactPhone, value):
+        if _TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.contactPhone, value):
             return self
         self.contactPhone = value
-        self._loaded_fields.add("contactPhone")
-        self._entity_root.set(self._teaql_entity_key(), "contact_phone", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.CONTACT_PHONE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CONTACT_PHONE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_internal_note(self, value):
-        if "internalNote" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.internalNote, value):
+        if _TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.internalNote, value):
             return self
         self.internalNote = value
-        self._loaded_fields.add("internalNote")
-        self._entity_root.set(self._teaql_entity_key(), "internal_note", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.INTERNAL_NOTE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.INTERNAL_NOTE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_create_time(self, value):
-        if "createTime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.createTime, value):
+        if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.createTime, value):
             return self
         self.createTime = value
-        self._loaded_fields.add("createTime")
-        self._entity_root.set(self._teaql_entity_key(), "create_time", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_update_time(self, value):
-        if "updateTime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.updateTime, value):
+        if _TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.updateTime, value):
             return self
         self.updateTime = value
-        self._loaded_fields.add("updateTime")
-        self._entity_root.set(self._teaql_entity_key(), "update_time", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.UPDATE_TIME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.UPDATE_TIME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def _teaql_set_tenant(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.tenant
         current_id = getattr(current, "id", current)
-        if "tenant" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.TENANT_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.tenant = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("tenant")
-        self._entity_root.set(self._teaql_entity_key(), "tenant",
+        self._loaded_fields.add(_TeaqlFields.TENANT_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.TENANT_PROPERTY_COLUMN,
             Value.Object(self.tenant) if self.tenant is not None and hasattr(self.tenant, "id")
             else Value.from_any(self.tenant))
         return self

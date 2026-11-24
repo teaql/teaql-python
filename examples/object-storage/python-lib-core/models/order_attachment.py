@@ -13,16 +13,42 @@ from copy import copy
 from models.customer_order import CustomerOrder
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    CUSTOMER_ORDER_PROPERTY_MEMBER = "customerOrder"
+    CUSTOMER_ORDER_PROPERTY_COLUMN = "customer_order"
+    CUSTOMER_ORDER_PROPERTY_MODEL = "customer_order"
+    FILE_NAME_PROPERTY_MEMBER = "fileName"
+    FILE_NAME_PROPERTY_COLUMN = "file_name"
+    FILE_NAME_PROPERTY_MODEL = "file_name"
+    CONTENT_TYPE_PROPERTY_MEMBER = "contentType"
+    CONTENT_TYPE_PROPERTY_COLUMN = "content_type"
+    CONTENT_TYPE_PROPERTY_MODEL = "content_type"
+    CONTENT_LENGTH_PROPERTY_MEMBER = "contentLength"
+    CONTENT_LENGTH_PROPERTY_COLUMN = "content_length"
+    CONTENT_LENGTH_PROPERTY_MODEL = "content_length"
+    CONTENT_SHA256_PROPERTY_MEMBER = "contentSha256"
+    CONTENT_SHA256_PROPERTY_COLUMN = "content_sha256"
+    CONTENT_SHA256_PROPERTY_MODEL = "content_sha256"
+    OBJECT_KEY_PROPERTY_MEMBER = "objectKey"
+    OBJECT_KEY_PROPERTY_COLUMN = "object_key"
+    OBJECT_KEY_PROPERTY_MODEL = "object_key"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class OrderAttachment:
     _teaql_json_schema = EntityJSONSchema("OrderAttachment", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("customer_order", "customerOrder", "reference", factory=lambda: CustomerOrder),
-        EntityJSONField("file_name", "fileName", "text"),
-        EntityJSONField("content_type", "contentType", "text"),
-        EntityJSONField("content_length", "contentLength", "integer"),
-        EntityJSONField("content_sha256", "contentSha256", "text"),
-        EntityJSONField("object_key", "objectKey", "text"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MODEL, _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER, "reference", factory=lambda: CustomerOrder),
+        EntityJSONField(_TeaqlFields.FILE_NAME_PROPERTY_MODEL, _TeaqlFields.FILE_NAME_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.CONTENT_TYPE_PROPERTY_MODEL, _TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.CONTENT_LENGTH_PROPERTY_MODEL, _TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER, "integer"),
+        EntityJSONField(_TeaqlFields.CONTENT_SHA256_PROPERTY_MODEL, _TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.OBJECT_KEY_PROPERTY_MODEL, _TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
     def to_json(self, *, profile=None):
@@ -77,42 +103,42 @@ class OrderAttachment:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "customer_order" in kwargs and "customerOrder" not in kwargs:
-            kwargs["customerOrder"] = kwargs.pop("customer_order")
-        if "file_name" in kwargs and "fileName" not in kwargs:
-            kwargs["fileName"] = kwargs.pop("file_name")
-        if "content_type" in kwargs and "contentType" not in kwargs:
-            kwargs["contentType"] = kwargs.pop("content_type")
-        if "content_length" in kwargs and "contentLength" not in kwargs:
-            kwargs["contentLength"] = kwargs.pop("content_length")
-        if "content_sha256" in kwargs and "contentSha256" not in kwargs:
-            kwargs["contentSha256"] = kwargs.pop("content_sha256")
-        if "object_key" in kwargs and "objectKey" not in kwargs:
-            kwargs["objectKey"] = kwargs.pop("object_key")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN in kwargs and _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN)
+        if _TeaqlFields.FILE_NAME_PROPERTY_COLUMN in kwargs and _TeaqlFields.FILE_NAME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.FILE_NAME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.FILE_NAME_PROPERTY_COLUMN)
+        if _TeaqlFields.CONTENT_TYPE_PROPERTY_COLUMN in kwargs and _TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CONTENT_TYPE_PROPERTY_COLUMN)
+        if _TeaqlFields.CONTENT_LENGTH_PROPERTY_COLUMN in kwargs and _TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CONTENT_LENGTH_PROPERTY_COLUMN)
+        if _TeaqlFields.CONTENT_SHA256_PROPERTY_COLUMN in kwargs and _TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CONTENT_SHA256_PROPERTY_COLUMN)
+        if _TeaqlFields.OBJECT_KEY_PROPERTY_COLUMN in kwargs and _TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.OBJECT_KEY_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "customerOrder", "fileName", "contentType", "contentLength", "contentSha256", "objectKey", "version"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER, _TeaqlFields.FILE_NAME_PROPERTY_MEMBER, _TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER, _TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER, _TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER, _TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.customerOrder = kwargs.get("customerOrder")
+        self.customerOrder = kwargs.get(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER)
 
-        self.fileName = kwargs.get("fileName")
+        self.fileName = kwargs.get(_TeaqlFields.FILE_NAME_PROPERTY_MEMBER)
 
-        self.contentType = kwargs.get("contentType")
+        self.contentType = kwargs.get(_TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER)
 
-        self.contentLength = kwargs.get("contentLength")
+        self.contentLength = kwargs.get(_TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER)
 
-        self.contentSha256 = kwargs.get("contentSha256")
+        self.contentSha256 = kwargs.get(_TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER)
 
-        self.objectKey = kwargs.get("objectKey")
+        self.objectKey = kwargs.get(_TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.customerOrder, dict):
             self.customerOrder = CustomerOrder._teaql_from_record(**self.customerOrder)
@@ -126,29 +152,29 @@ class OrderAttachment:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "customerOrder" in self._loaded_fields:
-            payload["customer_order"] = Value.I64(getattr(self.customerOrder, "id", self.customerOrder))
+        if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN] = Value.I64(getattr(self.customerOrder, "id", self.customerOrder))
 
-        if "fileName" in self._loaded_fields:
-            payload["file_name"] = Value.Text(self.fileName)
+        if _TeaqlFields.FILE_NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.FILE_NAME_PROPERTY_COLUMN] = Value.Text(self.fileName)
 
-        if "contentType" in self._loaded_fields:
-            payload["content_type"] = Value.Text(self.contentType)
+        if _TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CONTENT_TYPE_PROPERTY_COLUMN] = Value.Text(self.contentType)
 
-        if "contentLength" in self._loaded_fields:
-            payload["content_length"] = Value.I64(self.contentLength)
+        if _TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CONTENT_LENGTH_PROPERTY_COLUMN] = Value.I64(self.contentLength)
 
-        if "contentSha256" in self._loaded_fields:
-            payload["content_sha256"] = Value.Text(self.contentSha256)
+        if _TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CONTENT_SHA256_PROPERTY_COLUMN] = Value.Text(self.contentSha256)
 
-        if "objectKey" in self._loaded_fields:
-            payload["object_key"] = Value.Text(self.objectKey)
+        if _TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.OBJECT_KEY_PROPERTY_COLUMN] = Value.Text(self.objectKey)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -157,28 +183,28 @@ class OrderAttachment:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "file_name" in values:
-            value = values["file_name"]
+        if _TeaqlFields.FILE_NAME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.FILE_NAME_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.fileName = raw
 
-        if "content_type" in values:
-            value = values["content_type"]
+        if _TeaqlFields.CONTENT_TYPE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.CONTENT_TYPE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.contentType = raw
 
-        if "content_length" in values:
-            value = values["content_length"]
+        if _TeaqlFields.CONTENT_LENGTH_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.CONTENT_LENGTH_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.contentLength = raw
 
-        if "content_sha256" in values:
-            value = values["content_sha256"]
+        if _TeaqlFields.CONTENT_SHA256_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.CONTENT_SHA256_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.contentSha256 = raw
 
-        if "object_key" in values:
-            value = values["object_key"]
+        if _TeaqlFields.OBJECT_KEY_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.OBJECT_KEY_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.objectKey = raw
 
@@ -223,22 +249,22 @@ class OrderAttachment:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("OrderAttachment", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "customerOrder" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("customer_order"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "fileName" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("file_name"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "contentType" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("content_type"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "contentLength" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("content_length"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "contentSha256" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("content_sha256"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "objectKey" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("object_key"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.FILE_NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.FILE_NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CONTENT_TYPE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CONTENT_LENGTH_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CONTENT_SHA256_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.OBJECT_KEY_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -291,33 +317,33 @@ class OrderAttachment:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "customerOrder" in self._loaded_fields:
+        if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.customerOrder
             reference_id = getattr(reference, "id", reference)
-            payload["customer_order"] = (Value.Object(reference)
+            payload[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "fileName" in self._loaded_fields:
-            payload["file_name"] = Value.Text(self.fileName)
+        if _TeaqlFields.FILE_NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.FILE_NAME_PROPERTY_COLUMN] = Value.Text(self.fileName)
 
-        if "contentType" in self._loaded_fields:
-            payload["content_type"] = Value.Text(self.contentType)
+        if _TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CONTENT_TYPE_PROPERTY_COLUMN] = Value.Text(self.contentType)
 
-        if "contentLength" in self._loaded_fields:
-            payload["content_length"] = Value.I64(self.contentLength)
+        if _TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CONTENT_LENGTH_PROPERTY_COLUMN] = Value.I64(self.contentLength)
 
-        if "contentSha256" in self._loaded_fields:
-            payload["content_sha256"] = Value.Text(self.contentSha256)
+        if _TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CONTENT_SHA256_PROPERTY_COLUMN] = Value.Text(self.contentSha256)
 
-        if "objectKey" in self._loaded_fields:
-            payload["object_key"] = Value.Text(self.objectKey)
+        if _TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.OBJECT_KEY_PROPERTY_COLUMN] = Value.Text(self.objectKey)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -332,10 +358,10 @@ class OrderAttachment:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "customer_order" in payload:
-            reference = payload["customer_order"].val
+        if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["customer_order"] = Value.I64(reference.id)
+                payload[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("OrderAttachment", payload)
         elif action == "Update":
@@ -361,22 +387,22 @@ class OrderAttachment:
         session.capture_loaded_values("OrderAttachment", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "customerOrder" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("customer_order"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "fileName" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("file_name"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "contentType" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("content_type"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "contentLength" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("content_length"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "contentSha256" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("content_sha256"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "objectKey" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("object_key"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.FILE_NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.FILE_NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CONTENT_TYPE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CONTENT_LENGTH_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CONTENT_SHA256_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.OBJECT_KEY_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderAttachment")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -415,54 +441,54 @@ class OrderAttachment:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "customer_order" in persisted:
-            self.customerOrder = persisted["customer_order"]
-            self._loaded_fields.add("customerOrder")
-        elif "customerOrder" in persisted:
-            self.customerOrder = persisted["customerOrder"]
-            self._loaded_fields.add("customerOrder")
-        if "file_name" in persisted:
-            self.fileName = persisted["file_name"]
-            self._loaded_fields.add("fileName")
-        elif "fileName" in persisted:
-            self.fileName = persisted["fileName"]
-            self._loaded_fields.add("fileName")
-        if "content_type" in persisted:
-            self.contentType = persisted["content_type"]
-            self._loaded_fields.add("contentType")
-        elif "contentType" in persisted:
-            self.contentType = persisted["contentType"]
-            self._loaded_fields.add("contentType")
-        if "content_length" in persisted:
-            self.contentLength = persisted["content_length"]
-            self._loaded_fields.add("contentLength")
-        elif "contentLength" in persisted:
-            self.contentLength = persisted["contentLength"]
-            self._loaded_fields.add("contentLength")
-        if "content_sha256" in persisted:
-            self.contentSha256 = persisted["content_sha256"]
-            self._loaded_fields.add("contentSha256")
-        elif "contentSha256" in persisted:
-            self.contentSha256 = persisted["contentSha256"]
-            self._loaded_fields.add("contentSha256")
-        if "object_key" in persisted:
-            self.objectKey = persisted["object_key"]
-            self._loaded_fields.add("objectKey")
-        elif "objectKey" in persisted:
-            self.objectKey = persisted["objectKey"]
-            self._loaded_fields.add("objectKey")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN in persisted:
+            self.customerOrder = persisted[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER)
+        elif _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER in persisted:
+            self.customerOrder = persisted[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER)
+        if _TeaqlFields.FILE_NAME_PROPERTY_COLUMN in persisted:
+            self.fileName = persisted[_TeaqlFields.FILE_NAME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.FILE_NAME_PROPERTY_MEMBER)
+        elif _TeaqlFields.FILE_NAME_PROPERTY_MEMBER in persisted:
+            self.fileName = persisted[_TeaqlFields.FILE_NAME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.FILE_NAME_PROPERTY_MEMBER)
+        if _TeaqlFields.CONTENT_TYPE_PROPERTY_COLUMN in persisted:
+            self.contentType = persisted[_TeaqlFields.CONTENT_TYPE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER)
+        elif _TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER in persisted:
+            self.contentType = persisted[_TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER)
+        if _TeaqlFields.CONTENT_LENGTH_PROPERTY_COLUMN in persisted:
+            self.contentLength = persisted[_TeaqlFields.CONTENT_LENGTH_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER)
+        elif _TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER in persisted:
+            self.contentLength = persisted[_TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER)
+        if _TeaqlFields.CONTENT_SHA256_PROPERTY_COLUMN in persisted:
+            self.contentSha256 = persisted[_TeaqlFields.CONTENT_SHA256_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER)
+        elif _TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER in persisted:
+            self.contentSha256 = persisted[_TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER)
+        if _TeaqlFields.OBJECT_KEY_PROPERTY_COLUMN in persisted:
+            self.objectKey = persisted[_TeaqlFields.OBJECT_KEY_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER)
+        elif _TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER in persisted:
+            self.objectKey = persisted[_TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -521,69 +547,69 @@ class OrderAttachment:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_file_name(self, value):
-        if "fileName" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.fileName, value):
+        if _TeaqlFields.FILE_NAME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.fileName, value):
             return self
         self.fileName = value
-        self._loaded_fields.add("fileName")
-        self._entity_root.set(self._teaql_entity_key(), "file_name", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.FILE_NAME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.FILE_NAME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_content_type(self, value):
-        if "contentType" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.contentType, value):
+        if _TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.contentType, value):
             return self
         self.contentType = value
-        self._loaded_fields.add("contentType")
-        self._entity_root.set(self._teaql_entity_key(), "content_type", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.CONTENT_TYPE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CONTENT_TYPE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_content_length(self, value):
-        if "contentLength" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.contentLength, value):
+        if _TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.contentLength, value):
             return self
         self.contentLength = value
-        self._loaded_fields.add("contentLength")
-        self._entity_root.set(self._teaql_entity_key(), "content_length", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.CONTENT_LENGTH_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CONTENT_LENGTH_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_content_sha256(self, value):
-        if "contentSha256" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.contentSha256, value):
+        if _TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.contentSha256, value):
             return self
         self.contentSha256 = value
-        self._loaded_fields.add("contentSha256")
-        self._entity_root.set(self._teaql_entity_key(), "content_sha256", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.CONTENT_SHA256_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CONTENT_SHA256_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_object_key(self, value):
-        if "objectKey" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.objectKey, value):
+        if _TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.objectKey, value):
             return self
         self.objectKey = value
-        self._loaded_fields.add("objectKey")
-        self._entity_root.set(self._teaql_entity_key(), "object_key", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.OBJECT_KEY_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.OBJECT_KEY_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_customer_order(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.customerOrder
         current_id = getattr(current, "id", current)
-        if "customerOrder" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.customerOrder = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("customerOrder")
-        self._entity_root.set(self._teaql_entity_key(), "customer_order",
+        self._loaded_fields.add(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN,
             Value.Object(self.customerOrder) if self.customerOrder is not None and hasattr(self.customerOrder, "id")
             else Value.from_any(self.customerOrder))
         return self

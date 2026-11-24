@@ -13,7 +13,7 @@ from teaql.core.expr import (
     not_contain, not_end_with, not_in_list, not_in_subquery, value,
     sound_like,
 )
-from models.purchase_order import PurchaseOrder
+from models.purchase_order import _TeaqlFields, PurchaseOrder
 from typing import Protocol
 
 class QuerySelection(Protocol):
@@ -92,231 +92,231 @@ class PurchaseOrderRequest:
         return self
 
     def select_self_fields(self):
-        self.query.project("id", "warehouse", "reference", "version")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN, _TeaqlFields.WAREHOUSE_PROPERTY_COLUMN, _TeaqlFields.REFERENCE_PROPERTY_COLUMN, _TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_id(self):
-        self.query.project("id")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
 
     def select_reference(self):
-        self.query.project("reference")
+        self.query.project(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)
         return self
 
     def select_version(self):
-        self.query.project("version")
+        self.query.project(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_warehouse_with(self, child_request):
-        self.query.project("warehouse")
-        self.query.relation_query("warehouse", child_request.query,
-            QueryOperation("relation-select", "select_warehouse_with", relation="warehouse"))
+        self.query.project(_TeaqlFields.WAREHOUSE_PROPERTY_COLUMN)
+        self.query.relation_query(_TeaqlFields.WAREHOUSE_PROPERTY_COLUMN, child_request.query,
+            QueryOperation("relation-select", "select_warehouse_with", relation=_TeaqlFields.WAREHOUSE_PROPERTY_COLUMN))
         return self
     def with_warehouse_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(in_subquery(column("warehouse"), "Warehouse", child_request.query))
+        self.query.and_filter(in_subquery(column(_TeaqlFields.WAREHOUSE_PROPERTY_COLUMN), "Warehouse", child_request.query))
         return self
 
     def without_warehouse_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("warehouse"), "Warehouse", child_request.query))
+        self.query.and_filter(not_in_subquery(column(_TeaqlFields.WAREHOUSE_PROPERTY_COLUMN), "Warehouse", child_request.query))
         return self
 
     def have_warehouse(self):
-        self.query.and_filter(is_not_null(column("warehouse")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.WAREHOUSE_PROPERTY_COLUMN)))
         return self
 
     def have_no_warehouse(self):
-        self.query.and_filter(is_null(column("warehouse")))
+        self.query.and_filter(is_null(column(_TeaqlFields.WAREHOUSE_PROPERTY_COLUMN)))
         return self
 
     def with_id_is(self, val):
-        self.query.and_filter(eq("id", val))
+        self.query.and_filter(eq(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_is_not(self, val):
-        self.query.and_filter(ne("id", val))
+        self.query.and_filter(ne(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_in(self, *vals):
-        self.query.and_filter(in_list("id", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_not_in(self, *vals):
-        self.query.and_filter(not_in_list("id", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_greater_than(self, val):
-        self.query.and_filter(gt("id", val))
+        self.query.and_filter(gt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("id", val))
+        self.query.and_filter(gte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than(self, val):
-        self.query.and_filter(lt("id", val))
+        self.query.and_filter(lt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("id", val))
+        self.query.and_filter(lte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_between(self, lower, upper):
-        self.query.and_filter(between(column("id"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ID_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_id_is_known(self):
-        self.query.and_filter(is_not_null(column("id")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_id_is_unknown(self):
-        self.query.and_filter(is_null(column("id")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def filter_by_warehouse(self, val):
-        self.query.and_filter(eq("warehouse", val))
+        self.query.and_filter(eq(_TeaqlFields.WAREHOUSE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_containing(self, val: str):
-        self.query.and_filter(contain("reference", val))
+        self.query.and_filter(contain(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_not_containing(self, val: str):
-        self.query.and_filter(not_contain("reference", val))
+        self.query.and_filter(not_contain(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_starting_with(self, val: str):
-        self.query.and_filter(begin_with("reference", val))
+        self.query.and_filter(begin_with(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("reference", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_ending_with(self, val: str):
-        self.query.and_filter(end_with("reference", val))
+        self.query.and_filter(end_with(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("reference", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("reference", val))
+        self.query.and_filter(sound_like(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_is(self, val: str):
-        self.query.and_filter(eq("reference", val))
+        self.query.and_filter(eq(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
     def with_reference_is_not(self, val):
-        self.query.and_filter(ne("reference", val))
+        self.query.and_filter(ne(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_in(self, *vals):
-        self.query.and_filter(in_list("reference", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_reference_not_in(self, *vals):
-        self.query.and_filter(not_in_list("reference", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_reference_greater_than(self, val):
-        self.query.and_filter(gt("reference", val))
+        self.query.and_filter(gt(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("reference", val))
+        self.query.and_filter(gte(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_less_than(self, val):
-        self.query.and_filter(lt("reference", val))
+        self.query.and_filter(lt(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("reference", val))
+        self.query.and_filter(lte(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, val))
         return self
 
     def with_reference_between(self, lower, upper):
-        self.query.and_filter(between(column("reference"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.REFERENCE_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_reference_is_known(self):
-        self.query.and_filter(is_not_null(column("reference")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)))
         return self
 
     def with_reference_is_unknown(self):
-        self.query.and_filter(is_null(column("reference")))
+        self.query.and_filter(is_null(column(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)))
         return self
 
     def with_version_is(self, val):
-        self.query.and_filter(eq("version", val))
+        self.query.and_filter(eq(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_is_not(self, val):
-        self.query.and_filter(ne("version", val))
+        self.query.and_filter(ne(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_in(self, *vals):
-        self.query.and_filter(in_list("version", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_not_in(self, *vals):
-        self.query.and_filter(not_in_list("version", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_greater_than(self, val):
-        self.query.and_filter(gt("version", val))
+        self.query.and_filter(gt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("version", val))
+        self.query.and_filter(gte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than(self, val):
-        self.query.and_filter(lt("version", val))
+        self.query.and_filter(lt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("version", val))
+        self.query.and_filter(lte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_between(self, lower, upper):
-        self.query.and_filter(between(column("version"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.VERSION_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_version_is_known(self):
-        self.query.and_filter(is_not_null(column("version")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def with_version_is_unknown(self):
-        self.query.and_filter(is_null(column("version")))
+        self.query.and_filter(is_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def order_by_id_ascending(self):
-        self.query.order_by("id", "asc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_id_descending(self):
-        self.query.order_by("id", "desc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "desc")
         return self
 
 
     def order_by_reference_ascending(self):
-        self.query.order_by("reference", "asc")
+        self.query.order_by(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_reference_descending(self):
-        self.query.order_by("reference", "desc")
+        self.query.order_by(_TeaqlFields.REFERENCE_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_version_ascending(self):
-        self.query.order_by("version", "asc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_version_descending(self):
-        self.query.order_by("version", "desc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "desc")
         return self
 
 
@@ -333,36 +333,36 @@ class PurchaseOrderRequest:
         return self
 
     def group_by_id(self):
-        self.query.group_by("id")
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ID_PROPERTY_COLUMN))
         return self
     def group_by_warehouse(self):
-        self.query.group_by("warehouse")
+        self.query.group_by(_TeaqlFields.WAREHOUSE_PROPERTY_COLUMN)
         return self
 
     def group_by_warehouse_as(self, ret_name: str):
-        self.query.group_by("warehouse")
-        self.query.project_expr(ret_name, column("warehouse"))
+        self.query.group_by(_TeaqlFields.WAREHOUSE_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.WAREHOUSE_PROPERTY_COLUMN))
         return self
     def group_by_reference(self):
-        self.query.group_by("reference")
+        self.query.group_by(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)
         return self
 
     def group_by_reference_as(self, ret_name: str):
-        self.query.group_by("reference")
-        self.query.project_expr(ret_name, column("reference"))
+        self.query.group_by(_TeaqlFields.REFERENCE_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.REFERENCE_PROPERTY_COLUMN))
         return self
     def group_by_version(self):
-        self.query.group_by("version")
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.VERSION_PROPERTY_COLUMN))
         return self
     def select_order_item_list(self):
         from requests.order_item_request import OrderItemRequest
@@ -523,8 +523,8 @@ class PurchaseOrderRequest:
         return self
     def facet_by_warehouse_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "warehouse", request.query, include_all_facets,
-            QueryOperation("facet", "facet_by_warehouse_as", name, "warehouse"))
+        self.query.facet_by(name, _TeaqlFields.WAREHOUSE_PROPERTY_COLUMN, request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_warehouse_as", name, _TeaqlFields.WAREHOUSE_PROPERTY_COLUMN))
         return self
 
 

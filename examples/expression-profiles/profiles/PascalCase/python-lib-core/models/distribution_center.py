@@ -12,11 +12,22 @@ from importlib import import_module
 from copy import copy
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    DOCK_NAME_PROPERTY_MEMBER = "dockName"
+    DOCK_NAME_PROPERTY_COLUMN = "dock_name"
+    DOCK_NAME_PROPERTY_MODEL = "dock_name"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class DistributionCenter:
     _teaql_json_schema = EntityJSONSchema("DistributionCenter", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("dock_name", "dockName", "text"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.DOCK_NAME_PROPERTY_MODEL, _TeaqlFields.DOCK_NAME_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
         EntityJSONField("dispatch_order_list", "_dispatch_order_list", "many", factory=lambda: getattr(import_module("models.dispatch_order"), "DispatchOrder"), loaded_name="dispatch_order_list")
     ), profile=JsonFieldNamingProfile.parse("PascalCase"))
 
@@ -73,22 +84,22 @@ class DistributionCenter:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "dock_name" in kwargs and "dockName" not in kwargs:
-            kwargs["dockName"] = kwargs.pop("dock_name")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.DOCK_NAME_PROPERTY_COLUMN in kwargs and _TeaqlFields.DOCK_NAME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.DOCK_NAME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.DOCK_NAME_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "dockName", "version", "dispatch_order_list"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.DOCK_NAME_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER, "dispatch_order_list"])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.dockName = kwargs.get("dockName")
+        self.dockName = kwargs.get(_TeaqlFields.DOCK_NAME_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if "dispatch_order_list" in kwargs or creation_state is EntityCreationState.RESERVED:
             supplied = kwargs.get("dispatch_order_list")
@@ -111,14 +122,14 @@ class DistributionCenter:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "dockName" in self._loaded_fields:
-            payload["dock_name"] = Value.Text(self.dockName)
+        if _TeaqlFields.DOCK_NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.DOCK_NAME_PROPERTY_COLUMN] = Value.Text(self.dockName)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -127,8 +138,8 @@ class DistributionCenter:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "dock_name" in values:
-            value = values["dock_name"]
+        if _TeaqlFields.DOCK_NAME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.DOCK_NAME_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.dockName = raw
 
@@ -175,12 +186,12 @@ class DistributionCenter:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("DistributionCenter", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="DistributionCenter")])
-                if "dockName" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("dock_name"), message="Mutation requires a fully loaded entity", entity_type="DistributionCenter")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="DistributionCenter")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DistributionCenter")])
+                if _TeaqlFields.DOCK_NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.DOCK_NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DistributionCenter")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DistributionCenter")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -261,14 +272,14 @@ class DistributionCenter:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "dockName" in self._loaded_fields:
-            payload["dock_name"] = Value.Text(self.dockName)
+        if _TeaqlFields.DOCK_NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.DOCK_NAME_PROPERTY_COLUMN] = Value.Text(self.dockName)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -308,12 +319,12 @@ class DistributionCenter:
         session.capture_loaded_values("DistributionCenter", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="DistributionCenter")])
-                if "dockName" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("dock_name"), message="Mutation requires a fully loaded entity", entity_type="DistributionCenter")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="DistributionCenter")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DistributionCenter")])
+                if _TeaqlFields.DOCK_NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.DOCK_NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DistributionCenter")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="DistributionCenter")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -366,24 +377,24 @@ class DistributionCenter:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "dock_name" in persisted:
-            self.dockName = persisted["dock_name"]
-            self._loaded_fields.add("dockName")
-        elif "dockName" in persisted:
-            self.dockName = persisted["dockName"]
-            self._loaded_fields.add("dockName")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.DOCK_NAME_PROPERTY_COLUMN in persisted:
+            self.dockName = persisted[_TeaqlFields.DOCK_NAME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.DOCK_NAME_PROPERTY_MEMBER)
+        elif _TeaqlFields.DOCK_NAME_PROPERTY_MEMBER in persisted:
+            self.dockName = persisted[_TeaqlFields.DOCK_NAME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.DOCK_NAME_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -443,27 +454,27 @@ class DistributionCenter:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_dock_name(self, value):
-        if "dockName" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.dockName, value):
+        if _TeaqlFields.DOCK_NAME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.dockName, value):
             return self
         self.dockName = value
-        self._loaded_fields.add("dockName")
-        self._entity_root.set(self._teaql_entity_key(), "dock_name", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.DOCK_NAME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.DOCK_NAME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def dispatch_order_list(self) -> "SmartList[DispatchOrder]":
         return self._dispatch_order_list

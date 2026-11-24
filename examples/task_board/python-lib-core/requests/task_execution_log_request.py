@@ -13,7 +13,7 @@ from teaql.core.expr import (
     not_contain, not_end_with, not_in_list, not_in_subquery, value,
     sound_like,
 )
-from models.task_execution_log import TaskExecutionLog
+from models.task_execution_log import _TeaqlFields, TaskExecutionLog
 from typing import Protocol
 
 class QuerySelection(Protocol):
@@ -92,314 +92,314 @@ class TaskExecutionLogRequest:
         return self
 
     def select_self_fields(self):
-        self.query.project("id", "task", "action", "detail", "version")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN, _TeaqlFields.TASK_PROPERTY_COLUMN, _TeaqlFields.ACTION_PROPERTY_COLUMN, _TeaqlFields.DETAIL_PROPERTY_COLUMN, _TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_id(self):
-        self.query.project("id")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
 
     def select_action(self):
-        self.query.project("action")
+        self.query.project(_TeaqlFields.ACTION_PROPERTY_COLUMN)
         return self
 
     def select_detail(self):
-        self.query.project("detail")
+        self.query.project(_TeaqlFields.DETAIL_PROPERTY_COLUMN)
         return self
 
     def select_version(self):
-        self.query.project("version")
+        self.query.project(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_task_with(self, child_request):
-        self.query.project("task")
-        self.query.relation_query("task", child_request.query,
-            QueryOperation("relation-select", "select_task_with", relation="task"))
+        self.query.project(_TeaqlFields.TASK_PROPERTY_COLUMN)
+        self.query.relation_query(_TeaqlFields.TASK_PROPERTY_COLUMN, child_request.query,
+            QueryOperation("relation-select", "select_task_with", relation=_TeaqlFields.TASK_PROPERTY_COLUMN))
         return self
     def with_task_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(in_subquery(column("task"), "Task", child_request.query))
+        self.query.and_filter(in_subquery(column(_TeaqlFields.TASK_PROPERTY_COLUMN), "Task", child_request.query))
         return self
 
     def without_task_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("task"), "Task", child_request.query))
+        self.query.and_filter(not_in_subquery(column(_TeaqlFields.TASK_PROPERTY_COLUMN), "Task", child_request.query))
         return self
 
     def have_task(self):
-        self.query.and_filter(is_not_null(column("task")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.TASK_PROPERTY_COLUMN)))
         return self
 
     def have_no_task(self):
-        self.query.and_filter(is_null(column("task")))
+        self.query.and_filter(is_null(column(_TeaqlFields.TASK_PROPERTY_COLUMN)))
         return self
 
     def with_id_is(self, val):
-        self.query.and_filter(eq("id", val))
+        self.query.and_filter(eq(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_is_not(self, val):
-        self.query.and_filter(ne("id", val))
+        self.query.and_filter(ne(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_in(self, *vals):
-        self.query.and_filter(in_list("id", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_not_in(self, *vals):
-        self.query.and_filter(not_in_list("id", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_greater_than(self, val):
-        self.query.and_filter(gt("id", val))
+        self.query.and_filter(gt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("id", val))
+        self.query.and_filter(gte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than(self, val):
-        self.query.and_filter(lt("id", val))
+        self.query.and_filter(lt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("id", val))
+        self.query.and_filter(lte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_between(self, lower, upper):
-        self.query.and_filter(between(column("id"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ID_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_id_is_known(self):
-        self.query.and_filter(is_not_null(column("id")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_id_is_unknown(self):
-        self.query.and_filter(is_null(column("id")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def filter_by_task(self, val):
-        self.query.and_filter(eq("task", val))
+        self.query.and_filter(eq(_TeaqlFields.TASK_PROPERTY_COLUMN, val))
         return self
 
     def with_action_containing(self, val: str):
-        self.query.and_filter(contain("action", val))
+        self.query.and_filter(contain(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
 
     def with_action_not_containing(self, val: str):
-        self.query.and_filter(not_contain("action", val))
+        self.query.and_filter(not_contain(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
 
     def with_action_starting_with(self, val: str):
-        self.query.and_filter(begin_with("action", val))
+        self.query.and_filter(begin_with(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
 
     def with_action_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("action", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
 
     def with_action_ending_with(self, val: str):
-        self.query.and_filter(end_with("action", val))
+        self.query.and_filter(end_with(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
 
     def with_action_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("action", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
 
     def with_action_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("action", val))
+        self.query.and_filter(sound_like(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
 
     def with_action_is(self, val: str):
-        self.query.and_filter(eq("action", val))
+        self.query.and_filter(eq(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
     def with_action_is_not(self, val):
-        self.query.and_filter(ne("action", val))
+        self.query.and_filter(ne(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
 
     def with_action_in(self, *vals):
-        self.query.and_filter(in_list("action", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ACTION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_action_not_in(self, *vals):
-        self.query.and_filter(not_in_list("action", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ACTION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_action_greater_than(self, val):
-        self.query.and_filter(gt("action", val))
+        self.query.and_filter(gt(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
 
     def with_action_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("action", val))
+        self.query.and_filter(gte(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
 
     def with_action_less_than(self, val):
-        self.query.and_filter(lt("action", val))
+        self.query.and_filter(lt(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
 
     def with_action_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("action", val))
+        self.query.and_filter(lte(_TeaqlFields.ACTION_PROPERTY_COLUMN, val))
         return self
 
     def with_action_between(self, lower, upper):
-        self.query.and_filter(between(column("action"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ACTION_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_action_is_known(self):
-        self.query.and_filter(is_not_null(column("action")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ACTION_PROPERTY_COLUMN)))
         return self
 
     def with_action_is_unknown(self):
-        self.query.and_filter(is_null(column("action")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ACTION_PROPERTY_COLUMN)))
         return self
 
     def with_detail_containing(self, val: str):
-        self.query.and_filter(contain("detail", val))
+        self.query.and_filter(contain(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
 
     def with_detail_not_containing(self, val: str):
-        self.query.and_filter(not_contain("detail", val))
+        self.query.and_filter(not_contain(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
 
     def with_detail_starting_with(self, val: str):
-        self.query.and_filter(begin_with("detail", val))
+        self.query.and_filter(begin_with(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
 
     def with_detail_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("detail", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
 
     def with_detail_ending_with(self, val: str):
-        self.query.and_filter(end_with("detail", val))
+        self.query.and_filter(end_with(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
 
     def with_detail_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("detail", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
 
     def with_detail_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("detail", val))
+        self.query.and_filter(sound_like(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
 
     def with_detail_is(self, val: str):
-        self.query.and_filter(eq("detail", val))
+        self.query.and_filter(eq(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
     def with_detail_is_not(self, val):
-        self.query.and_filter(ne("detail", val))
+        self.query.and_filter(ne(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
 
     def with_detail_in(self, *vals):
-        self.query.and_filter(in_list("detail", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.DETAIL_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_detail_not_in(self, *vals):
-        self.query.and_filter(not_in_list("detail", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.DETAIL_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_detail_greater_than(self, val):
-        self.query.and_filter(gt("detail", val))
+        self.query.and_filter(gt(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
 
     def with_detail_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("detail", val))
+        self.query.and_filter(gte(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
 
     def with_detail_less_than(self, val):
-        self.query.and_filter(lt("detail", val))
+        self.query.and_filter(lt(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
 
     def with_detail_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("detail", val))
+        self.query.and_filter(lte(_TeaqlFields.DETAIL_PROPERTY_COLUMN, val))
         return self
 
     def with_detail_between(self, lower, upper):
-        self.query.and_filter(between(column("detail"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.DETAIL_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_detail_is_known(self):
-        self.query.and_filter(is_not_null(column("detail")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.DETAIL_PROPERTY_COLUMN)))
         return self
 
     def with_detail_is_unknown(self):
-        self.query.and_filter(is_null(column("detail")))
+        self.query.and_filter(is_null(column(_TeaqlFields.DETAIL_PROPERTY_COLUMN)))
         return self
 
     def with_version_is(self, val):
-        self.query.and_filter(eq("version", val))
+        self.query.and_filter(eq(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_is_not(self, val):
-        self.query.and_filter(ne("version", val))
+        self.query.and_filter(ne(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_in(self, *vals):
-        self.query.and_filter(in_list("version", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_not_in(self, *vals):
-        self.query.and_filter(not_in_list("version", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_greater_than(self, val):
-        self.query.and_filter(gt("version", val))
+        self.query.and_filter(gt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("version", val))
+        self.query.and_filter(gte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than(self, val):
-        self.query.and_filter(lt("version", val))
+        self.query.and_filter(lt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("version", val))
+        self.query.and_filter(lte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_between(self, lower, upper):
-        self.query.and_filter(between(column("version"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.VERSION_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_version_is_known(self):
-        self.query.and_filter(is_not_null(column("version")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def with_version_is_unknown(self):
-        self.query.and_filter(is_null(column("version")))
+        self.query.and_filter(is_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def order_by_id_ascending(self):
-        self.query.order_by("id", "asc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_id_descending(self):
-        self.query.order_by("id", "desc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "desc")
         return self
 
 
     def order_by_action_ascending(self):
-        self.query.order_by("action", "asc")
+        self.query.order_by(_TeaqlFields.ACTION_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_action_descending(self):
-        self.query.order_by("action", "desc")
+        self.query.order_by(_TeaqlFields.ACTION_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_detail_ascending(self):
-        self.query.order_by("detail", "asc")
+        self.query.order_by(_TeaqlFields.DETAIL_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_detail_descending(self):
-        self.query.order_by("detail", "desc")
+        self.query.order_by(_TeaqlFields.DETAIL_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_version_ascending(self):
-        self.query.order_by("version", "asc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_version_descending(self):
-        self.query.order_by("version", "desc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "desc")
         return self
 
 
@@ -416,49 +416,49 @@ class TaskExecutionLogRequest:
         return self
 
     def group_by_id(self):
-        self.query.group_by("id")
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ID_PROPERTY_COLUMN))
         return self
     def group_by_task(self):
-        self.query.group_by("task")
+        self.query.group_by(_TeaqlFields.TASK_PROPERTY_COLUMN)
         return self
 
     def group_by_task_as(self, ret_name: str):
-        self.query.group_by("task")
-        self.query.project_expr(ret_name, column("task"))
+        self.query.group_by(_TeaqlFields.TASK_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.TASK_PROPERTY_COLUMN))
         return self
     def group_by_action(self):
-        self.query.group_by("action")
+        self.query.group_by(_TeaqlFields.ACTION_PROPERTY_COLUMN)
         return self
 
     def group_by_action_as(self, ret_name: str):
-        self.query.group_by("action")
-        self.query.project_expr(ret_name, column("action"))
+        self.query.group_by(_TeaqlFields.ACTION_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ACTION_PROPERTY_COLUMN))
         return self
     def group_by_detail(self):
-        self.query.group_by("detail")
+        self.query.group_by(_TeaqlFields.DETAIL_PROPERTY_COLUMN)
         return self
 
     def group_by_detail_as(self, ret_name: str):
-        self.query.group_by("detail")
-        self.query.project_expr(ret_name, column("detail"))
+        self.query.group_by(_TeaqlFields.DETAIL_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.DETAIL_PROPERTY_COLUMN))
         return self
     def group_by_version(self):
-        self.query.group_by("version")
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.VERSION_PROPERTY_COLUMN))
         return self
     def facet_by_task_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "task", request.query, include_all_facets,
-            QueryOperation("facet", "facet_by_task_as", name, "task"))
+        self.query.facet_by(name, _TeaqlFields.TASK_PROPERTY_COLUMN, request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_task_as", name, _TeaqlFields.TASK_PROPERTY_COLUMN))
         return self
 
 

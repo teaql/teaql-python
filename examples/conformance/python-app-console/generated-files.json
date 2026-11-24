@@ -1,21 +1,10 @@
 {
   "AGENTS.md": "e32da3c58746f4dc215a75dec69434093e09f83f6601a84faa482dedff2067ea",
-  "E.py": "2b183807b5f191f06273c6338772b7fa0dc9f9b28f14b497f70f6555cfeba780",
-  "Q.py": "4ea3d328abc7e0a487da8f861a857831f054d35e4c3a4f4e2bcf3287ec77ee3a",
-  "README.md": "822f099cf502062cfca09df03dccb3a4790ab913744d0cf2f1481c9ab0f4af36",
+  "README.md": "f1b882d74dcf6c3ebf81a9d14d9227a93bca93aa3622ae574d86e5a4871f3995",
   "STANDARD_TELEMETRY.md": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
   "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "app/main.py": "099df63b564962b7368a6d4e525caa6cf73a22e132595da52491c8f3805bb1c2",
-  "generated_search_models.py": "2569dc8cfaf1aa826068b33ebbe40fcc2292a3680122ea72704bf24e81a908f1",
-  "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "models/platform.py": "d2cd357a6f7b9dd7afed448610ca2895985271d9ddea2af8224c1c81d7e1d411",
-  "models/work_item.py": "fab3bdc31dce610b9bf4884c6b94c08134782264d44a6c6bec0c5532d829a180",
-  "pyproject.toml": "968efdf70bdead1cff11d5fe9c399351dac17e2a26c9977ee023ef8415567eba",
-  "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "requests/platform_request.py": "5cb45d6d654166cc92f14e94fe0e5f84e4ecdc3386f722822184d3946e266c27",
-  "requests/work_item_request.py": "c1be6a157c0f1b7632818d68d548ba90931513a9b11a700a29f101237588b84e",
-  "runtime_module.py": "43d1a8d28070f96faa4078bec54d8d4ed3311517984bd2bfb043561357e1c4fc",
+  "app/main.py": "1d1c4ad95e110f97104b346bdcd76580bff515f68fe4f38e500fc5fe780620eb",
   "teaql-i18n.json": "fa0ea9576dccfb6ef4e940b00b53abb843ee492741e98da5001e6ea2ad79b2cb",
   "teaql/checker-model.json": "4824e2986933569c4d827ca44cae7e3a028012aec1e7dbacd245fff5fd5ffe1b",
-  "teaql/model-provenance.json": "25c3c0f1f8b30ca2e94d36c7abdb4aa911bd735e0012ccfe1bb987a0882b9107"
+  "teaql/model-provenance.json": "3b6c48164a41d047adc9d684bc259b71a6c18e6fa9fe70aeae067b520cc75688"
 }

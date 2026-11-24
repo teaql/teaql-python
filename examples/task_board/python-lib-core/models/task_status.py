@@ -13,16 +13,42 @@ from copy import copy
 from models.platform import Platform
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    NAME_PROPERTY_MEMBER = "name"
+    NAME_PROPERTY_COLUMN = "name"
+    NAME_PROPERTY_MODEL = "name"
+    CODE_PROPERTY_MEMBER = "code"
+    CODE_PROPERTY_COLUMN = "code"
+    CODE_PROPERTY_MODEL = "code"
+    COLOR_PROPERTY_MEMBER = "color"
+    COLOR_PROPERTY_COLUMN = "color"
+    COLOR_PROPERTY_MODEL = "color"
+    DISPLAY_ORDER_PROPERTY_MEMBER = "displayOrder"
+    DISPLAY_ORDER_PROPERTY_COLUMN = "display_order"
+    DISPLAY_ORDER_PROPERTY_MODEL = "display_order"
+    PROGRESS_PROPERTY_MEMBER = "progress"
+    PROGRESS_PROPERTY_COLUMN = "progress"
+    PROGRESS_PROPERTY_MODEL = "progress"
+    PLATFORM_PROPERTY_MEMBER = "platform"
+    PLATFORM_PROPERTY_COLUMN = "platform"
+    PLATFORM_PROPERTY_MODEL = "platform"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class TaskStatus:
     _teaql_json_schema = EntityJSONSchema("TaskStatus", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("name", "name", "text"),
-        EntityJSONField("code", "code", "text"),
-        EntityJSONField("color", "color", "text"),
-        EntityJSONField("display_order", "displayOrder", "decimal"),
-        EntityJSONField("progress", "progress", "decimal"),
-        EntityJSONField("platform", "platform", "reference", factory=lambda: Platform),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.NAME_PROPERTY_MODEL, _TeaqlFields.NAME_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.CODE_PROPERTY_MODEL, _TeaqlFields.CODE_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.COLOR_PROPERTY_MODEL, _TeaqlFields.COLOR_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.DISPLAY_ORDER_PROPERTY_MODEL, _TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER, "decimal"),
+        EntityJSONField(_TeaqlFields.PROGRESS_PROPERTY_MODEL, _TeaqlFields.PROGRESS_PROPERTY_MEMBER, "decimal"),
+        EntityJSONField(_TeaqlFields.PLATFORM_PROPERTY_MODEL, _TeaqlFields.PLATFORM_PROPERTY_MEMBER, "reference", factory=lambda: Platform),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
         EntityJSONField("task_list", "_task_list", "many", factory=lambda: getattr(import_module("models.task"), "Task"), loaded_name="task_list")
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
@@ -82,42 +108,42 @@ class TaskStatus:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "name" in kwargs and "name" not in kwargs:
-            kwargs["name"] = kwargs.pop("name")
-        if "code" in kwargs and "code" not in kwargs:
-            kwargs["code"] = kwargs.pop("code")
-        if "color" in kwargs and "color" not in kwargs:
-            kwargs["color"] = kwargs.pop("color")
-        if "display_order" in kwargs and "displayOrder" not in kwargs:
-            kwargs["displayOrder"] = kwargs.pop("display_order")
-        if "progress" in kwargs and "progress" not in kwargs:
-            kwargs["progress"] = kwargs.pop("progress")
-        if "platform" in kwargs and "platform" not in kwargs:
-            kwargs["platform"] = kwargs.pop("platform")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.NAME_PROPERTY_COLUMN in kwargs and _TeaqlFields.NAME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.NAME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.NAME_PROPERTY_COLUMN)
+        if _TeaqlFields.CODE_PROPERTY_COLUMN in kwargs and _TeaqlFields.CODE_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CODE_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CODE_PROPERTY_COLUMN)
+        if _TeaqlFields.COLOR_PROPERTY_COLUMN in kwargs and _TeaqlFields.COLOR_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.COLOR_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.COLOR_PROPERTY_COLUMN)
+        if _TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN in kwargs and _TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN)
+        if _TeaqlFields.PROGRESS_PROPERTY_COLUMN in kwargs and _TeaqlFields.PROGRESS_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.PROGRESS_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.PROGRESS_PROPERTY_COLUMN)
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in kwargs and _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.PLATFORM_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.PLATFORM_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "name", "code", "color", "displayOrder", "progress", "platform", "version", "task_list"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.NAME_PROPERTY_MEMBER, _TeaqlFields.CODE_PROPERTY_MEMBER, _TeaqlFields.COLOR_PROPERTY_MEMBER, _TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER, _TeaqlFields.PROGRESS_PROPERTY_MEMBER, _TeaqlFields.PLATFORM_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER, "task_list"])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.name = kwargs.get("name")
+        self.name = kwargs.get(_TeaqlFields.NAME_PROPERTY_MEMBER)
 
-        self.code = kwargs.get("code")
+        self.code = kwargs.get(_TeaqlFields.CODE_PROPERTY_MEMBER)
 
-        self.color = kwargs.get("color")
+        self.color = kwargs.get(_TeaqlFields.COLOR_PROPERTY_MEMBER)
 
-        self.displayOrder = kwargs.get("displayOrder")
+        self.displayOrder = kwargs.get(_TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER)
 
-        self.progress = kwargs.get("progress")
+        self.progress = kwargs.get(_TeaqlFields.PROGRESS_PROPERTY_MEMBER)
 
-        self.platform = kwargs.get("platform")
+        self.platform = kwargs.get(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.platform, dict):
             self.platform = Platform._teaql_from_record(**self.platform)
@@ -142,29 +168,29 @@ class TaskStatus:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "name" in self._loaded_fields:
-            payload["name"] = Value.Text(self.name)
+        if _TeaqlFields.NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.NAME_PROPERTY_COLUMN] = Value.Text(self.name)
 
-        if "code" in self._loaded_fields:
-            payload["code"] = Value.Text(self.code)
+        if _TeaqlFields.CODE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CODE_PROPERTY_COLUMN] = Value.Text(self.code)
 
-        if "color" in self._loaded_fields:
-            payload["color"] = Value.Text(self.color)
+        if _TeaqlFields.COLOR_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.COLOR_PROPERTY_COLUMN] = Value.Text(self.color)
 
-        if "displayOrder" in self._loaded_fields:
-            payload["display_order"] = Value.Decimal(self.displayOrder)
+        if _TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN] = Value.Decimal(self.displayOrder)
 
-        if "progress" in self._loaded_fields:
-            payload["progress"] = Value.Decimal(self.progress)
+        if _TeaqlFields.PROGRESS_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PROGRESS_PROPERTY_COLUMN] = Value.Decimal(self.progress)
 
-        if "platform" in self._loaded_fields:
-            payload["platform"] = Value.I64(getattr(self.platform, "id", self.platform))
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = Value.I64(getattr(self.platform, "id", self.platform))
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -173,28 +199,28 @@ class TaskStatus:
 
     def _teaql_restore_fixed_values(self, values):
         """Runtime-owned restoration supplies only known, equal scalar values."""
-        if "name" in values:
-            value = values["name"]
+        if _TeaqlFields.NAME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.NAME_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.name = raw
 
-        if "code" in values:
-            value = values["code"]
+        if _TeaqlFields.CODE_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.CODE_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.code = raw
 
-        if "color" in values:
-            value = values["color"]
+        if _TeaqlFields.COLOR_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.COLOR_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.color = raw
 
-        if "display_order" in values:
-            value = values["display_order"]
+        if _TeaqlFields.DISPLAY_ORDER_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.DISPLAY_ORDER_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.displayOrder = raw
 
-        if "progress" in values:
-            value = values["progress"]
+        if _TeaqlFields.PROGRESS_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.PROGRESS_PROPERTY_MODEL]
             raw = value.val if isinstance(value, Value) else value
             self.progress = raw
 
@@ -241,22 +267,22 @@ class TaskStatus:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("TaskStatus", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "name" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "code" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("code"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "color" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("color"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "displayOrder" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("display_order"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "progress" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("progress"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "platform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("platform"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.CODE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CODE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.COLOR_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.COLOR_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.DISPLAY_ORDER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.PROGRESS_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PROGRESS_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PLATFORM_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -337,33 +363,33 @@ class TaskStatus:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "name" in self._loaded_fields:
-            payload["name"] = Value.Text(self.name)
+        if _TeaqlFields.NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.NAME_PROPERTY_COLUMN] = Value.Text(self.name)
 
-        if "code" in self._loaded_fields:
-            payload["code"] = Value.Text(self.code)
+        if _TeaqlFields.CODE_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CODE_PROPERTY_COLUMN] = Value.Text(self.code)
 
-        if "color" in self._loaded_fields:
-            payload["color"] = Value.Text(self.color)
+        if _TeaqlFields.COLOR_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.COLOR_PROPERTY_COLUMN] = Value.Text(self.color)
 
-        if "displayOrder" in self._loaded_fields:
-            payload["display_order"] = Value.Decimal(self.displayOrder)
+        if _TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN] = Value.Decimal(self.displayOrder)
 
-        if "progress" in self._loaded_fields:
-            payload["progress"] = Value.Decimal(self.progress)
+        if _TeaqlFields.PROGRESS_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PROGRESS_PROPERTY_COLUMN] = Value.Decimal(self.progress)
 
-        if "platform" in self._loaded_fields:
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.platform
             reference_id = getattr(reference, "id", reference)
-            payload["platform"] = (Value.Object(reference)
+            payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -378,10 +404,10 @@ class TaskStatus:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "platform" in payload:
-            reference = payload["platform"].val
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["platform"] = Value.I64(reference.id)
+                payload[_TeaqlFields.PLATFORM_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("TaskStatus", payload)
         elif action == "Update":
@@ -407,22 +433,22 @@ class TaskStatus:
         session.capture_loaded_values("TaskStatus", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "name" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("name"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "code" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("code"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "color" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("color"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "displayOrder" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("display_order"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "progress" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("progress"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "platform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("platform"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.CODE_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CODE_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.COLOR_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.COLOR_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.DISPLAY_ORDER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.PROGRESS_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PROGRESS_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.PLATFORM_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PLATFORM_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="TaskStatus")])
             action, cmd = self._teaql_build_command()
             action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
@@ -475,54 +501,54 @@ class TaskStatus:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "name" in persisted:
-            self.name = persisted["name"]
-            self._loaded_fields.add("name")
-        elif "name" in persisted:
-            self.name = persisted["name"]
-            self._loaded_fields.add("name")
-        if "code" in persisted:
-            self.code = persisted["code"]
-            self._loaded_fields.add("code")
-        elif "code" in persisted:
-            self.code = persisted["code"]
-            self._loaded_fields.add("code")
-        if "color" in persisted:
-            self.color = persisted["color"]
-            self._loaded_fields.add("color")
-        elif "color" in persisted:
-            self.color = persisted["color"]
-            self._loaded_fields.add("color")
-        if "display_order" in persisted:
-            self.displayOrder = persisted["display_order"]
-            self._loaded_fields.add("displayOrder")
-        elif "displayOrder" in persisted:
-            self.displayOrder = persisted["displayOrder"]
-            self._loaded_fields.add("displayOrder")
-        if "progress" in persisted:
-            self.progress = persisted["progress"]
-            self._loaded_fields.add("progress")
-        elif "progress" in persisted:
-            self.progress = persisted["progress"]
-            self._loaded_fields.add("progress")
-        if "platform" in persisted:
-            self.platform = persisted["platform"]
-            self._loaded_fields.add("platform")
-        elif "platform" in persisted:
-            self.platform = persisted["platform"]
-            self._loaded_fields.add("platform")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.NAME_PROPERTY_COLUMN in persisted:
+            self.name = persisted[_TeaqlFields.NAME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.NAME_PROPERTY_MEMBER)
+        elif _TeaqlFields.NAME_PROPERTY_MEMBER in persisted:
+            self.name = persisted[_TeaqlFields.NAME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.NAME_PROPERTY_MEMBER)
+        if _TeaqlFields.CODE_PROPERTY_COLUMN in persisted:
+            self.code = persisted[_TeaqlFields.CODE_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CODE_PROPERTY_MEMBER)
+        elif _TeaqlFields.CODE_PROPERTY_MEMBER in persisted:
+            self.code = persisted[_TeaqlFields.CODE_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CODE_PROPERTY_MEMBER)
+        if _TeaqlFields.COLOR_PROPERTY_COLUMN in persisted:
+            self.color = persisted[_TeaqlFields.COLOR_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.COLOR_PROPERTY_MEMBER)
+        elif _TeaqlFields.COLOR_PROPERTY_MEMBER in persisted:
+            self.color = persisted[_TeaqlFields.COLOR_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.COLOR_PROPERTY_MEMBER)
+        if _TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN in persisted:
+            self.displayOrder = persisted[_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER)
+        elif _TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER in persisted:
+            self.displayOrder = persisted[_TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER)
+        if _TeaqlFields.PROGRESS_PROPERTY_COLUMN in persisted:
+            self.progress = persisted[_TeaqlFields.PROGRESS_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.PROGRESS_PROPERTY_MEMBER)
+        elif _TeaqlFields.PROGRESS_PROPERTY_MEMBER in persisted:
+            self.progress = persisted[_TeaqlFields.PROGRESS_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.PROGRESS_PROPERTY_MEMBER)
+        if _TeaqlFields.PLATFORM_PROPERTY_COLUMN in persisted:
+            self.platform = persisted[_TeaqlFields.PLATFORM_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        elif _TeaqlFields.PLATFORM_PROPERTY_MEMBER in persisted:
+            self.platform = persisted[_TeaqlFields.PLATFORM_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -582,69 +608,69 @@ class TaskStatus:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_name(self, value):
-        if "name" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.name, value):
+        if _TeaqlFields.NAME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.name, value):
             return self
         self.name = value
-        self._loaded_fields.add("name")
-        self._entity_root.set(self._teaql_entity_key(), "name", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.NAME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.NAME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_code(self, value):
-        if "code" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.code, value):
+        if _TeaqlFields.CODE_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.code, value):
             return self
         self.code = value
-        self._loaded_fields.add("code")
-        self._entity_root.set(self._teaql_entity_key(), "code", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.CODE_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CODE_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_color(self, value):
-        if "color" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.color, value):
+        if _TeaqlFields.COLOR_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.color, value):
             return self
         self.color = value
-        self._loaded_fields.add("color")
-        self._entity_root.set(self._teaql_entity_key(), "color", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.COLOR_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.COLOR_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_display_order(self, value):
-        if "displayOrder" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.displayOrder, value):
+        if _TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.displayOrder, value):
             return self
         self.displayOrder = value
-        self._loaded_fields.add("displayOrder")
-        self._entity_root.set(self._teaql_entity_key(), "display_order", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.DISPLAY_ORDER_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_progress(self, value):
-        if "progress" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.progress, value):
+        if _TeaqlFields.PROGRESS_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.progress, value):
             return self
         self.progress = value
-        self._loaded_fields.add("progress")
-        self._entity_root.set(self._teaql_entity_key(), "progress", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.PROGRESS_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.PROGRESS_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_platform(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.platform
         current_id = getattr(current, "id", current)
-        if "platform" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.PLATFORM_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.platform = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("platform")
-        self._entity_root.set(self._teaql_entity_key(), "platform",
+        self._loaded_fields.add(_TeaqlFields.PLATFORM_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.PLATFORM_PROPERTY_COLUMN,
             Value.Object(self.platform) if self.platform is not None and hasattr(self.platform, "id")
             else Value.from_any(self.platform))
         return self

@@ -13,6 +13,7 @@ fi
 scratch="$(mktemp -d -t teaql-python-order-scratch.XXXXXXXX)"
 trap 'status=$?; trap - EXIT; rm -rf -- "$scratch"; exit "$status"' EXIT
 export PYTHONDONTWRITEBYTECODE=1
+export TEAQL_LOG_ENDPOINT="$evidence/runtime.log"
 export PYTHONPATH="$example/python-lib-core:$app:$repo/src"
 fingerprint() {
   (cd "$example" && find python-lib-core python-app-console -type f \

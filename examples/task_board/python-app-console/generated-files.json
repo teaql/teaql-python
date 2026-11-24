@@ -1,25 +1,10 @@
 {
   "AGENTS.md": "a21c1412a6ce2cc924c6f1ab5dc3a85b1bd6782c840f034a0ecc2df25d5ae71a",
-  "E.py": "00fe82d63487a5e76982bc6fcd25f49418de3fb7275fd5db5d76f9cf850adf5e",
-  "Q.py": "222de37ce288f59d8509aa11400086f6a56d58206d6d6f15a03359460dca0d3c",
-  "README.md": "2882c6b6b2820a25c854a2e1a6d089ab8c5f6622e5aa7ce34e63ce512e6aaf52",
+  "README.md": "2777c6af5fd2e1c03bb972e89d71ece5780bfe865a16cd050e389d5307289c1b",
   "STANDARD_TELEMETRY.md": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
   "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "app/main.py": "390d4fe047e5a1776911bac2bdc85a159011053dbe5d158312233e058b146cd6",
-  "generated_search_models.py": "5313faef4185026bb1fda10240d0f00cd31e1f60cfe76db73c652b987a56d101",
-  "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "models/platform.py": "1b329161c72ff6b2c11fa050bae4228f692e296d7596a5934001b2f1db263d10",
-  "models/task.py": "ca8e8d883fa7d48fd13da9b95168ab060af8e45e8506221bed32cc8c96e715d9",
-  "models/task_execution_log.py": "ecc57cac53225de2bfcfcdc095cbc17d967d142e7b39d7a58ec7b7bb7047b2e9",
-  "models/task_status.py": "6b0a5542ca80d8bb59b9182819e73618ea365cb1b1b70778c70ea88ca8ac45e4",
-  "pyproject.toml": "855809a3d29c09fcd435ce7484141882aeaaf80123842b23bb2ac5cb77eed330",
-  "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-  "requests/platform_request.py": "1e4b9d5ecfade7a4c5ce7681b658cc5f9fc90e6d94543b81238316fe1e37e8ac",
-  "requests/task_execution_log_request.py": "35f600c847599d54501749a940597ba2a9bd549b796279de1e7ee937c0e80f6d",
-  "requests/task_request.py": "07e11518151f30f8100a5cb2172efe8040d58e7a2f3711c61a9a38734f8cdf09",
-  "requests/task_status_request.py": "3cc00956ea10a6d7c767cc6b76b81bf1744b8e98ca2129cb6da2547a844945f1",
-  "runtime_module.py": "f6022237abc93cf91f4ffff11aa202a52d04236e9d6c77cb3217f594ac103e6f",
+  "app/main.py": "a1b8c0a1a63d31f3f664c7603372fa32f31b4d7694f0d8a4b71232ce627a79dd",
   "teaql-i18n.json": "79b420e04edf1c1e1b9f4d04ddfc0ec8a6e2a2458e6a337a8c046bacb64c3a8d",
   "teaql/checker-model.json": "b49897830ad712d77109345903474626ce0ff55dce27a2d51f9fc5b9075e3ae4",
-  "teaql/model-provenance.json": "edbda6e3da7f4df4b422e8fb61e11f527d5ca87b8838d5bb85a70de6da521a31"
+  "teaql/model-provenance.json": "5796367d35661edbd6f7807471fc0291499caa313ee15d3b1c9dd2ac47e5ed04"
 }
