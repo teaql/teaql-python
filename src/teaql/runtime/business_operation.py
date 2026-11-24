@@ -83,7 +83,8 @@ class BusinessOperation:
         root = context.require_active_root(self.root_type)
         if type(root.id) is not int or root.id <= 0:
             raise BusinessOperationError("OPERATION_SCOPE_INVALID", "active root must have a valid identity")
-        if context._graph_session is not None or context._business_operation is not None:
+        if (context._graph_session is not None or context._business_operation is not None
+                or context._context_transaction is not None):
             raise BusinessOperationError("OPERATION_NESTING_UNSUPPORTED", "business operations cannot nest")
         guard = context._graph_save_guard.get()
         if guard is not None and guard['active']:

@@ -1,7 +1,7 @@
-from typing import Dict, Any, Optional, List, Callable, TypeVar
+from typing import Dict, Any, Optional, List, Awaitable, Callable, TypeVar
 import asyncio
 import contextvars
-from copy import deepcopy
+from copy import copy, deepcopy
 from inspect import iscoroutinefunction, signature
 from dataclasses import dataclass
 from array import array
@@ -29,6 +29,7 @@ from .entity_reference import (
 
 
 TEntity = TypeVar("TEntity")
+TResult = TypeVar("TResult")
 EntityInitializer = Callable[["UserContext", Any], None]
 
 @dataclass(frozen=True)
@@ -130,6 +131,7 @@ class UserContext:
         )
         self._graph_session = None
         self._business_operation = None
+        self._context_transaction = None
         self._audit_journal = None
         self._fix_evidence_current: List[FixEvidence] = []
         self._fix_evidence_last: List[FixEvidence] = []
@@ -233,7 +235,99 @@ class UserContext:
         )
         return claims
 
+    async def transaction(self, work: Callable[["UserContext"], Awaitable[TResult]]) -> TResult:
+        """Run multiple graph saves on a single provider transaction."""
+        from .context_transaction import _ContextTransaction, TransactionOutcomeUnknown
+        from .graph_session import GraphCommittedError
+
+        if self._context_transaction is not None:
+            self._context_transaction.require_writable()
+            try:
+                return await work(self)
+            except BaseException as failure:
+                self._record_save_failure(failure)
+                raise
+
+        if self._business_operation is not None:
+            raise RuntimeError("cannot start a transaction inside a business operation")
+        guard = self._graph_save_guard.get()
+        if self._graph_session is not None or (guard is not None and guard["active"]):
+            raise RuntimeError("cannot start a transaction inside an independent graph save")
+        provider = self.require_resource("dataService")
+        begin = getattr(provider, "begin", None)
+        if not callable(begin):
+            raise RuntimeError("configured dataService does not support transactions")
+
+        scope = _ContextTransaction()
+        view = copy(self)
+        view._resources = dict(self._resources)
+        view._graph_save_lock = asyncio.Lock()
+        view._graph_save_guard = contextvars.ContextVar("teaql_transaction_graph_save", default=None)
+        view._context_transaction = scope
+        transaction = await self._call_transaction_method(begin, self)
+        view._resources["dataService"] = transaction
+        try:
+            try:
+                result = await work(view)
+                if scope.failure is not None:
+                    raise scope.failure
+            except BaseException as failure:
+                scope.active = False
+                try:
+                    await self._finish_graph_transaction(transaction, "rollback", self)
+                except BaseException:
+                    scope.fence_graphs()
+                    raise TransactionOutcomeUnknown() from None
+                await scope.complete_graphs(committed=False)
+                if scope.failure is not None and scope.failure is not failure:
+                    raise scope.failure from failure
+                raise
+
+            scope.active = False
+            failures = []
+            try:
+                await self._finish_graph_transaction(transaction, "commit", self)
+            except GraphCommittedError as error:
+                failures.extend(error.failures)
+            except BaseException:
+                scope.fence_graphs()
+                try:
+                    await self._finish_graph_transaction(transaction, "rollback", self)
+                except BaseException:
+                    pass
+                raise TransactionOutcomeUnknown() from None
+            failures.extend(await scope.complete_graphs(committed=True))
+            if failures:
+                raise GraphCommittedError(failures)
+            return result
+        finally:
+            scope.close()
+
+    def _record_save_failure(self, failure):
+        if self._context_transaction is not None:
+            self._context_transaction.fail(failure)
+
+    def _admit_generated_save(self, entity):
+        from .context_transaction import TransactionOutcomeUnknown
+
+        if getattr(entity, "_teaql_transaction_outcome_unknown", False):
+            raise TransactionOutcomeUnknown()
+        entity._entity_root.require_known_outcome()
+        scope = self._context_transaction
+        if scope is not None:
+            scope.require_writable()
+            scope.entities[id(entity)] = entity
+
     async def execute_graph_save(self, work, *, comment=None, prepare=None):
+        try:
+            if self._context_transaction is not None:
+                self._context_transaction.require_writable()
+            return await self._execute_graph_save(work, comment=comment, prepare=prepare)
+        except BaseException as failure:
+            self._record_save_failure(failure)
+            raise
+
+    async def _execute_graph_save(self, work, *, comment=None, prepare=None):
         """Run ``work(session)``; never implicitly join another root save."""
         if self._business_operation is not None and self._graph_session is None:
             return await self._business_operation.save_graph(work, comment=comment, prepare=prepare)
@@ -253,31 +347,43 @@ class UserContext:
                 lambda: self._execute_graph_transaction(work, intent, GraphMutationSession, prepare))
 
     async def _execute_graph_transaction(self, work, intent, session_type, prepare=None):
+        from .graph_session import GraphCommittedError
         provider = self.require_resource("dataService")
+        scope = self._context_transaction
         begin = getattr(provider, "begin", None)
-        if not callable(begin):
+        if scope is None and not callable(begin):
             raise RuntimeError("Configured dataService does not support graph transactions")
         # Existing manual graph callbacks keep their transaction-first contract.
         # Generated graphs explicitly prepare every input before stable-ID
         # reservation and transaction admission, under the same owner/clock.
-        transaction = None if prepare is not None else await self._call_transaction_method(begin, self)
+        transaction = provider if scope is not None else None
+        if scope is None and prepare is None:
+            transaction = await self._call_transaction_method(begin, self)
         guard = {'active': True}
         guard_token = self._graph_save_guard.set(guard)
         session = None
+        delivery_failures = []
         try:
             session = session_type(self, provider if prepare is not None else transaction, intent)
+            if scope is not None:
+                scope.graphs.append(session)
             if prepare is not None:
                 session._preparing = True
                 await prepare(session)
                 session._preparing = False
-                if not session._empty_generated_plan:
+                if scope is None and not session._empty_generated_plan:
                     transaction = await self._call_transaction_method(begin, self)
                     session.transaction = transaction
                     session.context._resources["dataService"] = transaction
             result = await work(session)
             session.context._mutation_policy.ensure_graph_complete()
-            if transaction is not None:
-                await self._finish_graph_transaction(transaction, "commit", session.context)
+            if scope is not None:
+                session.stage_saved_state()
+            if scope is None and transaction is not None:
+                try:
+                    await self._finish_graph_transaction(transaction, "commit", session.context)
+                except GraphCommittedError as error:
+                    delivery_failures.extend(error.failures)
         except BaseException as failure:
             from .i18n import CheckException
             if session is not None and isinstance(failure, CheckException):
@@ -285,19 +391,26 @@ class UserContext:
                     failure.violations, session._checker_messages,
                     (session._checker_messages.model, session._checker_origin)))
             try:
-                if transaction is not None:
+                if scope is None and transaction is not None:
                     await self._finish_graph_transaction(transaction, "rollback", session.context if session else self)
             except BaseException:
                 pass  # Preserve the original operation/commit failure.
-            if session is not None:
+            if scope is None and session is not None:
                 await session.rolled_back()
             raise
         else:
-            await session.committed()
+            if scope is None:
+                try:
+                    await session.committed()
+                except GraphCommittedError as error:
+                    delivery_failures.extend(error.failures)
+                if delivery_failures:
+                    raise GraphCommittedError(delivery_failures)
             return result
         finally:
             if session is not None:
-                session.close()
+                if scope is None:
+                    session.close()
                 self._fix_evidence_last = list(session.context.last_fix_evidence())
             guard['active'] = False
             self._graph_save_guard.reset(guard_token)
@@ -427,6 +540,8 @@ class UserContext:
     def insert_resource(self, resource_type: str, resource: Any):
         if self._business_operation is not None and resource_type in ('dataService', 'schema_provider', 'active_root'):
             raise RuntimeError('business operation cannot change its database participant')
+        if resource_type == "dataService" and self._context_transaction is not None:
+            raise RuntimeError("cannot replace the data service of a transaction context")
         inferred_schema = None
         if resource_type == "request_policy":
             resource = validate_request_policy(resource)
@@ -448,10 +563,13 @@ class UserContext:
         return self
 
     def get_resource(self, resource_type: str) -> Optional[Any]:
-        if self._business_operation is not None and resource_type == 'dataService':
-            self._business_operation.require_active()
+        if resource_type == "dataService":
+            if self._business_operation is not None:
+                self._business_operation.require_active()
+            if self._context_transaction is not None:
+                self._context_transaction.require_access()
         return self._resources.get(resource_type)
-        
+
     def require_resource(self, resource_type: str) -> Any:
         res = self.get_resource(resource_type)
         if res is None:

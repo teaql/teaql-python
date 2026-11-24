@@ -1047,6 +1047,118 @@ def native_batch_lineage(nodes):
     return [(node.kind, node.name or node.entity_type, node.entity_id, node.comment) for node in nodes]
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize("failure_mode", [None, "propagated", "caught"])
+async def test_context_transaction_composes_two_native_graph_saves(
+        tmp_path, monkeypatch, failure_mode):
+    from teaql.core.entity import EntityKey
+    from teaql.runtime import UserContext
+
+    context, service, transport, _, observed = await ordered_batch_fixture(
+        tmp_path, monkeypatch, logging=False)
+    context.insert_resource("dataService", service)
+    completions = []
+    errors = []
+    transaction_context = None
+
+    async def save(ctx, entity, identity):
+        async def graph_work(graph):
+            graph.after_commit(lambda: completions.append((entity, "commit")))
+            graph.after_rollback(lambda: completions.append((entity, "rollback")))
+            command = InsertCommand.new(entity).value("id", identity).value("name", "created")
+            if entity == "Payment":
+                command.value("parent_id", 20)
+            root = graph.scope(EntityKey(entity, identity))
+            return await graph.transaction.mutate(graph.context, graph.request(command, root))
+
+        return await ctx.execute_graph_save(graph_work, comment="create " + entity)
+
+    async def work(tx_ctx):
+        nonlocal transaction_context
+        transaction_context = tx_ctx
+        assert isinstance(tx_ctx, UserContext)
+        assert context.require_resource("dataService") is service
+        await save(tx_ctx, "CustomerOrder", 20)
+        query = (SelectQuery("CustomerOrder").filter(Expr.eq("id", 20))
+                 .comment("read pending order").purpose("verify transaction visibility"))
+        pending = await tx_ctx.require_resource("dataService").query(tx_ctx, QueryRequest(query))
+        assert len(pending.rows) == 1
+        assert observed.lifecycle == ["begin"]
+        assert completions == observed.audits == []
+        try:
+            await save(tx_ctx, "Payment", 1 if failure_mode else 20)
+        except TransportError as failure:
+            errors.append(failure)
+            if failure_mode != "caught":
+                raise
+        return 20
+
+    if failure_mode:
+        with pytest.raises(TransportError) as caught:
+            await context.transaction(work)
+        assert caught.value is errors[0]
+        assert observed.lifecycle == ["begin", "rollback"]
+        assert completions == [("Payment", "rollback"), ("CustomerOrder", "rollback")]
+        assert observed.audits == []
+    else:
+        assert await context.transaction(work) == 20
+        assert observed.lifecycle == ["begin", "commit"]
+        assert completions == [("CustomerOrder", "commit"), ("Payment", "commit")]
+        assert len(observed.audits) == 2
+    with pytest.raises(RuntimeError, match="transaction context is closed"):
+        transaction_context.require_resource("dataService")
+    async with aiosqlite.connect(transport.db_path) as database:
+        for table in ["customerorder_data", "payment_data"]:
+            async with database.execute(f"SELECT version FROM {table} WHERE id = 20") as cursor:
+                assert await cursor.fetchone() == (None if failure_mode else (1,))
+
+
+@pytest.mark.asyncio
+async def test_context_transaction_fences_saves_after_lost_commit_acknowledgement(tmp_path, monkeypatch):
+    from teaql.core.entity import EntityKey, EntityRoot
+    from teaql.runtime import TransactionOutcomeUnknown
+
+    context, service, transport, _, observed = await ordered_batch_fixture(
+        tmp_path, monkeypatch, logging=False)
+    context.insert_resource("dataService", service)
+    attempted = SimpleNamespace(_entity_root=EntityRoot())
+    begin = transport.begin_sql
+
+    async def begin_without_commit_acknowledgement():
+        transaction = await begin()
+        commit = transaction.commit_sql
+
+        async def commit_and_lose_acknowledgement():
+            await commit()
+            raise RuntimeError("private provider diagnostic")
+
+        transaction.commit_sql = commit_and_lose_acknowledgement
+        return transaction
+
+    monkeypatch.setattr(transport, "begin_sql", begin_without_commit_acknowledgement)
+
+    async def work(tx_ctx):
+        tx_ctx._admit_generated_save(attempted)
+
+        async def save(graph):
+            root = graph.scope(EntityKey("CustomerOrder", 90))
+            command = InsertCommand.new("CustomerOrder").value("id", 90).value("name", "approved")
+            await graph.transaction.mutate(graph.context, graph.request(command, root))
+
+        await tx_ctx.execute_graph_save(save, comment="approve order")
+
+    with pytest.raises(TransactionOutcomeUnknown) as caught:
+        await context.transaction(work)
+    assert "private provider diagnostic" not in str(caught.value)
+    assert observed.audits == []
+    async with aiosqlite.connect(transport.db_path) as database:
+        async with database.execute("SELECT version FROM customerorder_data WHERE id = 90") as cursor:
+            assert await cursor.fetchone() == (1,)
+    attempted._entity_root = EntityRoot()
+    with pytest.raises(TransactionOutcomeUnknown):
+        context._admit_generated_save(attempted)
+
+
 def native_batch_identity(request):
     target = getattr(request._data, 'id', None)
     if target is None:

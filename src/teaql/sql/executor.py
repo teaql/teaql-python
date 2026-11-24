@@ -154,6 +154,17 @@ class SchemaProvider(ABC):
     def get_entity(self, name: str) -> Optional[Any]:
         pass
 
+class SimpleSchemaProvider(SchemaProvider):
+    def __init__(self):
+        self.entities = {}
+
+    def get_entity(self, name: str):
+        return self.entities.get(name)
+
+    def register_entity(self, entity):
+        self.entities[getattr(entity, '_name', '')] = entity
+
+
 class SqlDataServiceExecutor(QueryExecutor, MutationExecutor):
     MAX_ID_ALLOCATION_ATTEMPTS = 100
 
@@ -1547,12 +1558,22 @@ class SqlDataServiceTransaction(QueryExecutor, MutationExecutor):
         await executor.ensure_id_floor(entity, floor)
 
     async def commit(self, context: 'UserContext') -> None:
+        from teaql.runtime.graph_session import GraphCommittedError
         if self._completed:
             raise RuntimeError('SQL transaction is already completed')
-        await self.transport.commit_sql()
+        failures = []
+        try:
+            await self.transport.commit_sql()
+        except GraphCommittedError as error:
+            failures.extend(error.failures)
         self._completed = True
         if self._audit_journal:
-            await self._audit_journal.committed()
+            try:
+                await self._audit_journal.committed()
+            except GraphCommittedError as error:
+                failures.extend(error.failures)
+        if failures:
+            raise GraphCommittedError(failures)
 
     async def rollback(self, context: 'UserContext') -> None:
         if self._audit_journal:
