@@ -32,6 +32,8 @@ def _soundex(value: Optional[str]) -> str:
     return result.ljust(4, "0")
 
 class SqliteTransport(SqlTransactionTransport):
+    # BEGIN IMMEDIATE serializes the entire read/decision/write interval.
+    serializes_business_operations = True
     def __init__(self, db_path: str):
         self.db_path = db_path
         self._soundex_enabled = False
@@ -167,8 +169,12 @@ class SqliteTransport(SqlTransactionTransport):
 
     async def begin_sql(self) -> 'SqlTransactionTransportTx':
         db = await self._connect()
-        await self._prepare(db)
-        await db.execute("BEGIN IMMEDIATE")
+        try:
+            await self._prepare(db)
+            await db.execute("BEGIN IMMEDIATE")
+        except BaseException:
+            await db.close()
+            raise
         return _SqliteTransaction(db, self._bind_values, self._decode_value)
 
 
