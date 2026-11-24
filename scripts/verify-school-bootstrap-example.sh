@@ -2,11 +2,16 @@
 set -euo pipefail
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 example="$repo/examples/school-management"
-evidence="$(mktemp -d -t teaql-python-bootstrap.XXXXXXXX)"
+if [[ -n "${TEAQL_SCHOOL_BOOTSTRAP_EVIDENCE_DIR:-}" ]]; then
+  evidence="$TEAQL_SCHOOL_BOOTSTRAP_EVIDENCE_DIR"
+  mkdir "$evidence"
+else
+  evidence="$(mktemp -d -t teaql-python-bootstrap.XXXXXXXX)"
+fi
 export PYTHONDONTWRITEBYTECODE=1
-export PYTHONPATH="$example:$repo/src"
+export PYTHONPATH="$example/python-app-console:$example/python-lib-core:$repo/src"
 fingerprint() {
-  { rg --files "$example/models" "$example/requests" -g '*.py'; printf '%s\n' "$example/Q.py" "$example/E.py" "$example/runtime_module.py"; } |
+  { rg --files "$example/python-lib-core/models" "$example/python-lib-core/requests" -g '*.py'; printf '%s\n' "$example/python-lib-core/Q.py" "$example/python-lib-core/E.py" "$example/python-lib-core/runtime_module.py"; } |
     LC_ALL=C sort | xargs -d '\n' sha256sum
 }
 fingerprint > "$evidence/library-before.sha256"

@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root name="delivery-order-cutover-service" org="teaql" data_service="sqlite">
+  <platform name="Delivery Hub"/>
+  <delivery_order platform="platform()" reference="Delivery Reference|[1,80]"
+                  order_date="date()"/>
+</root>

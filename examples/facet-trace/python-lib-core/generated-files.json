@@ -1,0 +1,18 @@
+{
+  "E.py": "6b0228a1ba820c82f549a7089e0c118161beeced5176375e823a92ff10d91707",
+  "Q.py": "32d715a390697c2918fb06e89a77041c9a915482882ea1f8137e722fe576cf14",
+  "generated_search_models.py": "9a119d9fa9cb1442f3ecf332107306b71e483945619e0263eff6ecc24258d452",
+  "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "models/platform.py": "d62a1dcab5cf7eb337c2e1c5d7bbd3101ec8b0477bac316a682fd0d2d46265fa",
+  "models/school.py": "9e93e733f4c49802aedcd12e924e4857a33e673f25d883566005053feaa8b773",
+  "models/school_type.py": "9507907963f743e0e4741a29509b45e3ce63fa00968bc6405439b87d4a372be1",
+  "pyproject.toml": "2dd9f861117185d87b7c5e40afeaf515f94450c0af0d8e7342f36822e7faa47a",
+  "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "requests/platform_request.py": "01960e9a4f2876a770caaf2be8656038c69d7998dc18931dbf5a3e692a5063eb",
+  "requests/school_request.py": "6227f50c8b9328e2c51088565ff2069e6b2657bcec38dcb5e00238981b85abeb",
+  "requests/school_type_request.py": "ee5ebae405254daeb962866b182e271b4ea1ec482f105d4a7a8cf773c91f4d7e",
+  "runtime_module.py": "cdd9f5d04e5fe5cd6a2a8c6089334e1649eb8773444fdf6f710bb58ad4ca04ce",
+  "teaql-i18n.json": "785b10a761a7e3d13b88878bc8702546b19f9bc637d28e76fa780fc79f97ca3d",
+  "teaql/checker-model.json": "8e28ee16cddc21191816ed05999142fccb870bf42795f5a1f21268ebd4469e71",
+  "teaql/model-provenance.json": "78e50ee923765b563d3199ab1d0b6071b0a438216eddba24827470c1b52185ad"
+}

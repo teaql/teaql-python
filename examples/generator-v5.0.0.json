@@ -1,0 +1,1704 @@
+{
+  "jarSHA256": "ba0a502363884c206a46b6d5da89b0854b7f3e84072dd88544b15573c0d70812",
+  "release": "v5.0.0",
+  "schema": "teaql.runtime-example-regeneration/v1",
+  "scopes": {
+    "examples/business-clock/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "0e171b4cedea7b7490eeb6e04edafb7d714dc459984994a1499101ec8896bf70",
+        "teaql/model-provenance.json": "fd02a405389543c733f76cfb406ad588e9c3f268da871aeb0d7ce28b28cf5fde"
+      },
+      "model": "examples/business-clock/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "74a265c8cd88f348d505c5601de0d77a97bf5d89bce1118ef37092e63e3533c3",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:dc40f6866698122fdcdbf5b97b8aae020c3689c187d7339c4de6f218956c41fa",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "56af083188babd9ec298847ead3776fbe183e887c58a31e6b95d76b2ec2f4883",
+          "sourceSHA256": "56af083188babd9ec298847ead3776fbe183e887c58a31e6b95d76b2ec2f4883"
+        },
+        "README.md": {
+          "emittedSHA256": "84f462434672b0a359c5e0020dc72738e48f4cae9bcc0a0f8ebb49d921ec69d7",
+          "sourceSHA256": "2bf7b340a746100e74a4057748d429ba96715b4614be4d245f6f9567ec05b52c"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "18c6b16aba4d8f4da466fbb0f5d12175a96dfbbcebf93098489a107589d0f5b2",
+          "sourceSHA256": "79b5d83dcffd63f653fc375765510af866efacb10efc15a0113c912bb73c31c1"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "2124e73c8dc281f0027d79351975fcb004d39dde8f360f2b7ba79b883b14df3f",
+          "sourceSHA256": "2124e73c8dc281f0027d79351975fcb004d39dde8f360f2b7ba79b883b14df3f"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/business-clock/python-lib-core": {
+      "emitted": {
+        "E.py": "980b00feb78e3b13311b1a056ef7c219aea0db648aacf468dcb9add1bbd4fe9c",
+        "Q.py": "f2dec6b8fe2e22d45838305c12ce417fd311d7cb965b9244ba4a99900ce9127d",
+        "generated_search_models.py": "4ee9c49c43b027c7d104c512de2efd4bcd6d43d0850f54a22170fa0200f29e9d",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/delivery_order.py": "942ac7bbb6f3ae915563a1bbb7f34e2ac6b2c9e31b9ef3f5fe4de56fb7db644e",
+        "models/platform.py": "65205e0a711d6b99bf8aca1a0af74e6c6e2ca26e200078488f354bb6d04b693e",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/delivery_order_request.py": "4b7d4fc68558e93e15103a029cd375b7e4d759cfa4e83bfb5f5b27270525e2e5",
+        "requests/platform_request.py": "752ac4f8f435a5b3fc4319953575907c3382f7af5e0064bfa1aed77c8cab172e",
+        "runtime_module.py": "aea864ccc2c8563b269b2f3a918f08ffa5b7052f9b3fe894b773108aa23e069d",
+        "teaql-i18n.json": "2124e73c8dc281f0027d79351975fcb004d39dde8f360f2b7ba79b883b14df3f",
+        "teaql/checker-model.json": "0e171b4cedea7b7490eeb6e04edafb7d714dc459984994a1499101ec8896bf70",
+        "teaql/model-provenance.json": "fd02a405389543c733f76cfb406ad588e9c3f268da871aeb0d7ce28b28cf5fde"
+      },
+      "model": "examples/business-clock/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "74a265c8cd88f348d505c5601de0d77a97bf5d89bce1118ef37092e63e3533c3",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:dc40f6866698122fdcdbf5b97b8aae020c3689c187d7339c4de6f218956c41fa",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "975728e013f6919f44248e15c60b346073c26916bab70623a78b91affb7aa479",
+          "sourceSHA256": "975728e013f6919f44248e15c60b346073c26916bab70623a78b91affb7aa479"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/business-id/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "9df3b08c07b9a38e5e0950e53c7a36835566ecf687bd87b66c67bb78abe63fdc",
+        "teaql/model-provenance.json": "057f7e01cb642d4b53e9a867d781dd74152aa2bf69d451e72373239594abb22a"
+      },
+      "model": "examples/business-id/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "04eb9dcc3062ceae19a3de676d89d9ad8647fb0d691f3ad653b6ba4462904c71",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:ae5ea6f908693b88007259e6347336dc7d1a5469b4c3db8e554eec0c27e4e30f",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "e02bb069960af08947cfd9885553b91659ac5774c19b65fc9c3bdaea4686c275",
+          "sourceSHA256": "e02bb069960af08947cfd9885553b91659ac5774c19b65fc9c3bdaea4686c275"
+        },
+        "README.md": {
+          "emittedSHA256": "07bac1cbf983970c5ce3ffc7a0ed7ecf3da978784a31e2e05b353e8f9483a031",
+          "sourceSHA256": "e3e7ccd9eb7dfb08295fe6c82ddfdb682803cc7ac9da8b32235c5965ce9ea1ba"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "c57a7182488461fc6180d4c918be768a167412d77fba65dcca4619ddab46a767",
+          "sourceSHA256": "7675483717cc8a3c0af780cc8b565a7c098cadcf82a5483779e3260a87eaa5e2"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "6c1af4fb7d421f2a554c1b52077f9fbc736d5e17623c3305b20a0d030672937f",
+          "sourceSHA256": "6c1af4fb7d421f2a554c1b52077f9fbc736d5e17623c3305b20a0d030672937f"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/business-id/python-lib-core": {
+      "emitted": {
+        "E.py": "da233cb8df6ecdb54368b7029f4443127a58c3d567da5d815d354759630b79e8",
+        "Q.py": "eb60d2d942e796fba09a97ae44f63fbd7e1534298db61a6227e3f2581553ab02",
+        "generated_search_models.py": "5a3fe1e27702f48611cd66750e1f02bbf8e35829039729975a66ed716799c0fe",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/platform.py": "e40076a04d778423809fb836218006b3ebb28919d3fa1ea73183bdc52281d81c",
+        "models/purchase_order.py": "b7f1e5ab38f5349893e837da14ca3fbea72722a98b194e2034bc1d694d38b0b1",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/platform_request.py": "02a5ad3badea76a8f3f56651a801195eda6d044720c517fc5f5654646ad2816f",
+        "requests/purchase_order_request.py": "41abde892aa70d8f7c635291174994a321bda9e7bd5b659a3d333e78512b42b3",
+        "runtime_module.py": "c38d1e6bc4a2f74cedbddacfd13e289c0fa8323494a2dc4cfe2f7e3e5e3b1ed7",
+        "teaql-i18n.json": "6c1af4fb7d421f2a554c1b52077f9fbc736d5e17623c3305b20a0d030672937f",
+        "teaql/checker-model.json": "9df3b08c07b9a38e5e0950e53c7a36835566ecf687bd87b66c67bb78abe63fdc",
+        "teaql/model-provenance.json": "057f7e01cb642d4b53e9a867d781dd74152aa2bf69d451e72373239594abb22a"
+      },
+      "model": "examples/business-id/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "04eb9dcc3062ceae19a3de676d89d9ad8647fb0d691f3ad653b6ba4462904c71",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:ae5ea6f908693b88007259e6347336dc7d1a5469b4c3db8e554eec0c27e4e30f",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "bef73aea69905c74c5d17aec17db059c78451e544ab3c71954d702557cac1ced",
+          "sourceSHA256": "bef73aea69905c74c5d17aec17db059c78451e544ab3c71954d702557cac1ced"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/conformance/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "4824e2986933569c4d827ca44cae7e3a028012aec1e7dbacd245fff5fd5ffe1b",
+        "teaql/model-provenance.json": "3b6c48164a41d047adc9d684bc259b71a6c18e6fa9fe70aeae067b520cc75688"
+      },
+      "model": "examples/conformance/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "0a59f66db2487fdd0430087dd5985ae780225c088ad800679cb57c593c6bcee7",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:15e3876863021b944cb4a7d74ae399afca20e12d724328cf21ae9805289b83d5",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "e32da3c58746f4dc215a75dec69434093e09f83f6601a84faa482dedff2067ea",
+          "sourceSHA256": "e32da3c58746f4dc215a75dec69434093e09f83f6601a84faa482dedff2067ea"
+        },
+        "README.md": {
+          "emittedSHA256": "822f099cf502062cfca09df03dccb3a4790ab913744d0cf2f1481c9ab0f4af36",
+          "sourceSHA256": "f1b882d74dcf6c3ebf81a9d14d9227a93bca93aa3622ae574d86e5a4871f3995"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "099df63b564962b7368a6d4e525caa6cf73a22e132595da52491c8f3805bb1c2",
+          "sourceSHA256": "1d1c4ad95e110f97104b346bdcd76580bff515f68fe4f38e500fc5fe780620eb"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "fa0ea9576dccfb6ef4e940b00b53abb843ee492741e98da5001e6ea2ad79b2cb",
+          "sourceSHA256": "fa0ea9576dccfb6ef4e940b00b53abb843ee492741e98da5001e6ea2ad79b2cb"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/conformance/python-lib-core": {
+      "emitted": {
+        "E.py": "2b183807b5f191f06273c6338772b7fa0dc9f9b28f14b497f70f6555cfeba780",
+        "Q.py": "4ea3d328abc7e0a487da8f861a857831f054d35e4c3a4f4e2bcf3287ec77ee3a",
+        "generated_search_models.py": "2569dc8cfaf1aa826068b33ebbe40fcc2292a3680122ea72704bf24e81a908f1",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/platform.py": "2b471d6d75a05d5b7fb8be831dfc3fdb3efa61d3410363bf13c1825264623eb0",
+        "models/work_item.py": "ab17196d47d99f42719717037e8c9fa2acdab5947f479d46f137a4012a7ed393",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/platform_request.py": "36110cee017df3c08f7f6931f04f467b008206114ee41e4b0efba4de3835c40f",
+        "requests/work_item_request.py": "494375cdc7ebb21de80c093c6287ba3ed9d78970d8e368f0bb6912b2923817e2",
+        "runtime_module.py": "43d1a8d28070f96faa4078bec54d8d4ed3311517984bd2bfb043561357e1c4fc",
+        "teaql-i18n.json": "fa0ea9576dccfb6ef4e940b00b53abb843ee492741e98da5001e6ea2ad79b2cb",
+        "teaql/checker-model.json": "4824e2986933569c4d827ca44cae7e3a028012aec1e7dbacd245fff5fd5ffe1b",
+        "teaql/model-provenance.json": "3b6c48164a41d047adc9d684bc259b71a6c18e6fa9fe70aeae067b520cc75688"
+      },
+      "model": "examples/conformance/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "0a59f66db2487fdd0430087dd5985ae780225c088ad800679cb57c593c6bcee7",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:15e3876863021b944cb4a7d74ae399afca20e12d724328cf21ae9805289b83d5",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "968efdf70bdead1cff11d5fe9c399351dac17e2a26c9977ee023ef8415567eba",
+          "sourceSHA256": "968efdf70bdead1cff11d5fe9c399351dac17e2a26c9977ee023ef8415567eba"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/context-derived/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "b0cce8e03720ef6aefdf8ed8386c79d1270268dc6e41f762033d32516da2cbfd",
+        "teaql/model-provenance.json": "b82e242154699127699909d5c062544e0108818af22b34afd88735d451a2981a"
+      },
+      "model": "examples/context-derived/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9bb36d7f9d639d04cfe9344e5152ee68e1844a8552538413c16569c6e8df4f8e",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:6b56c7731c396cfbe063dab00be61c651b6862ec05b1cd02b641ddbd8f4cfa30",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "094638bdc41302a37d09b4bdd622ec63f097a557a07d44687f9f7e91585b9de8",
+          "sourceSHA256": "094638bdc41302a37d09b4bdd622ec63f097a557a07d44687f9f7e91585b9de8"
+        },
+        "README.md": {
+          "emittedSHA256": "ec00e9507df4b7302e2210543b595da389eec6e866d31560b9a9127b58adc848",
+          "sourceSHA256": "6191dda39be60a4c7bd7fee1670fed14db6c0f22fa8566bc2368655916c2cf34"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "0b0a3cfc802f0941a6e81af7719e3f6e696eac635a09ba0c13b9694deaeb3a47",
+          "sourceSHA256": "0e248555026137720706de4cb3de75c5d77c5f82050193fcbd83399e1d69a214"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "872f2be4fb4df7d76c732d627ae016b07cb39591ef833169277c67db4ec726e8",
+          "sourceSHA256": "872f2be4fb4df7d76c732d627ae016b07cb39591ef833169277c67db4ec726e8"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/context-derived/python-lib-core": {
+      "emitted": {
+        "E.py": "e097b358bc8f2a781ce6792a05a3e0a5f8e96cca4dd94989d33fc33dd650ff94",
+        "Q.py": "d203912175a89813932f55d2b5f16549499e51df93f4816d4c080a275f45ab1a",
+        "generated_search_models.py": "1851c069a0f34b9aad88725ceda3fa706b42eff03df18dc2f5dd212349868af0",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/catalog.py": "c7b9a88a6c51687bee2b4fb02cd9d5f3cf9f580de7fa7d269034b87ac751a3e7",
+        "models/entry.py": "c63659183e1dbb4c503ef043b78d6e51c3e715054baed339e520030d76cc4755",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/catalog_request.py": "07a1e6c3e3d2f9102ec47497f467a138bc4bc67fe572e78a5600fdaecd1c3af2",
+        "requests/entry_request.py": "408b0da28b06cd3c9dd3623df1c361d5702bb70e352051c96ff66a6b6df95636",
+        "runtime_module.py": "4751584273417cb8d5825ad61c6cbea6eb1de76e526bcb49f0fc95602732efee",
+        "teaql-i18n.json": "872f2be4fb4df7d76c732d627ae016b07cb39591ef833169277c67db4ec726e8",
+        "teaql/checker-model.json": "b0cce8e03720ef6aefdf8ed8386c79d1270268dc6e41f762033d32516da2cbfd",
+        "teaql/model-provenance.json": "b82e242154699127699909d5c062544e0108818af22b34afd88735d451a2981a"
+      },
+      "model": "examples/context-derived/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9bb36d7f9d639d04cfe9344e5152ee68e1844a8552538413c16569c6e8df4f8e",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:6b56c7731c396cfbe063dab00be61c651b6862ec05b1cd02b641ddbd8f4cfa30",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "d71a323b0265a525f2862cc770345d5439f266778e5faad5925fe35ee18ab02b",
+          "sourceSHA256": "d71a323b0265a525f2862cc770345d5439f266778e5faad5925fe35ee18ab02b"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/expression-profiles/profiles/PascalCase/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "05baf453f49fd71c73a6499a9f2e3600546a8f13f9ae6b707d700e2a8c589f5e",
+        "teaql/model-provenance.json": "c1a449847044f09be3acd66110b39b4765835dac3718b917487768a6f01fc0f9"
+      },
+      "model": "examples/expression-profiles/profiles/PascalCase/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "0b74f30c25123ae9e3a65799cfb5a67f46b96f985b4a0dad1a1daa9ed52d80be",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:c81061a7486ddff695193e6b0e4922a72da08c3b8d83a49adaf116da8a60eea3",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "e6b620d8a41576c604cec121402abee13144a1cc85d444d9c3a82c5b8e75bdf4",
+          "sourceSHA256": "e6b620d8a41576c604cec121402abee13144a1cc85d444d9c3a82c5b8e75bdf4"
+        },
+        "README.md": {
+          "emittedSHA256": "29f0f2dd39401c79c671e74fd6853a8be3708428d4bdef081d792e597d19504a",
+          "sourceSHA256": "3aaee486d1bd09d7abaafe287c5bfcfaefc1c9a2fcdd7f9e37492b946efddf6a"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "acc2d4c16cd69c9d72a085f7bd44db3e399d1bfee91d434018fc5ab70de2efd6",
+          "sourceSHA256": "4476c7da85e971f456f90f78e55972c0bfa426f002a02845026755dd9db1872a"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9",
+          "sourceSHA256": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/expression-profiles/profiles/PascalCase/python-lib-core": {
+      "emitted": {
+        "E.py": "006fa66778df6e554cbad194450ee8c70a874455bfd4d518c6a2a3494189c554",
+        "Q.py": "38858ade8d974ae775c6a08989d44c6f126432e8dd3a5af2cc0ce5b36be0e233",
+        "generated_search_models.py": "70edae7589cc4d4d95b6407550bffa21b4b28d4ce6bb2b67e52849acdaf4de72",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/dispatch_order.py": "092c56ba778abac0c9ce4f343e5f2cc655dc42c782de56fd78d47a9618ca8a4e",
+        "models/distribution_center.py": "b4e4d89d2da95f9656aae4bf6caee4caaeb71da4f2ba3d5f72f9e06f839f09d6",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/dispatch_order_request.py": "1dca1d932cdb3526af8d9efbf1ef937030cf5766e6c6c359676de9cb0280803b",
+        "requests/distribution_center_request.py": "d4cc08f93da82b2df500d7335a6f5e8a63a714d4eeab333d30d292c04b4338e1",
+        "runtime_module.py": "27fa704fd236ff488c97a04a67d4ff61ae03b61493ef145867d9694865ab70e8",
+        "teaql-i18n.json": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9",
+        "teaql/checker-model.json": "05baf453f49fd71c73a6499a9f2e3600546a8f13f9ae6b707d700e2a8c589f5e",
+        "teaql/model-provenance.json": "c1a449847044f09be3acd66110b39b4765835dac3718b917487768a6f01fc0f9"
+      },
+      "model": "examples/expression-profiles/profiles/PascalCase/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "0b74f30c25123ae9e3a65799cfb5a67f46b96f985b4a0dad1a1daa9ed52d80be",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:c81061a7486ddff695193e6b0e4922a72da08c3b8d83a49adaf116da8a60eea3",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "cbf29775abd7b6ddf57200b4ec7bf07da39dbfa609ba98b269a2b5d3af1b2b0f",
+          "sourceSHA256": "cbf29775abd7b6ddf57200b4ec7bf07da39dbfa609ba98b269a2b5d3af1b2b0f"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/expression-profiles/profiles/snake_case/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "05baf453f49fd71c73a6499a9f2e3600546a8f13f9ae6b707d700e2a8c589f5e",
+        "teaql/model-provenance.json": "22f7bd617c96fae5e9e57340cba113b74db3d487d60230d72579010338ac0edf"
+      },
+      "model": "examples/expression-profiles/profiles/snake_case/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9ef6fdfe684a40e0d027e70c4a819a96a2ea9a8bb5d8ccb9132ac783414ecb48",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:0bc2e816eee3aa4ef14d859ad86a99481dee20b1f0a20e36105acd0d4bf2f2a4",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "e6b620d8a41576c604cec121402abee13144a1cc85d444d9c3a82c5b8e75bdf4",
+          "sourceSHA256": "e6b620d8a41576c604cec121402abee13144a1cc85d444d9c3a82c5b8e75bdf4"
+        },
+        "README.md": {
+          "emittedSHA256": "29f0f2dd39401c79c671e74fd6853a8be3708428d4bdef081d792e597d19504a",
+          "sourceSHA256": "3aaee486d1bd09d7abaafe287c5bfcfaefc1c9a2fcdd7f9e37492b946efddf6a"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "acc2d4c16cd69c9d72a085f7bd44db3e399d1bfee91d434018fc5ab70de2efd6",
+          "sourceSHA256": "4476c7da85e971f456f90f78e55972c0bfa426f002a02845026755dd9db1872a"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9",
+          "sourceSHA256": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/expression-profiles/profiles/snake_case/python-lib-core": {
+      "emitted": {
+        "E.py": "1c89fc7e27a8f81f366605057a308eec5e41978cd231bc5120a4651da6e8022b",
+        "Q.py": "38858ade8d974ae775c6a08989d44c6f126432e8dd3a5af2cc0ce5b36be0e233",
+        "generated_search_models.py": "badfd77f26ab5a0f43af7b4e7d293bd63a5423e19f0b09f0f06befd77a334caa",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/dispatch_order.py": "a60005b7e7a53f55c9ede7d754b60d801b68a9da6874a226699eef2978892df7",
+        "models/distribution_center.py": "d0dce47b96fc7064c13ad742504348eb56c0b3c11febcc1c430e8b29a7535a0d",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/dispatch_order_request.py": "1dca1d932cdb3526af8d9efbf1ef937030cf5766e6c6c359676de9cb0280803b",
+        "requests/distribution_center_request.py": "d4cc08f93da82b2df500d7335a6f5e8a63a714d4eeab333d30d292c04b4338e1",
+        "runtime_module.py": "810049aa21621f8731a887b98b8111dedcc6e6ca57b372b488d73b974e4333ce",
+        "teaql-i18n.json": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9",
+        "teaql/checker-model.json": "05baf453f49fd71c73a6499a9f2e3600546a8f13f9ae6b707d700e2a8c589f5e",
+        "teaql/model-provenance.json": "22f7bd617c96fae5e9e57340cba113b74db3d487d60230d72579010338ac0edf"
+      },
+      "model": "examples/expression-profiles/profiles/snake_case/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9ef6fdfe684a40e0d027e70c4a819a96a2ea9a8bb5d8ccb9132ac783414ecb48",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:0bc2e816eee3aa4ef14d859ad86a99481dee20b1f0a20e36105acd0d4bf2f2a4",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "cbf29775abd7b6ddf57200b4ec7bf07da39dbfa609ba98b269a2b5d3af1b2b0f",
+          "sourceSHA256": "cbf29775abd7b6ddf57200b4ec7bf07da39dbfa609ba98b269a2b5d3af1b2b0f"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/expression-profiles/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "05baf453f49fd71c73a6499a9f2e3600546a8f13f9ae6b707d700e2a8c589f5e",
+        "teaql/model-provenance.json": "4aa80e40e65053d9616d88495dbfd3493f66ef01984e2883a542c3043996a1c0"
+      },
+      "model": "examples/expression-profiles/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "80efe091edc3c7e43fa0b654cc1fecf65fda6664434b3a3ee8d8676027e70ede",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:82928fecf7bfba6e8b5a07dd27bb007e24489b0f739d9e9ceb5dbfcb9bb56357",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "e6b620d8a41576c604cec121402abee13144a1cc85d444d9c3a82c5b8e75bdf4",
+          "sourceSHA256": "e6b620d8a41576c604cec121402abee13144a1cc85d444d9c3a82c5b8e75bdf4"
+        },
+        "README.md": {
+          "emittedSHA256": "29f0f2dd39401c79c671e74fd6853a8be3708428d4bdef081d792e597d19504a",
+          "sourceSHA256": "3aaee486d1bd09d7abaafe287c5bfcfaefc1c9a2fcdd7f9e37492b946efddf6a"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "acc2d4c16cd69c9d72a085f7bd44db3e399d1bfee91d434018fc5ab70de2efd6",
+          "sourceSHA256": "4476c7da85e971f456f90f78e55972c0bfa426f002a02845026755dd9db1872a"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9",
+          "sourceSHA256": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/expression-profiles/python-lib-core": {
+      "emitted": {
+        "E.py": "8c772ba8125aca9155ad09f7a645cb0be5189c9e0fd9cc47421a3d5152140d22",
+        "Q.py": "38858ade8d974ae775c6a08989d44c6f126432e8dd3a5af2cc0ce5b36be0e233",
+        "generated_search_models.py": "badfd77f26ab5a0f43af7b4e7d293bd63a5423e19f0b09f0f06befd77a334caa",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/dispatch_order.py": "703db4981cef0d39db5892eae0369360634532ecd98601052bb60d2afb3058da",
+        "models/distribution_center.py": "e75871b4f6183e4222f016f790fc7d8636e28d2b36fac4f64170b16eca3ec36c",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/dispatch_order_request.py": "1dca1d932cdb3526af8d9efbf1ef937030cf5766e6c6c359676de9cb0280803b",
+        "requests/distribution_center_request.py": "d4cc08f93da82b2df500d7335a6f5e8a63a714d4eeab333d30d292c04b4338e1",
+        "runtime_module.py": "27287e0fc5064076e5555f1d9e9f19a433d9538bf1c141c2e56246fcde48362a",
+        "teaql-i18n.json": "f8ee2997dfc1784293d9090d19774c7b5ea8335f6cbd8aa05a1bc7d88ae817f9",
+        "teaql/checker-model.json": "05baf453f49fd71c73a6499a9f2e3600546a8f13f9ae6b707d700e2a8c589f5e",
+        "teaql/model-provenance.json": "4aa80e40e65053d9616d88495dbfd3493f66ef01984e2883a542c3043996a1c0"
+      },
+      "model": "examples/expression-profiles/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "80efe091edc3c7e43fa0b654cc1fecf65fda6664434b3a3ee8d8676027e70ede",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:82928fecf7bfba6e8b5a07dd27bb007e24489b0f739d9e9ceb5dbfcb9bb56357",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "cbf29775abd7b6ddf57200b4ec7bf07da39dbfa609ba98b269a2b5d3af1b2b0f",
+          "sourceSHA256": "cbf29775abd7b6ddf57200b4ec7bf07da39dbfa609ba98b269a2b5d3af1b2b0f"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/facet-trace/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "8e28ee16cddc21191816ed05999142fccb870bf42795f5a1f21268ebd4469e71",
+        "teaql/model-provenance.json": "78e50ee923765b563d3199ab1d0b6071b0a438216eddba24827470c1b52185ad"
+      },
+      "model": "examples/facet-trace/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9fc6724c828e10aca8cea9f53b65460f26577f74ba5396f04376ad4f20ddc30e",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:1aee43620b549fb1ac26f578030a65808e43580078f636e0c58807c623cf784f",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "57486d2871c5504cde49c3b4fc8dd8528b9b78a952bd3a0511974778006252f0",
+          "sourceSHA256": "57486d2871c5504cde49c3b4fc8dd8528b9b78a952bd3a0511974778006252f0"
+        },
+        "README.md": {
+          "emittedSHA256": "03876c123444af56065da4de460e084216a56caeba764af08bbdf5b0c5175f84",
+          "sourceSHA256": "e2ea61bd115c5e5a8b94943a8de1057144f157788f30cb48678aebaaa9c65b1c"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "70aff1b2411aec60341511aa40869fc10d1c2a8cca06fd20055ab1b23eccb416",
+          "sourceSHA256": "e32d127e66845f6bf44918598b032e13461db773550593704c75b8d09ab7f10b"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "785b10a761a7e3d13b88878bc8702546b19f9bc637d28e76fa780fc79f97ca3d",
+          "sourceSHA256": "785b10a761a7e3d13b88878bc8702546b19f9bc637d28e76fa780fc79f97ca3d"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/facet-trace/python-lib-core": {
+      "emitted": {
+        "E.py": "6b0228a1ba820c82f549a7089e0c118161beeced5176375e823a92ff10d91707",
+        "Q.py": "32d715a390697c2918fb06e89a77041c9a915482882ea1f8137e722fe576cf14",
+        "generated_search_models.py": "9a119d9fa9cb1442f3ecf332107306b71e483945619e0263eff6ecc24258d452",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/platform.py": "d62a1dcab5cf7eb337c2e1c5d7bbd3101ec8b0477bac316a682fd0d2d46265fa",
+        "models/school.py": "9e93e733f4c49802aedcd12e924e4857a33e673f25d883566005053feaa8b773",
+        "models/school_type.py": "9507907963f743e0e4741a29509b45e3ce63fa00968bc6405439b87d4a372be1",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/platform_request.py": "01960e9a4f2876a770caaf2be8656038c69d7998dc18931dbf5a3e692a5063eb",
+        "requests/school_request.py": "6227f50c8b9328e2c51088565ff2069e6b2657bcec38dcb5e00238981b85abeb",
+        "requests/school_type_request.py": "ee5ebae405254daeb962866b182e271b4ea1ec482f105d4a7a8cf773c91f4d7e",
+        "runtime_module.py": "cdd9f5d04e5fe5cd6a2a8c6089334e1649eb8773444fdf6f710bb58ad4ca04ce",
+        "teaql-i18n.json": "785b10a761a7e3d13b88878bc8702546b19f9bc637d28e76fa780fc79f97ca3d",
+        "teaql/checker-model.json": "8e28ee16cddc21191816ed05999142fccb870bf42795f5a1f21268ebd4469e71",
+        "teaql/model-provenance.json": "78e50ee923765b563d3199ab1d0b6071b0a438216eddba24827470c1b52185ad"
+      },
+      "model": "examples/facet-trace/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9fc6724c828e10aca8cea9f53b65460f26577f74ba5396f04376ad4f20ddc30e",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:1aee43620b549fb1ac26f578030a65808e43580078f636e0c58807c623cf784f",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "2dd9f861117185d87b7c5e40afeaf515f94450c0af0d8e7342f36822e7faa47a",
+          "sourceSHA256": "2dd9f861117185d87b7c5e40afeaf515f94450c0af0d8e7342f36822e7faa47a"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/fix-e-alignment/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "92144f0d6092e143784685a82a9dd67c1672665bbe50fa6ca57b9ad441325b45",
+        "teaql/model-provenance.json": "1a1c49e67a579f9fb339acb0913d3cd1a8df2b031f109626673c2b4f3cc6570b"
+      },
+      "model": "examples/fix-e-alignment/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:96fba0f3e785fef2792149fa1b226f4ea09863f94d4aff4b31427d4875bf612c",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "2fa62c6a36b10e0cb71b093b8f30fafe0f03475b6191f09e9bef100e986a50a4",
+          "sourceSHA256": "2fa62c6a36b10e0cb71b093b8f30fafe0f03475b6191f09e9bef100e986a50a4"
+        },
+        "README.md": {
+          "emittedSHA256": "0c1eaae166ef0d61532b9aacbd251512ca18995d4397445ec2d23fc2701bcf61",
+          "sourceSHA256": "a2f9f06d9bd1af717206e4704a54ab280f4fc731be3f7c3af3059ae2bf149bd7"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "0e489ad0d9269485b54e612553f2f77ebb73063ed4b5ac8aaa1e80cc98179a54",
+          "sourceSHA256": "d1e710db5ffe059a443eb2a2aadeb32a6ca8330049047a0b466940f4f10ee293"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014",
+          "sourceSHA256": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/fix-e-alignment/python-lib-core": {
+      "emitted": {
+        "E.py": "3a1bb923330c41e3a56403cd46c558efbc02d76406c3d2c31ef959fd18fec680",
+        "Q.py": "110a04fe7434e902455505b6d9c76d433aed068a3279b22f9106742b6be685a3",
+        "generated_search_models.py": "a1fc7d496d0ca1e789452df2d6d694641e3fd3017859133228fe9953975889ef",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/order_item.py": "85f12fd3ddb6f98a0d7850dda6f62ceebe4645d80c70aac065d23a3f91871a3d",
+        "models/purchase_order.py": "82187ea626b5c27982fe02d558569204f3054f81619f0dec1a30feefb31e062b",
+        "models/tenant.py": "6f34e573e5668ec8aeccebc6885887f769282f73be20f77571fcd44fa631c535",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/order_item_request.py": "3acdcc3dc6db80819bc3b22d58c03417ea7546458db50fb2bb7c2dfd7441f29c",
+        "requests/purchase_order_request.py": "5d380e89b75d8bdde358bb5c890294996b7e75866911ccb5f16d53067682129f",
+        "requests/tenant_request.py": "63527fcc352bc714a57ad08608821714077484882a91d22873e74db1e0e038a1",
+        "runtime_module.py": "3e4e09484f8456c1c156cff46ea3190dd5b7a1a5a024fff75aa4434b92944115",
+        "teaql-i18n.json": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014",
+        "teaql/checker-model.json": "92144f0d6092e143784685a82a9dd67c1672665bbe50fa6ca57b9ad441325b45",
+        "teaql/model-provenance.json": "1a1c49e67a579f9fb339acb0913d3cd1a8df2b031f109626673c2b4f3cc6570b"
+      },
+      "model": "examples/fix-e-alignment/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:96fba0f3e785fef2792149fa1b226f4ea09863f94d4aff4b31427d4875bf612c",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "38795d7778c0bb687ac4097606243740f722d0a33c8ea37e7e217509e4635a76",
+          "sourceSHA256": "38795d7778c0bb687ac4097606243740f722d0a33c8ea37e7e217509e4635a76"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/internal-id/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "8a3da160cb2e56bb56f0c41ddbd116dd335403b00a96e36607f721c434c46b39",
+        "teaql/model-provenance.json": "50774eb075f9ce0f2e8790973c47d660a95f3fce46b53caf6c9cb305f0b85473"
+      },
+      "model": "examples/internal-id/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "456cab22875cc5756c8461f0ceefab4d291d4a0c04c50a0fa3b56d8ac68434da",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:375322c3f46a27ef8ae50b39702422eaee2206318aa821e41dc91657c47f6071",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "1cd0ab978c4c9635d8477800fe2c6c0f2432ef6e874b374f69ef14e39ea0d5ae",
+          "sourceSHA256": "1cd0ab978c4c9635d8477800fe2c6c0f2432ef6e874b374f69ef14e39ea0d5ae"
+        },
+        "README.md": {
+          "emittedSHA256": "cc75b23ee16924234381889a24c4675c250c72102fdf79f731c5540169a03d1a",
+          "sourceSHA256": "6ffa8f953e6bacb4acc68baeacb9c2d6007aad405c0e2632944dd95386438686"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "6268c2df9f59428265dd72b1ba77155aabf0ab939fd9948340eaa0057949e751",
+          "sourceSHA256": "0f8037a883e9f1519fe314051e5b29d7691119ee55ff87986b2749f5014481ce"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "fa9337fd403e3bb1fd2ada597ec6462f2fbdd5006d5af0477cf745169b6c56d9",
+          "sourceSHA256": "fa9337fd403e3bb1fd2ada597ec6462f2fbdd5006d5af0477cf745169b6c56d9"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/internal-id/python-lib-core": {
+      "emitted": {
+        "E.py": "650ac8443072b76fe65d2d872831e08bf0759e9b0786eb10cb3c841b70a3b95c",
+        "Q.py": "84c24c62fea76b09e6ed4e347b6977512f591b8f8f59f47c39ac6daaab66d8a0",
+        "generated_search_models.py": "332507cbab57d48006db6825a7b87451d5203eaa50fc48640bd24119692ebd20",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/order_item.py": "c20c444f7a2828da5ffa1d22b815f2e1bb1f0a8074d325574488e132df1f66d9",
+        "models/purchase_order.py": "8a88d9c65e25e75ec40557d3e77174a945e8d25fa57bc85189872eeb8784d6c3",
+        "models/warehouse.py": "1c4dc4fab61ab280470640156626643ad967fc4a3a79dbbbcf95af541a859b68",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/order_item_request.py": "ffef5654999c21835ee325cfd04a45f9b809db5da93e0e1e67f6a64a74aa120d",
+        "requests/purchase_order_request.py": "2184b74af858b42f8185a759459125ba1922133abfa9e32b8efc9f3495362689",
+        "requests/warehouse_request.py": "164cb0392df72563d78fd909b75d7087af523ed9bc8393c6d9f1777826b497f7",
+        "runtime_module.py": "fd03d64300ed11decd3d732522d879b741e08b10600fe909d2eafb0b45edd854",
+        "teaql-i18n.json": "fa9337fd403e3bb1fd2ada597ec6462f2fbdd5006d5af0477cf745169b6c56d9",
+        "teaql/checker-model.json": "8a3da160cb2e56bb56f0c41ddbd116dd335403b00a96e36607f721c434c46b39",
+        "teaql/model-provenance.json": "50774eb075f9ce0f2e8790973c47d660a95f3fce46b53caf6c9cb305f0b85473"
+      },
+      "model": "examples/internal-id/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "456cab22875cc5756c8461f0ceefab4d291d4a0c04c50a0fa3b56d8ac68434da",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:375322c3f46a27ef8ae50b39702422eaee2206318aa821e41dc91657c47f6071",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "48be70bf781c33a538a64aaa3be9765711cc9c9d9df926382343bbe877cfaf81",
+          "sourceSHA256": "48be70bf781c33a538a64aaa3be9765711cc9c9d9df926382343bbe877cfaf81"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/mutation-policy/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "a5097202b16fd99e2cd34705d0a094a9429d50674a339fe4a31fbb9b133efeda",
+        "teaql/model-provenance.json": "e231626f598e519a9ec7fd24116e6ea34934e7da4eb3c8bd01ad09a5bd7f89dc"
+      },
+      "model": "examples/mutation-policy/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "55d87208e2f03d597c194ec4c976a446807f2a004547fec55b5916608a135628",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:cb3ade5d48349f16a9173cc89ef043f057b63493bd1876e5a68b91b8871c99a4",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "58331047b019db2c94ee7669b96dee2f5ec494a3d3101a77a78a4de63e0dc74d",
+          "sourceSHA256": "58331047b019db2c94ee7669b96dee2f5ec494a3d3101a77a78a4de63e0dc74d"
+        },
+        "README.md": {
+          "emittedSHA256": "3b418389665783b4a78a45716916c3bce41b0d5e8ec0cec1d7219e63cbce74af",
+          "sourceSHA256": "29e695c466805ba8edace0f8c01738f35b44f7678b2f8fe2b82f08189c55142a"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "a66a0b69f12ca08be8769dc67056d3a28fc55367377ea18e6cbc4f82c43a6616",
+          "sourceSHA256": "6bc8e1ce835d1dc18019090791921e05112f9ec38fca02dd21f09aba3db33a17"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "b4acee7d90d29cc295800609f9fb64076667d9bd672aea4dd507f5afad7dcb2c",
+          "sourceSHA256": "b4acee7d90d29cc295800609f9fb64076667d9bd672aea4dd507f5afad7dcb2c"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/mutation-policy/python-lib-core": {
+      "emitted": {
+        "E.py": "04ba3407d4a64e439e5306d869b6b339ee9d44914dc77c695dcde23adfa5aa3a",
+        "Q.py": "8c1a1971a61201c41635a295f8a69bbf0b79daf2f483eea4cdef9bd59d7d1520",
+        "generated_search_models.py": "5437dd49f017bef20e17bc5069feb80bd5d91b2a5a96a3080c947ffa30816856",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/customer.py": "3d05e705f66c2e8704d4abc4227ff4d841e83f2fb5d37b9a48bd17a48cf57db6",
+        "models/customer_contact.py": "66dd7abc6f751edaaba8083eace3821f16709fb2cd9ff6d51aa21ddc59f6fa78",
+        "models/platform.py": "4f7ece79f991f05ec3e695007a96a4ff1c39f277bf1dbcf6b37754b68cd733b5",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/customer_contact_request.py": "ef0f4299fa4b392b0acc7c4a6a71e63a7813cfd5258e1af4b1e22c21d8ccdc81",
+        "requests/customer_request.py": "e717625284317ee297f9cd2f7d4e6b34cefd64d503dde1bb74b6739519cf9774",
+        "requests/platform_request.py": "01dff7fd5d2966e230dff4806a7884351128b6053cc95aebc5e5f89a7b0fdd39",
+        "runtime_module.py": "2067e24c760951d451675636fdccbedfe2089fc1bf1325879b5f6472c8032dea",
+        "teaql-i18n.json": "b4acee7d90d29cc295800609f9fb64076667d9bd672aea4dd507f5afad7dcb2c",
+        "teaql/checker-model.json": "a5097202b16fd99e2cd34705d0a094a9429d50674a339fe4a31fbb9b133efeda",
+        "teaql/model-provenance.json": "e231626f598e519a9ec7fd24116e6ea34934e7da4eb3c8bd01ad09a5bd7f89dc"
+      },
+      "model": "examples/mutation-policy/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "55d87208e2f03d597c194ec4c976a446807f2a004547fec55b5916608a135628",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:cb3ade5d48349f16a9173cc89ef043f057b63493bd1876e5a68b91b8871c99a4",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "3849e5b58b7b751a5eea8cae913ffd37b57e4050ca897dd4a41d4ec1abb6b87a",
+          "sourceSHA256": "3849e5b58b7b751a5eea8cae913ffd37b57e4050ca897dd4a41d4ec1abb6b87a"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/natural-messages/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "5ac0524fcb22c68970fc358b685d10081e47048af423951514e8d28ec2bd0bc6",
+        "teaql/model-provenance.json": "31eea4a5dc72557853aebc3d45848e002653ea1a1e6b7324ebb28e21065948c5"
+      },
+      "model": "examples/natural-messages/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "871c28ee976d0fc0e35c21305870cf21f83bd0aed0b758bbf217b51ae65299b1",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:094af9dfbcf1af26187ab979cce19104113bc051df7d35ff44a9d9b8832d3cae",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "2341f59033b936b7d699cfe4389aaf35c5425b64987333d13cf8390fd659c565",
+          "sourceSHA256": "2341f59033b936b7d699cfe4389aaf35c5425b64987333d13cf8390fd659c565"
+        },
+        "README.md": {
+          "emittedSHA256": "3268477332a6f87526d95899bebd8325c188df90b91daf9d035b7e6b503a9305",
+          "sourceSHA256": "52affab944c69a0440606f4a2c695d396c12589555ec22c4d3cc3bcd16072894"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "12cd93d745febbdb8962c83d14bf7724bd84523f0ba89249dc45f5d3129f1515",
+          "sourceSHA256": "e18170712799b36d1083cdb8af2a430bb0a02f521e18d1eefb92940f892c09cc"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "3142adc809a66c3f45df816e926967273ba7fcf3470c00629fcd6fa8da693f06",
+          "sourceSHA256": "3142adc809a66c3f45df816e926967273ba7fcf3470c00629fcd6fa8da693f06"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/natural-messages/python-lib-core": {
+      "emitted": {
+        "E.py": "b65d0f228a15e69d30016463e7b0f8dbee305394f18f1e8fbdf07252c707da14",
+        "Q.py": "d203912175a89813932f55d2b5f16549499e51df93f4816d4c080a275f45ab1a",
+        "generated_search_models.py": "d06314b31c5603944bd10ff271e59cde4e4614de7cefbb7f9f7b6a498bf2dabf",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/catalog.py": "c7b9a88a6c51687bee2b4fb02cd9d5f3cf9f580de7fa7d269034b87ac751a3e7",
+        "models/entry.py": "7e591b736e2e2bc7e77a1799707976e7d6adda8c54e3089420f9b792c91c13b1",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/catalog_request.py": "07a1e6c3e3d2f9102ec47497f467a138bc4bc67fe572e78a5600fdaecd1c3af2",
+        "requests/entry_request.py": "257b539a2a90c75358c6d6449dac331c2e3d871d2928e6d0a5bbd24ffa61805d",
+        "runtime_module.py": "5d8f5b0a4d97378badb0e55375e2d5e074f6cf71f1d00fd195b1ad022bd35e6b",
+        "teaql-i18n.json": "3142adc809a66c3f45df816e926967273ba7fcf3470c00629fcd6fa8da693f06",
+        "teaql/checker-model.json": "5ac0524fcb22c68970fc358b685d10081e47048af423951514e8d28ec2bd0bc6",
+        "teaql/model-provenance.json": "31eea4a5dc72557853aebc3d45848e002653ea1a1e6b7324ebb28e21065948c5"
+      },
+      "model": "examples/natural-messages/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "871c28ee976d0fc0e35c21305870cf21f83bd0aed0b758bbf217b51ae65299b1",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:094af9dfbcf1af26187ab979cce19104113bc051df7d35ff44a9d9b8832d3cae",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "8a1f34e986cdd6b2e0da0be6ea59cc93118750d23feadc7b537857faea25b662",
+          "sourceSHA256": "8a1f34e986cdd6b2e0da0be6ea59cc93118750d23feadc7b537857faea25b662"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/object-storage/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "df32a45460acd902f21cd94af108f91fb0063d9f568418eb7195f36ff5edf278",
+        "teaql/model-provenance.json": "cdfaa06a5ae0f03e808477124e7d4d362fba3395d7bade8185d8be323f9f85b1"
+      },
+      "model": "examples/object-storage/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "1e35ffb88509f292b75620d82996bbc50868c61fd34716f8be010dff7280eafc",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:08f94683ccf143a5f5b1e9d39d647b338b410f1ebf18918b9832ca7a75ebbc12",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "b01ab6aeff4242b8d5f1ec669cdc5de856e3103a94d743c5c0439794fd409ea1",
+          "sourceSHA256": "b01ab6aeff4242b8d5f1ec669cdc5de856e3103a94d743c5c0439794fd409ea1"
+        },
+        "README.md": {
+          "emittedSHA256": "8b20ab2f9cf4ea4d762e0033b07deac13b71bef5d25f13bdd710dfe416a52faf",
+          "sourceSHA256": "828ac17bb612b58fb1449bf50110d6a7e044d5da846d5409e9a8d9628c4f3e9f"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "ad03fcee063780feb5cdb977372f8846d467e2e74ab935aad98c3c553ab390b3",
+          "sourceSHA256": "ee7661c16bb9f462288a50c56b3f43509ac85c449c7221e6f4144306f312b87a"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "eeb37cccbb0d33b8881143eae771aa0eff562809ab979e8f3f683f2bb1adea43",
+          "sourceSHA256": "eeb37cccbb0d33b8881143eae771aa0eff562809ab979e8f3f683f2bb1adea43"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/object-storage/python-lib-core": {
+      "emitted": {
+        "E.py": "32a3e67487cf5457440410cff11b300dcf0e9d11341bf486821282e600e69ae9",
+        "Q.py": "b0440095b70fa17c6cde14545fff43c934866d7dda859873dffaca2a0566160a",
+        "generated_search_models.py": "ca8c3d9be9619d1f6668376a1902d6f94a6613bd8fef86e6bdcc388a5fe16587",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/commerce_platform.py": "cd8600ee839a7c6f259c39fe35d61affe2501637cdc34701b8dcbe7429f7ef86",
+        "models/customer_order.py": "a75e83dda399d2c3c4ae9f2d6bc9f18a4110b1a9bc3e94940cf7877dc1b08a7d",
+        "models/order_attachment.py": "6a74472a634f70350b1b37ed7b75be2f8fe96814d1a14887a0af8ea58cd9a29d",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/commerce_platform_request.py": "dca5b052ca1902b1bd491d3ee4d038933dec8f3adbfc9b78c5bbe8237f141ff0",
+        "requests/customer_order_request.py": "e19ff9d67d1d57d16ee845e4b5d0ee692b547e94c6bc3cba4249b6566f6b3df9",
+        "requests/order_attachment_request.py": "ba9519ed5e90419ad73e2e489284c5a47c4563691cc22a0c5e443c4925f388dd",
+        "runtime_module.py": "b75161cec9e87f2902a0729695371099354e76ab34f83d7936359ff55fd2b83d",
+        "teaql-i18n.json": "eeb37cccbb0d33b8881143eae771aa0eff562809ab979e8f3f683f2bb1adea43",
+        "teaql/checker-model.json": "df32a45460acd902f21cd94af108f91fb0063d9f568418eb7195f36ff5edf278",
+        "teaql/model-provenance.json": "cdfaa06a5ae0f03e808477124e7d4d362fba3395d7bade8185d8be323f9f85b1"
+      },
+      "model": "examples/object-storage/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "1e35ffb88509f292b75620d82996bbc50868c61fd34716f8be010dff7280eafc",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:08f94683ccf143a5f5b1e9d39d647b338b410f1ebf18918b9832ca7a75ebbc12",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "b8e302aa30914b7961ef917bbd5c5eae5463506292c53f1dd509baf5eb45af5e",
+          "sourceSHA256": "b8e302aa30914b7961ef917bbd5c5eae5463506292c53f1dd509baf5eb45af5e"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/opaque-entity-reference/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "092f45887850777112e4036747cb3aa2c254247ec0fc3ee40b810b89cbd934d6",
+        "teaql/model-provenance.json": "c9c52747d3045c9361c141d5d049646b8a4954e2039779d8c4fd17da0551bb1c"
+      },
+      "model": "examples/opaque-entity-reference/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "065bad2b9154a08abbec48549e60cc907e6f2889e9a005b428d902a1cbd0999f",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:83d0c3f4b8d0ed41289c81816c5f824fbda61fbeeaf1883a412e386829ecc1c8",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "24a7fd0d0e2dd4add42f25f37726aa7666c0e52bb17074cb6f76d71482aa46bd",
+          "sourceSHA256": "24a7fd0d0e2dd4add42f25f37726aa7666c0e52bb17074cb6f76d71482aa46bd"
+        },
+        "README.md": {
+          "emittedSHA256": "9ba7a15cacee63d90a2cac1d3414217be25dd0e1b91b9e9745b6ccd3a6888601",
+          "sourceSHA256": "f13c13a678950ffbf89033e89bb29fa024716ce6360b833415ec1c032599e639"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "83b35713a82a4b571a0f8d4f25f3d1b5071031fbf4baeb276d6ec8ef0d763621",
+          "sourceSHA256": "8263e7ef22bb59dca5e26f75bdcd65cd7561eef30c04ed78e75699d5c3f35038"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "bdd368719dee9b1f2f23d7ddebd7adb543811cc536d14f20ba0b76e68151a62e",
+          "sourceSHA256": "bdd368719dee9b1f2f23d7ddebd7adb543811cc536d14f20ba0b76e68151a62e"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/opaque-entity-reference/python-lib-core": {
+      "emitted": {
+        "E.py": "cd7c09d6b3f0c9a776ba1c293b8ed4efb2419ec6c86dbf7aaea2e1095226135e",
+        "Q.py": "3e593a4cba6313a6736403641efeb991a93c8a069b3e014e61cf44596d9f48c1",
+        "generated_search_models.py": "5d4df50308bd79af5f7a944126135b7d7c006abdc4261af8dd6d8714ca43c1fa",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/merchant.py": "579be12c532c0376797dcf479aa467ce915dc3788ef62137b0cfe3f2893aa9ab",
+        "models/order_item.py": "ec487158838231414329eb322af4436c6e063f0ca835644696d9e862a719cfc6",
+        "models/sales_order.py": "67bea0f46b78b8c6a36728928ee0e97d8e55de12e57fbbc079ce053001375b60",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/merchant_request.py": "14d148921fb25ec2b2dbac84ecdd8b4c688ef1687302ce02bc6b7d56300dd26b",
+        "requests/order_item_request.py": "4a49d19de6ebc6e4d1f4d109bd26343af8ad9d530fbdb3dedd66f0c92b4a36ed",
+        "requests/sales_order_request.py": "49125913a7da1eae80ce74c8f53e8b4145c4c017c22bf7748631f7f45dee83df",
+        "runtime_module.py": "fbb1c24c1395f41174c2765ccfa2d374dc303abd9bdb97a91409a289a531f3a3",
+        "teaql-i18n.json": "bdd368719dee9b1f2f23d7ddebd7adb543811cc536d14f20ba0b76e68151a62e",
+        "teaql/checker-model.json": "092f45887850777112e4036747cb3aa2c254247ec0fc3ee40b810b89cbd934d6",
+        "teaql/model-provenance.json": "c9c52747d3045c9361c141d5d049646b8a4954e2039779d8c4fd17da0551bb1c"
+      },
+      "model": "examples/opaque-entity-reference/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "065bad2b9154a08abbec48549e60cc907e6f2889e9a005b428d902a1cbd0999f",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:83d0c3f4b8d0ed41289c81816c5f824fbda61fbeeaf1883a412e386829ecc1c8",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "13d481c2b7f3ffd54344854322bb1d676f49fd482e07fe84e43a3c6382207a13",
+          "sourceSHA256": "13d481c2b7f3ffd54344854322bb1d676f49fd482e07fe84e43a3c6382207a13"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/order-management/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "82f1556c56fd3ed10f2e947da68d0defb73215bf2192ccd213cc9c7e8eae9b95",
+        "teaql/model-provenance.json": "7ffd86f8125eef9a69bb17111ac935a2ae9d4bae0254031cfd87bf30db4e5a2d"
+      },
+      "model": "examples/order-management/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "a50951aa0df35cac1f4ed64ef0646860941916aed1ec0919b5b299ef4ad6a303",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:fa66b9311ecd9adb22b88694333a384a6072ed26430431fc8b0d4eb56ddced1e",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "22745e8f8db8987113b5f3eb7dcedd0991108b41448e0247af8c0cf055d82d0a",
+          "sourceSHA256": "22745e8f8db8987113b5f3eb7dcedd0991108b41448e0247af8c0cf055d82d0a"
+        },
+        "README.md": {
+          "emittedSHA256": "74a857ea06b9e02c7b1b6ea0808e3ed7c55ab51f9dc834571f2913fe9d196247",
+          "sourceSHA256": "ac759e0209546c09110443413d85b88e2356e1757f50074c7ffda0426fe327fa"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "bd50b7bf6057655bf6217452255ff0cde406dc9d45744be1132911d66f31e329",
+          "sourceSHA256": "156da52671981db74b01d508f1297c3fd779e532eb54257b1570e6c518f907e6"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "4ae750ac80a6d6ccf296d8fe61d4db0f3cc4b66a285f8926720dfb87d4a42135",
+          "sourceSHA256": "4ae750ac80a6d6ccf296d8fe61d4db0f3cc4b66a285f8926720dfb87d4a42135"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/order-management/python-lib-core": {
+      "emitted": {
+        "E.py": "fdc5db0942c4d40682246c7904d818e0d73f10bb4c77bf40ec3b74f1b47bb647",
+        "Q.py": "11f3f78ac21f10bc2bfcb0c1a223131097c44a03dd79eebf2e0b4a4949998d72",
+        "generated_search_models.py": "5b4e80478c6892138845c2686581039a56f4c4d33786d2fa1995acceb355acf8",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/commerce_platform.py": "00c7236851e6cd69e080aeca50cc9520ba7d2c55eb130fb86d3d2b1379785a39",
+        "models/customer.py": "e7724aaaa900ac14715a7f1d1cd171840df09684c4b302834314c3c0f3a44dec",
+        "models/customer_order.py": "f581b85582cdcebf1a148667bfed53bfe9ee5cfe8d9bfb4ee8ea145eb045c5f0",
+        "models/order_line.py": "0bef3bc469f558f2dc7671e3ed12a5c37bd7876900f422c139e94a2640407187",
+        "models/order_search_preset.py": "a4f01ca09780b80bceb32899d4c22b72ba2bf5b00f070471387adfb055180805",
+        "models/order_status.py": "ce42314ac3bf47db95b7187d295bf22cdbd18e722dec8a235504cab137a79480",
+        "models/product.py": "ca13631f8b506375ea74ff2ac156bdf614200f0334ff4ac0677e217811ee6298",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/commerce_platform_request.py": "aec09e58912b277453abeec26f88ffdb00cd88b3d227c1b356c5920015c0b277",
+        "requests/customer_order_request.py": "5aeeb9c3f2915c4bcfaf91e28e13f316831dfbc8579ded0e476c5dc5dc43e2dd",
+        "requests/customer_request.py": "c428123af0d0a3701bfaf4bac756067889c23256e7b49d212843174a9a6b030f",
+        "requests/order_line_request.py": "d895614f56f90052122d6d6267664f97f02a5ef521f5eb58f919c93278a53e89",
+        "requests/order_search_preset_request.py": "9cb79c972370a618909f729ff5970ba14d9eaa84f14b33670c845cfd9ff645b3",
+        "requests/order_status_request.py": "a84734fc0b7068c0b918a43ae57605126ff7a77c033a8d259f40fe66c97dd5d2",
+        "requests/product_request.py": "f0ea8abd8d071494d0d387d5b7f6af91a6d131d60576a2e96343e0af3239d25f",
+        "runtime_module.py": "69f4eccaf2051e9cd76ca7954c7b6e26513e085818b76a45273f9754c38a19da",
+        "teaql-i18n.json": "4ae750ac80a6d6ccf296d8fe61d4db0f3cc4b66a285f8926720dfb87d4a42135",
+        "teaql/checker-model.json": "82f1556c56fd3ed10f2e947da68d0defb73215bf2192ccd213cc9c7e8eae9b95",
+        "teaql/model-provenance.json": "7ffd86f8125eef9a69bb17111ac935a2ae9d4bae0254031cfd87bf30db4e5a2d"
+      },
+      "model": "examples/order-management/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "a50951aa0df35cac1f4ed64ef0646860941916aed1ec0919b5b299ef4ad6a303",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:fa66b9311ecd9adb22b88694333a384a6072ed26430431fc8b0d4eb56ddced1e",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "43159f3ce7158a8ca6226b09fdaa22e88713a2ba0ed4a979ecb72054fc585233",
+          "sourceSHA256": "43159f3ce7158a8ca6226b09fdaa22e88713a2ba0ed4a979ecb72054fc585233"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/query-policy/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "265bbddca283f8be6fbc318de966099587b2162a99bf738ccd23a3f32828186e",
+        "teaql/model-provenance.json": "e32693ef37e48806222a4d628561e4cc6858b120689661328aa489bbcfee8e88"
+      },
+      "model": "examples/query-policy/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "179df6c2ee3cf9bf595aa505a172a4b9fdee811a90301b48adcf212368e5489d",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:5efbe39e3c881f21e8756caaa58dc25bae922e8388de0be2086ebeb4097b3312",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "129f6e40712a51ef01eb6c2898113bb537a713ae7959cc630239b43833b473d6",
+          "sourceSHA256": "129f6e40712a51ef01eb6c2898113bb537a713ae7959cc630239b43833b473d6"
+        },
+        "README.md": {
+          "emittedSHA256": "37b0c309cc31a4ad403d0961254587266866bbab3bb7b6a02e4be79a01fce089",
+          "sourceSHA256": "14ab235096397253cfc4bb6a9e91b1bf59210f92d48906c87a81ea888c82c6c6"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "e9968f16087d3f8038c95a511766a45ac5d66a7bddad206a07158e7c8071c436",
+          "sourceSHA256": "c5ad909284d940a08682c1345e59f9c6972e16b8c9c8a8f0f3f57dd430e5f840"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "27f0c6764daadb3704162417c6dd49df090ee035bc62ada9ac23a524c3dc0313",
+          "sourceSHA256": "27f0c6764daadb3704162417c6dd49df090ee035bc62ada9ac23a524c3dc0313"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/query-policy/python-lib-core": {
+      "emitted": {
+        "E.py": "3042ad22fa0c567cbb21a34480cf50917183aec4a580fee6690d7a61676caa17",
+        "Q.py": "a46db439dc0af91a1d17aa49d3fc631d99612267b723d3773439acfc72228b3a",
+        "generated_search_models.py": "20f9de1775473fa8525515dbf3eb04d02e661db157ce1ae05d0f430e1bfe6766",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/order_item.py": "0faabeeaf7d88fce5576441adac66395d2d8206783525c097b1220dd06d6e260",
+        "models/platform.py": "426f1913731a7637a2466e4f8c7abac9be7fc211e092237afb6ab4bc5f994742",
+        "models/purchase_order.py": "b2f499542e8c56d953a1fdeb233fc755c28cccc54cedf4e7013cd739a363417d",
+        "models/tenant.py": "d854458db77a6dc214e9facb4fbc5891993bcccaaf8c955ff3d2174d7fe34461",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/order_item_request.py": "9f6e8bfe66a29cbc2983885e0cb73cd9ee94ecd12f3c6f5cb43419d387386595",
+        "requests/platform_request.py": "27c9aa40e4c61ee81c117b50943458d9781d3f48996e785022610ad295ecf926",
+        "requests/purchase_order_request.py": "9c456ceb59c5c6b386fc630ad0d3d43e2d049e674705e3da291b2bc4ba1639fe",
+        "requests/tenant_request.py": "5f62e38ec77bb8d5b074e2ac369871406b1d294c458c5f41ee088595c788b593",
+        "runtime_module.py": "4d03ab1550a7591af6a69775eb634bf7b1d70cd2fdc55f2fd6dd06b77efc418f",
+        "teaql-i18n.json": "27f0c6764daadb3704162417c6dd49df090ee035bc62ada9ac23a524c3dc0313",
+        "teaql/checker-model.json": "265bbddca283f8be6fbc318de966099587b2162a99bf738ccd23a3f32828186e",
+        "teaql/model-provenance.json": "e32693ef37e48806222a4d628561e4cc6858b120689661328aa489bbcfee8e88"
+      },
+      "model": "examples/query-policy/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "179df6c2ee3cf9bf595aa505a172a4b9fdee811a90301b48adcf212368e5489d",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:5efbe39e3c881f21e8756caaa58dc25bae922e8388de0be2086ebeb4097b3312",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "baa2d47e7f3c29bf50ac795b05004efde611b342c63aad9d464da4157a95473e",
+          "sourceSHA256": "baa2d47e7f3c29bf50ac795b05004efde611b342c63aad9d464da4157a95473e"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/scalar-type-probe/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "4323f6d056e13548e9afb018e5d8a4a32ee4953977ce032827d70bb1b1c2752c",
+        "teaql/model-provenance.json": "44c415ae752e446d758ce7d951e02b985c76a72386f6c03f2f738a39f44cc237"
+      },
+      "model": "examples/scalar-type-probe/freight-quote.xml",
+      "modelEntrypoint": "freight-quote.xml",
+      "modelSHA256": "076fdf926be1a8b71e61cdfaf66b539f54c1ac2182e1f2bc75897dfab52d6d38",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:833c5fc594652f4247ab0587040cdcba5da043d91c9d16cb602e28863fe69ca5",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "bdae360068c3b24f4c8cbafb0f025c31dd9bf3f54b30df34203f88d85767502c",
+          "sourceSHA256": "bdae360068c3b24f4c8cbafb0f025c31dd9bf3f54b30df34203f88d85767502c"
+        },
+        "README.md": {
+          "emittedSHA256": "53ea8873e4b08f80b5ad0aad134c3954f7ed4acc9fbdede848a65efb55f8defd",
+          "sourceSHA256": "30ff437c637a290ff10da59f22b7c161db2fd369e04bcb3d12edd37158e8494d"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "f983d98344a544d48672c35ea82b77d52be75bf2ea3c1ce711aaff8f37fde36f",
+          "sourceSHA256": "007d3b53fcedbc4fc352317d84b7602c2938b089b68ef4e8ad8b5f0f478fb432"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "29159b1a0cfdb1a194e974f31e13246943003f423421c59c7e80d6188dc9b019",
+          "sourceSHA256": "29159b1a0cfdb1a194e974f31e13246943003f423421c59c7e80d6188dc9b019"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/scalar-type-probe/python-lib-core": {
+      "emitted": {
+        "E.py": "b299c722612245b8055f833832a2741fbdb63065bc3a1c387a18d4190fa0fbc8",
+        "Q.py": "f09daf2b628afe3a9d330188b73c282791bd91943566b51381c8333a08340e6e",
+        "generated_search_models.py": "b9775db9c7dd08e1749715cafb983ea6e897d63ee128fcf0ad416d62736f7b24",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/freight_quote.py": "fa90375ff0e7fa55109fc2f19b1f4424d006cde2880ae426cc2f256902023699",
+        "models/platform.py": "885e0e1090315700d5ba96b802c11eeb552df3a94b2f7787685bed0eff4f4619",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/freight_quote_request.py": "6c4b1582d7af09c04218907952038fffea601893847be47ec5d07288b6fdd652",
+        "requests/platform_request.py": "05518c28d624fb6c75ccdfc6c77695c4847b7028b886b6c8b7bb6ad1d8327b5a",
+        "runtime_module.py": "283213c214949b8d45a26f5fe212ded5687da9d1550c5f546e2da415eab2b463",
+        "teaql-i18n.json": "29159b1a0cfdb1a194e974f31e13246943003f423421c59c7e80d6188dc9b019",
+        "teaql/checker-model.json": "4323f6d056e13548e9afb018e5d8a4a32ee4953977ce032827d70bb1b1c2752c",
+        "teaql/model-provenance.json": "44c415ae752e446d758ce7d951e02b985c76a72386f6c03f2f738a39f44cc237"
+      },
+      "model": "examples/scalar-type-probe/freight-quote.xml",
+      "modelEntrypoint": "freight-quote.xml",
+      "modelSHA256": "076fdf926be1a8b71e61cdfaf66b539f54c1ac2182e1f2bc75897dfab52d6d38",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:833c5fc594652f4247ab0587040cdcba5da043d91c9d16cb602e28863fe69ca5",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "a2afc1bd809855df4cc4a2d23ebb27b2730983ddd1aacbfad1bf2c45c8db930e",
+          "sourceSHA256": "a2afc1bd809855df4cc4a2d23ebb27b2730983ddd1aacbfad1bf2c45c8db930e"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/school-management/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "8e28ee16cddc21191816ed05999142fccb870bf42795f5a1f21268ebd4469e71",
+        "teaql/model-provenance.json": "c1c7c2c6173a2f0e6c46c8b5597106fc747f1ca3243a5f62b8491c180ede6714"
+      },
+      "model": "examples/school-management/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "b5cd06ae44464fc29ed24de82654b47c80f546110496756aa15923cee1c511b4",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:cbcdbeba52735fd0fae6d2c910dd4e45c6deeaa9932e9b6b76f8306b7e572ee9",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "57486d2871c5504cde49c3b4fc8dd8528b9b78a952bd3a0511974778006252f0",
+          "sourceSHA256": "57486d2871c5504cde49c3b4fc8dd8528b9b78a952bd3a0511974778006252f0"
+        },
+        "README.md": {
+          "emittedSHA256": "03876c123444af56065da4de460e084216a56caeba764af08bbdf5b0c5175f84",
+          "sourceSHA256": "e2ea61bd115c5e5a8b94943a8de1057144f157788f30cb48678aebaaa9c65b1c"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b"
+        },
+        "app/main.py": {
+          "emittedSHA256": "70aff1b2411aec60341511aa40869fc10d1c2a8cca06fd20055ab1b23eccb416",
+          "sourceSHA256": "15535f5e9860aca5eaa51c02ff1d15be1900d3cabfacea5637626a77ced43f25"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "785b10a761a7e3d13b88878bc8702546b19f9bc637d28e76fa780fc79f97ca3d",
+          "sourceSHA256": "785b10a761a7e3d13b88878bc8702546b19f9bc637d28e76fa780fc79f97ca3d"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/school-management/python-lib-core": {
+      "emitted": {
+        "E.py": "6b0228a1ba820c82f549a7089e0c118161beeced5176375e823a92ff10d91707",
+        "Q.py": "32d715a390697c2918fb06e89a77041c9a915482882ea1f8137e722fe576cf14",
+        "generated_search_models.py": "9a119d9fa9cb1442f3ecf332107306b71e483945619e0263eff6ecc24258d452",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/platform.py": "d62a1dcab5cf7eb337c2e1c5d7bbd3101ec8b0477bac316a682fd0d2d46265fa",
+        "models/school.py": "9e93e733f4c49802aedcd12e924e4857a33e673f25d883566005053feaa8b773",
+        "models/school_type.py": "9507907963f743e0e4741a29509b45e3ce63fa00968bc6405439b87d4a372be1",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/platform_request.py": "01960e9a4f2876a770caaf2be8656038c69d7998dc18931dbf5a3e692a5063eb",
+        "requests/school_request.py": "6227f50c8b9328e2c51088565ff2069e6b2657bcec38dcb5e00238981b85abeb",
+        "requests/school_type_request.py": "ee5ebae405254daeb962866b182e271b4ea1ec482f105d4a7a8cf773c91f4d7e",
+        "runtime_module.py": "e4bc5caed99fddf62704ccae53739d7354c8d43229f909984856ed150f9e3d58",
+        "teaql-i18n.json": "785b10a761a7e3d13b88878bc8702546b19f9bc637d28e76fa780fc79f97ca3d",
+        "teaql/checker-model.json": "8e28ee16cddc21191816ed05999142fccb870bf42795f5a1f21268ebd4469e71",
+        "teaql/model-provenance.json": "c1c7c2c6173a2f0e6c46c8b5597106fc747f1ca3243a5f62b8491c180ede6714"
+      },
+      "model": "examples/school-management/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "b5cd06ae44464fc29ed24de82654b47c80f546110496756aa15923cee1c511b4",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:cbcdbeba52735fd0fae6d2c910dd4e45c6deeaa9932e9b6b76f8306b7e572ee9",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "2dd9f861117185d87b7c5e40afeaf515f94450c0af0d8e7342f36822e7faa47a",
+          "sourceSHA256": "2dd9f861117185d87b7c5e40afeaf515f94450c0af0d8e7342f36822e7faa47a"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/task_board/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "b49897830ad712d77109345903474626ce0ff55dce27a2d51f9fc5b9075e3ae4",
+        "teaql/model-provenance.json": "5796367d35661edbd6f7807471fc0291499caa313ee15d3b1c9dd2ac47e5ed04"
+      },
+      "model": "examples/task_board/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "f2fdd5037dbdee7f71e008f3ca04db75d8dd0e3138743de7a4744c197b0b567e",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:7070f3bc2556a5879e8b2cabb17925a4e4e9a95615ae2f3b4e1bd53f7627374d",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "a21c1412a6ce2cc924c6f1ab5dc3a85b1bd6782c840f034a0ecc2df25d5ae71a",
+          "sourceSHA256": "a21c1412a6ce2cc924c6f1ab5dc3a85b1bd6782c840f034a0ecc2df25d5ae71a"
+        },
+        "README.md": {
+          "emittedSHA256": "2882c6b6b2820a25c854a2e1a6d089ab8c5f6622e5aa7ce34e63ce512e6aaf52",
+          "sourceSHA256": "2777c6af5fd2e1c03bb972e89d71ece5780bfe865a16cd050e389d5307289c1b"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "390d4fe047e5a1776911bac2bdc85a159011053dbe5d158312233e058b146cd6",
+          "sourceSHA256": "a1b8c0a1a63d31f3f664c7603372fa32f31b4d7694f0d8a4b71232ce627a79dd"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "79b420e04edf1c1e1b9f4d04ddfc0ec8a6e2a2458e6a337a8c046bacb64c3a8d",
+          "sourceSHA256": "79b420e04edf1c1e1b9f4d04ddfc0ec8a6e2a2458e6a337a8c046bacb64c3a8d"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/task_board/python-lib-core": {
+      "emitted": {
+        "E.py": "00fe82d63487a5e76982bc6fcd25f49418de3fb7275fd5db5d76f9cf850adf5e",
+        "Q.py": "222de37ce288f59d8509aa11400086f6a56d58206d6d6f15a03359460dca0d3c",
+        "generated_search_models.py": "5313faef4185026bb1fda10240d0f00cd31e1f60cfe76db73c652b987a56d101",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/platform.py": "58b8c06169210c6f7835df171e2327be02167b7e6782dcfeea2261dc8e0e23b7",
+        "models/task.py": "2383f038aef6da55f67ef320f8a8b08a71de707dd4946f451b70db066a8dd5d0",
+        "models/task_execution_log.py": "01197ac2fdea17624127e6f7266f4e0ffadd3fd93a25860edd1088302aae7c39",
+        "models/task_status.py": "8a5c1533372edc42d1968a63d2d85f9758804dd09a754ae5d66438c933a7f089",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/platform_request.py": "e691f2ccaad325d967642528ef25027ff99a9e2ad80c3c001f65d9d408814eba",
+        "requests/task_execution_log_request.py": "b8c7963d989427b5e287445574f3ecd102a5f3754a6f19bb24dc9e721eab66bd",
+        "requests/task_request.py": "a0ef9990145b9553b505f85da0fa02134d9b40be0470f55ac1c6366f23f60a96",
+        "requests/task_status_request.py": "02ad1dd8eb4177e83ec2c4fb6a340afe86a7b48392eede429e265d455f0d326b",
+        "runtime_module.py": "f6022237abc93cf91f4ffff11aa202a52d04236e9d6c77cb3217f594ac103e6f",
+        "teaql-i18n.json": "79b420e04edf1c1e1b9f4d04ddfc0ec8a6e2a2458e6a337a8c046bacb64c3a8d",
+        "teaql/checker-model.json": "b49897830ad712d77109345903474626ce0ff55dce27a2d51f9fc5b9075e3ae4",
+        "teaql/model-provenance.json": "5796367d35661edbd6f7807471fc0291499caa313ee15d3b1c9dd2ac47e5ed04"
+      },
+      "model": "examples/task_board/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "f2fdd5037dbdee7f71e008f3ca04db75d8dd0e3138743de7a4744c197b0b567e",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:7070f3bc2556a5879e8b2cabb17925a4e4e9a95615ae2f3b4e1bd53f7627374d",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "855809a3d29c09fcd435ce7484141882aeaaf80123842b23bb2ac5cb77eed330",
+          "sourceSHA256": "855809a3d29c09fcd435ce7484141882aeaaf80123842b23bb2ac5cb77eed330"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/trace-chain/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "4e3a105f6a25a68a4565f8bb5addf7bb560cc2d53f113c300689986959ad8ec0",
+        "teaql/model-provenance.json": "38c63373a96893414d3e4979822c252919bb78706e780f55a2c1845f08321fe7"
+      },
+      "model": "examples/trace-chain/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "5c9aa72602ed5b877f53bac098d2d3396438ef5af69591364b3d76cbff52715a",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:eed9bc093d95cfc57f6415f14243577b48bedd907eb7eeea4a14e694af947c82",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "440d7a6a6d2fabd9692772c96d88314a064b3ca5183f51ae99c8258eb70a86ba",
+          "sourceSHA256": "440d7a6a6d2fabd9692772c96d88314a064b3ca5183f51ae99c8258eb70a86ba"
+        },
+        "README.md": {
+          "emittedSHA256": "2f1b66c4606e40c17576380753e2ed0e86d2e4bc865eed684a0a1b86ae7c11c6",
+          "sourceSHA256": "56e404c1da27b1f2051e8faa83d021fcb261cf72fff5de62fea7c6900a5efd08"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "464aa72ce836c3731b9b7f69a42a0f409375e2b8b43ea14c060590649660c31f",
+          "sourceSHA256": "6afbf28f2fdeaa661e0471792824f2ce4682de56f8e7f6d739b726fe2ab1c96c"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "5ff4a2f49563da43619a3bde0da4d3b73105e87824aef4851ba050b0509272d3",
+          "sourceSHA256": "5ff4a2f49563da43619a3bde0da4d3b73105e87824aef4851ba050b0509272d3"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/trace-chain/python-lib-core": {
+      "emitted": {
+        "E.py": "de93b694d195f4f61c48dbcc7fb503671550b05326ef6b98ebe9002af0a7619e",
+        "Q.py": "555a60a9561499fb3ce7a6a3e40e7004d0a79b8ea01f2d80686c999db4873352",
+        "generated_search_models.py": "85b94265c357afc0c3bf19d13ceeacc0eb47e2014e4d3d6bba30031025340cc7",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/customer_order.py": "d4983ef127616c473d361d255b267201df4e32f6bd5a285ac48c5a357bbe0039",
+        "models/order_item.py": "5d45e54d6c5d1864cf43f4f84789e8d19d20d4cc65163168fb825795343ef3ae",
+        "models/payment.py": "c7b385f4793db714a22300685f7150875bbe007329e866dc2784a68d2441a183",
+        "models/payment_attempt.py": "ccf03f839f18c6f4b99bf7f67cbe013f9770b357bf79ba563a26d18807dcb580",
+        "models/platform.py": "60e168965013ba515c74070a4310384d1ecf0f483ba9041c882a019a078bb32c",
+        "models/shipment.py": "80f8339d93e5e2afbba0a6a8c2189d0853a8d4d84742eb3b0d6a9301d90896ad",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/customer_order_request.py": "c6017c2481739a8418b9ea6408f51241a2cbb0315bbfd992834e3fc77078218f",
+        "requests/order_item_request.py": "4ec105280c98bfcfe9c360e3ff7fd0c85285e0a61a8e9d8a157e8a957d34a9eb",
+        "requests/payment_attempt_request.py": "225adad778e1f5fd4b9793db426c5b5a96edac544771663b9875ebe88976c46c",
+        "requests/payment_request.py": "d3ce476df8379de9eb74ad10f9f44d9c29566e4a9a7d2a457a53c3ae3fb4a2ba",
+        "requests/platform_request.py": "7121af9a30e979819ae311d0e5a6a9cbac539ab743a00b5ddce3b21c148d1c11",
+        "requests/shipment_request.py": "d98822f0a7791d2cb2da7b56f10b10f1fe278529116b361b7feba168132393ff",
+        "runtime_module.py": "23203a93b298e79b3394e694fb2b668fd40cbd5880eee9e5d131273756edd6ce",
+        "teaql-i18n.json": "5ff4a2f49563da43619a3bde0da4d3b73105e87824aef4851ba050b0509272d3",
+        "teaql/checker-model.json": "4e3a105f6a25a68a4565f8bb5addf7bb560cc2d53f113c300689986959ad8ec0",
+        "teaql/model-provenance.json": "38c63373a96893414d3e4979822c252919bb78706e780f55a2c1845f08321fe7"
+      },
+      "model": "examples/trace-chain/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "5c9aa72602ed5b877f53bac098d2d3396438ef5af69591364b3d76cbff52715a",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:eed9bc093d95cfc57f6415f14243577b48bedd907eb7eeea4a14e694af947c82",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "ba112804e84c6be952a11f2a1a3669d5a9f48f053f14a20c02489642eaeca260",
+          "sourceSHA256": "ba112804e84c6be952a11f2a1a3669d5a9f48f053f14a20c02489642eaeca260"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/trace-chain/standard-order/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "11e9102d94684fd30e13941514301d2cf6f20522c275cfa36eece9842ff1014e",
+        "teaql/model-provenance.json": "104fbb539965c0964ee7debc713d21a6e092910aafc71e24a13a7a3beceebab8"
+      },
+      "model": "examples/trace-chain/standard-order/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9e60ff448b17cbbc38035565643f44e6618841632cf4f08fdc089dc961c3a62c",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:a7e84071ea8c35db440948aebd9700a04acc3921a0b6611e23c9997fa3ab8712",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "2406548836e80afd2847d931a3784d8802d14c73ee1b04d1587941515f4452bc",
+          "sourceSHA256": "2406548836e80afd2847d931a3784d8802d14c73ee1b04d1587941515f4452bc"
+        },
+        "README.md": {
+          "emittedSHA256": "872fac9f8d39215697d7f6623a9f5f4fa722c3c1e676da943772f8b506be3f3c",
+          "sourceSHA256": "1cf4ca36e915bbc4507b3b3eedfdff9970b046c997632428b1460fc9a645a8e4"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "4c32f5c595715b388d3c054f163d75595938addecc0ced59776f8562ff12458c",
+          "sourceSHA256": "e4389d0535f4238535f0a392771af4e6e77c61a353807fb847e3f9aa91c855ca"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "ee5dc28e916a8907555d5d5a4d0e3cf2fa37aad047af37abed0800582af18d96",
+          "sourceSHA256": "ee5dc28e916a8907555d5d5a4d0e3cf2fa37aad047af37abed0800582af18d96"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/trace-chain/standard-order/python-lib-core": {
+      "emitted": {
+        "E.py": "403a52874c1a50c0a4846277928b09a3f87afc2cd67161d9693fb8595b8b2c96",
+        "Q.py": "00fdcdfee8e464fcc9e5b5ceda6156d9bf309cb53962c6a5987f22456a941c52",
+        "generated_search_models.py": "5986eac9a03f5ab3f12f41101461031149535206e8bb1a924b3513198a71979f",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/customer.py": "be62405d14a3c7377be6b323aec6f78fabdef26dca4b59830bd13d1b58628661",
+        "models/customer_order.py": "d029b3551089b9e4fb057c11d7a4dbd8b4234315b6e9886e56c149fc42cb79b6",
+        "models/order_item.py": "51f8c8b4369c74a87408661f625c1a0b4f1bf18dda7d14f738d35d14b430cd8a",
+        "models/order_status.py": "0e901a62e7ef9e93331b349aa72fbe4e8c41f1fe4fb4ea0c06264b8bba650eef",
+        "models/platform.py": "425296821f17fc373591f037981c8e0ba1720730416a6e73013450ffa075fd14",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/customer_order_request.py": "53d37879295886c7e9a98399b2965cd2858a56c3aa96cd800b24553065629817",
+        "requests/customer_request.py": "b78b9031d81b34fd91507285e16db215af792c403bfa7348ac0c60995d88c9c6",
+        "requests/order_item_request.py": "9f5f6ef3e66b5eacf7a863a473e2ab6e53886d45285e55a97dc2840b83be6c33",
+        "requests/order_status_request.py": "c09dd7d93b26430352cca9f225ac4a8ba25d2f388b4f9da5f7816940a43d3b50",
+        "requests/platform_request.py": "433fb93d929c953329233a870edd711cbe30d664cd76cac7b66eb007c3809e92",
+        "runtime_module.py": "cf4bdc54553c99bacf7ca62feb05a052b30482ae1cef33d1b1a8d75d112a2e7e",
+        "teaql-i18n.json": "ee5dc28e916a8907555d5d5a4d0e3cf2fa37aad047af37abed0800582af18d96",
+        "teaql/checker-model.json": "11e9102d94684fd30e13941514301d2cf6f20522c275cfa36eece9842ff1014e",
+        "teaql/model-provenance.json": "104fbb539965c0964ee7debc713d21a6e092910aafc71e24a13a7a3beceebab8"
+      },
+      "model": "examples/trace-chain/standard-order/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9e60ff448b17cbbc38035565643f44e6618841632cf4f08fdc089dc961c3a62c",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:a7e84071ea8c35db440948aebd9700a04acc3921a0b6611e23c9997fa3ab8712",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "553edc22480d0aee5c114595c5307a2a880658d5966491da9fbcba06f15a6932",
+          "sourceSHA256": "553edc22480d0aee5c114595c5307a2a880658d5966491da9fbcba06f15a6932"
+        }
+      },
+      "scope": "python-lib-core"
+    },
+    "examples/typed-extension-spi/python-app-console": {
+      "emitted": {
+        "teaql/checker-model.json": "8ee03ec4ccc8742f7a22281727a0646a25db07404bd2b953c5ae5edadff691e5",
+        "teaql/model-provenance.json": "91e2b70b4108ed1c5ddff6f4da5ace8876571133231190c1cbd8158b638e3648"
+      },
+      "model": "examples/typed-extension-spi/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9a4183ff59104026fab0b1e44a38d231f13dd9f6f1d4c40c9057de66c574508b",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:ca232991c085213564430deeb7f25dedd96dc13b3e9bd425da03f09a8ab26036",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "AGENTS.md": {
+          "emittedSHA256": "e8c70439e747d32c46890c18c571478ff0333eafe3175aa20c67c632ad735e94",
+          "sourceSHA256": "e8c70439e747d32c46890c18c571478ff0333eafe3175aa20c67c632ad735e94"
+        },
+        "README.md": {
+          "emittedSHA256": "60d3536b2a7784885aedb770c55d2b170f889f59e81431f0f5ad67be3d90e8e2",
+          "sourceSHA256": "336f3abf4081a76739f819e76b6740eff194b87117fe7c31e90d32cb8389bb00"
+        },
+        "STANDARD_TELEMETRY.md": {
+          "emittedSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+          "sourceSHA256": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712"
+        },
+        "app/__init__.py": {
+          "emittedSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "sourceSHA256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "app/main.py": {
+          "emittedSHA256": "7061329c2d7d6e4c653f99eeee630b45823c38bd6b56faac39e66ddd6658e8c3",
+          "sourceSHA256": "e0e373428f5eba994bae2e30aa8c221f2295f1d473dcd961a9202fa7ea024371"
+        },
+        "teaql-i18n.json": {
+          "emittedSHA256": "480dc1c1175a5fb541a7fa1956fa723a268b92f52ef90d1adf60da1ee96a1fbd",
+          "sourceSHA256": "480dc1c1175a5fb541a7fa1956fa723a268b92f52ef90d1adf60da1ee96a1fbd"
+        }
+      },
+      "scope": "python-app-console"
+    },
+    "examples/typed-extension-spi/python-lib-core": {
+      "emitted": {
+        "E.py": "fd673652a81b14580dfe8dce38acd2a8339ae8214d30f5b086b3bb1cb09d1a40",
+        "Q.py": "93b5ab9b2ef87f2f923f3db4f65791cde0c3d7d2e03dd86dee11e9461cfeb7cc",
+        "generated_search_models.py": "c1f42be36160709f3b802ec15046af13659f870eece44756f8b41f7dd04b3bdb",
+        "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "models/platform.py": "a481409cde9629a9862be2e1fbce17d6c49b8d61aa4a546b3e1960bdadf19971",
+        "models/vendor_application.py": "552b8d45d15c8715a4bae360d76604505bf9d9da5e59820ba1943454d36e4d5c",
+        "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "requests/platform_request.py": "caf2c429a6c5cb1249e936290fd1f4287f5c40766c3d0144f7b92f34fafb6c5a",
+        "requests/vendor_application_request.py": "9bce6d786a4a7664f50f9939c3516bddcfcc65aacf00b4b4edaadecec46c04fe",
+        "runtime_module.py": "e27cab1d0a6c0bc173e3f8de0541a693fdc209ea1ddf19349d0edceea57b8249",
+        "teaql-i18n.json": "480dc1c1175a5fb541a7fa1956fa723a268b92f52ef90d1adf60da1ee96a1fbd",
+        "teaql/checker-model.json": "8ee03ec4ccc8742f7a22281727a0646a25db07404bd2b953c5ae5edadff691e5",
+        "teaql/model-provenance.json": "91e2b70b4108ed1c5ddff6f4da5ace8876571133231190c1cbd8158b638e3648"
+      },
+      "model": "examples/typed-extension-spi/model.xml",
+      "modelEntrypoint": "model.xml",
+      "modelSHA256": "9a4183ff59104026fab0b1e44a38d231f13dd9f6f1d4c40c9057de66c574508b",
+      "provenance": {
+        "generatorVersion": "783ff0d8",
+        "modelUuid": null,
+        "revisionHash": "sha256:ca232991c085213564430deeb7f25dedd96dc13b3e9bd425da03f09a8ab26036",
+        "schemaVersion": 1
+      },
+      "retainedWorkspaceFiles": {
+        "pyproject.toml": {
+          "emittedSHA256": "3871f63a9b0548c73ebf23a20d5f548023f9cb7133bb253c8a4a665ce43687b3",
+          "sourceSHA256": "3871f63a9b0548c73ebf23a20d5f548023f9cb7133bb253c8a4a665ce43687b3"
+        }
+      },
+      "scope": "python-lib-core"
+    }
+  },
+  "sourceCommit": "783ff0d81751b030c1209043476e8326cc6da58b"
+}

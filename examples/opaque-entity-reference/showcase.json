@@ -1,0 +1,63 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/opaque-entity-reference",
+  "library": {
+    "generatedFilesManifestSHA256": "e95444cbd5b64cda244ba388652d593f0c6db858a793211fdd6076e224870d4f",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "065bad2b9154a08abbec48549e60cc907e6f2889e9a005b428d902a1cbd0999f"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/order-reference-and-line-restoration-evaluated-generation/receipt.json",
+    "receiptSHA256": "21eae4c57d59881287106fe7871d0958e6596ab455f9e7e095580b0b03a05dc8"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-order-edit-reference-native/business-receipt.json",
+    "businessReceiptSHA256": "3f18090e3b7b71cfd1b0d06cdcfaae4bc3a2fcce4db02ee05e927ec270d15bde",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-order-edit-reference-native/receipt.json",
+    "nativeReceiptSHA256": "c19af2ba1dcfb30c5ef2138cf3d3547b237b8e1328feec067d2e15ffc544aecd",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "a37788b31de3eee4e8faf7dc9feabe15f3a7bf97"
+  },
+  "scene": "Resolve a signed order-line reference before accepting a quantity change",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "bash",
+    "examples/opaque-entity-reference/verify.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/merchant.py",
+      "models/order_item.py",
+      "models/sales_order.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/merchant_request.py",
+      "requests/order_item_request.py",
+      "requests/sales_order_request.py",
+      "runtime_module.py"
+    ],
+    "generatedFilesManifestSHA256": "3fc4a5cc84247cbd8830ddfd60cc582cd64a4078ee9610719779fa13f6423213",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

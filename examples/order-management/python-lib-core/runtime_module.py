@@ -1,6 +1,7 @@
 import asyncio
 from datetime import datetime, timezone
-from teaql.runtime import CheckResult, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.runtime import CheckResult, ContextFix, ContextEntityRef, JsonFieldNamingProfile, ObjectLocation, RuntimeModule, create_wire_entity_metadata
+from teaql.runtime import CheckerPresentationModel
 from teaql.core.meta import EntityDescriptor, PropertyDescriptor, RelationDescriptor
 from teaql.core.value import DataType
 from Q import Q
@@ -39,17 +40,13 @@ def _teaql_entity_id(value):
 class _CommercePlatformChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
-        if operation == "insert" and ("create_time" not in record or _teaql_is_null(record["create_time"])):
-            record["create_time"] = Value.from_any(now)
-            context.record_fix_evidence("CommercePlatform", "create_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "create_time", "now", [], location_name="create_time")
 
-        if operation == "insert" and ("update_time" not in record or _teaql_is_null(record["update_time"])):
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("CommercePlatform", "update_time", "clock", "graphClock")
-        if operation == "insert" or operation == "update":
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("CommercePlatform", "update_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
+        if operation == "update":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
 
 
         if (operation == "insert" and "name" not in record) or ("name" in record and _teaql_is_null(record["name"])):
@@ -68,17 +65,13 @@ class _CommercePlatformChecker:
 class _CustomerChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
-        if operation == "insert" and ("create_time" not in record or _teaql_is_null(record["create_time"])):
-            record["create_time"] = Value.from_any(now)
-            context.record_fix_evidence("Customer", "create_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "create_time", "now", [], location_name="create_time")
 
-        if operation == "insert" and ("update_time" not in record or _teaql_is_null(record["update_time"])):
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("Customer", "update_time", "clock", "graphClock")
-        if operation == "insert" or operation == "update":
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("Customer", "update_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
+        if operation == "update":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
 
 
         if (operation == "insert" and "name" not in record) or ("name" in record and _teaql_is_null(record["name"])):
@@ -105,7 +98,6 @@ class _CustomerChecker:
 class _OrderStatusChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
         if (operation == "insert" and "name" not in record) or ("name" in record and _teaql_is_null(record["name"])):
             results.append(CheckResult("required", ObjectLocation().property("name")))
         if "name" in record and _teaql_raw(record["name"]) is not None and len(_teaql_raw(record["name"])) > 100:
@@ -128,17 +120,13 @@ class _OrderStatusChecker:
 class _CustomerOrderChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
-        if operation == "insert" and ("create_time" not in record or _teaql_is_null(record["create_time"])):
-            record["create_time"] = Value.from_any(now)
-            context.record_fix_evidence("CustomerOrder", "create_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "create_time", "now", [], location_name="create_time")
 
-        if operation == "insert" and ("update_time" not in record or _teaql_is_null(record["update_time"])):
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("CustomerOrder", "update_time", "clock", "graphClock")
-        if operation == "insert" or operation == "update":
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("CustomerOrder", "update_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
+        if operation == "update":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
 
 
         if (operation == "insert" and "order_number" not in record) or ("order_number" in record and _teaql_is_null(record["order_number"])):
@@ -172,17 +160,13 @@ class _CustomerOrderChecker:
 class _ProductChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
-        if operation == "insert" and ("create_time" not in record or _teaql_is_null(record["create_time"])):
-            record["create_time"] = Value.from_any(now)
-            context.record_fix_evidence("Product", "create_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "create_time", "now", [], location_name="create_time")
 
-        if operation == "insert" and ("update_time" not in record or _teaql_is_null(record["update_time"])):
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("Product", "update_time", "clock", "graphClock")
-        if operation == "insert" or operation == "update":
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("Product", "update_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
+        if operation == "update":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
 
 
         if (operation == "insert" and "name" not in record) or ("name" in record and _teaql_is_null(record["name"])):
@@ -212,10 +196,8 @@ class _ProductChecker:
 class _OrderLineChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
-        if operation == "insert" and ("create_time" not in record or _teaql_is_null(record["create_time"])):
-            record["create_time"] = Value.from_any(now)
-            context.record_fix_evidence("OrderLine", "create_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "create_time", "now", [], location_name="create_time")
 
 
         if (operation == "insert" and "customer_order" not in record) or ("customer_order" in record and _teaql_is_null(record["customer_order"])):
@@ -248,17 +230,13 @@ class _OrderLineChecker:
 class _OrderSearchPresetChecker:
     def check_and_fix(self, context, record, location, results):
         operation = context.get_resource("fix_operation")
-        now = context.get_resource("fix_time")
-        if operation == "insert" and ("create_time" not in record or _teaql_is_null(record["create_time"])):
-            record["create_time"] = Value.from_any(now)
-            context.record_fix_evidence("OrderSearchPreset", "create_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "create_time", "now", [], location_name="create_time")
 
-        if operation == "insert" and ("update_time" not in record or _teaql_is_null(record["update_time"])):
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("OrderSearchPreset", "update_time", "clock", "graphClock")
-        if operation == "insert" or operation == "update":
-            record["update_time"] = Value.from_any(now)
-            context.record_fix_evidence("OrderSearchPreset", "update_time", "clock", "graphClock")
+        if operation == "insert":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
+        if operation == "update":
+            ContextFix.apply(context, record, "update_time", "now", [], location_name="update_time")
 
 
         if (operation == "insert" and "name" not in record) or ("name" in record and _teaql_is_null(record["name"])):
@@ -294,12 +272,12 @@ class _OrderSearchPresetChecker:
 
 _CommercePlatform_DESCRIPTOR = (EntityDescriptor("CommercePlatform")
     .audit_mask_fields([])
-    .table_name("commerce_platform_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True)).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("customer_list", "Customer").local("id").foreign("commerce_platform").many()).relation(RelationDescriptor("order_status_list", "OrderStatus").local("id").foreign("commerce_platform").many()).relation(RelationDescriptor("customer_order_list", "CustomerOrder").local("id").foreign("commerce_platform").many()).relation(RelationDescriptor("product_list", "Product").local("id").foreign("commerce_platform").many()).relation(RelationDescriptor("order_line_list", "OrderLine").local("id").foreign("commerce_platform").many()).relation(RelationDescriptor("order_search_preset_list", "OrderSearchPreset").local("id").foreign("commerce_platform").many())
+    .table_name("commerce_platform_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True).on_create_from_context("now")).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True).on_create_from_context("now").on_update_from_context("now")).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("customer_list", "Customer").local("id").foreign("commerce_platform").many()).relation(RelationDescriptor("order_status_list", "OrderStatus").local("id").foreign("commerce_platform").many()).relation(RelationDescriptor("customer_order_list", "CustomerOrder").local("id").foreign("commerce_platform").many()).relation(RelationDescriptor("product_list", "Product").local("id").foreign("commerce_platform").many()).relation(RelationDescriptor("order_line_list", "OrderLine").local("id").foreign("commerce_platform").many()).relation(RelationDescriptor("order_search_preset_list", "OrderSearchPreset").local("id").foreign("commerce_platform").many())
 )
 
 _Customer_DESCRIPTOR = (EntityDescriptor("Customer")
     .audit_mask_fields(["email"])
-    .table_name("customer_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("email", DataType.Text).column_name("email").log_policy("plain").required()).property(PropertyDescriptor("commerce_platform", DataType.I64).column_name("commerce_platform").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True)).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("commerce_platform", "CommercePlatform").local("commerce_platform").foreign("id")).relation(RelationDescriptor("customer_order_list", "CustomerOrder").local("id").foreign("customer").many())
+    .table_name("customer_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("email", DataType.Text).column_name("email").log_policy("plain").required()).property(PropertyDescriptor("commerce_platform", DataType.I64).column_name("commerce_platform").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True).on_create_from_context("now")).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True).on_create_from_context("now").on_update_from_context("now")).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("commerce_platform", "CommercePlatform").local("commerce_platform").foreign("id")).relation(RelationDescriptor("customer_order_list", "CustomerOrder").local("id").foreign("customer").many())
 )
 
 _OrderStatus_DESCRIPTOR = (EntityDescriptor("OrderStatus")
@@ -309,22 +287,22 @@ _OrderStatus_DESCRIPTOR = (EntityDescriptor("OrderStatus")
 
 _CustomerOrder_DESCRIPTOR = (EntityDescriptor("CustomerOrder")
     .audit_mask_fields([])
-    .table_name("customer_order_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("order_number", DataType.Text).column_name("order_number").log_policy("plain").required()).property(PropertyDescriptor("order_date", DataType.Date).column_name("order_date").log_policy("plain").required()).property(PropertyDescriptor("total_amount", DataType.Decimal).column_name("total_amount").log_policy("plain").required()).property(PropertyDescriptor("status", DataType.I64).column_name("status").log_policy("plain").required()).property(PropertyDescriptor("customer", DataType.I64).column_name("customer").log_policy("plain").required()).property(PropertyDescriptor("commerce_platform", DataType.I64).column_name("commerce_platform").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True)).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("status", "OrderStatus").local("status").foreign("id")).relation(RelationDescriptor("customer", "Customer").local("customer").foreign("id")).relation(RelationDescriptor("commerce_platform", "CommercePlatform").local("commerce_platform").foreign("id")).relation(RelationDescriptor("order_line_list", "OrderLine").local("id").foreign("customer_order").many())
+    .table_name("customer_order_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("order_number", DataType.Text).column_name("order_number").log_policy("plain").required()).property(PropertyDescriptor("order_date", DataType.Date).column_name("order_date").log_policy("plain").required()).property(PropertyDescriptor("total_amount", DataType.Decimal).column_name("total_amount").log_policy("plain").required()).property(PropertyDescriptor("status", DataType.I64).column_name("status").log_policy("plain").required()).property(PropertyDescriptor("customer", DataType.I64).column_name("customer").log_policy("plain").required()).property(PropertyDescriptor("commerce_platform", DataType.I64).column_name("commerce_platform").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True).on_create_from_context("now")).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True).on_create_from_context("now").on_update_from_context("now")).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("status", "OrderStatus").local("status").foreign("id")).relation(RelationDescriptor("customer", "Customer").local("customer").foreign("id")).relation(RelationDescriptor("commerce_platform", "CommercePlatform").local("commerce_platform").foreign("id")).relation(RelationDescriptor("order_line_list", "OrderLine").local("id").foreign("customer_order").many())
 )
 
 _Product_DESCRIPTOR = (EntityDescriptor("Product")
     .audit_mask_fields([])
-    .table_name("product_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("sku", DataType.Text).column_name("sku").log_policy("plain").required()).property(PropertyDescriptor("image_url", DataType.Text).column_name("image_url").log_policy("plain")).property(PropertyDescriptor("commerce_platform", DataType.I64).column_name("commerce_platform").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True)).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("commerce_platform", "CommercePlatform").local("commerce_platform").foreign("id")).relation(RelationDescriptor("order_line_list", "OrderLine").local("id").foreign("product").many())
+    .table_name("product_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("sku", DataType.Text).column_name("sku").log_policy("plain").required()).property(PropertyDescriptor("image_url", DataType.Text).column_name("image_url").log_policy("plain")).property(PropertyDescriptor("commerce_platform", DataType.I64).column_name("commerce_platform").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True).on_create_from_context("now")).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True).on_create_from_context("now").on_update_from_context("now")).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("commerce_platform", "CommercePlatform").local("commerce_platform").foreign("id")).relation(RelationDescriptor("order_line_list", "OrderLine").local("id").foreign("product").many())
 )
 
 _OrderLine_DESCRIPTOR = (EntityDescriptor("OrderLine")
     .audit_mask_fields([])
-    .table_name("order_line_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("customer_order", DataType.I64).column_name("customer_order").log_policy("plain").required()).property(PropertyDescriptor("product", DataType.I64).column_name("product").log_policy("plain").required()).property(PropertyDescriptor("product_name", DataType.Text).column_name("product_name").log_policy("plain").required()).property(PropertyDescriptor("sku", DataType.Text).column_name("sku").log_policy("plain").required()).property(PropertyDescriptor("quantity", DataType.I64).column_name("quantity").log_policy("plain").integer32().required()).property(PropertyDescriptor("commerce_platform", DataType.I64).column_name("commerce_platform").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("customer_order", "CustomerOrder").local("customer_order").foreign("id")).relation(RelationDescriptor("product", "Product").local("product").foreign("id")).relation(RelationDescriptor("commerce_platform", "CommercePlatform").local("commerce_platform").foreign("id"))
+    .table_name("order_line_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("customer_order", DataType.I64).column_name("customer_order").log_policy("plain").required()).property(PropertyDescriptor("product", DataType.I64).column_name("product").log_policy("plain").required()).property(PropertyDescriptor("product_name", DataType.Text).column_name("product_name").log_policy("plain").required()).property(PropertyDescriptor("sku", DataType.Text).column_name("sku").log_policy("plain").required()).property(PropertyDescriptor("quantity", DataType.I64).column_name("quantity").log_policy("plain").integer32().required()).property(PropertyDescriptor("commerce_platform", DataType.I64).column_name("commerce_platform").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True).on_create_from_context("now")).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("customer_order", "CustomerOrder").local("customer_order").foreign("id")).relation(RelationDescriptor("product", "Product").local("product").foreign("id")).relation(RelationDescriptor("commerce_platform", "CommercePlatform").local("commerce_platform").foreign("id"))
 )
 
 _OrderSearchPreset_DESCRIPTOR = (EntityDescriptor("OrderSearchPreset")
     .audit_mask_fields([])
-    .table_name("order_search_preset_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("filter_json", DataType.Text).column_name("filter_json").log_policy("plain").required()).property(PropertyDescriptor("request_id", DataType.Text).column_name("request_id").log_policy("plain").required()).property(PropertyDescriptor("owner_user_id", DataType.Text).column_name("owner_user_id").log_policy("plain").required()).property(PropertyDescriptor("commerce_platform", DataType.I64).column_name("commerce_platform").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True)).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True)).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("commerce_platform", "CommercePlatform").local("commerce_platform").foreign("id"))
+    .table_name("order_search_preset_data").property(PropertyDescriptor("id", DataType.I64).column_name("id").log_policy("plain").is_id().required()).property(PropertyDescriptor("name", DataType.Text).column_name("name").log_policy("plain").required()).property(PropertyDescriptor("filter_json", DataType.Text).column_name("filter_json").log_policy("plain").required()).property(PropertyDescriptor("request_id", DataType.Text).column_name("request_id").log_policy("plain").required()).property(PropertyDescriptor("owner_user_id", DataType.Text).column_name("owner_user_id").log_policy("plain").required()).property(PropertyDescriptor("commerce_platform", DataType.I64).column_name("commerce_platform").log_policy("plain").required()).property(PropertyDescriptor("create_time", DataType.Timestamp).column_name("create_time").log_policy("plain").required().fixed_by_runtime(insert=True).on_create_from_context("now")).property(PropertyDescriptor("update_time", DataType.Timestamp).column_name("update_time").log_policy("plain").required().fixed_by_runtime(insert=True, update=True).on_create_from_context("now").on_update_from_context("now")).property(PropertyDescriptor("version", DataType.I64).column_name("version").log_policy("plain").is_version().required()).relation(RelationDescriptor("commerce_platform", "CommercePlatform").local("commerce_platform").foreign("id"))
 )
 
 async def _ensure_generated_bootstrap_once(context):
@@ -444,6 +422,7 @@ async def _ensure_generated_bootstrap(context):
 
 
 # Passive generated manifest. Call ensure_schema() separately and explicitly.
+_CHECKER_PRESENTATION = CheckerPresentationModel.from_json("{\"schema\":\"teaql.checker-model/v1\",\"revision\":\"sha256:feb0a6c97f37d35282317bf77fbd60ffde5a4dc18d6f6a371fd40d2c37d6c975\",\"entities\":{\"CommercePlatform\":{\"labels\":{\"en\":\"commerce platform\"},\"fields\":[{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"customer_list\",\"targetType\":\"Customer\",\"labels\":{\"en\":\"customer\"},\"aliases\":[\"CustomerList\",\"customerList\"]},{\"name\":\"customer_order_list\",\"targetType\":\"CustomerOrder\",\"labels\":{\"en\":\"customer order\"},\"aliases\":[\"CustomerOrderList\",\"customerOrderList\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"order_line_list\",\"targetType\":\"OrderLine\",\"labels\":{\"en\":\"order line\"},\"aliases\":[\"OrderLineList\",\"orderLineList\"]},{\"name\":\"order_search_preset_list\",\"targetType\":\"OrderSearchPreset\",\"labels\":{\"en\":\"order search preset\"},\"aliases\":[\"OrderSearchPresetList\",\"orderSearchPresetList\"]},{\"name\":\"order_status_list\",\"targetType\":\"OrderStatus\",\"labels\":{\"en\":\"order status\"},\"aliases\":[\"OrderStatusList\",\"orderStatusList\"]},{\"name\":\"product_list\",\"targetType\":\"Product\",\"labels\":{\"en\":\"product\"},\"aliases\":[\"ProductList\",\"productList\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"Customer\":{\"labels\":{\"en\":\"customer\"},\"fields\":[{\"name\":\"commerce_platform\",\"targetType\":\"CommercePlatform\",\"labels\":{\"en\":\"commerce platform\"},\"aliases\":[\"CommercePlatform\",\"commercePlatform\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"customer_order_list\",\"targetType\":\"CustomerOrder\",\"labels\":{\"en\":\"customer order\"},\"aliases\":[\"CustomerOrderList\",\"customerOrderList\"]},{\"name\":\"email\",\"labels\":{\"en\":\"email\"},\"aliases\":[\"Email\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"CustomerOrder\":{\"labels\":{\"en\":\"customer order\"},\"fields\":[{\"name\":\"commerce_platform\",\"targetType\":\"CommercePlatform\",\"labels\":{\"en\":\"commerce platform\"},\"aliases\":[\"CommercePlatform\",\"commercePlatform\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"customer\",\"targetType\":\"Customer\",\"labels\":{\"en\":\"customer\"},\"aliases\":[\"Customer\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"order_date\",\"labels\":{\"en\":\"order date\"},\"aliases\":[\"OrderDate\",\"orderDate\"]},{\"name\":\"order_line_list\",\"targetType\":\"OrderLine\",\"labels\":{\"en\":\"order line\"},\"aliases\":[\"OrderLineList\",\"orderLineList\"]},{\"name\":\"order_number\",\"labels\":{\"en\":\"order number\"},\"aliases\":[\"OrderNumber\",\"orderNumber\"]},{\"name\":\"status\",\"targetType\":\"OrderStatus\",\"labels\":{\"en\":\"status\"},\"aliases\":[\"Status\"]},{\"name\":\"total_amount\",\"labels\":{\"en\":\"total amount\"},\"aliases\":[\"TotalAmount\",\"totalAmount\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"OrderLine\":{\"labels\":{\"en\":\"order line\"},\"fields\":[{\"name\":\"commerce_platform\",\"targetType\":\"CommercePlatform\",\"labels\":{\"en\":\"commerce platform\"},\"aliases\":[\"CommercePlatform\",\"commercePlatform\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"customer_order\",\"targetType\":\"CustomerOrder\",\"labels\":{\"en\":\"customer order\"},\"aliases\":[\"CustomerOrder\",\"customerOrder\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"product\",\"targetType\":\"Product\",\"labels\":{\"en\":\"product\"},\"aliases\":[\"Product\"]},{\"name\":\"product_name\",\"labels\":{\"en\":\"product name\"},\"aliases\":[\"ProductName\",\"productName\"]},{\"name\":\"quantity\",\"labels\":{\"en\":\"quantity\"},\"aliases\":[\"Quantity\"]},{\"name\":\"sku\",\"labels\":{\"en\":\"sku\"},\"aliases\":[\"Sku\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"OrderSearchPreset\":{\"labels\":{\"en\":\"order search preset\"},\"fields\":[{\"name\":\"commerce_platform\",\"targetType\":\"CommercePlatform\",\"labels\":{\"en\":\"commerce platform\"},\"aliases\":[\"CommercePlatform\",\"commercePlatform\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"filter_json\",\"labels\":{\"en\":\"filter json\"},\"aliases\":[\"FilterJson\",\"filterJson\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"owner_user_id\",\"labels\":{\"en\":\"owner user id\"},\"aliases\":[\"OwnerUserId\",\"ownerUserId\"]},{\"name\":\"request_id\",\"labels\":{\"en\":\"request id\"},\"aliases\":[\"RequestId\",\"requestId\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"OrderStatus\":{\"labels\":{\"en\":\"order status\"},\"fields\":[{\"name\":\"code\",\"labels\":{\"en\":\"code\"},\"aliases\":[\"Code\"]},{\"name\":\"color\",\"labels\":{\"en\":\"color\"},\"aliases\":[\"Color\"]},{\"name\":\"commerce_platform\",\"targetType\":\"CommercePlatform\",\"labels\":{\"en\":\"commerce platform\"},\"aliases\":[\"CommercePlatform\",\"commercePlatform\"]},{\"name\":\"customer_order_list\",\"targetType\":\"CustomerOrder\",\"labels\":{\"en\":\"customer order\"},\"aliases\":[\"CustomerOrderList\",\"customerOrderList\"]},{\"name\":\"display_order\",\"labels\":{\"en\":\"display order\"},\"aliases\":[\"DisplayOrder\",\"displayOrder\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]},\"Product\":{\"labels\":{\"en\":\"product\"},\"fields\":[{\"name\":\"commerce_platform\",\"targetType\":\"CommercePlatform\",\"labels\":{\"en\":\"commerce platform\"},\"aliases\":[\"CommercePlatform\",\"commercePlatform\"]},{\"name\":\"create_time\",\"labels\":{\"en\":\"create time\"},\"aliases\":[\"CreateTime\",\"createTime\"]},{\"name\":\"id\",\"labels\":{\"en\":\"id\"},\"aliases\":[\"Id\"]},{\"name\":\"image_url\",\"labels\":{\"en\":\"image url\"},\"aliases\":[\"ImageUrl\",\"imageUrl\"]},{\"name\":\"name\",\"labels\":{\"en\":\"name\"},\"aliases\":[\"Name\"]},{\"name\":\"order_line_list\",\"targetType\":\"OrderLine\",\"labels\":{\"en\":\"order line\"},\"aliases\":[\"OrderLineList\",\"orderLineList\"]},{\"name\":\"sku\",\"labels\":{\"en\":\"sku\"},\"aliases\":[\"Sku\"]},{\"name\":\"update_time\",\"labels\":{\"en\":\"update time\"},\"aliases\":[\"UpdateTime\",\"updateTime\"]},{\"name\":\"version\",\"labels\":{\"en\":\"version\"},\"aliases\":[\"Version\"]}]}}}")
 GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(CommercePlatform)
     .schema_entity(_CommercePlatform_DESCRIPTOR)
     .checker("CommercePlatform", _CommercePlatformChecker())
@@ -466,5 +445,6 @@ GENERATED_RUNTIME_MODULE = (RuntimeModule().entity(CommercePlatform)
     .schema_entity(_OrderSearchPreset_DESCRIPTOR)
     .checker("OrderSearchPreset", _OrderSearchPresetChecker())
     .wire_metadata("OrderSearchPreset", create_wire_entity_metadata("OrderSearchPreset", ["id", "name", "filter_json", "request_id", "owner_user_id", "commerce_platform", "create_time", "update_time", "version"], JsonFieldNamingProfile.parse("camelCase"), {"id": ["id"], "name": ["name"], "filter_json": ["filter_json"], "request_id": ["request_id"], "owner_user_id": ["owner_user_id"], "commerce_platform": ["commerce_platform"], "create_time": ["create_time"], "update_time": ["update_time"], "version": ["version"]}))
+    .checker_presentation(_CHECKER_PRESENTATION)
     .generated_bootstrap(_ensure_generated_bootstrap)
 )

@@ -93,7 +93,7 @@ def junit(file):
 
 
 def generated():
-    fixture = REPO / "examples/natural-messages/fixture"
+    fixture = REPO / "examples/natural-messages/python-lib-core"
     manifest = fixture / "generated-files.json"
     files = json.loads(manifest.read_text())
     for name, digest in files.items():
@@ -120,7 +120,7 @@ def main():
     def interrupted(signum, frame):
         raise SystemExit(128 + signum)
     signal.signal(signal.SIGTERM, interrupted)
-    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONPATH=os.pathsep.join((str(REPO / "src"), str(REPO / "examples/natural-messages/fixture"))),
+    env = dict(os.environ, PYTHONDONTWRITEBYTECODE="1", PYTHONPATH=os.pathsep.join((str(REPO / "src"), str(REPO / "examples/natural-messages/python-lib-core"))),
         TEAQL_TELEMETRY_ENABLED="false", TMPDIR=str(scratch))
     for name in list(env):
         if any(token in name for token in ("TOKEN", "PASSWORD", "SECRET", "AUTH", "API_KEY")):
@@ -158,7 +158,7 @@ def main():
             report["fixture"] = generated()
             report["rounds"] = []
             for round_number in (1, 2):
-                log = run("example-" + str(round_number), [sys.executable, str(REPO / "examples/natural-messages/verify.py")],
+                log = run("example-" + str(round_number), [sys.executable, str(REPO / "examples/natural-messages/python-app-console/app/main.py")],
                     extra={"TEAQL_NATURAL_MESSAGES_DB": str(output / "example.sqlite")})
                 responses = [json.loads(line.partition("=")[2]) for line in log.splitlines() if line.startswith("PY_NATURAL_RESPONSE=")]
                 frames = [json.loads(line.partition("=")[2]) for line in log.splitlines() if line.startswith("PY_NATURAL_SQLITE_PASS=")]

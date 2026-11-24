@@ -485,6 +485,7 @@ async def main():
     print(json.dumps({'generated_graphs':2,'rollback':True,'retry':True,'ledger_cleanup':True}))
 asyncio.run(main())
 '''
-    status, stdout, stderr = await subprocess_code(code, tmp_path / 'generated.db', ROOT / 'examples' / 'conformance')
+    generated_library = ROOT / 'examples' / 'conformance' / 'python-lib-core'
+    status, stdout, stderr = await subprocess_code(code, tmp_path / 'generated.db', generated_library)
     assert status == 0, (stdout, stderr)
     assert json.loads(stdout)['ledger_cleanup'] is True

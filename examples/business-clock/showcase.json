@@ -1,0 +1,62 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/business-clock",
+  "library": {
+    "generatedFilesManifestSHA256": "15fc9738748a5d83f39dff514090ea7a9bba041cc09823f393123b34fa75728d",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "74a265c8cd88f348d505c5601de0d77a97bf5d89bce1118ef37092e63e3533c3"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build; not a public release",
+      "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+      "qualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+      "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+      "tag": "unreleased-source-021b1ed8"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/delivery-order-cutover-generation/receipt.json",
+    "receiptSHA256": "1abbdd6d3c01569b1f11a83b9a829424ad0d75864df25043cb7265e36e7131cb"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-delivery-order-cutover-native/runtime/business-clock/receipt.json",
+    "businessReceiptSHA256": "06673ba7a7564eb1095bc25003254293576a34d8d1e1e795e085b558ba5d83c3",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-delivery-order-cutover-native/receipt.json",
+    "nativeReceiptSHA256": "b9267e588d23e3d0f0b3318d605d402cefb166483bbec7a1d97d9c29101b07c3",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "6b1c4b9475c333689078db405f0d14888af2e62d"
+  },
+  "scene": "Delivery-order dates across a trusted business-day cutover",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "python-app-console/app/main.py"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py",
+      "calibration/main.py",
+      "calibration/operational_verification.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/delivery_order.py",
+      "models/platform.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/delivery_order_request.py",
+      "requests/platform_request.py",
+      "runtime_module.py"
+    ],
+    "generatedFilesManifestSHA256": "d31a236ab0d3c030341be02b5292b6af208e1088a9f31c572a881522db961954",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

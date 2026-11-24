@@ -1,0 +1,10 @@
+{
+  "AGENTS.md": "22745e8f8db8987113b5f3eb7dcedd0991108b41448e0247af8c0cf055d82d0a",
+  "README.md": "ac759e0209546c09110443413d85b88e2356e1757f50074c7ffda0426fe327fa",
+  "STANDARD_TELEMETRY.md": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+  "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "app/main.py": "156da52671981db74b01d508f1297c3fd779e532eb54257b1570e6c518f907e6",
+  "teaql-i18n.json": "4ae750ac80a6d6ccf296d8fe61d4db0f3cc4b66a285f8926720dfb87d4a42135",
+  "teaql/checker-model.json": "82f1556c56fd3ed10f2e947da68d0defb73215bf2192ccd213cc9c7e8eae9b95",
+  "teaql/model-provenance.json": "7ffd86f8125eef9a69bb17111ac935a2ae9d4bae0254031cfd87bf30db4e5a2d"
+}

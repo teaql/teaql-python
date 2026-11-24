@@ -1,34 +1,36 @@
 {
-  "schema": "teaql.generated-example-fixture/v1",
-  "language": "python",
-  "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
-  "generatedManifestSha256": "d194383e1ec5018de322c266f624b7265e450c0180c0de14fd4ac637decbc57d",
-  "previousFixtureManifestSha256": "c6ee392d7106c5c028bc9106c0568346f60961bb50f387cb26d7e63f6f122c69",
-  "producerSource": {
-    "commit": "309ff174c93efee3544f1d7e876821f44c06d59b",
-    "sourceContentsSha256": "7dfe339d629b591e517c17a2746b8e5167bc81f3323f147ba028f1b7cf394f12"
-  },
-  "producerReportSha256": "bdff8e4dc60ef3b537537599af23a1b783058a6749f0ebfdd97af7931469dc96",
   "evaluatedScope": "python-lib-core",
   "evaluationErrors": 0,
-  "evaluationWarnings": 4,
   "files": {
     "E.py": "3a1bb923330c41e3a56403cd46c558efbc02d76406c3d2c31ef959fd18fec680",
-    "models/tenant.py": "f8e59d8e35ef5639646dbf954b41e8be7cd6ff5e064639da861f5181112ad3d0",
-    "models/purchase_order.py": "454afad54a010e424f905979a3e89b0454c78802f7736186e8e4c351c7b215a9",
-    "models/order_item.py": "d6074bc066c56d3448f38554e5caec02814ed927c6a83054ce8b98b90cb30140",
-    "pyproject.toml": "df5a97996a6c312e64e8bdb58e9e79bfdda18cd0d0b03e8747bb8260836c321d",
-    "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
-    "generated_search_models.py": "a1fc7d496d0ca1e789452df2d6d694641e3fd3017859133228fe9953975889ef",
-    "requests/tenant_request.py": "774879658f11e89cd74009e38c0b19d9f85215390f6883c85a5b9e4fc067bd5c",
-    "requests/purchase_order_request.py": "6ac4614132011304e4b62b07310e7b49894e478a24a0777fd81ad45057a8610f",
-    "requests/order_item_request.py": "f45404fb945940298aa1d8554434415017ad77849e0681db7a2d887ea635137d",
-    "runtime_module.py": "42164e5d72b12f3ca749ec599f710ef0fb50f8a0844f5949493d03b820f3db16",
     "Q.py": "110a04fe7434e902455505b6d9c76d433aed068a3279b22f9106742b6be685a3",
-    "teaql-i18n.json": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014"
+    "generated-files.json": "0b95359300fa1c585b0d38f53f846b117b2f35c1ec3fd07692d60f2a35ac3cf1",
+    "generated_search_models.py": "a1fc7d496d0ca1e789452df2d6d694641e3fd3017859133228fe9953975889ef",
+    "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "models/order_item.py": "85f12fd3ddb6f98a0d7850dda6f62ceebe4645d80c70aac065d23a3f91871a3d",
+    "models/purchase_order.py": "82187ea626b5c27982fe02d558569204f3054f81619f0dec1a30feefb31e062b",
+    "models/tenant.py": "6f34e573e5668ec8aeccebc6885887f769282f73be20f77571fcd44fa631c535",
+    "pyproject.toml": "38795d7778c0bb687ac4097606243740f722d0a33c8ea37e7e217509e4635a76",
+    "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requests/order_item_request.py": "3acdcc3dc6db80819bc3b22d58c03417ea7546458db50fb2bb7c2dfd7441f29c",
+    "requests/purchase_order_request.py": "5d380e89b75d8bdde358bb5c890294996b7e75866911ccb5f16d53067682129f",
+    "requests/tenant_request.py": "63527fcc352bc714a57ad08608821714077484882a91d22873e74db1e0e038a1",
+    "runtime_module.py": "3e4e09484f8456c1c156cff46ea3190dd5b7a1a5a024fff75aa4434b92944115",
+    "teaql-i18n.json": "c8229ce36ed92393409dd95a5e6a6bd72c9818c95520d5d2e3656ac6f7c0f014",
+    "teaql/checker-model.json": "92144f0d6092e143784685a82a9dd67c1672665bbe50fa6ca57b9ad441325b45",
+    "teaql/model-provenance.json": "1a1c49e67a579f9fb339acb0913d3cd1a8df2b031f109626673c2b4f3cc6570b"
   },
-  "generatorCommit": "309ff174c93efee3544f1d7e876821f44c06d59b",
-  "generatorSourceContentsSha256": "7dfe339d629b591e517c17a2746b8e5167bc81f3323f147ba028f1b7cf394f12",
-  "producerReceiptSha256": "d45d60a4b013dbde01c8325641a6975f4a1c1627b836fe197dba1c9e82a7c557"
+  "generatedManifestSha256": "0b95359300fa1c585b0d38f53f846b117b2f35c1ec3fd07692d60f2a35ac3cf1",
+  "generationReceipt": "../generator-v5.0.0.json",
+  "generatorCommit": "783ff0d81751b030c1209043476e8326cc6da58b",
+  "generatorJarSHA256": "ba0a502363884c206a46b6d5da89b0854b7f3e84072dd88544b15573c0d70812",
+  "generatorRelease": "v5.0.0",
+  "language": "python",
+  "modelSha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7",
+  "previousOrigin": {
+    "commit": "74d9ca1113d5e31b2eb106db57ba160ac89c5e4a",
+    "path": "examples/fix-e-alignment/fixture-manifest.json",
+    "sha256": "363c7799788258717d45c4c8154aca235dcab91dd88803c667b395d758e9efc9"
+  },
+  "schema": "teaql.generated-example-fixture/v1"
 }

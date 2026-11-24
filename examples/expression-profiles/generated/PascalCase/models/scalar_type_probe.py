@@ -9,6 +9,7 @@ from teaql.core.entity_creation import EntityCreationError, EntityCreationState
 from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
 from teaql.runtime import EntityJSONField, EntityJSONSchema, JsonFieldNamingProfile
 from importlib import import_module
+from copy import copy
 from models.type_platform import TypePlatform
 
 
@@ -44,7 +45,19 @@ class ScalarTypeProbe:
 
     def to_json(self, *, profile=None):
         """Typed model JSON; no query, mutation or transport authorization."""
-        return self._teaql_json_schema.dumps(self, profile=profile)
+        return self._teaql_json_schema.dumps(self._teaql_json_view({}), profile=profile)
+
+    def _teaql_json_view(self, seen):
+        """Detached presentation state; never marks live relations as loaded."""
+        if id(self) in seen:
+            return seen[id(self)]
+        view = copy(self)
+        seen[id(self)] = view
+        view._loaded_fields = set(self._loaded_fields)
+        value = self.typePlatform
+        if hasattr(value, "_teaql_json_view"):
+            view.typePlatform = value._teaql_json_view(seen)
+        return view
 
     @classmethod
     def from_json(cls, payload, *, profile=None):
@@ -286,6 +299,126 @@ class ScalarTypeProbe:
     def _teaql_entity_key(self):
         return EntityKey("ScalarTypeProbe", self._ledger_id)
 
+    def _teaql_restore_fixed_values(self, values):
+        """Runtime-owned restoration supplies only known, equal scalar values."""
+        if "required_string" in values:
+            value = values["required_string"]
+            raw = value.val if isinstance(value, Value) else value
+            self.requiredString = raw
+
+        if "optional_string" in values:
+            value = values["optional_string"]
+            raw = value.val if isinstance(value, Value) else value
+            self.optionalString = raw
+
+        if "large_text" in values:
+            value = values["large_text"]
+            raw = value.val if isinstance(value, Value) else value
+            self.largeText = raw
+
+        if "required_boolean" in values:
+            value = values["required_boolean"]
+            raw = value.val if isinstance(value, Value) else value
+            self.requiredBoolean = raw
+
+        if "optional_boolean" in values:
+            value = values["optional_boolean"]
+            raw = value.val if isinstance(value, Value) else value
+            self.optionalBoolean = raw
+
+        if "required_integer" in values:
+            value = values["required_integer"]
+            raw = value.val if isinstance(value, Value) else value
+            self.requiredInteger = raw
+
+        if "optional_integer" in values:
+            value = values["optional_integer"]
+            raw = value.val if isinstance(value, Value) else value
+            self.optionalInteger = raw
+
+        if "required_long" in values:
+            value = values["required_long"]
+            raw = value.val if isinstance(value, Value) else value
+            self.requiredLong = raw
+
+        if "optional_long" in values:
+            value = values["optional_long"]
+            raw = value.val if isinstance(value, Value) else value
+            self.optionalLong = raw
+
+        if "required_decimal" in values:
+            value = values["required_decimal"]
+            raw = value.val if isinstance(value, Value) else value
+            self.requiredDecimal = raw
+
+        if "optional_decimal" in values:
+            value = values["optional_decimal"]
+            raw = value.val if isinstance(value, Value) else value
+            self.optionalDecimal = raw
+
+        if "required_float" in values:
+            value = values["required_float"]
+            raw = value.val if isinstance(value, Value) else value
+            self.requiredFloat = raw
+
+        if "optional_float" in values:
+            value = values["optional_float"]
+            raw = value.val if isinstance(value, Value) else value
+            self.optionalFloat = raw
+
+        if "required_double" in values:
+            value = values["required_double"]
+            raw = value.val if isinstance(value, Value) else value
+            self.requiredDouble = raw
+
+        if "optional_double" in values:
+            value = values["optional_double"]
+            raw = value.val if isinstance(value, Value) else value
+            self.optionalDouble = raw
+
+        if "required_date" in values:
+            value = values["required_date"]
+            raw = value.val if isinstance(value, Value) else value
+            self.requiredDate = raw
+
+        if "optional_date" in values:
+            value = values["optional_date"]
+            raw = value.val if isinstance(value, Value) else value
+            self.optionalDate = raw
+
+        if "required_time" in values:
+            value = values["required_time"]
+            raw = value.val if isinstance(value, Value) else value
+            self.requiredTime = raw
+
+        if "optional_time" in values:
+            value = values["optional_time"]
+            raw = value.val if isinstance(value, Value) else value
+            self.optionalTime = raw
+
+        if "required_datetime" in values:
+            value = values["required_datetime"]
+            raw = value.val if isinstance(value, Value) else value
+            self.requiredDatetime = raw
+
+        if "optional_datetime" in values:
+            value = values["optional_datetime"]
+            raw = value.val if isinstance(value, Value) else value
+            self.optionalDatetime = raw
+
+        if "create_time" in values:
+            value = values["create_time"]
+            raw = value.val if isinstance(value, Value) else value
+            self.createTime = raw
+
+        if "update_time" in values:
+            value = values["update_time"]
+            raw = value.val if isinstance(value, Value) else value
+            self.updateTime = raw
+
+
+        pass
+
     def get_dynamic_property(self, name):
         return self._projection_properties.get(name)
 
@@ -307,7 +440,8 @@ class ScalarTypeProbe:
     async def save(self, context):
         # Validate intent and creation provenance before callbacks/provider access.
         MutationIntent(self._comment)
-        self._teaql_validate_input_graph(context, set())
+        context._validate_generated_graph_input("ScalarTypeProbe",
+            lambda: self._teaql_validate_input_graph(context, set()))
         return await context.execute_graph_save(
             lambda session: self._teaql_save_within_graph(session.context, session),
             prepare=lambda session: self._teaql_prepare_graph(session.context, session), comment=self._comment)
@@ -411,8 +545,8 @@ class ScalarTypeProbe:
         if id(self) in visited:
             return
         visited.add(id(self))
-        LoadedScalarSnapshots.discard_restored_fields(self, context)
         session._generated.observe(self)
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("ScalarTypeProbe", ledger)
@@ -604,17 +738,13 @@ class ScalarTypeProbe:
                 if "version" not in self._loaded_fields:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="ScalarTypeProbe")])
             action, cmd = self._teaql_build_command()
-            try:
-                action, cmd = session._generated.finalize(self, action, cmd)
-            finally:
-                for field, value in getattr(cmd, "values", {}).items():
-                    if field not in ("id", "version"):
-                        self._entity_root.set(self._teaql_entity_key(), field, value)
+            action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
 
     async def _teaql_save_within_graph(self, context, session, parent=None):
         if not session._generated.visit("write", self):
             return self
+        session._generated.validate()
         if parent is None:
             MutationIntent(self._comment)
 
@@ -818,16 +948,17 @@ class ScalarTypeProbe:
         session.after_rollback(rollback_entity)
         if action != "Delete":
             self._action = "Update"
-
         session._generated.accepted(self)
         if action != "Delete":
             await self._teaql_cascade_children(context, session, scope)
         def commit_entity():
+            session._generated.validate()
             self._creation_state = EntityCreationState.HYDRATED
             LoadedScalarSnapshots.capture(self, self._teaql_snapshot_values())
             self._entity_root.clear_entity(new_key)
             if getattr(self, "version", None) is not None:
                 self._entity_root.accept_committed_version(new_key, int(self.version))
+            session._generated.accepted(self)
         session.after_commit(commit_entity)
         return self
 

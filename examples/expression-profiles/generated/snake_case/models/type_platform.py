@@ -9,6 +9,7 @@ from teaql.core.entity_creation import EntityCreationError, EntityCreationState
 from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
 from teaql.runtime import EntityJSONField, EntityJSONSchema, JsonFieldNamingProfile
 from importlib import import_module
+from copy import copy
 
 
 class TypePlatform:
@@ -21,7 +22,20 @@ class TypePlatform:
 
     def to_json(self, *, profile=None):
         """Typed model JSON; no query, mutation or transport authorization."""
-        return self._teaql_json_schema.dumps(self, profile=profile)
+        return self._teaql_json_schema.dumps(self._teaql_json_view({}), profile=profile)
+
+    def _teaql_json_view(self, seen):
+        """Detached presentation state; never marks live relations as loaded."""
+        if id(self) in seen:
+            return seen[id(self)]
+        view = copy(self)
+        seen[id(self)] = view
+        view._loaded_fields = set(self._loaded_fields)
+        children = self._scalar_type_probe_list
+        if children.is_loaded or any(child._entity_root.has_pending(child._teaql_entity_key()) for child in children):
+            view._loaded_fields.add("scalar_type_probe_list")
+        view._scalar_type_probe_list = [child._teaql_json_view(seen) for child in children]
+        return view
 
     @classmethod
     def from_json(cls, payload, *, profile=None):
@@ -76,18 +90,17 @@ class TypePlatform:
 
         self.version = kwargs.get("version")
 
-        self._scalar_type_probe_list = kwargs.get("scalar_type_probe_list", [])
         if "scalar_type_probe_list" in kwargs or creation_state is EntityCreationState.RESERVED:
+            supplied = kwargs.get("scalar_type_probe_list")
+            self._scalar_type_probe_list = supplied.map(lambda item: item) if isinstance(supplied, SmartList) else SmartList(supplied or ())
             self._loaded_fields.add("scalar_type_probe_list")
+        else:
+            self._scalar_type_probe_list = SmartList.empty()
         if self._scalar_type_probe_list:
             from models.scalar_type_probe import ScalarTypeProbe
-            source = self._scalar_type_probe_list
-            hydrated = [
-                item if isinstance(item, ScalarTypeProbe) else ScalarTypeProbe._teaql_from_record(_entity_root=self._entity_root, **item)
-                for item in source
-            ]
-            self._scalar_type_probe_list = (SmartList(hydrated, facets=source.facets, total_count=source.total_count)
-                if isinstance(source, SmartList) else hydrated)
+            self._scalar_type_probe_list = self._scalar_type_probe_list.map(
+                lambda item: item if isinstance(item, ScalarTypeProbe) else ScalarTypeProbe._teaql_from_record(_entity_root=self._entity_root, **item)
+            )
         self._ledger_id = getattr(self, "id", None)
         key = self._teaql_entity_key()
         if self._action == "Create":
@@ -112,6 +125,16 @@ class TypePlatform:
     def _teaql_entity_key(self):
         return EntityKey("TypePlatform", self._ledger_id)
 
+    def _teaql_restore_fixed_values(self, values):
+        """Runtime-owned restoration supplies only known, equal scalar values."""
+        if "name" in values:
+            value = values["name"]
+            raw = value.val if isinstance(value, Value) else value
+            self.name = raw
+
+
+        pass
+
     def get_dynamic_property(self, name):
         return self._projection_properties.get(name)
 
@@ -135,7 +158,8 @@ class TypePlatform:
     async def save(self, context):
         # Validate intent and creation provenance before callbacks/provider access.
         MutationIntent(self._comment)
-        self._teaql_validate_input_graph(context, set())
+        context._validate_generated_graph_input("TypePlatform",
+            lambda: self._teaql_validate_input_graph(context, set()))
         return await context.execute_graph_save(
             lambda session: self._teaql_save_within_graph(session.context, session),
             prepare=lambda session: self._teaql_prepare_graph(session.context, session), comment=self._comment)
@@ -205,8 +229,8 @@ class TypePlatform:
         if id(self) in visited:
             return
         visited.add(id(self))
-        LoadedScalarSnapshots.discard_restored_fields(self, context)
         session._generated.observe(self)
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("TypePlatform", ledger)
@@ -233,7 +257,7 @@ class TypePlatform:
                 ]) from error
 
     def _teaql_graph_relations(self):
-        return {"scalar_type_probe_list": tuple(self._scalar_type_probe_list),}
+        return {"scalar_type_probe_list": tuple(self._scalar_type_probe_list)}
 
     def _teaql_scalar_payload(self):
         payload = {}
@@ -291,12 +315,7 @@ class TypePlatform:
                 if "version" not in self._loaded_fields:
                     raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="TypePlatform")])
             action, cmd = self._teaql_build_command()
-            try:
-                action, cmd = session._generated.finalize(self, action, cmd)
-            finally:
-                for field, value in getattr(cmd, "values", {}).items():
-                    if field not in ("id", "version"):
-                        self._entity_root.set(self._teaql_entity_key(), field, value)
+            action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
         for index, child in enumerate(self._scalar_type_probe_list):
             child._teaql_attach_root(self._entity_root)
@@ -316,6 +335,7 @@ class TypePlatform:
     async def _teaql_save_within_graph(self, context, session, parent=None):
         if not session._generated.visit("write", self):
             return self
+        session._generated.validate()
         if parent is None:
             MutationIntent(self._comment)
 
@@ -381,16 +401,17 @@ class TypePlatform:
         session.after_rollback(rollback_entity)
         if action != "Delete":
             self._action = "Update"
-
         session._generated.accepted(self)
         if action != "Delete":
             await self._teaql_cascade_children(context, session, scope)
         def commit_entity():
+            session._generated.validate()
             self._creation_state = EntityCreationState.HYDRATED
             LoadedScalarSnapshots.capture(self, self._teaql_snapshot_values())
             self._entity_root.clear_entity(new_key)
             if getattr(self, "version", None) is not None:
                 self._entity_root.accept_committed_version(new_key, int(self.version))
+            session._generated.accepted(self)
         session.after_commit(commit_entity)
         return self
 
@@ -444,6 +465,5 @@ class TypePlatform:
         self._loaded_fields.add("version")
         self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
         return self
-    def scalar_type_probe_list(self) -> list:
-        self._loaded_fields.add("scalar_type_probe_list")
+    def scalar_type_probe_list(self) -> "SmartList[ScalarTypeProbe]":
         return self._scalar_type_probe_list

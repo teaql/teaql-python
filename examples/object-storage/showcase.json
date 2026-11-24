@@ -1,0 +1,63 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/object-storage",
+  "library": {
+    "generatedFilesManifestSHA256": "d64dad7ca98f9fb78b97d73adf5d3122376858fc0cd981896356abc0eaee3149",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "1e35ffb88509f292b75620d82996bbc50868c61fd34716f8be010dff7280eafc"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/order-attachment-generation/receipt.json",
+    "receiptSHA256": "715bd8f8f61f6ecd96611db1121cb54ce40d72f533b23289c5919e92de0cd95e"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-order-attachment-owned-object/runtime/object-storage/receipt.json",
+    "businessReceiptSHA256": "21093e71b9a1c46c2bf1281c158a4eefa7cdd3363515e14f338b841387570abb",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-order-attachment-owned-object/receipt.json",
+    "nativeReceiptSHA256": "69bb58e67b035fa8e6383be8fae1def90aff70d6ca9112b374d78577c67f961e",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "2059fbb7a770ea03aba6e73345e35d66d3c82fcb"
+  },
+  "scene": "Store and retrieve an order receipt through a trusted provider",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "bash",
+    "examples/object-storage/verify.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/commerce_platform.py",
+      "models/customer_order.py",
+      "models/order_attachment.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/commerce_platform_request.py",
+      "requests/customer_order_request.py",
+      "requests/order_attachment_request.py",
+      "runtime_module.py"
+    ],
+    "generatedFilesManifestSHA256": "b4c823573cf319b0ee97539c786f7d773ac89d103bee08eedf28d6109dba7643",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

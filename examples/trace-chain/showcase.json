@@ -1,0 +1,75 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/trace-chain",
+  "library": {
+    "generatedFilesManifestSHA256": "789e22b6d5664d1546efb96052e4d4ac096ff3265111c1d4c46e13a6c7b176b9",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "5c9aa72602ed5b877f53bac098d2d3396438ef5af69591364b3d76cbff52715a"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "unsigned unpublished versioned source candidate; not a released artifact",
+      "baseRelease": "v4.2.0",
+      "candidatePreparationReceiptSHA256": "52b4c2042be58624c08d07186b7081cf6ad4c0fccfc8e9724bee7f9280b5c02f",
+      "candidateVersion": "4.3.0",
+      "jarSHA256": "3a4988ada43aeb01d5cbba5901c1eef64c58b2bd4142c99fd7692cf1dc413e9e",
+      "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+      "sourceQualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+      "tag": "unsigned-candidate-v4.3.0"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-19-runtime-examples-refresh/generation-v430-candidate/receipt.json",
+    "receiptSHA256": "9bf2a08fa9c5bec0d9b1a2e1420044ffdd6bc71c6a1a09ce70d81d1cf0cdbd0a"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-trace-chain-native-scopes/runtime/trace-chain/receipt.json",
+    "businessReceiptSHA256": "ca104d5365c2a6bacdeac83bab912dde6422645018b36797035e695a340b6682",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-trace-chain-native-scopes/receipt.json",
+    "nativeReceiptSHA256": "03a9c24eafc32097fd1fef589db748ec48dae90293ee2663d1b5e08304511269",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "5e5e30a2f0fe8ee9fe75bca6d044f9c48d1368c3"
+  },
+  "relatedShowcases": [
+    "standard-order/showcase.json"
+  ],
+  "scene": "Save and replay order graphs with real query, commit and rollback",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "bash",
+    "examples/trace-chain/verify.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/customer_order.py",
+      "models/order_item.py",
+      "models/payment.py",
+      "models/payment_attempt.py",
+      "models/platform.py",
+      "models/shipment.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/customer_order_request.py",
+      "requests/order_item_request.py",
+      "requests/payment_attempt_request.py",
+      "requests/payment_request.py",
+      "requests/platform_request.py",
+      "requests/shipment_request.py",
+      "runtime_module.py"
+    ],
+    "generatedFilesManifestSHA256": "bfddda31112252c4bb12ae8992ee0d3ae0a1e46231b0b98262ecd9753eb8592b",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

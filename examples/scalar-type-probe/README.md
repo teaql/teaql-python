@@ -1,4 +1,18 @@
-# Generated scalar type probe: exact SQLite values and typed entity JSON
+# Freight quote amounts and delivery commitments
+
+The dispatch desk compares three freight quotes, revises an offshore amount
+and reads the saved quote back through generated Q, E and typed entity JSON.
+`freight-quote.xml` defines the model. The generated `python-app-console`
+consumes `python-lib-core` and the local runtime. The quote distinguishes a
+blank delivery instruction, a loaded null and an unselected field, while
+preserving the shipment number, amount and delivery window.
+
+Run `bash examples/scalar-type-probe/verify-freight-quotes.sh`. Both launches
+use one SQLite store and check the same three quotes, the exact aggregate and
+the rejection of a missing amount. The verifier also runs the retained scalar,
+restoration, version and empty-aggregate calibrations.
+
+## Generated scalar calibration
 
 Run from the repository root after installing the runtime's development dependencies:
 
