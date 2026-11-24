@@ -1,0 +1,79 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/fix-e-alignment",
+  "library": {
+    "generatedFilesManifestSHA256": "2dfbf4e5521a104d5f654fe6b6ddda419e57bb1aa9097c9177b4b0c25548a641",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "a2cf4c907cb084cb0946e993eeba586c8c0701a89fdc4a849808aa743be033b7"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build; not a public release",
+      "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+      "qualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+      "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+      "tag": "unreleased-source-021b1ed8"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/purchase-order-fix-generation/receipt.json",
+    "receiptSHA256": "920c683d71de38e609d2be2c3d8b7f2fb6c014e3b123edd5c4ea694fc6e91a48"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-purchase-order-workspace-hashes/runtime/fix-e/receipt.json",
+    "businessReceiptSHA256": "7b0518f56d113d3361bbd02afece2ae679353d55a958b2f3aa654df8887919a6",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-purchase-order-workspace-hashes/receipt.json",
+    "nativeReceiptSHA256": "a0b8b1591573a9a7aab0c801547fdc8b1dea3ff369d71a126201c3396e812ad4",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "e1cd5dc74c5cd4964069e79dcfffa7438a62ea76"
+  },
+  "scene": "Purchase order clock/root Fix, loaded expressions and controlled partial-graph changes",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "python",
+    "verify-local.py"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py",
+      "showcase/concurrent_query.py",
+      "showcase/ownership_probe.py",
+      "showcase/projection_views.py",
+      "showcase/unchanged_views.py",
+      "showcase/partial_root_loading.py",
+      "showcase/python_fix_lifecycle.py",
+      "showcase/checker_diagnostics.py",
+      "showcase/verify.py",
+      "showcase/expression_boundaries.py",
+      "showcase/required_graph.py",
+      "showcase/partial_graph_loading.py",
+      "showcase/python_graph_fix_probe.py",
+      "showcase/checker_boundaries.py",
+      "showcase/python_graph_once_update.py",
+      "showcase/paged_ownership.py",
+      "showcase/loading_probe.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/order_item.py",
+      "models/purchase_order.py",
+      "models/tenant.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/order_item_request.py",
+      "requests/purchase_order_request.py",
+      "requests/tenant_request.py",
+      "runtime_module.py"
+    ],
+    "generatedFilesManifestSHA256": "98094e8dbea88d8692c0fbe7c283c2b8ca8847d9247b03c2dd21447127304d96",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

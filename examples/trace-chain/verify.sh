@@ -2,6 +2,9 @@
 set -euo pipefail
 example="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 repo="$(cd "$example/../.." && pwd)"
+workspace="$example/python-app-console/app"
+evidence="${TEAQL_TRACE_CHAIN_EVIDENCE_DIRECTORY:-$(mktemp -d -t teaql-python-trace.XXXXXXXX)}"
+mkdir -p "$evidence"
 if [[ -z "${TEAQL_TRACE_CHAIN_DB:-}" ]]; then
   trace_test_directory="$(mktemp -d)"
   export TEAQL_TRACE_CHAIN_DB="$trace_test_directory/trace-chain.sqlite"
@@ -43,7 +46,7 @@ for other_db in "$TEAQL_TRACE_CHAIN_DB" "$TEAQL_TRACE_CHAIN_SHARED_DB" "$TEAQL_T
     exit 1
   fi
 done
-export PYTHONPATH="$example/lib:$repo/src${PYTHONPATH:+:$PYTHONPATH}"
+export PYTHONPATH="$example/python-lib-core:$repo/src${PYTHONPATH:+:$PYTHONPATH}"
 mixed_database="${TEAQL_TRACE_CHAIN_MIXED_DB:-$TEAQL_TRACE_CHAIN_DB.mixed-graph.sqlite}"
 for other_db in "$TEAQL_TRACE_CHAIN_DB" "$TEAQL_TRACE_CHAIN_SHARED_DB" "$TEAQL_TRACE_CHAIN_PAGE_STREAM_DB" "$TEAQL_TRACE_CHAIN_AGGREGATE_DB" "$TEAQL_TRACE_CHAIN_CHECKER_DB"; do
   if [[ "$mixed_database" == "$other_db" ]]; then
@@ -51,11 +54,11 @@ for other_db in "$TEAQL_TRACE_CHAIN_DB" "$TEAQL_TRACE_CHAIN_SHARED_DB" "$TEAQL_T
     exit 1
   fi
 done
-snapshot="$(mktemp)"
-(cd "$example/lib" && rg --files --hidden -g '!**/__pycache__/**' | LC_ALL=C sort | xargs -d '\n' sha256sum) > "$snapshot"
+snapshot="$evidence/library-before.sha256"
+(cd "$example/python-lib-core" && rg --files --hidden -g '!**/__pycache__/**' | LC_ALL=C sort | xargs -d '\n' sha256sum) > "$snapshot"
 echo "Generated library manifest: $snapshot"
 for attempt in first second; do
-  intent_log="$(mktemp -t teaql-python-intent.XXXXXX.log)"
+  intent_log="$evidence/intent-$attempt.log"
   if ! python -m pytest -q "$repo/tests/provider/sqlite/test_trace_chain.py" \
     -k 'request_intent_matrix or graph_intent_gate or explicit_mutation_comment_survives_blank_route' \
     -s > "$intent_log" 2>&1; then
@@ -66,7 +69,7 @@ for attempt in first second; do
   rg -Fq 'INTENT_GATE_PASS' "$intent_log"
   rg -Fq 'INTENT_TAIL_PASS' "$intent_log"
   echo "PASS: native intent matrix $attempt; evidence $intent_log"
-  like_log="$(mktemp -t teaql-python-like.XXXXXX.log)"
+  like_log="$evidence/like-$attempt.log"
   if ! python -m pytest -q -p no:cacheprovider "$repo/tests/provider/sqlite/test_like_intent.py" \
     > "$like_log" 2>&1; then
     sed -n '1,200p' "$like_log" >&2
@@ -76,8 +79,8 @@ for attempt in first second; do
   rg -q '^66 passed in ' "$like_log"
   echo "PASS: native LIKE privacy $attempt; evidence $like_log"
   echo "Run $attempt on $TEAQL_TRACE_CHAIN_DB without cleanup"
-  main_log="$(mktemp -t teaql-python-main.XXXXXX.log)"
-  timeout --kill-after=5s 60s python "$example/main.py" | tee "$main_log"
+  main_log="$evidence/main-$attempt.log"
+  timeout --kill-after=5s 60s python "$workspace/main.py" | tee "$main_log"
   rg -Fxq 'PASS: typed lineage oracle rejects correct-text Comment/Purpose/Entity/Sql nodes' "$main_log"
   rg -Fxq 'PASS: identity controls reject duplicate, missing and equal-ID type collapse' "$main_log"
   [[ "$(rg -c '^GRAPH IDENTITY EVIDENCE ' "$main_log")" == 1 ]]
@@ -85,42 +88,42 @@ for attempt in first second; do
   [[ "$(rg -c '^BOOTSTRAP INTENT EVIDENCE ' "$main_log")" == 2 ]]
   rg -Fxq 'PASS: generated library unchanged; all trace example checks passed' "$main_log"
   echo "Mutation privacy $attempt on $TEAQL_TRACE_CHAIN_DB without cleanup"
-  privacy_log="$(mktemp -t teaql-python-privacy.XXXXXX.log)"
-  python "$example/mutation_privacy.py" | tee "$privacy_log"
+  privacy_log="$evidence/privacy-$attempt.log"
+  python "$workspace/mutation_privacy.py" | tee "$privacy_log"
   rg -Fq 'PASS: Python generated loaded delete privacy; 2 writes/2 reads/2 audits; independent next request' "$privacy_log"
   rg -Fq 'PASS: Python generated unchanged scalar privacy; 1 write/1 read/1 audit' "$privacy_log"
   [[ "$(rg -c '^PRIVATE_LINEAGE_OBSERVED ' "$privacy_log")" == 4 ]]
   [[ "$(rg -c '^PASS Python complete private lineage:' "$privacy_log")" == 4 ]]
   echo "Assigned identities $attempt on $TEAQL_TRACE_CHAIN_SHARED_DB without cleanup"
-  assigned_log="$(mktemp -t teaql-python-assigned.XXXXXX.log)"
+  assigned_log="$evidence/assigned-$attempt.log"
   TEAQL_TRACE_CHAIN_DB="$TEAQL_TRACE_CHAIN_SHARED_DB" \
-    timeout --kill-after=5s 60s python "$example/assigned_identity.py" | tee "$assigned_log"
+    timeout --kill-after=5s 60s python "$workspace/assigned_identity.py" | tee "$assigned_log"
   rg -Fxq 'PASS: Python generated assigned identity 2 scenarios; command/SQL/audit and independent reload' "$assigned_log"
   echo "Ownership $attempt on $TEAQL_TRACE_CHAIN_SHARED_DB without cleanup"
-  run_log="$(mktemp -t teaql-python-shared.XXXXXX.log)"
+  run_log="$evidence/shared-$attempt.log"
   env -u TEAQL_TRACE_CHAIN_SCENARIO TEAQL_TRACE_CHAIN_DB="$TEAQL_TRACE_CHAIN_SHARED_DB" \
-    python "$example/shared_reference.py" | tee "$run_log"
+    python "$workspace/shared_reference.py" | tee "$run_log"
   rg -Fq 'PASS: Python shared ownership 4 scenarios' "$run_log"
   echo "Page/stream $attempt on $TEAQL_TRACE_CHAIN_PAGE_STREAM_DB without cleanup"
-  python "$example/page_stream.py"
+  python "$workspace/page_stream.py" | tee "$evidence/page-stream-$attempt.log"
   echo "Aggregate $attempt on $TEAQL_TRACE_CHAIN_AGGREGATE_DB without cleanup"
-  aggregate_log="$(mktemp -t teaql-python-aggregate.XXXXXX.log)"
-  python "$example/relation_aggregate.py" | tee "$aggregate_log"
+  aggregate_log="$evidence/aggregate-$attempt.log"
+  python "$workspace/relation_aggregate.py" | tee "$aggregate_log"
   rg -Fq 'FORWARD_NOTLOADED_OBSERVED {"logging": true' "$aggregate_log"
   rg -Fq 'FORWARD_NOTLOADED_OBSERVED {"logging": false' "$aggregate_log"
   echo "Checker overlap $attempt on $TEAQL_TRACE_CHAIN_CHECKER_DB without cleanup"
-  checker_log="$(mktemp -t teaql-python-checker.XXXXXX.log)"
+  checker_log="$evidence/checker-$attempt.log"
   TEAQL_TRACE_CHAIN_DB="$TEAQL_TRACE_CHAIN_CHECKER_DB" \
-    python "$example/checker_overlap.py" | tee "$checker_log"
+    python "$workspace/checker_overlap.py" | tee "$checker_log"
   rg -Fq 'PASS: Python generated Checker overlap 4 scenarios; accepted-only command/SQL/audit; serialized callbacks' "$checker_log"
   echo "PASS: generated Checker overlap $attempt; evidence $checker_log"
   mixed_round=1
   [[ "$attempt" != second ]] || mixed_round=2
-  mixed_log="$(mktemp -t teaql-python-mixed.XXXXXX.log)"
+  mixed_log="$evidence/mixed-$attempt.log"
   TEAQL_MIXED_GRAPH_DB="$mixed_database" TEAQL_MIXED_GRAPH_ROUND="$mixed_round" \
-    timeout --kill-after=5s 60s python "$example/mixed_graph.py" | tee "$mixed_log"
+    timeout --kill-after=5s 60s python "$workspace/mixed_graph.py" | tee "$mixed_log"
   [[ "$(rg -c '^PYTHON_MIXED_GRAPH ' "$mixed_log")" == 6 ]]
   echo "PASS: generated mixed create/update/delete $attempt; evidence $mixed_log"
 done
-(cd "$example/lib" && sha256sum --check "$snapshot")
+(cd "$example/python-lib-core" && sha256sum --check "$snapshot")
 echo "PASS: two runs on the same database; generated library hashes unchanged"

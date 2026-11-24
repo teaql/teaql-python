@@ -1,0 +1,77 @@
+{
+  "expected": {
+    "bootstrapSameDatabaseRounds": 2,
+    "constantIdentities": [
+      1001,
+      1002
+    ],
+    "preexistingDatabasePreserved": true,
+    "retainedBusinessFiles": 5,
+    "rootIdentity": 1
+  },
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/school-management",
+  "library": {
+    "generatedFilesManifestSHA256": "15636518c8c0e5c46010d9e1a0a8bfdb8b82a5281e6120704a48b3e2c9c07807",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "b5cd06ae44464fc29ed24de82654b47c80f546110496756aa15923cee1c511b4"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build; not a public release",
+      "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+      "qualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+      "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+      "tag": "unreleased-source-021b1ed8"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/school-generation/receipt.json",
+    "receiptSHA256": "86cdc634a758fdf746de3323e8cd5c4fd32a050e50c0b7b04c5e64b397a1165f"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-school-scopes/runtime/school-management/business-receipt.json",
+    "businessReceiptSHA256": "4348be55dcff1680d1f6d0ae516a6efdc81619ae1c62f133d547cb7a323cda32",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-school-scopes/receipt.json",
+    "nativeReceiptSHA256": "db378c81f393542e49071d716468924a259f2657ffe5f431835bd39dd4222d1d",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "7aa10807d1149b82a9d8312dbab38dc876ada0b3"
+  },
+  "scene": "School startup, reconciled constants and audited School queries",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "bash",
+    "verify.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/__init__.py",
+      "app/bootstrap_trace.py",
+      "app/main.py",
+      "test_sql_log_intent.py",
+      "tests/test_bootstrap.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/platform.py",
+      "models/school.py",
+      "models/school_type.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/platform_request.py",
+      "requests/school_request.py",
+      "requests/school_type_request.py",
+      "runtime_module.py"
+    ],
+    "generatedFilesManifestSHA256": "9c1907fdd589499e324e41cd0bf73b36fefd787ffe05cd24e9657f2b6d187381",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

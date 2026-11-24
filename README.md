@@ -71,7 +71,7 @@ own Python APIs.
 These application-code excerpts assume the example's generated imports, trusted
 Context and an existing object identity. `Q` and `E` belong to the generated
 domain library, not a generic runtime object with arbitrary field strings.
-See the [application source](examples/school-management/app/main.py) for complete setup.
+See the [application source](examples/school-management/python-app-console/app/main.py) for complete setup.
 
 ```python
 def school_type_details():
@@ -261,7 +261,7 @@ python -m venv .venv
 . .venv/bin/activate
 python -m pip install -e .
 export PYTHONPATH="$PWD/src"
-(cd examples/school-management && python -m app.main)
+(cd examples/school-management/python-app-console && python -m app.main)
 ```
 
 The [School example](examples/school-management/README.md)

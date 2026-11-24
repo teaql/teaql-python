@@ -1,0 +1,62 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/context-derived",
+  "library": {
+    "generatedFilesManifestSHA256": "adba2532d67d5cacb1ddae3a4b92bc2e47104293ee700f97ee74cc3a119c03f5",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "9bb36d7f9d639d04cfe9344e5152ee68e1844a8552538413c16569c6e8df4f8e"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build; not a public release",
+      "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+      "qualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+      "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+      "tag": "unreleased-source-021b1ed8"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/context-field-qualified-generation/receipt.json",
+    "receiptSHA256": "fd8c37aeb5622a41a2dd8768724e432d5f97b58bf720f39217a8f31a8f4c1d90"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-context-field-managed-create/runtime/context-derived/receipt.json",
+    "businessReceiptSHA256": "60fe3c8c00f26a7d44281397a391d2f548a097d2c2a7b6a3ad7e5ca185222002",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-context-field-managed-create/receipt.json",
+    "nativeReceiptSHA256": "71431e26310bd13f47c25a131f2ab3e7ce9a534d4e687352c13f79559465b4fa",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "c071aebf9e6d1008b017068229aeb623e2670393"
+  },
+  "scene": "Catalog entry edits with trusted Context defaults, no-op saves and rollback",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "python",
+    "verify-local.py"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py",
+      "showcase/verify.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/catalog.py",
+      "models/entry.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/catalog_request.py",
+      "requests/entry_request.py",
+      "runtime_module.py"
+    ],
+    "generatedFilesManifestSHA256": "1a908029aa64dab713f4e48c7493d707ade5df551da43a250ce7b388749adc9c",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

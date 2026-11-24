@@ -1,5 +1,13 @@
 # Order Management — Python + SQLite
 
+`model.xml` owns the exact native `python-lib-core` and `python-app-console`
+scopes. The generated `app/main.py` slot delegates to the byte-identical
+`app.py` business program, which consumes the named sibling domain library.
+The original SQL-intent/privacy test is retained unchanged. Current provenance
+is in `showcase.json`. Run `bash verify.sh` from this scene for two starts on
+one retained SQLite file, runtime/domain origin checks, the original regression
+and independent stored-order calibration. Disposable scratch is removed.
+
 This example is ready to run from a terminal. No model editing, generator installation, database server, or prebuilt database file is required.
 
 ```bash

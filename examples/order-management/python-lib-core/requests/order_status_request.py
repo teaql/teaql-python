@@ -13,7 +13,7 @@ from teaql.core.expr import (
     not_contain, not_end_with, not_in_list, not_in_subquery, value,
     sound_like,
 )
-from models.order_status import OrderStatus
+from models.order_status import _TeaqlFields, OrderStatus
 from typing import Protocol
 
 class QuerySelection(Protocol):
@@ -92,453 +92,453 @@ class OrderStatusRequest:
         return self
 
     def select_self_fields(self):
-        self.query.project("id", "name", "code", "color", "display_order", "commerce_platform", "version")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN, _TeaqlFields.NAME_PROPERTY_COLUMN, _TeaqlFields.CODE_PROPERTY_COLUMN, _TeaqlFields.COLOR_PROPERTY_COLUMN, _TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN, _TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_id(self):
-        self.query.project("id")
+        self.query.project(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def select_name(self):
-        self.query.project("name")
+        self.query.project(_TeaqlFields.NAME_PROPERTY_COLUMN)
         return self
 
     def select_code(self):
-        self.query.project("code")
+        self.query.project(_TeaqlFields.CODE_PROPERTY_COLUMN)
         return self
 
     def select_color(self):
-        self.query.project("color")
+        self.query.project(_TeaqlFields.COLOR_PROPERTY_COLUMN)
         return self
 
     def select_display_order(self):
-        self.query.project("display_order")
+        self.query.project(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN)
         return self
 
 
     def select_version(self):
-        self.query.project("version")
+        self.query.project(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def select_commerce_platform_with(self, child_request):
-        self.query.project("commerce_platform")
-        self.query.relation_query("commerce_platform", child_request.query,
-            QueryOperation("relation-select", "select_commerce_platform_with", relation="commerce_platform"))
+        self.query.project(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)
+        self.query.relation_query(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN, child_request.query,
+            QueryOperation("relation-select", "select_commerce_platform_with", relation=_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN))
         return self
     def with_commerce_platform_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(in_subquery(column("commerce_platform"), "CommercePlatform", child_request.query))
+        self.query.and_filter(in_subquery(column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN), "CommercePlatform", child_request.query))
         return self
 
     def without_commerce_platform_matching(self, child_request):
         child_request.query.projection = ["id"]
-        self.query.and_filter(not_in_subquery(column("commerce_platform"), "CommercePlatform", child_request.query))
+        self.query.and_filter(not_in_subquery(column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN), "CommercePlatform", child_request.query))
         return self
 
     def have_commerce_platform(self):
-        self.query.and_filter(is_not_null(column("commerce_platform")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)))
         return self
 
     def have_no_commerce_platform(self):
-        self.query.and_filter(is_null(column("commerce_platform")))
+        self.query.and_filter(is_null(column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)))
         return self
 
     def with_id_is(self, val):
-        self.query.and_filter(eq("id", val))
+        self.query.and_filter(eq(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_is_not(self, val):
-        self.query.and_filter(ne("id", val))
+        self.query.and_filter(ne(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_in(self, *vals):
-        self.query.and_filter(in_list("id", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_not_in(self, *vals):
-        self.query.and_filter(not_in_list("id", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.ID_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_id_greater_than(self, val):
-        self.query.and_filter(gt("id", val))
+        self.query.and_filter(gt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("id", val))
+        self.query.and_filter(gte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than(self, val):
-        self.query.and_filter(lt("id", val))
+        self.query.and_filter(lt(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("id", val))
+        self.query.and_filter(lte(_TeaqlFields.ID_PROPERTY_COLUMN, val))
         return self
 
     def with_id_between(self, lower, upper):
-        self.query.and_filter(between(column("id"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.ID_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_id_is_known(self):
-        self.query.and_filter(is_not_null(column("id")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_id_is_unknown(self):
-        self.query.and_filter(is_null(column("id")))
+        self.query.and_filter(is_null(column(_TeaqlFields.ID_PROPERTY_COLUMN)))
         return self
 
     def with_name_containing(self, val: str):
-        self.query.and_filter(contain("name", val))
+        self.query.and_filter(contain(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_not_containing(self, val: str):
-        self.query.and_filter(not_contain("name", val))
+        self.query.and_filter(not_contain(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_starting_with(self, val: str):
-        self.query.and_filter(begin_with("name", val))
+        self.query.and_filter(begin_with(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("name", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_ending_with(self, val: str):
-        self.query.and_filter(end_with("name", val))
+        self.query.and_filter(end_with(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("name", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("name", val))
+        self.query.and_filter(sound_like(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_is(self, val: str):
-        self.query.and_filter(eq("name", val))
+        self.query.and_filter(eq(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
     def with_name_is_not(self, val):
-        self.query.and_filter(ne("name", val))
+        self.query.and_filter(ne(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_in(self, *vals):
-        self.query.and_filter(in_list("name", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.NAME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_name_not_in(self, *vals):
-        self.query.and_filter(not_in_list("name", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.NAME_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_name_greater_than(self, val):
-        self.query.and_filter(gt("name", val))
+        self.query.and_filter(gt(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("name", val))
+        self.query.and_filter(gte(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_less_than(self, val):
-        self.query.and_filter(lt("name", val))
+        self.query.and_filter(lt(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("name", val))
+        self.query.and_filter(lte(_TeaqlFields.NAME_PROPERTY_COLUMN, val))
         return self
 
     def with_name_between(self, lower, upper):
-        self.query.and_filter(between(column("name"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.NAME_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_name_is_known(self):
-        self.query.and_filter(is_not_null(column("name")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.NAME_PROPERTY_COLUMN)))
         return self
 
     def with_name_is_unknown(self):
-        self.query.and_filter(is_null(column("name")))
+        self.query.and_filter(is_null(column(_TeaqlFields.NAME_PROPERTY_COLUMN)))
         return self
 
     def with_code_containing(self, val: str):
-        self.query.and_filter(contain("code", val))
+        self.query.and_filter(contain(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
 
     def with_code_not_containing(self, val: str):
-        self.query.and_filter(not_contain("code", val))
+        self.query.and_filter(not_contain(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
 
     def with_code_starting_with(self, val: str):
-        self.query.and_filter(begin_with("code", val))
+        self.query.and_filter(begin_with(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
 
     def with_code_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("code", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
 
     def with_code_ending_with(self, val: str):
-        self.query.and_filter(end_with("code", val))
+        self.query.and_filter(end_with(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
 
     def with_code_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("code", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
 
     def with_code_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("code", val))
+        self.query.and_filter(sound_like(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
 
     def with_code_is(self, val: str):
-        self.query.and_filter(eq("code", val))
+        self.query.and_filter(eq(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
     def with_code_is_not(self, val):
-        self.query.and_filter(ne("code", val))
+        self.query.and_filter(ne(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
 
     def with_code_in(self, *vals):
-        self.query.and_filter(in_list("code", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.CODE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_code_not_in(self, *vals):
-        self.query.and_filter(not_in_list("code", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.CODE_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_code_greater_than(self, val):
-        self.query.and_filter(gt("code", val))
+        self.query.and_filter(gt(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
 
     def with_code_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("code", val))
+        self.query.and_filter(gte(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
 
     def with_code_less_than(self, val):
-        self.query.and_filter(lt("code", val))
+        self.query.and_filter(lt(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
 
     def with_code_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("code", val))
+        self.query.and_filter(lte(_TeaqlFields.CODE_PROPERTY_COLUMN, val))
         return self
 
     def with_code_between(self, lower, upper):
-        self.query.and_filter(between(column("code"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.CODE_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_code_is_known(self):
-        self.query.and_filter(is_not_null(column("code")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.CODE_PROPERTY_COLUMN)))
         return self
 
     def with_code_is_unknown(self):
-        self.query.and_filter(is_null(column("code")))
+        self.query.and_filter(is_null(column(_TeaqlFields.CODE_PROPERTY_COLUMN)))
         return self
 
     def with_color_containing(self, val: str):
-        self.query.and_filter(contain("color", val))
+        self.query.and_filter(contain(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
 
     def with_color_not_containing(self, val: str):
-        self.query.and_filter(not_contain("color", val))
+        self.query.and_filter(not_contain(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
 
     def with_color_starting_with(self, val: str):
-        self.query.and_filter(begin_with("color", val))
+        self.query.and_filter(begin_with(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
 
     def with_color_not_starting_with(self, val: str):
-        self.query.and_filter(not_begin_with("color", val))
+        self.query.and_filter(not_begin_with(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
 
     def with_color_ending_with(self, val: str):
-        self.query.and_filter(end_with("color", val))
+        self.query.and_filter(end_with(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
 
     def with_color_not_ending_with(self, val: str):
-        self.query.and_filter(not_end_with("color", val))
+        self.query.and_filter(not_end_with(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
 
     def with_color_sounding_like(self, val: str):
-        self.query.and_filter(sound_like("color", val))
+        self.query.and_filter(sound_like(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
 
     def with_color_is(self, val: str):
-        self.query.and_filter(eq("color", val))
+        self.query.and_filter(eq(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
     def with_color_is_not(self, val):
-        self.query.and_filter(ne("color", val))
+        self.query.and_filter(ne(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
 
     def with_color_in(self, *vals):
-        self.query.and_filter(in_list("color", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.COLOR_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_color_not_in(self, *vals):
-        self.query.and_filter(not_in_list("color", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.COLOR_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_color_greater_than(self, val):
-        self.query.and_filter(gt("color", val))
+        self.query.and_filter(gt(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
 
     def with_color_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("color", val))
+        self.query.and_filter(gte(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
 
     def with_color_less_than(self, val):
-        self.query.and_filter(lt("color", val))
+        self.query.and_filter(lt(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
 
     def with_color_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("color", val))
+        self.query.and_filter(lte(_TeaqlFields.COLOR_PROPERTY_COLUMN, val))
         return self
 
     def with_color_between(self, lower, upper):
-        self.query.and_filter(between(column("color"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.COLOR_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_color_is_known(self):
-        self.query.and_filter(is_not_null(column("color")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.COLOR_PROPERTY_COLUMN)))
         return self
 
     def with_color_is_unknown(self):
-        self.query.and_filter(is_null(column("color")))
+        self.query.and_filter(is_null(column(_TeaqlFields.COLOR_PROPERTY_COLUMN)))
         return self
 
     def with_display_order_is(self, val):
-        self.query.and_filter(eq("display_order", val))
+        self.query.and_filter(eq(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, val))
         return self
 
     def with_display_order_is_not(self, val):
-        self.query.and_filter(ne("display_order", val))
+        self.query.and_filter(ne(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, val))
         return self
 
     def with_display_order_in(self, *vals):
-        self.query.and_filter(in_list("display_order", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_display_order_not_in(self, *vals):
-        self.query.and_filter(not_in_list("display_order", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_display_order_greater_than(self, val):
-        self.query.and_filter(gt("display_order", val))
+        self.query.and_filter(gt(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, val))
         return self
 
     def with_display_order_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("display_order", val))
+        self.query.and_filter(gte(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, val))
         return self
 
     def with_display_order_less_than(self, val):
-        self.query.and_filter(lt("display_order", val))
+        self.query.and_filter(lt(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, val))
         return self
 
     def with_display_order_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("display_order", val))
+        self.query.and_filter(lte(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, val))
         return self
 
     def with_display_order_between(self, lower, upper):
-        self.query.and_filter(between(column("display_order"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_display_order_is_known(self):
-        self.query.and_filter(is_not_null(column("display_order")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN)))
         return self
 
     def with_display_order_is_unknown(self):
-        self.query.and_filter(is_null(column("display_order")))
+        self.query.and_filter(is_null(column(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN)))
         return self
 
     def filter_by_commerce_platform(self, val):
-        self.query.and_filter(eq("commerce_platform", val))
+        self.query.and_filter(eq(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN, val))
         return self
 
     def with_version_is(self, val):
-        self.query.and_filter(eq("version", val))
+        self.query.and_filter(eq(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_is_not(self, val):
-        self.query.and_filter(ne("version", val))
+        self.query.and_filter(ne(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_in(self, *vals):
-        self.query.and_filter(in_list("version", list(vals)))
+        self.query.and_filter(in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_not_in(self, *vals):
-        self.query.and_filter(not_in_list("version", list(vals)))
+        self.query.and_filter(not_in_list(_TeaqlFields.VERSION_PROPERTY_COLUMN, list(vals)))
         return self
 
     def with_version_greater_than(self, val):
-        self.query.and_filter(gt("version", val))
+        self.query.and_filter(gt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_greater_than_or_equal_to(self, val):
-        self.query.and_filter(gte("version", val))
+        self.query.and_filter(gte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than(self, val):
-        self.query.and_filter(lt("version", val))
+        self.query.and_filter(lt(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_less_than_or_equal_to(self, val):
-        self.query.and_filter(lte("version", val))
+        self.query.and_filter(lte(_TeaqlFields.VERSION_PROPERTY_COLUMN, val))
         return self
 
     def with_version_between(self, lower, upper):
-        self.query.and_filter(between(column("version"), value(lower), value(upper)))
+        self.query.and_filter(between(column(_TeaqlFields.VERSION_PROPERTY_COLUMN), value(lower), value(upper)))
         return self
 
     def with_version_is_known(self):
-        self.query.and_filter(is_not_null(column("version")))
+        self.query.and_filter(is_not_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def with_version_is_unknown(self):
-        self.query.and_filter(is_null(column("version")))
+        self.query.and_filter(is_null(column(_TeaqlFields.VERSION_PROPERTY_COLUMN)))
         return self
 
     def order_by_id_ascending(self):
-        self.query.order_by("id", "asc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_id_descending(self):
-        self.query.order_by("id", "desc")
+        self.query.order_by(_TeaqlFields.ID_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_name_ascending(self):
-        self.query.order_by("name", "asc")
+        self.query.order_by(_TeaqlFields.NAME_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_name_descending(self):
-        self.query.order_by("name", "desc")
+        self.query.order_by(_TeaqlFields.NAME_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_code_ascending(self):
-        self.query.order_by("code", "asc")
+        self.query.order_by(_TeaqlFields.CODE_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_code_descending(self):
-        self.query.order_by("code", "desc")
+        self.query.order_by(_TeaqlFields.CODE_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_color_ascending(self):
-        self.query.order_by("color", "asc")
+        self.query.order_by(_TeaqlFields.COLOR_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_color_descending(self):
-        self.query.order_by("color", "desc")
+        self.query.order_by(_TeaqlFields.COLOR_PROPERTY_COLUMN, "desc")
         return self
 
     def order_by_display_order_ascending(self):
-        self.query.order_by("display_order", "asc")
+        self.query.order_by(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_display_order_descending(self):
-        self.query.order_by("display_order", "desc")
+        self.query.order_by(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, "desc")
         return self
 
 
     def order_by_version_ascending(self):
-        self.query.order_by("version", "asc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "asc")
         return self
 
     def order_by_version_descending(self):
-        self.query.order_by("version", "desc")
+        self.query.order_by(_TeaqlFields.VERSION_PROPERTY_COLUMN, "desc")
         return self
 
 
@@ -558,105 +558,105 @@ class OrderStatusRequest:
         return self.min_display_order_as("minOfDisplayOrder")
 
     def min_display_order_as(self, ret_name: str):
-        self.query.min("display_order", ret_name)
+        self.query.min(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, ret_name)
         return self
     def max_display_order(self):
         return self.max_display_order_as("maxOfDisplayOrder")
 
     def max_display_order_as(self, ret_name: str):
-        self.query.max("display_order", ret_name)
+        self.query.max(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, ret_name)
         return self
     def sum_display_order(self):
         return self.sum_display_order_as("sumOfDisplayOrder")
 
     def sum_display_order_as(self, ret_name: str):
-        self.query.sum("display_order", ret_name)
+        self.query.sum(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, ret_name)
         return self
     def avg_display_order(self):
         return self.avg_display_order_as("avgOfDisplayOrder")
 
     def avg_display_order_as(self, ret_name: str):
-        self.query.avg("display_order", ret_name)
+        self.query.avg(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, ret_name)
         return self
     def standardDeviation_display_order(self):
         return self.standardDeviation_display_order_as("standardDeviationOfDisplayOrder")
 
     def standardDeviation_display_order_as(self, ret_name: str):
-        self.query.standardDeviation("display_order", ret_name)
+        self.query.standardDeviation(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, ret_name)
         return self
     def squareRootOfPopulationStandardDeviation_display_order(self):
         return self.squareRootOfPopulationStandardDeviation_display_order_as("squareRootOfPopulationStandardDeviationOfDisplayOrder")
 
     def squareRootOfPopulationStandardDeviation_display_order_as(self, ret_name: str):
-        self.query.squareRootOfPopulationStandardDeviation("display_order", ret_name)
+        self.query.squareRootOfPopulationStandardDeviation(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, ret_name)
         return self
     def sampleVariance_display_order(self):
         return self.sampleVariance_display_order_as("sampleVarianceOfDisplayOrder")
 
     def sampleVariance_display_order_as(self, ret_name: str):
-        self.query.sampleVariance("display_order", ret_name)
+        self.query.sampleVariance(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, ret_name)
         return self
     def samplePopulationVariance_display_order(self):
         return self.samplePopulationVariance_display_order_as("samplePopulationVarianceOfDisplayOrder")
 
     def samplePopulationVariance_display_order_as(self, ret_name: str):
-        self.query.samplePopulationVariance("display_order", ret_name)
+        self.query.samplePopulationVariance(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN, ret_name)
         return self
     def group_by_id(self):
-        self.query.group_by("id")
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
         return self
 
     def group_by_id_as(self, ret_name: str):
-        self.query.group_by("id")
-        self.query.project_expr(ret_name, column("id"))
+        self.query.group_by(_TeaqlFields.ID_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.ID_PROPERTY_COLUMN))
         return self
     def group_by_name(self):
-        self.query.group_by("name")
+        self.query.group_by(_TeaqlFields.NAME_PROPERTY_COLUMN)
         return self
 
     def group_by_name_as(self, ret_name: str):
-        self.query.group_by("name")
-        self.query.project_expr(ret_name, column("name"))
+        self.query.group_by(_TeaqlFields.NAME_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.NAME_PROPERTY_COLUMN))
         return self
     def group_by_code(self):
-        self.query.group_by("code")
+        self.query.group_by(_TeaqlFields.CODE_PROPERTY_COLUMN)
         return self
 
     def group_by_code_as(self, ret_name: str):
-        self.query.group_by("code")
-        self.query.project_expr(ret_name, column("code"))
+        self.query.group_by(_TeaqlFields.CODE_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.CODE_PROPERTY_COLUMN))
         return self
     def group_by_color(self):
-        self.query.group_by("color")
+        self.query.group_by(_TeaqlFields.COLOR_PROPERTY_COLUMN)
         return self
 
     def group_by_color_as(self, ret_name: str):
-        self.query.group_by("color")
-        self.query.project_expr(ret_name, column("color"))
+        self.query.group_by(_TeaqlFields.COLOR_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.COLOR_PROPERTY_COLUMN))
         return self
     def group_by_display_order(self):
-        self.query.group_by("display_order")
+        self.query.group_by(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN)
         return self
 
     def group_by_display_order_as(self, ret_name: str):
-        self.query.group_by("display_order")
-        self.query.project_expr(ret_name, column("display_order"))
+        self.query.group_by(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.DISPLAY_ORDER_PROPERTY_COLUMN))
         return self
     def group_by_commerce_platform(self):
-        self.query.group_by("commerce_platform")
+        self.query.group_by(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)
         return self
 
     def group_by_commerce_platform_as(self, ret_name: str):
-        self.query.group_by("commerce_platform")
-        self.query.project_expr(ret_name, column("commerce_platform"))
+        self.query.group_by(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN))
         return self
     def group_by_version(self):
-        self.query.group_by("version")
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         return self
 
     def group_by_version_as(self, ret_name: str):
-        self.query.group_by("version")
-        self.query.project_expr(ret_name, column("version"))
+        self.query.group_by(_TeaqlFields.VERSION_PROPERTY_COLUMN)
+        self.query.project_expr(ret_name, column(_TeaqlFields.VERSION_PROPERTY_COLUMN))
         return self
     def select_customer_order_list(self):
         from requests.customer_order_request import CustomerOrderRequest
@@ -817,8 +817,8 @@ class OrderStatusRequest:
         return self
     def facet_by_commerce_platform_as(self, name: str, request: QuerySelection,
                                       include_all_facets: bool = True):
-        self.query.facet_by(name, "commerce_platform", request.query, include_all_facets,
-            QueryOperation("facet", "facet_by_commerce_platform_as", name, "commerce_platform"))
+        self.query.facet_by(name, _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN, request.query, include_all_facets,
+            QueryOperation("facet", "facet_by_commerce_platform_as", name, _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN))
         return self
 
 
@@ -877,6 +877,8 @@ class ExecutableOrderStatusRequest:
         if not hasattr(service, "query_stream"):
             raise RuntimeError("dataService does not implement query_stream")
         root = QueryRequest(context.prepare_query(request.query), _comment=request._comment, _purpose=request._purpose)
+        if root.query.aggregates or root.query.group_by_items or root.query.object_group_bys:
+            raise ValueError("Entity streams require entity rows; use a record or aggregation query")
         from teaql.runtime.query_stream import execute_typed_stream
         return execute_typed_stream(context, root,
             lambda row: OrderStatus._teaql_from_record(_entity_root=EntityRoot(), **row), chunk_size)

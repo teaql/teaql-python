@@ -1,5 +1,11 @@
 # Python Trace Chain Example
 
+The order graph programs run in `python-app-console` against the sibling
+`python-lib-core` library. The separate `standard-order` model owns its
+pagination workspace. The verification scripts run both launches and
+retain their SQLite results.
+
+
 This example uses an evaluated six-entity KSML definition and an unchanged
 generated library. Application code uses generated Q for loading, E for loaded
 traversal, and audited save for the composed graph. A transparent observer

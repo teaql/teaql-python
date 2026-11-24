@@ -1,0 +1,61 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/scalar-type-probe",
+  "library": {
+    "generatedFilesManifestSHA256": "ce052acb2af27e12e30d7ee46034c09b1067109f36f1025bc68dd3b8f4d0bbb7",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "freight-quote.xml",
+    "sha256": "076fdf926be1a8b71e61cdfaf66b539f54c1ac2182e1f2bc75897dfab52d6d38"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build",
+      "jarSHA256": "029f602cf0e2de4ec0910495c340fbeb41f11772b6aca875569f498811158e7d",
+      "qualificationReceiptSHA256": "1012520de60d49cfc1e45c7e08fcf204dd2db36a163909e1e36752065a31047a",
+      "sourceCommit": "99d6bde2351d79b7d8b1b1c5cbc78c5dc777b6f2",
+      "tag": "unreleased-source-99d6bde2"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/freight-and-settlement-scalar-generation/receipt.json",
+    "receiptSHA256": "79779696ae34d3952b5735caa00fa0e1da93311ca8cb7389eec5ccd087368a1a"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-freight-quotes-native/runtime/freight-quote/receipt.json",
+    "businessReceiptSHA256": "34cecb902271b00ce0697fa18808562162f009b885c67cd4ec063fcd0d7f8c2a",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-freight-quotes-native/receipt.json",
+    "nativeReceiptSHA256": "8cdf6f7d8e8514b4ad47e062d159541c49f7deef6f09d6388a051d5feb314cdf",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "087464be70cbf02532077b56064a763f309ab78b"
+  },
+  "scene": "Precise freight quotes and delivery commitments",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "bash",
+    "examples/scalar-type-probe/verify-freight-quotes.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/freight_quote.py",
+      "models/platform.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/freight_quote_request.py",
+      "requests/platform_request.py",
+      "runtime_module.py"
+    ],
+    "generatedFilesManifestSHA256": "e6ae8a9f12747a89eb22040461ba3c036445aabf77165720818dae896a6d9401",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

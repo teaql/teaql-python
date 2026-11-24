@@ -1,0 +1,66 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/conformance",
+  "library": {
+    "generatedFilesManifestSHA256": "04fc89cf13b5770126f212d9c1ed7f1941392e09ae14d64bd6af73d0750f7bee",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "0a59f66db2487fdd0430087dd5985ae780225c088ad800679cb57c593c6bcee7"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build; not a public release",
+      "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+      "qualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+      "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+      "tag": "unreleased-source-021b1ed8"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/work-item-generation/receipt.json",
+    "receiptSHA256": "99afd2b0806d9aec86d271cd5154f9447b895e9f3a5e69f2e95468bcd8a1644a"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-work-item-native-scopes/runtime/conformance/business-receipt.json",
+    "businessReceiptSHA256": "9bb9e7c6adcff1cc598935f7a07ac58bf8c09eac01ddb5ec6c776ed98a975256",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-work-item-native-scopes/receipt.json",
+    "nativeReceiptSHA256": "eb4422234f29926ed957d2d613f6ef3db4c29a6e9d83f5e63cd1ab3e3353b7ff",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "7eab457962ca8bbc9112ff599090b8a5a8107753"
+  },
+  "scene": "Work item creation, governed validation, typed queries and lifecycle",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "bash",
+    "verify.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/masking_lifecycle.py",
+      "app/__init__.py",
+      "app/managed_creation.py",
+      "app/main.py",
+      "app/managed_sqlite.py",
+      "test_sql_log_intent.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/platform.py",
+      "models/work_item.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/platform_request.py",
+      "requests/work_item_request.py",
+      "runtime_module.py"
+    ],
+    "generatedFilesManifestSHA256": "5ee7831ac3c6d4bfb937ddbb59eb9fb0a0ecda401cc86e98952cc7a25d0a291b",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root name="tenant-order-visibility" org="example" data_service="sqlite" _module_key="root">
+  <platform _name="Procurement Platform" _module="Procurement" _module_key="procurement"
+            name="Regional Procurement"/>
+  <tenant _name="Tenant" _module="Procurement" _module_key="procurement"
+          platform="platform()" name="Cedar Supplies"/>
+  <purchase_order _name="Purchase Order" _module="Procurement" _module_key="procurement"
+                  tenant="tenant()" reference="PO-RECEIVING"/>
+  <order_item _name="Order Item" _module="Procurement" _module_key="procurement"
+              purchase_order="purchase_order()" tenant="tenant()" sku="SHARED-ITEM"/>
+</root>

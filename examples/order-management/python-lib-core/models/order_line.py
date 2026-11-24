@@ -9,27 +9,75 @@ from teaql.core.entity_creation import EntityCreationError, EntityCreationState
 from teaql.runtime import CheckException, CheckResult, EntityKey, EntityRoot, ObjectLocation
 from teaql.runtime import EntityJSONField, EntityJSONSchema, JsonFieldNamingProfile
 from importlib import import_module
+from copy import copy
 from models.customer_order import CustomerOrder
 from models.product import Product
 from models.commerce_platform import CommercePlatform
 
 
+class _TeaqlFields:
+    ID_PROPERTY_MEMBER = "id"
+    ID_PROPERTY_COLUMN = "id"
+    ID_PROPERTY_MODEL = "id"
+    CUSTOMER_ORDER_PROPERTY_MEMBER = "customerOrder"
+    CUSTOMER_ORDER_PROPERTY_COLUMN = "customer_order"
+    CUSTOMER_ORDER_PROPERTY_MODEL = "customer_order"
+    PRODUCT_PROPERTY_MEMBER = "product"
+    PRODUCT_PROPERTY_COLUMN = "product"
+    PRODUCT_PROPERTY_MODEL = "product"
+    PRODUCT_NAME_PROPERTY_MEMBER = "productName"
+    PRODUCT_NAME_PROPERTY_COLUMN = "product_name"
+    PRODUCT_NAME_PROPERTY_MODEL = "product_name"
+    SKU_PROPERTY_MEMBER = "sku"
+    SKU_PROPERTY_COLUMN = "sku"
+    SKU_PROPERTY_MODEL = "sku"
+    QUANTITY_PROPERTY_MEMBER = "quantity"
+    QUANTITY_PROPERTY_COLUMN = "quantity"
+    QUANTITY_PROPERTY_MODEL = "quantity"
+    COMMERCE_PLATFORM_PROPERTY_MEMBER = "commercePlatform"
+    COMMERCE_PLATFORM_PROPERTY_COLUMN = "commerce_platform"
+    COMMERCE_PLATFORM_PROPERTY_MODEL = "commerce_platform"
+    CREATE_TIME_PROPERTY_MEMBER = "createTime"
+    CREATE_TIME_PROPERTY_COLUMN = "create_time"
+    CREATE_TIME_PROPERTY_MODEL = "create_time"
+    VERSION_PROPERTY_MEMBER = "version"
+    VERSION_PROPERTY_COLUMN = "version"
+    VERSION_PROPERTY_MODEL = "version"
+
 class OrderLine:
     _teaql_json_schema = EntityJSONSchema("OrderLine", (
-        EntityJSONField("id", "id", "id"),
-        EntityJSONField("customer_order", "customerOrder", "reference", factory=lambda: CustomerOrder),
-        EntityJSONField("product", "product", "reference", factory=lambda: Product),
-        EntityJSONField("product_name", "productName", "text"),
-        EntityJSONField("sku", "sku", "text"),
-        EntityJSONField("quantity", "quantity", "integer"),
-        EntityJSONField("commerce_platform", "commercePlatform", "reference", factory=lambda: CommercePlatform),
-        EntityJSONField("create_time", "createTime", "datetime"),
-        EntityJSONField("version", "version", "version"),
+        EntityJSONField(_TeaqlFields.ID_PROPERTY_MODEL, _TeaqlFields.ID_PROPERTY_MEMBER, "id"),
+        EntityJSONField(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MODEL, _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER, "reference", factory=lambda: CustomerOrder),
+        EntityJSONField(_TeaqlFields.PRODUCT_PROPERTY_MODEL, _TeaqlFields.PRODUCT_PROPERTY_MEMBER, "reference", factory=lambda: Product),
+        EntityJSONField(_TeaqlFields.PRODUCT_NAME_PROPERTY_MODEL, _TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.SKU_PROPERTY_MODEL, _TeaqlFields.SKU_PROPERTY_MEMBER, "text"),
+        EntityJSONField(_TeaqlFields.QUANTITY_PROPERTY_MODEL, _TeaqlFields.QUANTITY_PROPERTY_MEMBER, "integer"),
+        EntityJSONField(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MODEL, _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER, "reference", factory=lambda: CommercePlatform),
+        EntityJSONField(_TeaqlFields.CREATE_TIME_PROPERTY_MODEL, _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER, "datetime"),
+        EntityJSONField(_TeaqlFields.VERSION_PROPERTY_MODEL, _TeaqlFields.VERSION_PROPERTY_MEMBER, "version"),
     ), profile=JsonFieldNamingProfile.parse("camelCase"))
 
     def to_json(self, *, profile=None):
         """Typed model JSON; no query, mutation or transport authorization."""
-        return self._teaql_json_schema.dumps(self, profile=profile)
+        return self._teaql_json_schema.dumps(self._teaql_json_view({}), profile=profile)
+
+    def _teaql_json_view(self, seen):
+        """Detached presentation state; never marks live relations as loaded."""
+        if id(self) in seen:
+            return seen[id(self)]
+        view = copy(self)
+        seen[id(self)] = view
+        view._loaded_fields = set(self._loaded_fields)
+        value = self.customerOrder
+        if hasattr(value, "_teaql_json_view"):
+            view.customerOrder = value._teaql_json_view(seen)
+        value = self.product
+        if hasattr(value, "_teaql_json_view"):
+            view.product = value._teaql_json_view(seen)
+        value = self.commercePlatform
+        if hasattr(value, "_teaql_json_view"):
+            view.commercePlatform = value._teaql_json_view(seen)
+        return view
 
     @classmethod
     def from_json(cls, payload, *, profile=None):
@@ -67,46 +115,46 @@ class OrderLine:
     def _teaql_initialize_record(self, creation_state, **kwargs):
         self._creation_state = creation_state
         self._entity_root = kwargs.pop("_entity_root", None) or EntityRoot()
-        if "id" in kwargs and "id" not in kwargs:
-            kwargs["id"] = kwargs.pop("id")
-        if "customer_order" in kwargs and "customerOrder" not in kwargs:
-            kwargs["customerOrder"] = kwargs.pop("customer_order")
-        if "product" in kwargs and "product" not in kwargs:
-            kwargs["product"] = kwargs.pop("product")
-        if "product_name" in kwargs and "productName" not in kwargs:
-            kwargs["productName"] = kwargs.pop("product_name")
-        if "sku" in kwargs and "sku" not in kwargs:
-            kwargs["sku"] = kwargs.pop("sku")
-        if "quantity" in kwargs and "quantity" not in kwargs:
-            kwargs["quantity"] = kwargs.pop("quantity")
-        if "commerce_platform" in kwargs and "commercePlatform" not in kwargs:
-            kwargs["commercePlatform"] = kwargs.pop("commerce_platform")
-        if "create_time" in kwargs and "createTime" not in kwargs:
-            kwargs["createTime"] = kwargs.pop("create_time")
-        if "version" in kwargs and "version" not in kwargs:
-            kwargs["version"] = kwargs.pop("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in kwargs and _TeaqlFields.ID_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.ID_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.ID_PROPERTY_COLUMN)
+        if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN in kwargs and _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN)
+        if _TeaqlFields.PRODUCT_PROPERTY_COLUMN in kwargs and _TeaqlFields.PRODUCT_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.PRODUCT_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.PRODUCT_PROPERTY_COLUMN)
+        if _TeaqlFields.PRODUCT_NAME_PROPERTY_COLUMN in kwargs and _TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.PRODUCT_NAME_PROPERTY_COLUMN)
+        if _TeaqlFields.SKU_PROPERTY_COLUMN in kwargs and _TeaqlFields.SKU_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.SKU_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.SKU_PROPERTY_COLUMN)
+        if _TeaqlFields.QUANTITY_PROPERTY_COLUMN in kwargs and _TeaqlFields.QUANTITY_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.QUANTITY_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.QUANTITY_PROPERTY_COLUMN)
+        if _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN in kwargs and _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN)
+        if _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN in kwargs and _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in kwargs and _TeaqlFields.VERSION_PROPERTY_MEMBER not in kwargs:
+            kwargs[_TeaqlFields.VERSION_PROPERTY_MEMBER] = kwargs.pop(_TeaqlFields.VERSION_PROPERTY_COLUMN)
         self._projection_properties = ProjectionProperties(kwargs,
-            ["id", "customerOrder", "product", "productName", "sku", "quantity", "commercePlatform", "createTime", "version"])
+            [_TeaqlFields.ID_PROPERTY_MEMBER, _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER, _TeaqlFields.PRODUCT_PROPERTY_MEMBER, _TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER, _TeaqlFields.SKU_PROPERTY_MEMBER, _TeaqlFields.QUANTITY_PROPERTY_MEMBER, _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER, _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER, _TeaqlFields.VERSION_PROPERTY_MEMBER])
         self._action = "Create" if creation_state is EntityCreationState.RESERVED else "Update"
         self._comment = None
         self._loaded_fields = set(kwargs.keys())
-        self.id = kwargs.get("id")
+        self.id = kwargs.get(_TeaqlFields.ID_PROPERTY_MEMBER)
 
-        self.customerOrder = kwargs.get("customerOrder")
+        self.customerOrder = kwargs.get(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER)
 
-        self.product = kwargs.get("product")
+        self.product = kwargs.get(_TeaqlFields.PRODUCT_PROPERTY_MEMBER)
 
-        self.productName = kwargs.get("productName")
+        self.productName = kwargs.get(_TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER)
 
-        self.sku = kwargs.get("sku")
+        self.sku = kwargs.get(_TeaqlFields.SKU_PROPERTY_MEMBER)
 
-        self.quantity = kwargs.get("quantity")
+        self.quantity = kwargs.get(_TeaqlFields.QUANTITY_PROPERTY_MEMBER)
 
-        self.commercePlatform = kwargs.get("commercePlatform")
+        self.commercePlatform = kwargs.get(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER)
 
-        self.createTime = kwargs.get("createTime")
+        self.createTime = kwargs.get(_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER)
 
-        self.version = kwargs.get("version")
+        self.version = kwargs.get(_TeaqlFields.VERSION_PROPERTY_MEMBER)
 
         if isinstance(self.customerOrder, dict):
             self.customerOrder = CustomerOrder._teaql_from_record(**self.customerOrder)
@@ -124,37 +172,62 @@ class OrderLine:
 
     def _teaql_snapshot_values(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "customerOrder" in self._loaded_fields:
-            payload["customer_order"] = Value.I64(getattr(self.customerOrder, "id", self.customerOrder))
+        if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN] = Value.I64(getattr(self.customerOrder, "id", self.customerOrder))
 
-        if "product" in self._loaded_fields:
-            payload["product"] = Value.I64(getattr(self.product, "id", self.product))
+        if _TeaqlFields.PRODUCT_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PRODUCT_PROPERTY_COLUMN] = Value.I64(getattr(self.product, "id", self.product))
 
-        if "productName" in self._loaded_fields:
-            payload["product_name"] = Value.Text(self.productName)
+        if _TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PRODUCT_NAME_PROPERTY_COLUMN] = Value.Text(self.productName)
 
-        if "sku" in self._loaded_fields:
-            payload["sku"] = Value.Text(self.sku)
+        if _TeaqlFields.SKU_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.SKU_PROPERTY_COLUMN] = Value.Text(self.sku)
 
-        if "quantity" in self._loaded_fields:
-            payload["quantity"] = Value.I64(self.quantity)
+        if _TeaqlFields.QUANTITY_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.QUANTITY_PROPERTY_COLUMN] = Value.I64(self.quantity)
 
-        if "commercePlatform" in self._loaded_fields:
-            payload["commerce_platform"] = Value.I64(getattr(self.commercePlatform, "id", self.commercePlatform))
+        if _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN] = Value.I64(getattr(self.commercePlatform, "id", self.commercePlatform))
 
-        if "createTime" in self._loaded_fields:
-            payload["create_time"] = Value.DateTime(self.createTime)
+        if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN] = Value.DateTime(self.createTime)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
     def _teaql_entity_key(self):
         return EntityKey("OrderLine", self._ledger_id)
+
+    def _teaql_restore_fixed_values(self, values):
+        """Runtime-owned restoration supplies only known, equal scalar values."""
+        if _TeaqlFields.PRODUCT_NAME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.PRODUCT_NAME_PROPERTY_MODEL]
+            raw = value.val if isinstance(value, Value) else value
+            self.productName = raw
+
+        if _TeaqlFields.SKU_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.SKU_PROPERTY_MODEL]
+            raw = value.val if isinstance(value, Value) else value
+            self.sku = raw
+
+        if _TeaqlFields.QUANTITY_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.QUANTITY_PROPERTY_MODEL]
+            raw = value.val if isinstance(value, Value) else value
+            self.quantity = raw
+
+        if _TeaqlFields.CREATE_TIME_PROPERTY_MODEL in values:
+            value = values[_TeaqlFields.CREATE_TIME_PROPERTY_MODEL]
+            raw = value.val if isinstance(value, Value) else value
+            self.createTime = raw
+
+
+        pass
 
     def get_dynamic_property(self, name):
         return self._projection_properties.get(name)
@@ -177,7 +250,8 @@ class OrderLine:
     async def save(self, context):
         # Validate intent and creation provenance before callbacks/provider access.
         MutationIntent(self._comment)
-        self._teaql_validate_input_graph(context, set())
+        context._validate_generated_graph_input("OrderLine",
+            lambda: self._teaql_validate_input_graph(context, set()))
         return await context.execute_graph_save(
             lambda session: self._teaql_save_within_graph(session.context, session),
             prepare=lambda session: self._teaql_prepare_graph(session.context, session), comment=self._comment)
@@ -193,24 +267,24 @@ class OrderLine:
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("OrderLine", ledger)
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "customerOrder" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("customer_order"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "product" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("product"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "productName" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("product_name"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "sku" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("sku"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "quantity" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("quantity"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "commercePlatform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("commerce_platform"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "createTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.PRODUCT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PRODUCT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PRODUCT_NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.SKU_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.SKU_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.QUANTITY_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.QUANTITY_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CREATE_TIME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
             # Required business values may be supplied by customer Fix. Root,
             # canonical-key, version and completeness admission still runs first.
             _action, command = self._teaql_build_command()
@@ -247,8 +321,8 @@ class OrderLine:
         if id(self) in visited:
             return
         visited.add(id(self))
-        LoadedScalarSnapshots.discard_restored_fields(self, context)
         session._generated.observe(self)
+        LoadedScalarSnapshots.discard_restored_fields(self, context)
         if self._entity_root.has_pending(self._teaql_entity_key()):
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             context._validate_mutation_fields("OrderLine", ledger)
@@ -263,44 +337,44 @@ class OrderLine:
 
     def _teaql_scalar_payload(self):
         payload = {}
-        if "id" in self._loaded_fields:
-            payload["id"] = Value.I64(self.id)
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.ID_PROPERTY_COLUMN] = Value.I64(self.id)
 
-        if "customerOrder" in self._loaded_fields:
+        if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.customerOrder
             reference_id = getattr(reference, "id", reference)
-            payload["customer_order"] = (Value.Object(reference)
+            payload[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "product" in self._loaded_fields:
+        if _TeaqlFields.PRODUCT_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.product
             reference_id = getattr(reference, "id", reference)
-            payload["product"] = (Value.Object(reference)
+            payload[_TeaqlFields.PRODUCT_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "productName" in self._loaded_fields:
-            payload["product_name"] = Value.Text(self.productName)
+        if _TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.PRODUCT_NAME_PROPERTY_COLUMN] = Value.Text(self.productName)
 
-        if "sku" in self._loaded_fields:
-            payload["sku"] = Value.Text(self.sku)
+        if _TeaqlFields.SKU_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.SKU_PROPERTY_COLUMN] = Value.Text(self.sku)
 
-        if "quantity" in self._loaded_fields:
-            payload["quantity"] = Value.I64(self.quantity)
+        if _TeaqlFields.QUANTITY_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.QUANTITY_PROPERTY_COLUMN] = Value.I64(self.quantity)
 
-        if "commercePlatform" in self._loaded_fields:
+        if _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER in self._loaded_fields:
             reference = self.commercePlatform
             reference_id = getattr(reference, "id", reference)
-            payload["commerce_platform"] = (Value.Object(reference)
+            payload[_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN] = (Value.Object(reference)
                 if reference is not None and hasattr(reference, "id") and reference_id is None
                 else Value.I64(reference_id))
 
-        if "createTime" in self._loaded_fields:
-            payload["create_time"] = Value.DateTime(self.createTime)
+        if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN] = Value.DateTime(self.createTime)
 
-        if "version" in self._loaded_fields:
-            payload["version"] = Value.I64(self.version)
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields:
+            payload[_TeaqlFields.VERSION_PROPERTY_COLUMN] = Value.I64(self.version)
 
         return payload
 
@@ -315,18 +389,18 @@ class OrderLine:
         elif action == "Update":
             ledger = dict(self._entity_root.current_change_set().changes()).get(self._teaql_entity_key(), {})
             payload = {field: value for field, value in ledger.items() if field not in ("id", "version")}
-        if "customer_order" in payload:
-            reference = payload["customer_order"].val
+        if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["customer_order"] = Value.I64(reference.id)
-        if "product" in payload:
-            reference = payload["product"].val
+                payload[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN] = Value.I64(reference.id)
+        if _TeaqlFields.PRODUCT_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.PRODUCT_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["product"] = Value.I64(reference.id)
-        if "commerce_platform" in payload:
-            reference = payload["commerce_platform"].val
+                payload[_TeaqlFields.PRODUCT_PROPERTY_COLUMN] = Value.I64(reference.id)
+        if _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN in payload:
+            reference = payload[_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN].val
             if reference is not None and hasattr(reference, "id") and reference.id is not None:
-                payload["commerce_platform"] = Value.I64(reference.id)
+                payload[_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN] = Value.I64(reference.id)
         if action == "Create":
             cmd = InsertCommand("OrderLine", payload)
         elif action == "Update":
@@ -352,36 +426,32 @@ class OrderLine:
         session.capture_loaded_values("OrderLine", LoadedScalarSnapshots.values(self))
         if self._entity_root.has_pending(self._teaql_entity_key()):
             if self._action == "Update":
-                if "id" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("id"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "customerOrder" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("customer_order"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "product" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("product"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "productName" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("product_name"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "sku" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("sku"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "quantity" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("quantity"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "commercePlatform" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("commerce_platform"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "createTime" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("create_time"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
-                if "version" not in self._loaded_fields:
-                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property("version"), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.ID_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.ID_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.PRODUCT_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PRODUCT_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.PRODUCT_NAME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.SKU_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.SKU_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.QUANTITY_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.QUANTITY_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.CREATE_TIME_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
+                if _TeaqlFields.VERSION_PROPERTY_MEMBER not in self._loaded_fields:
+                    raise CheckException([CheckResult("invalid_type", ObjectLocation().property(_TeaqlFields.VERSION_PROPERTY_MODEL), message="Mutation requires a fully loaded entity", entity_type="OrderLine")])
             action, cmd = self._teaql_build_command()
-            try:
-                action, cmd = session._generated.finalize(self, action, cmd)
-            finally:
-                for field, value in getattr(cmd, "values", {}).items():
-                    if field not in ("id", "version"):
-                        self._entity_root.set(self._teaql_entity_key(), field, value)
+            action, cmd = session._generated.finalize(self, action, cmd)
             session._remember_prepared_mutation(self, action, cmd)
 
     async def _teaql_save_within_graph(self, context, session, parent=None):
         if not session._generated.visit("write", self):
             return self
+        session._generated.validate()
         if parent is None:
             MutationIntent(self._comment)
 
@@ -412,60 +482,60 @@ class OrderLine:
         rollback_action = self._action
         rollback_loaded_fields = set(self._loaded_fields)
         old_key = self._teaql_entity_key()
-        if "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        elif "id" in persisted:
-            self.id = persisted["id"]
-            self._loaded_fields.add("id")
-        if "customer_order" in persisted:
-            self.customerOrder = persisted["customer_order"]
-            self._loaded_fields.add("customerOrder")
-        elif "customerOrder" in persisted:
-            self.customerOrder = persisted["customerOrder"]
-            self._loaded_fields.add("customerOrder")
-        if "product" in persisted:
-            self.product = persisted["product"]
-            self._loaded_fields.add("product")
-        elif "product" in persisted:
-            self.product = persisted["product"]
-            self._loaded_fields.add("product")
-        if "product_name" in persisted:
-            self.productName = persisted["product_name"]
-            self._loaded_fields.add("productName")
-        elif "productName" in persisted:
-            self.productName = persisted["productName"]
-            self._loaded_fields.add("productName")
-        if "sku" in persisted:
-            self.sku = persisted["sku"]
-            self._loaded_fields.add("sku")
-        elif "sku" in persisted:
-            self.sku = persisted["sku"]
-            self._loaded_fields.add("sku")
-        if "quantity" in persisted:
-            self.quantity = persisted["quantity"]
-            self._loaded_fields.add("quantity")
-        elif "quantity" in persisted:
-            self.quantity = persisted["quantity"]
-            self._loaded_fields.add("quantity")
-        if "commerce_platform" in persisted:
-            self.commercePlatform = persisted["commerce_platform"]
-            self._loaded_fields.add("commercePlatform")
-        elif "commercePlatform" in persisted:
-            self.commercePlatform = persisted["commercePlatform"]
-            self._loaded_fields.add("commercePlatform")
-        if "create_time" in persisted:
-            self.createTime = persisted["create_time"]
-            self._loaded_fields.add("createTime")
-        elif "createTime" in persisted:
-            self.createTime = persisted["createTime"]
-            self._loaded_fields.add("createTime")
-        if "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
-        elif "version" in persisted:
-            self.version = persisted["version"]
-            self._loaded_fields.add("version")
+        if _TeaqlFields.ID_PROPERTY_COLUMN in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        elif _TeaqlFields.ID_PROPERTY_MEMBER in persisted:
+            self.id = persisted[_TeaqlFields.ID_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN in persisted:
+            self.customerOrder = persisted[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER)
+        elif _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER in persisted:
+            self.customerOrder = persisted[_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER)
+        if _TeaqlFields.PRODUCT_PROPERTY_COLUMN in persisted:
+            self.product = persisted[_TeaqlFields.PRODUCT_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.PRODUCT_PROPERTY_MEMBER)
+        elif _TeaqlFields.PRODUCT_PROPERTY_MEMBER in persisted:
+            self.product = persisted[_TeaqlFields.PRODUCT_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.PRODUCT_PROPERTY_MEMBER)
+        if _TeaqlFields.PRODUCT_NAME_PROPERTY_COLUMN in persisted:
+            self.productName = persisted[_TeaqlFields.PRODUCT_NAME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER)
+        elif _TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER in persisted:
+            self.productName = persisted[_TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER)
+        if _TeaqlFields.SKU_PROPERTY_COLUMN in persisted:
+            self.sku = persisted[_TeaqlFields.SKU_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.SKU_PROPERTY_MEMBER)
+        elif _TeaqlFields.SKU_PROPERTY_MEMBER in persisted:
+            self.sku = persisted[_TeaqlFields.SKU_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.SKU_PROPERTY_MEMBER)
+        if _TeaqlFields.QUANTITY_PROPERTY_COLUMN in persisted:
+            self.quantity = persisted[_TeaqlFields.QUANTITY_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.QUANTITY_PROPERTY_MEMBER)
+        elif _TeaqlFields.QUANTITY_PROPERTY_MEMBER in persisted:
+            self.quantity = persisted[_TeaqlFields.QUANTITY_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.QUANTITY_PROPERTY_MEMBER)
+        if _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN in persisted:
+            self.commercePlatform = persisted[_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER)
+        elif _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER in persisted:
+            self.commercePlatform = persisted[_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER)
+        if _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN in persisted:
+            self.createTime = persisted[_TeaqlFields.CREATE_TIME_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER)
+        elif _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER in persisted:
+            self.createTime = persisted[_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER)
+        if _TeaqlFields.VERSION_PROPERTY_COLUMN in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_COLUMN]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        elif _TeaqlFields.VERSION_PROPERTY_MEMBER in persisted:
+            self.version = persisted[_TeaqlFields.VERSION_PROPERTY_MEMBER]
+            self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
         self._ledger_id = getattr(self, "id", self._ledger_id)
         new_key = self._teaql_entity_key()
         if old_key != new_key:
@@ -483,16 +553,17 @@ class OrderLine:
         session.after_rollback(rollback_entity)
         if action != "Delete":
             self._action = "Update"
-
         session._generated.accepted(self)
         if action != "Delete":
             await self._teaql_cascade_children(context, session, scope)
         def commit_entity():
+            session._generated.validate()
             self._creation_state = EntityCreationState.HYDRATED
             LoadedScalarSnapshots.capture(self, self._teaql_snapshot_values())
             self._entity_root.clear_entity(new_key)
             if getattr(self, "version", None) is not None:
                 self._entity_root.accept_committed_version(new_key, int(self.version))
+            session._generated.accepted(self)
         session.after_commit(commit_entity)
         return self
 
@@ -523,61 +594,61 @@ class OrderLine:
         old_key = self._teaql_entity_key()
         self._ledger_id = value
         self._entity_root.rekey(old_key, self._teaql_entity_key())
-        if "id" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
+        if _TeaqlFields.ID_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.id, value):
             return self
         self.id = value
-        self._loaded_fields.add("id")
-        self._entity_root.set(self._teaql_entity_key(), "id", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.ID_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.ID_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_product_name(self, value):
-        if "productName" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.productName, value):
+        if _TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.productName, value):
             return self
         self.productName = value
-        self._loaded_fields.add("productName")
-        self._entity_root.set(self._teaql_entity_key(), "product_name", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.PRODUCT_NAME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.PRODUCT_NAME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_sku(self, value):
-        if "sku" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.sku, value):
+        if _TeaqlFields.SKU_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.sku, value):
             return self
         self.sku = value
-        self._loaded_fields.add("sku")
-        self._entity_root.set(self._teaql_entity_key(), "sku", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.SKU_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.SKU_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_quantity(self, value):
-        if "quantity" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.quantity, value):
+        if _TeaqlFields.QUANTITY_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.quantity, value):
             return self
         self.quantity = value
-        self._loaded_fields.add("quantity")
-        self._entity_root.set(self._teaql_entity_key(), "quantity", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.QUANTITY_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.QUANTITY_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_create_time(self, value):
-        if "createTime" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.createTime, value):
+        if _TeaqlFields.CREATE_TIME_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.createTime, value):
             return self
         self.createTime = value
-        self._loaded_fields.add("createTime")
-        self._entity_root.set(self._teaql_entity_key(), "create_time", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.CREATE_TIME_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CREATE_TIME_PROPERTY_COLUMN, Value.from_any(value))
         return self
 
     def update_version(self, value):
-        if "version" in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
+        if _TeaqlFields.VERSION_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(self.version, value):
             return self
         self.version = value
-        self._loaded_fields.add("version")
-        self._entity_root.set(self._teaql_entity_key(), "version", Value.from_any(value))
+        self._loaded_fields.add(_TeaqlFields.VERSION_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.VERSION_PROPERTY_COLUMN, Value.from_any(value))
         return self
     def update_customer_order(self, value):
         assigned_id = getattr(value, "id", value) if value else None
         current = self.customerOrder
         current_id = getattr(current, "id", current)
-        if "customerOrder" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.customerOrder = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("customerOrder")
-        self._entity_root.set(self._teaql_entity_key(), "customer_order",
+        self._loaded_fields.add(_TeaqlFields.CUSTOMER_ORDER_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.CUSTOMER_ORDER_PROPERTY_COLUMN,
             Value.Object(self.customerOrder) if self.customerOrder is not None and hasattr(self.customerOrder, "id")
             else Value.from_any(self.customerOrder))
         return self
@@ -587,11 +658,11 @@ class OrderLine:
         assigned_id = getattr(value, "id", value) if value else None
         current = self.product
         current_id = getattr(current, "id", current)
-        if "product" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.PRODUCT_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.product = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("product")
-        self._entity_root.set(self._teaql_entity_key(), "product",
+        self._loaded_fields.add(_TeaqlFields.PRODUCT_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.PRODUCT_PROPERTY_COLUMN,
             Value.Object(self.product) if self.product is not None and hasattr(self.product, "id")
             else Value.from_any(self.product))
         return self
@@ -601,11 +672,11 @@ class OrderLine:
         assigned_id = getattr(value, "id", value) if value else None
         current = self.commercePlatform
         current_id = getattr(current, "id", current)
-        if "commercePlatform" in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
+        if _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER in self._loaded_fields and LoadedScalarSnapshots.same_value(current_id, assigned_id) and (assigned_id is not None or current is value):
             return self
         self.commercePlatform = value if value is not None and hasattr(value, "id") and assigned_id is None else assigned_id
-        self._loaded_fields.add("commercePlatform")
-        self._entity_root.set(self._teaql_entity_key(), "commerce_platform",
+        self._loaded_fields.add(_TeaqlFields.COMMERCE_PLATFORM_PROPERTY_MEMBER)
+        self._entity_root.set(self._teaql_entity_key(), _TeaqlFields.COMMERCE_PLATFORM_PROPERTY_COLUMN,
             Value.Object(self.commercePlatform) if self.commercePlatform is not None and hasattr(self.commercePlatform, "id")
             else Value.from_any(self.commercePlatform))
         return self

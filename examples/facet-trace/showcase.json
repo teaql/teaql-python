@@ -1,0 +1,64 @@
+{
+  "generatedDomainLibraryHandEdited": false,
+  "goalId": "python:examples/facet-trace",
+  "library": {
+    "generatedFilesManifestSHA256": "daeb0f5d78443f16cb6340a8dce3f3a3ed3c2d0fa5a56c60c57e3378c068b534",
+    "root": "python-lib-core",
+    "scope": "python-lib-core"
+  },
+  "model": {
+    "path": "model.xml",
+    "sha256": "9fc6724c828e10aca8cea9f53b65460f26577f74ba5396f04376ad4f20ddc30e"
+  },
+  "producer": {
+    "generator": {
+      "artifactKind": "qualified source build; not a public release",
+      "jarSHA256": "34dd804dccf05470dad46d086d58412e4a9dfcd0a1c6ed34f8f90c55ff478220",
+      "qualificationReceiptSHA256": "5119b9f3a5c95fb84f527885fdd5bac0fe79a56352a55b8acf116f67fd12787d",
+      "sourceCommit": "021b1ed8bee5db7eef38a6b1e3a3ef2e7ac69daa",
+      "tag": "unreleased-source-021b1ed8"
+    },
+    "receipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/facet-remaining-generation/receipt.json",
+    "receiptSHA256": "45c7ecfe08aa1f8b0d1a77c8476f2a3133d1f70220ec4f5f2738a5f4b0343d77"
+  },
+  "qualification": {
+    "businessReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-facet-native-scopes/runtime/facet-trace/business-receipt.json",
+    "businessReceiptSHA256": "6cbd8de6c48738f8e38d6dd818f0a503aa970ea7b8469934b4fc445142eb1fc3",
+    "nativeReceipt": "teaql-conformance/evidence/2026-11-20-example-showcase-remediation/python-facet-native-scopes/receipt.json",
+    "nativeReceiptSHA256": "93a4791e33a4c739f76dbfecaf35651f1d495c987f09b61d5aca230bc5f17517",
+    "remainingFullRuntimeInventory": true,
+    "sourceCommit": "c1211e77fec132dd8a33d22f403a50b2daa4c65d"
+  },
+  "scene": "School catalog Facets, full membership counts and retained business/privacy assertions",
+  "schema": "teaql.model-workspace-showcase/v1",
+  "status": "focused-verified",
+  "verification": [
+    "bash",
+    "verify.sh"
+  ],
+  "workspace": {
+    "applicationOwnedFiles": [
+      "app/main.py",
+      "facet.py",
+      "README.md"
+    ],
+    "domainSourcesFromLibrary": [
+      "E.py",
+      "Q.py",
+      "generated_search_models.py",
+      "models/__init__.py",
+      "models/platform.py",
+      "models/school.py",
+      "models/school_type.py",
+      "pyproject.toml",
+      "requests/__init__.py",
+      "requests/platform_request.py",
+      "requests/school_request.py",
+      "requests/school_type_request.py",
+      "runtime_module.py"
+    ],
+    "generatedFilesManifestSHA256": "4d3525010c4d11066bf11ff473b1dcd23255f8040589f008dc8bca82acd9c1d0",
+    "root": "python-app-console",
+    "scope": "python-app-console"
+  }
+}

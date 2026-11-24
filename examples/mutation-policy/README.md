@@ -1,16 +1,17 @@
-# Mutation Policy example
+# Approve a customer profile and contact preference
 
-This focused example installs an application-owned policy and exact approval
-through `UserContext`, preflights an entire two-entity graph after Checker/Fix,
-and proves that a denied graph reaches no persistent provider mutation. The
-successful audit events retain the same governance snapshot.
+Install the customer approval policy and its exact approval in the trusted
+Context. The generated Q APIs prepare a customer and contact preference, then
+save them together with a business audit reason. The approved pair is read
+back by email and customer ID. The blocked email is denied with
+`CUSTOMER_EMAIL_BLOCKED` and neither record is saved. The application observes
+the two operations at policy review and checks the successful audit snapshot.
 
-Run it against the local runtime under development:
+- `model.xml` owns the domain model.
+- `python-lib-core/` holds the generated domain library.
+- `python-app-console/app/main.py` runs the business scenario.
+- `python-app-console/calibration/` retains the original runtime probe.
 
-```bash
-PYTHONPATH=src python examples/mutation-policy/main.py
-```
-
-The deterministic in-memory transaction keeps the example independent of a
-database. Built-in SQL and TFP providers exercise the same policy boundary in
-their focused runtime tests.
+The SDK inventory runs both entry points. The focused Conformance gate runs
+the console twice against one fresh SQLite database and independently checks
+the persisted records.

@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<root name="warehouse-order-allocation" org="example" data_service="sqlite" _module_key="root">
+  <warehouse _name="Warehouse" _module="Procurement" _module_key="procurement"
+             name="Riverside Distribution Center"/>
+  <purchase_order _name="Purchase Order" _module="Procurement" _module_key="procurement"
+                  warehouse="warehouse()" reference="PURCHASE-001"/>
+  <order_item _name="Order Item" _module="Procurement" _module_key="procurement"
+              purchase_order="purchase_order()" sku="RECEIVING-LABEL" quantity="integer()"/>
+</root>

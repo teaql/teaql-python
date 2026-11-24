@@ -262,3 +262,22 @@ approval, audit propagation, and zero-write denial evidence.
 
 ---
 To run test validations and business logic simulations locally, simply run `pytest` in the project root.
+
+## Explicit business operations
+
+For a business command spanning independent entity graphs, use a trusted
+`BusinessOperation` registration. Its handler receives an explicit context;
+existing generated `.save(context)` calls made through that context retain
+independent ledgers while participating in one operation transaction. Ordinary
+saves on the original context remain independent and cannot re-enter an active
+operation. Register reviewed authorization, preparation, input schema and final
+invariant validation; the runtime runs them and coordinates durable idempotency.
+
+The first provider qualification is file SQLite (`BEGIN IMMEDIATE`). Explicitly
+initialize the operation tables with `service.ensure_business_operation_schema()`
+at startup. Other providers fail closed until their concurrency protocol is
+qualified. Commit uncertainty requires recovery with the original key; postcommit
+sink errors must not be treated as a rolled-back write.
+
+See [`examples/business-operation/README.md`](examples/business-operation/README.md)
+and its executable shipping example for the supported operation contract.

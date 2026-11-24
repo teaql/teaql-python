@@ -1,0 +1,34 @@
+{
+  "applicationManifestsPreserved": false,
+  "evaluatedScope": "python-lib-core",
+  "evaluationErrors": 0,
+  "files": {
+    "E.py": "e097b358bc8f2a781ce6792a05a3e0a5f8e96cca4dd94989d33fc33dd650ff94",
+    "Q.py": "d203912175a89813932f55d2b5f16549499e51df93f4816d4c080a275f45ab1a",
+    "generated_search_models.py": "1851c069a0f34b9aad88725ceda3fa706b42eff03df18dc2f5dd212349868af0",
+    "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "models/catalog.py": "c7b9a88a6c51687bee2b4fb02cd9d5f3cf9f580de7fa7d269034b87ac751a3e7",
+    "models/entry.py": "c63659183e1dbb4c503ef043b78d6e51c3e715054baed339e520030d76cc4755",
+    "pyproject.toml": "d71a323b0265a525f2862cc770345d5439f266778e5faad5925fe35ee18ab02b",
+    "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "requests/catalog_request.py": "07a1e6c3e3d2f9102ec47497f467a138bc4bc67fe572e78a5600fdaecd1c3af2",
+    "requests/entry_request.py": "408b0da28b06cd3c9dd3623df1c361d5702bb70e352051c96ff66a6b6df95636",
+    "runtime_module.py": "4751584273417cb8d5825ad61c6cbea6eb1de76e526bcb49f0fc95602732efee",
+    "teaql-i18n.json": "872f2be4fb4df7d76c732d627ae016b07cb39591ef833169277c67db4ec726e8",
+    "teaql/checker-model.json": "b0cce8e03720ef6aefdf8ed8386c79d1270268dc6e41f762033d32516da2cbfd",
+    "teaql/model-provenance.json": "b82e242154699127699909d5c062544e0108818af22b34afd88735d451a2981a"
+  },
+  "generatedManifestSha256": "d912e7ea291e179e1cd5d7d3a443941393cdb4467d16d36c693d05825dbccfc8",
+  "generationReceipt": "../../generator-v5.0.0.json",
+  "generatorCommit": "783ff0d81751b030c1209043476e8326cc6da58b",
+  "generatorJarSHA256": "ba0a502363884c206a46b6d5da89b0854b7f3e84072dd88544b15573c0d70812",
+  "generatorRelease": "v5.0.0",
+  "language": "python",
+  "modelSha256": "9bb36d7f9d639d04cfe9344e5152ee68e1844a8552538413c16569c6e8df4f8e",
+  "previousOrigin": {
+    "commit": "74d9ca1113d5e31b2eb106db57ba160ac89c5e4a",
+    "path": "examples/context-derived/python-lib-core/current-generator-fixture.json",
+    "sha256": "0356ed7a9e195c7fa56b3ce67ca1d7a3366315b1e7ac6f56299463d987a2b848"
+  },
+  "schema": "teaql.current-model-scope-fixture/v1"
+}

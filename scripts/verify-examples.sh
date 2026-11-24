@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(business-clock business-id conformance context-derived expression-profiles facet-trace fix-e-alignment internal-id mutation-policy natural-messages object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management supplier-onboarding-i18n task_board trace-chain typed-extension-spi)
+expected=(business-clock business-id business-operation conformance context-derived expression-profiles facet-trace fix-e-alignment internal-id mutation-policy natural-messages object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management supplier-onboarding-i18n task_board trace-chain typed-extension-spi)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -33,37 +33,33 @@ if rg -l 'include\s*=.*teaql\*' "$repo/examples" --glob pyproject.toml >/dev/nul
 fi
 
 bash "$repo/examples/object-storage/verify.sh"
-bash "$repo/examples/scalar-type-probe/verify.sh"
-bash "$repo/examples/scalar-type-probe/verify-restoration.sh" "$evidence_directory/restoration.sqlite"
-bash "$repo/examples/scalar-type-probe/verify-version.sh" "$evidence_directory/version.sqlite"
-bash "$repo/examples/scalar-type-probe/verify-empty.sh" "$evidence_directory/empty-aggregates.sqlite"
+TEAQL_FREIGHT_QUOTE_EVIDENCE_DIR="$evidence_directory/freight-quotes" \
+  bash "$repo/examples/scalar-type-probe/verify-freight-quotes.sh"
 python "$repo/examples/fix-e-alignment/verify-local.py"
 TEAQL_CONTEXT_FIX_EVIDENCE_DIR="$evidence_directory/context-derived" python "$repo/examples/context-derived/verify-local.py"
 TEAQL_NATURAL_MESSAGES_EVIDENCE_DIR="$evidence_directory/natural-messages" python "$repo/examples/natural-messages/verify-local.py"
-PYTHON=python bash "$repo/examples/supplier-onboarding-i18n/run.sh" --all --repeat 2 > "$evidence_directory/supplier-i18n-all.jsonl"
-PYTHON=python bash "$repo/examples/supplier-onboarding-i18n/run.sh" --edge-cases > "$evidence_directory/supplier-i18n-edges.jsonl"
-TEAQL_GENERATED_E_PROFILE_EVIDENCE_DIR="$evidence_directory/expression-profiles" \
-  python "$repo/examples/expression-profiles/verify-local.py"
-PYTHONPATH="$repo/examples/conformance:$repo/src" python -m app.main
-PYTHONPATH="$repo/src" python "$repo/examples/conformance/app/managed_creation.py"
-PYTHONPATH="$repo/src" python "$repo/examples/conformance/app/managed_sqlite.py"
-PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/conformance" -p 'test_sql_log_intent.py' -v
-PYTHONPATH="$repo/examples/school-management:$repo/src" python -m app.main
-bash "$repo/scripts/verify-school-bootstrap-example.sh"
-PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/school-management" -p 'test_sql_log_intent.py' -v
-PYTHONPATH="$repo/src" python "$repo/examples/mutation-policy/main.py"
-PYTHONPATH="$repo/src" python "$repo/examples/business-clock/main.py"
-PYTHONPATH="$repo/src" python "$repo/examples/business-id/main.py"
-PYTHONPATH="$repo/src" python "$repo/examples/internal-id/main.py"
-PYTHONPATH="$repo/src" python "$repo/examples/typed-extension-spi/main.py"
-PYTHONPATH="$repo/src" python "$repo/examples/query-policy/main.py"
-PYTHONPATH="$repo/src" python "$repo/examples/opaque-entity-reference/main.py"
-TEAQL_ORDER_MANAGEMENT_DB="$evidence_directory/order.db" \
-  PYTHONPATH="$repo/examples/order-management/python-lib-core:$repo/src" \
-  python "$repo/examples/order-management/python-app-console/app.py"
-PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/order-management" -p 'test_sql_log_intent.py' -v
-TEAQL_TASK_BOARD_DB="$evidence_directory/task_board.db" PYTHONPATH="$repo/examples/task_board:$repo/src" python "$repo/examples/task_board/main.py"
-PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/task_board" -p 'test_task_board.py' -v
+TEAQL_DISPATCH_PROFILE_EVIDENCE_DIR="$evidence_directory/expression-profiles" bash "$repo/examples/expression-profiles/verify-dispatch.sh"
+TEAQL_CONFORMANCE_EVIDENCE_DIR="$evidence_directory/conformance" bash "$repo/examples/conformance/verify.sh"
+TEAQL_SCHOOL_EVIDENCE_DIR="$evidence_directory/school-management" bash "$repo/examples/school-management/verify.sh"
+PYTHONPATH="$repo/src" python "$repo/examples/mutation-policy/python-app-console/calibration/main.py"
+TEAQL_SHOWCASE_ROUND=inventory TEAQL_DATABASE_CONNECTION_STRING="$evidence_directory/customer-approval.sqlite" \
+PYTHONPATH="$repo/src:$repo/examples/mutation-policy/python-lib-core" python "$repo/examples/mutation-policy/python-app-console/app/main.py"
+PYTHONPATH="$repo/src" python "$repo/examples/business-clock/python-app-console/calibration/main.py"
+TEAQL_DELIVERY_ORDER_ROUND=inventory TEAQL_DATABASE_CONNECTION_STRING="$evidence_directory/business-clock.sqlite" \
+PYTHONPATH="$repo/src:$repo/examples/business-clock/python-lib-core" python "$repo/examples/business-clock/python-app-console/app/main.py"
+PYTHONPATH="$repo/src" python "$repo/examples/business-id/python-app-console/calibration/main.py"
+TEAQL_BUSINESS_ID_KEY_V1_HEX=000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f \
+TEAQL_PURCHASE_NUMBERING_ROUND=inventory TEAQL_DATABASE_CONNECTION_STRING="$evidence_directory/business-id.sqlite" \
+PYTHONPATH="$repo/src:$repo/examples/business-id/python-lib-core" python "$repo/examples/business-id/python-app-console/app/main.py"
+PYTHONPATH="$repo/src" python "$repo/examples/business-operation/warehouse.py"
+PYTHONPATH="$repo/src" python -m pytest -q "$repo/tests/runtime/test_business_operation.py"
+TEAQL_INTERNAL_ID_EVIDENCE_DIR="$evidence_directory/internal-id" bash "$repo/examples/internal-id/verify.sh"
+TEAQL_CONTEXT_SPI_EVIDENCE_DIR="$evidence_directory/vendor-registration" bash "$repo/examples/typed-extension-spi/verify.sh"
+TEAQL_TENANT_ORDER_POLICY_EVIDENCE_DIR="$evidence_directory/query-policy" bash "$repo/examples/query-policy/verify.sh"
+TEAQL_REFERENCE_EVIDENCE_DIR="$evidence_directory/opaque-entity-reference" bash "$repo/examples/opaque-entity-reference/verify.sh"
+TEAQL_ORDER_EVIDENCE_DIR="$evidence_directory/order-management" bash "$repo/examples/order-management/verify.sh"
+TEAQL_TASK_BOARD_DB="$evidence_directory/task_board.db" PYTHONPATH="$repo/examples/task_board:$repo/src" python "$repo/examples/task_board/python-app-console/app/main.py"
+PYTHONPATH="$repo/src" python -m unittest discover -s "$repo/examples/task_board/python-app-console/app" -p 'test_task_board.py' -v
 bash "$repo/examples/trace-chain/verify.sh"
 bash "$repo/examples/facet-trace/verify.sh"
 bash "$repo/examples/trace-chain/verify-standard-telemetry.sh"
@@ -71,3 +67,6 @@ bash "$repo/examples/trace-chain/verify-standard-order.sh"
 bash "$repo/examples/trace-chain/verify-standard-graph.sh"
 bash "$repo/examples/trace-chain/verify-standard-stream.sh"
 echo "PASS: all Python examples"
+
+PYTHON=python bash "$repo/examples/supplier-onboarding-i18n/run.sh" --all --repeat 2 > "$evidence_directory/supplier-i18n-all.jsonl"
+PYTHON=python bash "$repo/examples/supplier-onboarding-i18n/run.sh" --edge-cases > "$evidence_directory/supplier-i18n-edges.jsonl"
