@@ -89,6 +89,14 @@ class EntityRoot:
         self._new_keys: Set[EntityKey] = set()
         self._deleted_keys: Set[EntityKey] = set()
         self._trace_chains: Dict[EntityKey, tuple] = {}
+        self._transaction_outcome_unknown = False
+
+    def fence_unknown_outcome(self) -> None:
+        self._transaction_outcome_unknown = True
+
+    def require_known_outcome(self) -> None:
+        if self._transaction_outcome_unknown:
+            raise RuntimeError("transaction outcome unknown; reload the affected records")
 
     def set_trace_chain(self, key: EntityKey, chain) -> None:
         """Store a complete per-entity replacement, not an appended fragment."""
@@ -164,6 +172,38 @@ class EntityRoot:
                         for field, value in before.items():
                             change_set.set(target, field, deepcopy(value))
         return undo
+
+    def _capture_transaction_key(self, key: EntityKey):
+        """Restore one graph key's pre-save baseline and retain newer pending intent."""
+        with self._lock:
+            images = [(layer, dict(layer._changes.get(key, {}))) for layer in self._change_sets]
+            version = self._original_versions.get(key)
+            was_new = key in self._new_keys
+            was_deleted = key in self._deleted_keys
+            trace = self._trace_chains.get(key)
+
+        def restore(later_values, later_deleted):
+            with self._lock:
+                self.clear_entity(key)
+                if version is None:
+                    self._original_versions.pop(key, None)
+                else:
+                    self._original_versions[key] = version
+                if was_new:
+                    self._new_keys.add(key)
+                if was_deleted or later_deleted:
+                    self._deleted_keys.add(key)
+                else:
+                    for layer, values in images:
+                        if layer in self._change_sets:
+                            for field, value in values.items():
+                                layer.set(key, field, value)
+                    for field, value in later_values.items():
+                        self._change_sets[-1].set(key, field, value)
+                if trace is not None:
+                    self._trace_chains[key] = trace
+
+        return restore
 
     def mark_as_new(self, key: EntityKey) -> None:
         with self._lock:

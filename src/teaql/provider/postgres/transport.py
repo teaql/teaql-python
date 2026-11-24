@@ -124,8 +124,17 @@ class _PostgresTransaction(SqlTransactionTransportTx):
     async def commit_sql(self) -> None:
         try:
             await self._transaction.commit()
-        finally:
+        except BaseException:
+            try:
+                await self._conn.close()
+            except BaseException:
+                pass
+            raise
+        try:
             await self._conn.close()
+        except BaseException as failure:
+            from teaql.runtime.graph_session import GraphCommittedError
+            raise GraphCommittedError((failure,)) from None
 
     async def rollback_sql(self) -> None:
         try:

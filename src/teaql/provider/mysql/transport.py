@@ -136,8 +136,17 @@ class _MysqlTransaction(SqlTransactionTransportTx):
     async def commit_sql(self) -> None:
         try:
             await self._conn.commit()
-        finally:
+        except BaseException:
+            try:
+                self._conn.close()
+            except BaseException:
+                pass
+            raise
+        try:
             self._conn.close()
+        except BaseException as failure:
+            from teaql.runtime.graph_session import GraphCommittedError
+            raise GraphCommittedError((failure,)) from None
 
     async def rollback_sql(self) -> None:
         try:

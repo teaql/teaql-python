@@ -168,14 +168,15 @@ class SqliteTransport(SqlTransactionTransport):
                 return cursor.rowcount, cursor.lastrowid
 
     async def begin_sql(self) -> 'SqlTransactionTransportTx':
-        db = await self._connect()
+        db = self._connect()
         try:
+            await db
             await self._prepare(db)
             await db.execute("BEGIN IMMEDIATE")
+            return _SqliteTransaction(db, self._bind_values, self._decode_value)
         except BaseException:
             await db.close()
             raise
-        return _SqliteTransaction(db, self._bind_values, self._decode_value)
 
 
 class _SqliteTransaction(SqlTransactionTransportTx):
@@ -214,7 +215,11 @@ class _SqliteTransaction(SqlTransactionTransportTx):
                 pass
             raise
         else:
-            await self._close()
+            try:
+                await self._close()
+            except BaseException as failure:
+                from teaql.runtime.graph_session import GraphCommittedError
+                raise GraphCommittedError((failure,)) from None
 
     async def rollback_sql(self) -> None:
         if self._closed:

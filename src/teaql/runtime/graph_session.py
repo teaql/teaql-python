@@ -35,6 +35,7 @@ class GraphMutationSession:
         self._generated = _GeneratedGraphPreparation(self)
         self._generated_plan_complete = False
         self._commit_actions = []
+        self._readback_actions = []
         self._rollback_actions = []
         self._audits = []
         # Preserve customer UserContext overrides and configured services. Only
@@ -110,6 +111,19 @@ class GraphMutationSession:
         self._require_active()
         self._commit_actions.append(action)
 
+    def accept_saved_state(self, action):
+        self._require_active()
+        if self.context._context_transaction is None:
+            self.after_commit(action)
+        else:
+            self._readback_actions.append(action)
+
+    def stage_saved_state(self):
+        self._require_active()
+        for action in self._readback_actions:
+            action()
+        self._readback_actions.clear()
+
     def after_rollback(self, action):
         self._require_active()
         self._rollback_actions.append(action)
@@ -168,6 +182,7 @@ class GraphMutationSession:
         self.context._resources.pop('fix_time', None)
         self._audits.clear()
         self._commit_actions.clear()
+        self._readback_actions.clear()
         self._rollback_actions.clear()
         self._prepared_mutations.clear()
         self._generated.clear()
