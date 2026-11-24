@@ -17,7 +17,7 @@ from teaql.runtime.context import InMemoryIdSetStore, RetainedIdSet
 from teaql.runtime.telemetry_queue import ExportQueue
 
 
-HELPER = Path(__file__).resolve().parents[2] / "examples/business-clock/operational_verification.py"
+HELPER = Path(__file__).resolve().parents[2] / "examples/business-clock/python-app-console/calibration/operational_verification.py"
 spec = importlib.util.spec_from_file_location("clock_example_verification", HELPER)
 example = importlib.util.module_from_spec(spec)
 spec.loader.exec_module(example)
