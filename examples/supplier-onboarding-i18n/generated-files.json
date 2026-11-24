@@ -1,0 +1,48 @@
+{
+  "library": {
+    "scope": "python-lib-core",
+    "sha256": {
+      "E.py": "4feb2016d23c5f664122f11921814bb52645cfa51b2eb201204f9ea6231d6b75",
+      "Q.py": "a962f69c512c902e901b903b14c1dffaa92755e7443b6877cb122a5289b0c51e",
+      "generated_search_models.py": "bb6b6aaeabbc8bda3c42ba1445212f00ef1f9a9c952c6892c31783b00c477594",
+      "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "models/supplier.py": "03cb7101f03365edd970f2758ebc6ea58b1d693b8cd2d49bc8132f79c4c3fc7c",
+      "models/warehouse.py": "1f11e4254cc939a68c49758cbc8f4fc789484ca38807f52c292594ae7247d8df",
+      "pyproject.toml": "16eb65d80bf164747491ae65289e5b4511c40a600d81b7bc5569fc1f161657b5",
+      "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "requests/supplier_request.py": "0ab10d5469ab426546f82f07803fc7af145fd281dd14ce57db6b304b7d8c9508",
+      "requests/warehouse_request.py": "c9062219b6972e79e93d974a96a56fdefc74001b1b302e51b8babb4c28f99009",
+      "runtime_module.py": "7db3980bc0ef3ef0120a4003ee3d84bd6b3d7c0bb7676fa7867850267b20f2e9",
+      "teaql-i18n.json": "f848093c0785f2730eaa74f8a9e175e1f90943f056d84666bc964d56668e298c",
+      "teaql/checker-model.json": "0c70836b868047e6bbf8c5a4b167343ef9425e5c535c59ee388b634a79f2b144",
+      "teaql/model-provenance.json": "94ae1b99943275455fce8de247c97f10a81cdb09fef91ada0ae924b26e572759"
+    }
+  },
+  "schema": "teaql.i18n-showcase-generation/v1",
+  "workspace": {
+    "applicationEntry": "app/main.py",
+    "domainSourcesFromSibling": true,
+    "scope": "python-app-console",
+    "sha256": {
+      "AGENTS.md": "c448ef9b56f4bda7dd534e666b77fde33b72d2ad9f987edd82fe83b3604f6bbc",
+      "E.py": "4feb2016d23c5f664122f11921814bb52645cfa51b2eb201204f9ea6231d6b75",
+      "Q.py": "a962f69c512c902e901b903b14c1dffaa92755e7443b6877cb122a5289b0c51e",
+      "README.md": "4463e00b120c1af3b6951fc43c19689b389d64b1989e0c41f66b8b5c140cd18e",
+      "STANDARD_TELEMETRY.md": "03391e8a7ff96c207269a3374437d7a95a16ac6563c58d6b054ab38e3bda3712",
+      "app/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "app/main.py": "1e019f8857f5aec33632b3b47b370832b90d1de9ecf260e0912c449ba3b23d46",
+      "generated_search_models.py": "bb6b6aaeabbc8bda3c42ba1445212f00ef1f9a9c952c6892c31783b00c477594",
+      "models/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "models/supplier.py": "03cb7101f03365edd970f2758ebc6ea58b1d693b8cd2d49bc8132f79c4c3fc7c",
+      "models/warehouse.py": "1f11e4254cc939a68c49758cbc8f4fc789484ca38807f52c292594ae7247d8df",
+      "pyproject.toml": "16eb65d80bf164747491ae65289e5b4511c40a600d81b7bc5569fc1f161657b5",
+      "requests/__init__.py": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "requests/supplier_request.py": "0ab10d5469ab426546f82f07803fc7af145fd281dd14ce57db6b304b7d8c9508",
+      "requests/warehouse_request.py": "c9062219b6972e79e93d974a96a56fdefc74001b1b302e51b8babb4c28f99009",
+      "runtime_module.py": "7db3980bc0ef3ef0120a4003ee3d84bd6b3d7c0bb7676fa7867850267b20f2e9",
+      "teaql-i18n.json": "f848093c0785f2730eaa74f8a9e175e1f90943f056d84666bc964d56668e298c",
+      "teaql/checker-model.json": "0c70836b868047e6bbf8c5a4b167343ef9425e5c535c59ee388b634a79f2b144",
+      "teaql/model-provenance.json": "94ae1b99943275455fce8de247c97f10a81cdb09fef91ada0ae924b26e572759"
+    }
+  }
+}

@@ -2,7 +2,7 @@
 set -euo pipefail
 
 repo="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-expected=(business-clock business-id business-operation conformance context-derived expression-profiles facet-trace fix-e-alignment internal-id mutation-policy natural-messages object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management task_board trace-chain typed-extension-spi)
+expected=(business-clock business-id business-operation conformance context-derived expression-profiles facet-trace fix-e-alignment internal-id mutation-policy natural-messages object-storage opaque-entity-reference order-management query-policy scalar-type-probe school-management supplier-onboarding-i18n task_board trace-chain typed-extension-spi)
 mapfile -t actual < <(find "$repo/examples" -mindepth 1 -maxdepth 1 -type d -printf '%f\n' | sort)
 if [[ "${actual[*]}" != "${expected[*]}" ]]; then
   echo "example inventory changed; update scripts/verify-examples.sh: ${actual[*]}" >&2
@@ -67,3 +67,6 @@ bash "$repo/examples/trace-chain/verify-standard-order.sh"
 bash "$repo/examples/trace-chain/verify-standard-graph.sh"
 bash "$repo/examples/trace-chain/verify-standard-stream.sh"
 echo "PASS: all Python examples"
+
+PYTHON=python bash "$repo/examples/supplier-onboarding-i18n/run.sh" --all --repeat 2 > "$evidence_directory/supplier-i18n-all.jsonl"
+PYTHON=python bash "$repo/examples/supplier-onboarding-i18n/run.sh" --edge-cases > "$evidence_directory/supplier-i18n-edges.jsonl"

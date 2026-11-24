@@ -458,6 +458,7 @@ This mutation rule does not change the tolerant unknown-field search behavior.
 - [Opaque reference example](examples/opaque-entity-reference)
 - [Binary object storage and temporary S3 URLs](examples/object-storage/README.md)
 - [Generated scalar probe and exact SQLite Decimal](examples/scalar-type-probe/README.md)
+- [Supplier onboarding in 15 locales](examples/supplier-onboarding-i18n/README.md)
 
 ## Safe troubleshooting
 
