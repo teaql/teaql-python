@@ -190,6 +190,45 @@ is labeled `MASKED; NOT REPLAYABLE`; SQL that cannot be safely rendered is omitt
 Application mutation audits are delivered after commit and discarded on rollback.
 This is not a durable audit outbox. Do not put secrets in comment or purpose.
 
+## Environment variables
+
+### Runtime logging
+
+| Environment variable | Default | Values and behavior |
+| --- | --- | --- |
+| `TEAQL_DOMAIN` | The single configured model name, or `teaql` | Runtime log name and default filename stem. An explicit log name in startup options takes precedence. |
+| `TEAQL_LOG_ENDPOINT` | `./logs/<log-name>.log` | Local path, local `file:` URL, `stdout`, `stderr`, or `-` for stdout. Relative paths resolve from the working directory. Rotation applies to files. |
+| `TEAQL_LOG_FORMAT` | `json` | `json` writes one structured record per line. `human` renders readable text. An explicit startup format takes precedence. |
+| `TEAQL_LOG_MAX_SIZE` | `50M` | File rotation threshold. Use positive bytes or a binary suffix `K`, `KB`, `M`, `MB`, `G`, or `GB`. |
+| `TEAQL_LOG_MAX_FILES` | `7` | Maximum number of rotated files. Use a nonnegative integer. `0` keeps only the active file. |
+| `TEAQL_ALLOW_SENSITIVE_PLAINTEXT_LOGS` | Unset | The exact value `I_UNDERSTAND_SENSITIVE_DATA_MAY_BE_WRITTEN_TO_DISK` allows eligible application values in explicitly configured diagnostic output. Credential fields stay redacted. |
+
+### OpenTelemetry
+
+Install the `telemetry` extra. See [standard OpenTelemetry setup](#optional-standard-opentelemetry-module).
+
+| Environment variable | Default | Values and behavior |
+| --- | --- | --- |
+| `TEAQL_TELEMETRY_ENABLED` | `false` | `true` enables the standard module. Set the service name and Collector endpoint as well. `false` disables export. |
+| `TEAQL_TELEMETRY_SERVICE_NAME` | Unset | Required when enabled. Use 1–120 ASCII letters, digits, underscores, periods, or hyphens. |
+| `TEAQL_TELEMETRY_OTLP_ENDPOINT` | Unset | Required when enabled. OTLP/HTTP Collector base URL, for example `http://localhost:4318`. Use an absolute HTTP(S) URL without user information, a query, or a fragment. |
+
+### Context startup
+
+These variables are read by `ServiceRuntimeFromEnv.build_context()`.
+
+| Environment variable | Default | Values and behavior |
+| --- | --- | --- |
+| `TEAQL_USER` | Empty string | Sets the context's user identifier when nonempty. |
+| `TEAQL_DB_URL` | `DATABASE_URL` | Preferred database URL. The helper accepts `sqlite://`, `file:`, `mysql://`, `postgres://`, and `postgresql://`. |
+| `DATABASE_URL` | Unset | Fallback database URL when `TEAQL_DB_URL` is empty or unset. With neither URL, the helper leaves the data service unconfigured. |
+
+### Entity references
+
+| Environment variable | Default | Values and behavior |
+| --- | --- | --- |
+| `TEAQL_UNSAFE_RAW_ENTITY_REFERENCES` | Unset | In local development, `I_UNDERSTAND_RAW_ENTITY_IDS_ARE_VISIBLE_FOR_LOCAL_DEVELOPMENT_ONLY` permits unencrypted entity references when the context has no configured codec. |
+
 ## Discover only the API needed next
 
 A coding agent does not need every generated method in its context. Start with
